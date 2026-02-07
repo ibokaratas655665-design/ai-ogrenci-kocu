@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/60 backdrop-blur-md border border-white/30 shadow-lg rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 hover:scale-105 transition-all duration-300 font-bold tracking-wide active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-white text-indigo-700 border-2 border-indigo-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50 hover:shadow-md transition-all duration-300 font-bold active:scale-95;
+  }
+
+  .btn-accent {
+    @apply px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl hover:shadow-lg hover:shadow-orange-200 hover:scale-105 transition-all duration-300 font-bold tracking-wide active:scale-95;
+  }
+
+  .btn-glass {
+    @apply px-6 py-3 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-xl hover:bg-white/30 transition-all duration-300 font-bold;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}

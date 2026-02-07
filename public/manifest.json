@@ -1,0 +1,27 @@
+{
+    "short_name": "AI Koç",
+    "name": "İbrahim Karataş - Yapay Zeka Koçluk Sistemi",
+    "description": "YKS ve LGS sürecinde kişisel yapay zeka eğitim koçunuz.",
+    "icons": [
+        {
+            "src": "favicon.ico",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/x-icon"
+        },
+        {
+            "src": "logo512.svg",
+            "type": "image/svg+xml",
+            "sizes": "192x192 512x512",
+            "purpose": "any maskable"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#4f46e5",
+    "background_color": "#ffffff",
+    "orientation": "portrait",
+    "categories": [
+        "education",
+        "productivity"
+    ]
+}
