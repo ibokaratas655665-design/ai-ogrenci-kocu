@@ -209,7 +209,7 @@ const LoginPage = () => {
                         </a>
 
                         <a
-                            href="/downloads/ai-ogrenci-kocu-setup.exe"
+                            href="/downloads/ai-ogrenci-kocu-windows.zip"
                             download
                             className="flex flex-col items-center justify-center p-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition duration-200 group text-left w-full"
                         >
@@ -217,7 +217,7 @@ const LoginPage = () => {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
                             </div>
                             <span className="text-xs font-semibold text-gray-700">Windows PC</span>
-                            <span className="text-[10px] text-gray-400">Kurulum Dosyası (EXE)</span>
+                            <span className="text-[10px] text-gray-400">İndir & Kur (ZIP)</span>
                         </a>
                     </div>
                 </div>
