@@ -32,3 +32,34 @@ dist-ssr
 dist-electron/
 release/
 build/
+
+# ─────────────────────────────────────────────────────────────
+# Derleme çıktıları — DEPOYA KONMAZ
+#
+# Bir kez konuldu ve depo 1,9 GB'a çıktı: GitHub dosya başına
+# 100 MB'ı reddettiği için push tamamen kilitlendi. APK ~250 MB,
+# Windows ZIP ~216 MB, Electron çıktısı ~490 MB.
+#
+# Dağıtım için doğru yer GitHub Releases ya da Firebase Storage;
+# adresi src/pages/DownloadPage.jsx içindeki DOWNLOAD_LINKS'e yaz.
+# ─────────────────────────────────────────────────────────────
+*.apk
+*.aab
+*.exe
+*.msi
+*.dmg
+*.zip
+*.asar
+public/downloads/*.apk
+public/downloads/*.zip
+
+# "$destination" — genişletilmemiş kabuk değişkeniyle oluşan klasör.
+# Bir kurulum betiği "$destination" yazıp Electron derlemesinin
+# tamamını buraya döktü ve commit'lendi.
+$destination/
+
+# Araç ve dağıtım önbellekleri
+.firebase/
+.claude/
+android/app/build/
+android/.gradle/

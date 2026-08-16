@@ -1,7 +1,7 @@
 {
-    "short_name": "AI Koç",
-    "name": "İbrahim Karataş - Yapay Zeka Koçluk Sistemi",
-    "description": "YKS ve LGS sürecinde kişisel yapay zeka eğitim koçunuz.",
+    "short_name": "AI Öğrenci Koçu",
+    "name": "AI Öğrenci Koçu — Koçluk ve Rehberlik Sistemi",
+    "description": "Özel öğrenci koçluğu ve okul rehberlik servisi için program, deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.",
     "icons": [
         {
             "src": "favicon.ico",
@@ -9,19 +9,82 @@
             "type": "image/x-icon"
         },
         {
+            "src": "apple-touch-icon.png",
+            "type": "image/png",
+            "sizes": "180x180",
+            "purpose": "any"
+        },
+        {
+            "src": "apple-touch-icon.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "maskable"
+        },
+        {
+            "src": "apple-touch-icon.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any maskable"
+        },
+        {
             "src": "logo512.svg",
             "type": "image/svg+xml",
-            "sizes": "192x192 512x512",
-            "purpose": "any maskable"
+            "sizes": "512x512",
+            "purpose": "any"
         }
     ],
-    "start_url": ".",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
+    "display_override": [
+        "window-controls-overlay",
+        "standalone",
+        "browser"
+    ],
     "theme_color": "#4f46e5",
     "background_color": "#ffffff",
-    "orientation": "portrait",
+    "orientation": "any",
+    "lang": "tr",
+    "dir": "ltr",
     "categories": [
         "education",
         "productivity"
-    ]
+    ],
+    "shortcuts": [
+        {
+            "name": "Programım",
+            "short_name": "Program",
+            "description": "Çalışma programını görüntüle",
+            "url": "/student",
+            "icons": [
+                {
+                    "src": "logo512.svg",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Koç Paneli",
+            "short_name": "Koç",
+            "description": "Koç yönetim paneli",
+            "url": "/coach",
+            "icons": [
+                {
+                    "src": "logo512.svg",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "logo512.svg",
+            "sizes": "540x720",
+            "type": "image/svg+xml",
+            "form_factor": "narrow",
+            "label": "Ana ekran"
+        }
+    ],
+    "prefer_related_applications": false,
+    "related_applications": []
 }

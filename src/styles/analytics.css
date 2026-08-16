@@ -1,0 +1,210 @@
+/* Analytics Components Styling */
+
+.daily-overview-container {
+    @apply bg-white rounded-2xl p-6 shadow-lg border border-gray-100;
+}
+
+.daily-overview-header {
+    @apply flex items-start justify-between;
+}
+
+.daily-stat-card {
+    @apply rounded-xl p-4 border-2 transition-all duration-300 hover:scale-105 hover:shadow-md;
+}
+
+.daily-action-btn {
+    @apply flex items-center space-x-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-200;
+}
+
+/* Performance Radar */
+.performance-radar-container {
+    @apply space-y-6;
+}
+
+/* Predictive Analytics */
+.predictive-analytics-container {
+    @apply space-y-6;
+}
+
+/* Analytics Card Animations */
+@keyframes stat-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.daily-stat-card:hover {
+    animation: stat-pulse 0.6s ease-in-out;
+}
+
+/* Progress Bar Animation */
+@keyframes progress-fill {
+    from {
+        width: 0%;
+    }
+}
+
+.daily-stat-card .bg-current {
+    animation: progress-fill 1s ease-out;
+}
+
+/* Glow Effect for High Performance */
+.performance-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Risk Indicator Pulse */
+@keyframes risk-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.risk-indicator {
+    animation: risk-pulse 2s ease-in-out infinite;
+}
+
+/* Chart Container Enhancements */
+.chart-container-enhanced {
+    @apply bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 shadow-sm border border-gray-100;
+    backdrop-filter: blur(10px);
+}
+
+/* Responsive Grid Layouts */
+@media (max-width: 768px) {
+    .daily-overview-header {
+        @apply flex-col space-y-4;
+    }
+
+    .daily-stat-card {
+        @apply p-3;
+    }
+}
+
+/* Tooltip Enhancements */
+.recharts-tooltip-wrapper {
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+/* Legend Styling */
+.recharts-legend-wrapper {
+    @apply pt-4;
+}
+
+.recharts-legend-item-text {
+    @apply font-semibold text-sm text-gray-700;
+}
+
+/* Custom Scrollbar for Analytics */
+.analytics-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.analytics-scroll::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+}
+
+.analytics-scroll::-webkit-scrollbar-thumb {
+    @apply bg-indigo-300 rounded-full hover:bg-indigo-400;
+}
+
+/* Fade In Animation for Components */
+@keyframes analytics-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analytics-fade-in {
+    animation: analytics-fade-in 0.5s ease-out;
+}
+
+/* Gradient Text for Highlights */
+.analytics-gradient-text {
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-black;
+}
+
+/* Stats Number Animation */
+@keyframes count-up {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.stat-number {
+    animation: count-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Prediction Line Dash Animation */
+@keyframes dash {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+.prediction-line {
+    stroke-dasharray: 5 5;
+    animation: dash 1s linear infinite;
+}
+
+/* Goal Card Hover Effect */
+.goal-card {
+    @apply transition-all duration-300;
+}
+
+.goal-card:hover {
+    @apply transform scale-105 shadow-lg;
+}
+
+/* Success State Glow */
+.success-glow {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+    animation: success-pulse 2s ease-in-out infinite;
+}
+
+@keyframes success-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
+    }
+}
+
+/* Warning State Glow */
+.warning-glow {
+    box-shadow: 0 0 30px rgba(251, 146, 60, 0.4);
+}
+
+/* Danger State Glow */
+.danger-glow {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+}

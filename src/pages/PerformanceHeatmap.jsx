@@ -37,17 +37,17 @@ const PerformanceHeatmap = () => {
     };
 
     const getColor = (score) => {
-        if (score >= 80) return 'bg-green-500';
+        if (score >= 80) return 'bg-ok';
         if (score >= 60) return 'bg-yellow-400';
-        if (score >= 40) return 'bg-orange-500';
-        return 'bg-red-600';
+        if (score >= 40) return 'bg-warn';
+        return 'bg-danger';
     };
 
     const getTextColor = (score) => {
-        if (score >= 80) return 'text-green-700 bg-green-50';
-        if (score >= 60) return 'text-yellow-700 bg-yellow-50';
-        if (score >= 40) return 'text-orange-700 bg-orange-50';
-        return 'text-red-700 bg-red-50';
+        if (score >= 80) return 'text-ok bg-ok-soft';
+        if (score >= 60) return 'text-warn bg-warn-soft';
+        if (score >= 40) return 'text-warn bg-warn-soft';
+        return 'text-danger bg-danger-soft';
     };
 
     const currentTopics = topicsData[selectedSubject] || topicsData['Matematik'];
@@ -56,19 +56,19 @@ const PerformanceHeatmap = () => {
         <div className="glass-card p-6 animate-fade-in mt-8">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                        <Book className="mr-2 text-indigo-500" size={20} />
+                    <h3 className="text-lg font-bold text-ink flex items-center">
+                        <Book className="mr-2 text-brand" size={20} />
                         Akıllı Konu Analizi (Isı Haritası)
                     </h3>
-                    <p className="text-sm text-gray-500">Konu bazlı başarı durumunu görselleştirir.</p>
+                    <p className="text-sm text-ink-2">Konu bazlı başarı durumunu görselleştirir.</p>
                 </div>
 
-                <div className="flex items-center space-x-2 mt-4 md:mt-0 bg-gray-100 p-1 rounded-lg">
+                <div className="flex items-center space-x-2 mt-4 md:mt-0 bg-surface-3 p-1 rounded-lg">
                     {subjects.map(sub => (
                         <button
                             key={sub}
                             onClick={() => setSelectedSubject(sub)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${selectedSubject === sub ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition ${selectedSubject === sub ? 'bg-surface shadow text-brand' : 'text-ink-2 hover:text-ink-2'}`}
                         >
                             {sub}
                         </button>
@@ -79,7 +79,7 @@ const PerformanceHeatmap = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {currentTopics.map((topic, idx) => (
                     <div key={idx} className="relative group">
-                        <div className={`aspect-square rounded-xl p-3 flex flex-col justify-between transition transform hover:scale-105 cursor-pointer shadow-sm ${getTextColor(topic.score)} border border-transparent hover:border-gray-200`}>
+                        <div className={`aspect-square rounded-xl p-3 flex flex-col justify-between transition transform hover:scale-105 cursor-pointer shadow-sm ${getTextColor(topic.score)} border border-transparent hover:border-line`}>
                             <span className="text-xs font-bold leading-tight line-clamp-2">{topic.name}</span>
                             <div className="flex justify-between items-end">
                                 <span className="text-2xl font-bold">%{topic.score}</span>
@@ -88,7 +88,7 @@ const PerformanceHeatmap = () => {
                         </div>
 
                         {/* Tooltip benzeri detay (Hover) */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 text-center">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-surface-inv text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 text-center">
                             {topic.score < 50 ? 'Bu konuda eksikleriniz var, tekrar yapmalısınız.' : 'Bu konuda gayet iyisiniz, soru çözmeye devam.'}
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                         </div>
@@ -96,11 +96,11 @@ const PerformanceHeatmap = () => {
                 ))}
             </div>
 
-            <div className="mt-6 flex items-center justify-center space-x-6 text-xs text-gray-500">
-                <div className="flex items-center"><div className="w-3 h-3 bg-red-600 rounded mr-2"></div> Kritik (%0-39)</div>
-                <div className="flex items-center"><div className="w-3 h-3 bg-orange-500 rounded mr-2"></div> Zayıf (%40-59)</div>
+            <div className="mt-6 flex items-center justify-center space-x-6 text-xs text-ink-2">
+                <div className="flex items-center"><div className="w-3 h-3 bg-danger rounded mr-2"></div> Kritik (%0-39)</div>
+                <div className="flex items-center"><div className="w-3 h-3 bg-warn rounded mr-2"></div> Zayıf (%40-59)</div>
                 <div className="flex items-center"><div className="w-3 h-3 bg-yellow-400 rounded mr-2"></div> Orta (%60-79)</div>
-                <div className="flex items-center"><div className="w-3 h-3 bg-green-500 rounded mr-2"></div> İyi (%80-100)</div>
+                <div className="flex items-center"><div className="w-3 h-3 bg-ok rounded mr-2"></div> İyi (%80-100)</div>
             </div>
         </div>
     );

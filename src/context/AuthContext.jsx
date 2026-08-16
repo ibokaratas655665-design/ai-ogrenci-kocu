@@ -1,5 +1,7 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
+import { startSessionWatch, stopSessionWatch, isSessionValid } from '../services/securityService';
+import { demoyuTemizle } from '../services/demoService';
 
 const AuthContext = createContext();
 
@@ -10,61 +12,159 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Uygulama açıldığında servisten kullanıcıyı çek
-        const currentUser = api.auth.getCurrentUser();
-        if (currentUser) {
-            setUser(currentUser);
-        }
-        setLoading(false);
+        const initAuth = async () => {
+            try {
+                // localStorage'dan oturumu geri yükle
+                const saved = localStorage.getItem('user_session');
+                if (saved) {
+                    const savedUser = JSON.parse(saved);
+                    setUser(savedUser);
+
+                    // Firebase sync'i BEKLE - Arka planda değil, bloke edici şekilde yükle
+                    // Böylece component'ler boş state ile render olup verileri ezmez!
+                    try {
+                        const { default: firebaseSync } = await import('../services/firebaseSync');
+                        await firebaseSync.init(savedUser.id || savedUser.uid);
+                    } catch (syncErr) {
+                        console.warn('Firebase sync başlatılamadı, offline mod aktif:', syncErr);
+                    }
+                }
+            } catch (err) {
+                console.error('Auth init hatası:', err);
+                localStorage.removeItem('user_session');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initAuth();
     }, []);
 
-    const login = async (email, password, role) => {
+    const login = async (identifier, password, role) => {
         try {
-            const response = await api.auth.login(email, password, role);
+            let response;
+
+            // Hybrid auth kullan
+            const { loginCoach, loginStudent } = await import('../services/hybridAuth');
+
+            if (role === 'student') {
+                response = await loginStudent(identifier, password);
+            } else if (role === 'coach') {
+                response = await loginCoach(identifier, password);
+            } else {
+                // Fallback to old API
+                response = await api.auth.login(identifier, password, role);
+            }
+
             if (response.success) {
                 setUser(response.user);
+                localStorage.setItem('user_session', JSON.stringify(response.user));
+
+                // Await Firebase sync during login too to ensure safety
+                try {
+                    const { default: firebaseSync } = await import('../services/firebaseSync');
+                    await firebaseSync.init(response.user.id || response.user.uid);
+                } catch (e) {
+                    console.warn('Login during offline sync:', e);
+                }
+
                 return { success: true };
             }
+
             return { success: false, error: response.error };
+
         } catch (error) {
-            console.error("Login hatası:", error);
-            return { success: false, error: 'Sunucu hatası oluştu.' };
+            console.error('Login hatası:', error);
+            return { success: false, error: 'Giriş sırasında hata oluştu. Lütfen tekrar deneyin.' };
         }
     };
 
-    const register = async (name, email, password, role) => {
+    const register = async (data) => {
         try {
-            const response = await api.auth.register(name, email, password, role);
+            let response;
+            const { registerCoach, registerStudent } = await import('../services/hybridAuth');
 
-            // Eğer başarıyla kayıt ve giriş yapıldıysa
+            if (data.role === 'student' && data.schoolNumber) {
+                response = await registerStudent(data);
+            } else if (data.role === 'coach' && data.phone) {
+                response = await registerCoach(data);
+            } else {
+                response = await api.auth.register(data);
+            }
+
             if (response.success && response.user) {
                 setUser(response.user);
                 return { success: true, message: response.message };
             }
 
-            // Kayıt başarılı ama onay bekleniyor durumu
             if (response.success && response.requireApproval) {
                 return { success: true, requireApproval: true, message: response.message };
             }
 
             return { success: false, error: response.error };
+
         } catch (error) {
-            console.error("Kayıt hatası:", error);
+            console.error('Kayıt hatası:', error);
             return { success: false, error: 'Kayıt sırasında hata oluştu.' };
         }
     };
 
-    const logout = () => {
+    const logout = useCallback((reason) => {
+        /**
+         * Demodan çıkılıyorsa gerçek veri geri yüklenir.
+         *
+         * Bu SENKRON olmak zorunda: demo yedeği `user_session` anahtarını
+         * da kapsıyor. Dinamik import ile geciktirilirse geri yükleme,
+         * aşağıdaki `removeItem('user_session')` çağrısından SONRA
+         * çalışır ve kullanıcıyı çıkardığımız oturumu geri getirirdi.
+         */
+        try { demoyuTemizle(); } catch { /* demo yoksa yapacak bir şey yok */ }
+
+        // Oturumu temizle
+        stopSessionWatch();
+        localStorage.removeItem('user_session');
         api.auth.logout();
         setUser(null);
-    };
+
+        // Firebase sync'i güvenli şekilde durdur (asenkron - React render'ı etkilemesin)
+        setTimeout(() => {
+            try {
+                import('../services/firebaseSync').then(({ default: firebaseSync }) => {
+                    firebaseSync.destroy();
+                }).catch(() => { });
+            } catch (e) { /* ignore */ }
+        }, 100);
+
+        // Otomatik çıkış ise URL'e bilgi ver
+        if (reason === 'timeout') {
+            window.location.hash = '/login';
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('session-timeout'));
+            }, 200);
+        }
+    }, []);
+
+    // ── Oturum zaman aşımı izleme ────────────────────────────
+    useEffect(() => {
+        if (!user) return;
+
+        const handleTimeout = () => logout('timeout');
+        const handleWarning = () => {
+            window.dispatchEvent(new CustomEvent('session-warning'));
+        };
+
+        startSessionWatch(handleTimeout, handleWarning);
+
+        return () => stopSessionWatch();
+    }, [user, logout]);
 
     const value = {
         user,
         login,
         logout,
         register,
-        isAuthenticated: !!user
+        isAuthenticated: !!user,
+        loading
     };
 
     return (

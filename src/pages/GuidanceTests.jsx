@@ -11,8 +11,7 @@ const GuidanceTests = () => {
     const tests = Object.values(TEST_DATA);
 
     const handleShare = (testId, testTitle) => {
-        // Mock share logic
-        const shareUrl = `${window.location.origin}/test/${testId}`;
+        const shareUrl = `${window.location.origin}${window.location.pathname}#/envanter/${testId}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
             setToast(`"${testTitle}" bağlantısı kopyalandı!`);
             setTimeout(() => setToast(null), 3000);
@@ -23,16 +22,16 @@ const GuidanceTests = () => {
         <div className="animate-fade-in space-y-6 relative">
             {/* Toast Notification */}
             {toast && (
-                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[60] bg-gray-800 text-white px-6 py-3 rounded-full shadow-xl flex items-center animate-fade-in">
-                    <CheckCircle size={18} className="mr-2 text-green-400" />
+                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[60] bg-surface-inv text-white px-6 py-3 rounded-full shadow-xl flex items-center animate-fade-in">
+                    <CheckCircle size={18} className="mr-2 text-ok" />
                     <span className="text-sm font-medium">{toast}</span>
                 </div>
             )}
 
-            <div className="bg-gradient-to-r from-indigo-700 to-purple-800 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+            <div className="on-color bg-gradient-to-r from-indigo-700 to-purple-800 rounded-2xl p-8 text-ink shadow-lg relative overflow-hidden">
                 <div className="relative z-10">
                     <h2 className="text-3xl font-bold mb-2">Psikolojik Testler ve Envanterler</h2>
-                    <p className="text-indigo-100 max-w-2xl">
+                    <p className="text-brand max-w-2xl">
                         Öğrencilerin akademik, sosyal ve duygusal gelişimlerini takip etmek için bilimsel ölçekleri kullanın.
                         Sonuçlar otomatik olarak analiz edilir ve öğrenci profiline işlenir.
                     </p>
@@ -47,16 +46,16 @@ const GuidanceTests = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {tests.map((test) => (
-                    <div key={test.id} className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-xl transition duration-300 group flex flex-col h-full relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition">
+                    <div key={test.id} className="bg-surface rounded-2xl border border-line p-6 hover:shadow-xl transition duration-300 group flex flex-col h-full relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition pointer-events-none">
                             <FileText size={120} />
                         </div>
 
                         <div className="flex-1">
-                            <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition">{test.title}</h3>
-                            <p className="text-gray-500 text-sm leading-relaxed mb-4">{test.desc}</p>
+                            <h3 className="text-xl font-bold text-ink mb-2 group-hover:text-brand transition">{test.title}</h3>
+                            <p className="text-ink-2 text-sm leading-relaxed mb-4">{test.desc}</p>
 
-                            <div className="flex items-center space-x-4 text-xs font-semibold text-gray-400 mb-6">
+                            <div className="flex items-center space-x-4 text-xs font-semibold text-ink-3 mb-6">
                                 <div className="flex items-center">
                                     <Clock size={14} className="mr-1" />
                                     <span>~{test.questions.length * 0.5} Dakika</span>
@@ -71,14 +70,14 @@ const GuidanceTests = () => {
                         <div className="flex space-x-2">
                             <button
                                 onClick={() => setActiveTest(test)}
-                                className="flex-1 py-3 bg-gray-50 hover:bg-indigo-600 text-gray-700 hover:text-white rounded-xl font-bold transition flex items-center justify-center group-hover:shadow-lg"
+                                className="flex-1 py-3 bg-surface-2 hover:bg-brand text-ink-2 hover:text-ink rounded-xl font-bold transition flex items-center justify-center group-hover:shadow-lg"
                             >
                                 <Play size={18} className="mr-2 fill-current" />
                                 Testi Başlat
                             </button>
                             <button
                                 onClick={() => handleShare(test.id, test.title)}
-                                className="w-12 bg-gray-50 hover:bg-blue-100 text-gray-400 hover:text-blue-600 rounded-xl transition flex items-center justify-center border border-transparent hover:border-blue-200"
+                                className="w-12 bg-surface-2 hover:bg-info-soft text-ink-3 hover:text-info rounded-xl transition flex items-center justify-center border border-transparent hover:border-info"
                                 title="Paylaşım Linkini Kopyala"
                             >
                                 <Share2 size={20} />

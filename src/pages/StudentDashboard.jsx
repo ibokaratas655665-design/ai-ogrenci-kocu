@@ -1,245 +1,461 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, MessageSquare, LogOut, CheckCircle, Clock } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+// 📱 Mobil Navigasyon
+import { StudentBottomNav } from '../components/shared/MobileBottomNav';
+import SmartNotificationBell from '../components/shared/SmartNotifications';
+import PWAInstallBanner from '../components/shared/PWAInstallBanner';
+import { StudentDashboardSkeleton } from '../components/shared/SkeletonLoaders';
+import DailyGoalCard from '../components/student/DailyGoalCard';
+import {
+    MessageSquare, LogOut, Settings, Key, Video,
+    Home, ClipboardList, BarChart2, BookOpen, Calendar,
+    CheckCircle, Clock, AlertCircle, Star, Target,
+    TrendingUp, Award, Zap, Send, X, ChevronRight,
+    PlayCircle, Flame, Trophy, Plus, Check, XCircle,
+    Download, FileText, Eye, Moon, Sun, BookX, PencilLine
+} from 'lucide-react';
+import { generateStudentReport } from '../utils/pdfGenerator';
+import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
 import { api } from '../services/api';
+import guidanceService from '../services/guidanceService';
+import AnalyticsCharts from '../components/AnalyticsCharts';
+import PomodoroTimer from '../components/PomodoroTimer';
+import SubjectTracker from '../components/SubjectTracker';
+import DailyOverview from '../components/dashboard/DailyOverview';
+import ActivityFeed from '../components/social/ActivityFeed';
+import { getStudentPermissions } from '../utils/permissions';
+import firebaseSync from '../services/firebaseSync';
+import StudentProgramTab from '../components/StudentProgramTab';
+import ProgramBuilderModal from '../components/ProgramBuilderModal';
+import StudentTestsTab from '../components/StudentTestsTab';
+// 🌟 Yeni Gamification & Analytics
+import BadgeCollection, { XPBar, StreakCard } from '../components/gamification/BadgeSystem';
+import AdvancedAnalytics from '../components/charts/AdvancedAnalytics';
+import { useGamification } from '../context/GamificationContext';
+import { AICoachButton } from '../components/AICoachChat';
+// 🎯 Yeni 3 Özellik
+import PerformanceRadar from '../components/charts/PerformanceRadar';
+import PredictiveAnalytics from '../components/charts/PredictiveAnalytics';
+import YKSCountdownWidget from '../components/student/YKSCountdownWidget';
+import SubjectWeaknessAnalyzer from '../components/student/SubjectWeaknessAnalyzer';
+import XPLeaderboard from '../components/student/XPLeaderboard';
+import GoalSettingModule from '../components/student/GoalSettingModule';
+import WeeklyScheduleBuilder from '../components/student/WeeklyScheduleBuilder';
+// 🆕 Yeni Özellikler
+import ExamCalendar from '../components/student/ExamCalendar';
+import AITopicSuggestions from '../components/student/AITopicSuggestions';
+import NetProgressChart from '../components/student/NetProgressChart';
+import NoteBook from '../components/student/NoteBook';
+import ErrorNotebook from '../components/student/ErrorNotebook';
+import DailyStudyLog from '../components/student/DailyStudyLog';
+// 🆕 13 Madde İmplementasyonu
+import MotivationNotifications from '../components/student/MotivationNotifications';
+import ClassComparisonWidget from '../components/student/ClassComparisonWidget';
+import ParentQRModal from '../components/student/ParentQRModal';
+// 🚀 12 Madde Geliştirme
+import SelfAssessmentForm from '../components/student/SelfAssessment';
+import { StudentAppointmentBooker } from '../components/coach/AppointmentSystem';
+import TabBadge from '../components/shared/TabBadge';
+import TopicTracker from '../components/student/TopicTracker';
+import useTabBadges from '../hooks/useTabBadges';
+import SubjectPomodoro from '../components/student/SubjectPomodoro';
+import EnhancedParentQRModal from '../components/student/EnhancedParentPortal';
+import StudentPortfolio from '../components/student/StudentPortfolio';
+import SmartScheduleSuggestion from '../components/student/SmartScheduleSuggestion';
+import ExamComparisonMatrix from '../components/student/ExamComparisonMatrix';
+import { OfflineBanner, useOfflineStatus } from '../services/offlineSync';
+import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
+import VividKpi from '../components/shared/VividKpi';
+import ThemeToggle from '../components/shared/ThemeToggle';
+import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 
-const StudentDashboard = () => {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
 
-    // Program State (Read-only view of what Coach created)
-    const [schedule, setSchedule] = useState({});
-    const [programConfig, setProgramConfig] = useState({
-        programDurationMonths: 1,
-        dailySlotCount: 6,
-        title: 'Çalışma Programı'
-    });
-    const [activeMonth, setActiveMonth] = useState(1);
-    const [activeWeek, setActiveWeek] = useState(1);
-    const [loading, setLoading] = useState(true);
+// ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
+class ErrorBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+    static getDerivedStateFromError(error) { return { hasError: true, error }; }
+    componentDidCatch(error, info) { console.warn('StudentDashboard ErrorBoundary:', error.message); }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-screen bg-surface-2 flex items-center justify-center p-4">
+                    <div className="bg-surface rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-warn">
+                        <div className="w-14 h-14 bg-warn-soft rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle size={28} className="text-warn" />
+                        </div>
+                        <h2 className="text-lg font-black text-ink mb-2">Bağlantı Sorunu</h2>
+                        <p className="text-sm text-ink-2 mb-2 font-medium">Veriler önbellekten yükleniyor.</p>
+                        <p className="text-xs text-ink-3 mb-5">Sunucuya bağlantı geçici olarak sağlanamadı. Tüm verileriniz güvende — çevrimdışı modda çalışmaya devam edebilirsiniz.</p>
+                        <button
+                            onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+                            className="bg-brand text-white px-6 py-2.5 rounded-xl font-bold hover:bg-brand-hover transition text-sm"
+                        >
+                            Yeniden Dene
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
-    // Messaging State
-    const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
+// ─── Güvenli string yardımcısı ─────────────────────────────────
+const toStr = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object' && val.name) return val.name;
+    return String(val);
+};
 
-    const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+// ─── Öncelik rozeti ─────────────────────────────────────────────
+const PriorityBadge = ({ priority }) => {
+    const map = {
+        urgent: { label: 'ACİL', cls: 'bg-danger/10 text-danger border-danger/20' },
+        high: { label: 'YÜKSEK', cls: 'bg-warn/10 text-warn border-warn/20' },
+        normal: { label: 'NORMAL', cls: 'bg-accent/10 text-accent border-accent/20' },
+        low: { label: 'DÜŞÜK', cls: 'bg-surface/5 text-ink-3 border-line' },
+    };
+    const cfg = map[priority] || map.normal;
+    return <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border tracking-widest ${cfg.cls}`}>{cfg.label}</span>;
+};
 
+// ─── Kategori ikonu ─────────────────────────────────────────────
+const CategoryIcon = ({ category }) => {
+    const map = {
+        homework: <BookOpen size={16} className="text-brand" />,
+        study: <Target size={16} className="text-accent" />,
+        practice: <ClipboardList size={16} className="text-c4" />,
+        reading: <BookOpen size={16} className="text-info" />,
+        revision: <Zap size={16} className="text-warn" />,
+    };
+    return <span>{map[category] || <ClipboardList size={16} className="text-ink-3" />}</span>;
+};
+
+// ─── Deneme Detay Bileşeni ─────────────────────────────────────────
+const ExamDetailSection = ({ examData, permissions, user }) => {
+    const [selectedExam, setSelectedExam] = useState(null);
+    const [toastMsg, setToastMsg] = useState('');
+
+    // Modal açıkken body scroll'unu kilitle (tuharlık önleme)
     useEffect(() => {
-        if (!user) {
-            navigate('/login');
-            return;
+        if (selectedExam) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
         }
-        loadProgram();
-        loadMessages();
+        return () => { document.body.style.overflow = ''; };
+    }, [selectedExam]);
 
-        // Poll for new messages every 10 seconds
-        const interval = setInterval(loadMessages, 10000);
-        return () => clearInterval(interval);
-    }, [user]);
+    const showToast = (msg) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 3000);
+    };
 
-    const loadProgram = () => {
+    const getSubjectNet = (exam, key) => {
+        if (exam[key] != null && !isNaN(parseFloat(exam[key]))) return parseFloat(exam[key]);
+        if (exam.subjects?.[key] != null) {
+            const v = exam.subjects[key];
+            if (typeof v === 'object') return parseFloat(v.net) || 0;
+            return parseFloat(v) || 0;
+        }
+        return null;
+    };
+
+    const handlePDF = (exam) => {
         try {
-            // Coach saves to:
-            // localStorage.setItem(`program_${studentId}_monthly_grid`, JSON.stringify(schedule));
-            // localStorage.setItem(`program_${studentId}_config`, JSON.stringify({ dailySlotCount, programDurationMonths, title }));
-
-            const scheduleKey = `program_${user.id}_monthly_grid`;
-            const configKey = `program_${user.id}_config`;
-
-            const savedSchedule = localStorage.getItem(scheduleKey);
-            const savedConfig = localStorage.getItem(configKey);
-
-            if (savedSchedule) {
-                setSchedule(JSON.parse(savedSchedule));
-            }
-
-            if (savedConfig) {
-                const config = JSON.parse(savedConfig);
-                setProgramConfig({
-                    programDurationMonths: config.programDurationMonths || 1,
-                    dailySlotCount: config.dailySlotCount || 6,
-                    title: config.title || 'Çalışma Programı'
-                });
-            }
-        } catch (error) {
-            console.error("Program yüklenirken hata:", error);
-        } finally {
-            setLoading(false);
+            // v2_results_data'dan tam veriyi bul
+            const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+            const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+            // Öğrenciye ait sonucu bul
+            const fullResult = v2Results.find(r => r.id === exam.id) || exam;
+            const trial = v2Trials.find(t => t.id === fullResult.trialId) || { name: exam.name, examType: exam.examType, date: exam.date };
+            const allStudentResults = v2Results.filter(r => r.trialId === fullResult.trialId);
+            generateStudentReport(fullResult, trial, allStudentResults);
+        } catch (e) {
+            showToast('PDF oluşturulurken hata: ' + e.message);
         }
     };
 
-    const loadMessages = async () => {
-        if (!user?.id) return;
-        try {
-            const msgs = await api.messages.getMessages(user.id);
-            if (Array.isArray(msgs)) {
-                setMessages(msgs);
-            }
-        } catch (error) {
-            console.error("Mesajlar yüklenirken hata:", error);
-        }
-    };
-
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        try {
-            if (!newMessage.trim()) return;
-
-            await api.messages.sendMessage(user.id, {
-                sender: 'student',
-                text: newMessage,
-                senderName: user.name
-            });
-            setNewMessage('');
-            loadMessages();
-        } catch (error) {
-            console.error("Mesaj gönderim hatası:", error);
-        }
-    };
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
-
-    // Safety check for slot count
-    const safeSlotCount = Number(programConfig?.dailySlotCount) || 6;
+    if (examData.length === 0) {
+        return (
+            <div className="animate-fade-in space-y-8">
+                <h1 className="text-3xl font-black text-ink syne tracking-tight">DENEME SONUÇLARIM</h1>
+                <div className="premium-card p-20 text-center border-dashed border-line">
+                    <div className="w-20 h-20 bg-surface/5 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-line">
+                        <BarChart2 size={40} className="text-ink-2" />
+                    </div>
+                    <h3 className="text-xl font-bold text-ink mb-3 syne">HENÜZ DENEME SONUCU YOK</h3>
+                    <p className="text-ink-3 text-sm max-w-sm mx-auto leading-relaxed">
+                        Koçun deneme sonuçlarını sisteme yüklediğinde performans analizlerini burada detaylı olarak görebileceksin.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            {/* Header */}
-            <header className="bg-white shadow-sm z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                            {user?.name?.charAt(0) || 'Ö'}
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold text-gray-900">{user?.name || 'Öğrenci'}</h1>
-                            <p className="text-xs text-gray-500">{user?.schoolNumber} • {user?.grade} • {user?.section}</p>
-                        </div>
-                    </div>
+        <div className="animate-fade-in space-y-8">
+            {toastMsg && (
+                <div className="fixed bottom-24 right-8 z-[100] premium-glass border-brand/30 text-ink px-6 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-3 animate-fade-in-up">
+                    <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                    {toastMsg}
+                </div>
+            )}
 
-                    <div className="flex items-center space-x-4">
-                        <button
-                            onClick={() => setIsMessageModalOpen(true)}
-                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-indigo-200 hover:bg-indigo-700 transition flex items-center"
-                        >
-                            <MessageSquare size={18} className="mr-2" />
-                            Koçumla Konuş
-                        </button>
-                        <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 transition">
-                            <LogOut size={20} />
-                        </button>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black text-ink syne tracking-tight">DENEME SONUÇLARIM</h1>
+                    <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">PERFORMANS ANALİZİ VE GELİŞİM TAKİBİ</p>
+                </div>
+            </div>
+
+            {/* Özet istatistikler */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                {[
+                    { label: 'TOPLAM DENEME', value: examData.length, color: 'var(--highlight)', icon: ClipboardList },
+                    { label: 'EN YÜKSEK NET', value: Math.max(...examData.map(e => e.totalNet || 0)).toFixed(1), color: 'var(--accent)', icon: Award },
+                    { label: 'ORTALAMA NET', value: (examData.reduce((s, e) => s + (e.totalNet || 0), 0) / examData.length).toFixed(1), color: 'var(--c4)', icon: TrendingUp },
+                    { label: 'SON DURUM', value: examData[examData.length - 1]?.totalNet?.toFixed(1) || '-', color: 'var(--highlight)', icon: Zap },
+                ].map((s, i) => (
+                    <div key={i} className="premium-card p-6 relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="p-2 bg-surface/5 rounded-lg border border-line">
+                                    <s.icon size={18} style={{ color: s.color }} />
+                                </div>
+                            </div>
+                            <div className="text-3xl font-black text-ink syne mb-1">{s.value}</div>
+                            <div className="text-[10px] font-black text-ink-3 uppercase tracking-widest">{s.label}</div>
+                        </div>
+                        <div className="absolute -bottom-6 -right-6 w-20 h-20 blur-3xl opacity-10 pointer-events-none" style={{ backgroundColor: s.color }} />
+                    </div>
+                ))}
+            </div>
+
+            {/* Performans Grafikleri */}
+            {permissions.canViewAnalytics && (
+                <div className="premium-card p-8 border-accent/20">
+                    <h2 className="text-xl font-black text-ink syne mb-8 flex items-center gap-3">
+                        <div className="p-2 bg-accent/10 rounded-lg">
+                            <TrendingUp size={20} className="text-accent" />
+                        </div>
+                        GELİŞİM GRAFİKLERİ
+                    </h2>
+                    <AnalyticsCharts examData={examData} />
+                </div>
+            )}
+
+            {/* Deneme Listesi */}
+            <div className="premium-card overflow-hidden border-line">
+                <div className="p-6 border-b border-line bg-surface/5 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-black text-ink syne leading-tight">TÜM DENEMELER</h2>
+                        <p className="text-[10px] text-ink-2 font-bold uppercase tracking-wider mt-0.5">DETAYLI ANALİZ İÇİN TIKLAYINIZ</p>
                     </div>
                 </div>
-            </header>
+                <div className="divide-y divide-white/5">
+                    {[...examData].reverse().map((exam, i) => {
+                        const tytSubs = [
+                            ['Türkçe', getSubjectNet(exam, 'turkce')],
+                            ['Matematik', getSubjectNet(exam, 'mat')],
+                            ['Fen', getSubjectNet(exam, 'fen')],
+                            ['Sosyal', getSubjectNet(exam, 'sosyal')],
+                        ].filter(([, v]) => v != null && v > 0);
+                        const aytSubs = [
+                            ['SAY', exam.sayNet, 'var(--highlight)'],
+                            ['EA', exam.eaNet, 'var(--accent)'],
+                            ['SÖZ', exam.sozNet, 'var(--c4)'],
+                            ['DİL', exam.dilNet, 'var(--warn)'],
+                        ].filter(([, v]) => v > 0);
 
-            {/* Main Content */}
-            <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8">
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 min-h-[600px] flex flex-col">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-indigo-50/50">
-                        <div>
-                            <h2 className="text-2xl font-black text-gray-800">{programConfig?.title || 'Çalışma Programı'}</h2>
-                            <p className="text-gray-500 text-sm mt-1">{activeMonth}. Ay / {activeWeek}. Hafta</p>
-                        </div>
-
-                        <div className="flex bg-white rounded-lg shadow-sm p-1">
-                            {[1, 2, 3, 4].map(w => (
-                                <button
-                                    key={w}
-                                    onClick={() => setActiveWeek(w)}
-                                    className={`px-4 py-2 rounded-md text-sm font-bold transition ${activeWeek === w ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    {w}. Hafta
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto p-6">
-                        {/* Reusing Grid Structure from DetailPage - Simplified */}
-                        <div className="min-w-[800px]">
-                            <div className="grid grid-cols-8 gap-0 border-2 border-gray-800">
-                                {/* Header */}
-                                <div className="bg-gray-800 text-white font-bold p-3 text-center text-sm">SAAT</div>
-                                {DAYS.map(day => (
-                                    <div key={day} className="bg-gray-100 text-gray-800 font-black p-3 text-center border-l border-b border-gray-300 uppercase text-xs">
-                                        {day}
-                                    </div>
-                                ))}
-
-                                {/* Slots */}
-                                {Array.from({ length: safeSlotCount }).map((_, slotIndex) => (
-                                    <React.Fragment key={slotIndex}>
-                                        <div className="bg-gray-50 font-bold text-gray-500 text-xs p-2 text-center border-b border-r border-gray-200 flex items-center justify-center">
-                                            {slotIndex + 1}. Etüt
+                        return (
+                            <div
+                                key={exam.id || i}
+                                className="p-6 hover:bg-surface/5 transition-all duration-300 cursor-pointer group"
+                                onClick={() => setSelectedExam(exam)}
+                            >
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-5">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border transition-all duration-500 group-hover:scale-110 ${
+                                            exam.examType === 'AYT' 
+                                            ? 'bg-c4/10 text-c4 border-c4/20' 
+                                            : 'bg-accent/10 text-accent border-accent/20'
+                                        }`}>
+                                            {exam.examType || 'TYT'}
                                         </div>
-                                        {DAYS.map(day => {
-                                            // Secure data access
-                                            const cellKey = `m${activeMonth}-w${activeWeek}-${day}-${slotIndex}`;
-                                            const cellData = schedule && schedule[cellKey] ? schedule[cellKey] : null;
+                                        <div>
+                                            <p className="text-base font-bold text-ink group-hover:text-brand transition-colors syne">{exam.name || 'Deneme'}</p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <span className="text-[10px] font-black text-ink-2 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <Calendar size={12} /> {exam.date ? new Date(exam.date).toLocaleDateString('tr-TR') : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="text-right">
+                                            <p className="text-2xl font-black text-ink syne leading-none">{(exam.totalNet || 0).toFixed(1)}</p>
+                                            <p className="text-[10px] font-black text-accent tracking-[0.2em] mt-1.5 uppercase">TOPLAM NET</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handlePDF(exam); }}
+                                                className="w-10 h-10 bg-surface/5 hover:bg-brand/20 text-ink-3 hover:text-brand border border-line rounded-xl transition-all duration-300 flex items-center justify-center"
+                                                title="PDF Karne İndir"
+                                            >
+                                                <Download size={18} />
+                                            </button>
+                                            <div className="w-10 h-10 bg-surface/5 text-ink-2 rounded-xl flex items-center justify-center border border-line group-hover:border-brand/30 group-hover:text-brand transition-all">
+                                                <ChevronRight size={18} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Net Detayları */}
+                                <div className="mt-4 flex flex-wrap gap-2 md:pl-20">
+                                    {(exam.examType !== 'AYT' ? tytSubs : aytSubs).map(([lbl, net]) => (
+                                        <span key={lbl} className="bg-surface/5 border border-line px-3 py-1 rounded-lg text-[10px] font-black text-ink-3 group-hover:border-brand/20 transition-all">
+                                            {lbl}: <span className="text-ink ml-1">{Number(net).toFixed(1)}</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
 
-                                            return (
-                                                <div key={`${day}-${slotIndex}`} className={`border-b border-r border-gray-200 p-1 min-h-[60px] relative ${cellData ? cellData.color : ''}`}>
-                                                    {cellData && (
-                                                        <div className="h-full w-full flex flex-col justify-center items-center text-center p-1">
-                                                            <span className="text-[10px] font-bold opacity-70 uppercase mb-1">{cellData.subject}</span>
-                                                            <span className="text-xs font-black leading-tight">{cellData.topic}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </React.Fragment>
-                                ))}
+            {/* Detay Modal - Premium Glass */}
+            {selectedExam && (
+                <div className="fixed inset-0 z-modal-base flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-page/90 backdrop-blur-md" onClick={() => setSelectedExam(null)} />
+                    
+                    <div className="relative premium-card w-full max-w-3xl max-h-[90vh] overflow-y-auto border-line shadow-2xl animate-scale-in">
+                        {/* Header */}
+                        <div className="p-8 border-b border-line flex items-center justify-between sticky top-0 bg-surface/80 backdrop-blur-xl z-10">
+                            <div className="flex items-center gap-5">
+                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-sm font-black border ${
+                                    selectedExam.examType === 'AYT' 
+                                    ? 'bg-c4/20 text-c4 border-c4/30' 
+                                    : 'bg-accent/20 text-accent border-accent/30'
+                                }`}>
+                                    {selectedExam.examType || 'TYT'}
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-ink syne leading-tight">{selectedExam.name || 'Deneme'}</h3>
+                                    <div className="flex items-center gap-3 mt-1.5">
+                                        <span className="text-xs font-bold text-ink-3 uppercase tracking-widest flex items-center gap-2">
+                                            <Calendar size={14} className="text-brand" />
+                                            {selectedExam.date ? new Date(selectedExam.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => handlePDF(selectedExam)}
+                                    className="premium-button px-5 h-12 text-xs flex items-center gap-2"
+                                >
+                                    <Download size={16} /> PDF KARNE
+                                </button>
+                                <button 
+                                    onClick={() => setSelectedExam(null)} 
+                                    className="w-12 h-12 bg-surface/5 hover:bg-danger/10 text-ink-3 hover:text-danger rounded-xl border border-line transition-all flex items-center justify-center"
+                                >
+                                    <X size={24} />
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </main>
 
-            {/* Message Modal */}
-            {isMessageModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-md h-[600px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in">
-                        <div className="bg-indigo-600 p-4 text-white flex justify-between items-center">
-                            <h3 className="font-bold flex items-center"><MessageSquare size={18} className="mr-2" /> Koçumla Konuş</h3>
-                            <button onClick={() => setIsMessageModalOpen(false)}><LogOut size={18} className="rotate-180 hover:text-indigo-200 transition" /></button>
-                        </div>
+                        <div className="p-8 space-y-8 text-ink">
+                            {/* Özet Kartları */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center group hover:bg-brand/5 transition-all">
+                                    <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 group-hover:text-brand">TOPLAM NET</div>
+                                    <div className="text-3xl font-black text-ink syne">{(selectedExam.totalNet || 0).toFixed(2)}</div>
+                                </div>
+                                {selectedExam.examType === 'AYT' ? (
+                                    <>
+                                        {selectedExam.sayNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#a78bfa]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SAY NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sayNet).toFixed(1)}</div></div>}
+                                        {selectedExam.eaNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-accent/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">EA NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.eaNet).toFixed(1)}</div></div>}
+                                        {selectedExam.sozNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#32a852]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SÖZ NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sozNet).toFixed(1)}</div></div>}
+                                    </>
+                                ) : (
+                                    <>
+                                        {[['Türkçe', getSubjectNet(selectedExam, 'turkce'), 'var(--highlight)'], ['Matematik', getSubjectNet(selectedExam, 'mat'), 'var(--accent)'], ['Fen', getSubjectNet(selectedExam, 'fen'), 'var(--warn)'], ['Sosyal', getSubjectNet(selectedExam, 'sosyal'), 'var(--danger)']].filter(([, v]) => v != null).map(([lbl, net, color]) => (
+                                            <div key={lbl} className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-surface/10 transition-all">
+                                                <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2" style={{ color }}>{lbl.toUpperCase()}</div>
+                                                <div className="text-3xl font-black text-ink syne">{Number(net).toFixed(1)}</div>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-                            {messages.length === 0 ? (
-                                <p className="text-center text-gray-400 text-sm mt-10">Henüz mesaj yok. Merhaba de! 👋</p>
-                            ) : (
-                                messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.sender === 'student' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'}`}>
-                                            <p>{msg.text}</p>
-                                            <span className={`text-[10px] block mt-1 opacity-70 ${msg.sender === 'student' ? 'text-indigo-200' : 'text-gray-400'}`}>
-                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                            {/* Detaylı Liste */}
+                            <div className="bg-surface/5 border border-line rounded-3xl overflow-hidden p-6">
+                                <h4 className="text-sm font-black text-ink syne tracking-widest uppercase mb-6 flex items-center gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                                    DERS BAZLI AYRINTILI ANALİZ
+                                </h4>
+                                
+                                <div className="space-y-3">
+                                    {selectedExam.examType === 'AYT' ? (
+                                        [
+                                            ['EDEBIYAT', selectedExam.edebiyat],
+                                            ['AYT MATEMATIK', selectedExam.aytMat],
+                                            ['FIZIK', selectedExam.fizik],
+                                            ['KIMYA', selectedExam.kimya],
+                                            ['BIYOLOJI', selectedExam.biyoloji],
+                                            ['SOSYAL AYT', selectedExam.sosyalAYT],
+                                            ['DIL', selectedExam.dilNet],
+                                        ].filter(([, v]) => v != null && v > 0).map(([lbl, net]) => (
+                                            <div key={lbl} className="flex justify-between items-center bg-surface/5 px-6 py-4 rounded-2xl border border-line group hover:border-line transition-all">
+                                                <span className="text-xs font-bold text-ink-3 tracking-wider group-hover:text-ink transition-colors">{lbl}</span>
+                                                <span className="text-lg font-black text-accent syne">{Number(net).toFixed(2)}</span>
+                                            </div>
+                                        ))
+                                    ) : selectedExam.subjects && Object.keys(selectedExam.subjects).length > 0 ? (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b border-line">
+                                                        <th className="px-4 py-3 text-left text-[10px] font-black text-ink-2 uppercase tracking-widest">Ders</th>
+                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-accent uppercase tracking-widest">Doğru</th>
+                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-danger uppercase tracking-widest">Yanlış</th>
+                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-brand uppercase tracking-widest">Net</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {Object.entries(selectedExam.subjects).map(([key, subj]) => {
+                                                        if (!subj) return null;
+                                                        const d = typeof subj === 'object' ? (subj.d ?? subj.dogru ?? '-') : '-';
+                                                        const y = typeof subj === 'object' ? (subj.y ?? subj.yanlis ?? '-') : '-';
+                                                        const net = typeof subj === 'object' ? (parseFloat(subj.net) || 0) : (parseFloat(subj) || 0);
+                                                        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                                        return (
+                                                            <tr key={key} className="hover:bg-surface/5 transition-all">
+                                                                <td className="px-4 py-4 text-xs font-bold text-ink-3">{label}</td>
+                                                                <td className="px-4 py-4 text-center text-sm font-black text-ink">{d}</td>
+                                                                <td className="px-4 py-4 text-center text-sm font-black text-ink">{y}</td>
+                                                                <td className="px-4 py-4 text-center text-sm font-black text-brand syne">{net.toFixed(2)}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
                                         </div>
-                                    </div>
-                                ))
-                            )}
+                                    ) : (
+                                        <div className="text-center py-10">
+                                            <p className="text-ink-2 text-xs font-bold tracking-widest uppercase">DETAYLI DERS VERİSİ BULUNAMADI</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-
-                        <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 flex gap-2">
-                            <input
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Mesajınızı yazın..."
-                                className="flex-1 bg-gray-100 border-none rounded-full px-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                            />
-                            <button type="submit" className="p-2 bg-indigo-600 text-white rounded-full hover:scale-105 transition shadow-lg disabled:opacity-50" disabled={!newMessage.trim()}>
-                                <MessageSquare size={20} />
-                            </button>
-                        </form>
                     </div>
                 </div>
             )}
@@ -247,4 +463,1630 @@ const StudentDashboard = () => {
     );
 };
 
-export default StudentDashboard;
+// ─── Ana Bileşen ─────────────────────────────────────────────────
+const StudentDashboard = () => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+    const { isDark, toggleTheme } = useTheme();
+    const { stats: gamStats, completeTask: gamCompleteTask, completePomodoro: gamCompletePomodoro, recordDailyLogin, recordExamView } = useGamification();
+
+    // ── State
+    const [activeTab, setActiveTab] = useState('home');
+    const [schedule, setSchedule] = useState({});
+    const [programConfig, setProgramConfig] = useState({ programDurationMonths: 1, dailySlotCount: 6, title: 'Çalışma Programı' });
+    const [activeMonth, setActiveMonth] = useState(1);
+    const [activeWeek, setActiveWeek] = useState(1);
+    const [loading, setLoading] = useState(true);
+
+    const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState('');
+
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [apiKey, setApiKey] = useState('');
+
+    const [examData, setExamData] = useState([]);
+    const [testResults, setTestResults] = useState([]);
+    const [assignedTests, setAssignedTests] = useState([]);
+    const [tasks, setTasks] = useState([]);
+
+    const [dailyPomodoros, setDailyPomodoros] = useState(0);
+    const [totalStudyTime, setTotalStudyTime] = useState(0);
+
+    const [userStats, setUserStats] = useState({
+        totalXP: 0, currentStreak: 0, maxStreak: 0,
+        totalStudyHours: 0, tasksCompleted: 0, examsCompleted: 0,
+        bestExamScore: 0, pomodorosCompleted: 0, messagesExchanged: 0,
+        lastActivityDate: null, dailyPomodoros: 0, dailyStudyMinutes: 0, dailyXP: 0,
+    });
+    const [earnedAchievements, setEarnedAchievements] = useState([]);
+
+    const [todayTasks, setTodayTasks] = useState([]);
+    const [todayGoals, setTodayGoals] = useState([]);
+
+
+    const [permissions, setPermissions] = useState(getStudentPermissions());
+    const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const [showProgramBuilder, setShowProgramBuilder] = useState(false);
+    const [isParentQROpen, setIsParentQROpen] = useState(false); // Madde 12
+
+    // ── Mount
+    useEffect(() => {
+        if (!user) { navigate('/login'); return; }
+
+        const initAndLoad = async () => {
+            // Firebase bağlat (hata olursa offline modda devam et)
+            // 12 saniyelik zaman aşımı - Firebase'in tam yülenmesini bekle
+            try {
+                await Promise.race([
+                    firebaseSync.init(user.id),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 12000))
+                ]);
+                console.log('✅ Firebase sync tamamlandı, veriler yükleniyor...');
+            } catch (e) {
+                console.warn('⚠️ Firebase başlatılamadı (offline mod):', e.message);
+            }
+            // Firebase yüklemesi tamamlandıktan SONRA veriyi oku
+            await loadData();
+        };
+
+        initAndLoad();
+        setApiKey(localStorage.getItem('gemini_api_key') || '');
+        const interval = setInterval(loadMessages, 10000);
+
+        // 📡 Firebase real-time güncellemeleri dinle
+        const handleStorageUpdate = (e) => {
+            if (!e.key || e.key.startsWith('_fbtime_')) return;
+            if (e.key === 'student_tasks') {
+                loadTasks();
+            } else if (e.key === 'v2_results_data' || e.key === 'v2_trials_data' || e.key === 'exams_data' || e.key === 'v2_obp_data') {
+                loadExams();
+            } else if (e.key?.startsWith('program_schedule_') || e.key?.includes('_monthly_grid') || e.key?.includes('_config') || e.key === 'student_programs') {
+                loadProgram();
+            } else if (e.key === 'student_messages') {
+                loadMessages();
+            } else if (e.key === 'coach_students' || e.key === 'users_db') {
+                loadData();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageUpdate);
+
+        // 🔄 Hızlı polling: Coach'tan gelen veriler için 15 saniyede bir yenile
+        const pollInterval = setInterval(() => { loadTasks(); loadExams(); loadMessages(); }, 15000);
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(pollInterval);
+            window.removeEventListener('storage', handleStorageUpdate);
+            firebaseSync.destroy();
+        };
+    }, [user]);
+
+    // ── Veri Yükleme
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            // Firebase quota aşıldığında bile çalışmaya devam et
+            await Promise.allSettled([
+                loadProgram(), loadMessages(), loadExams(),
+                loadTests(), loadTasks(), loadAssignedTests()
+            ]);
+            // 🌟 FAZE 3: Günlük login XP
+            recordDailyLogin();
+        } catch (error) {
+            console.warn('Kısmi veri yükleme hatası (offline mod aktif):', error);
+        } finally {
+            setLoading(false); // Her zaman loading'i kapat
+        }
+    };
+
+    const loadAssignedTests = async () => {
+        if (!user?.id) return;
+        try {
+            const key = `assigned_tests_${user.id}`;
+            const raw = JSON.parse(localStorage.getItem(key) || '[]');
+            const allTests = guidanceService.getTests();
+            const enriched = raw.map(a => {
+                const testDef = allTests.find(t => t.id === a.testId);
+                return { ...a, ...(testDef || {}), testId: a.testId };
+            }).filter(t => t.title); // Sadece var olan testleri göster
+            setAssignedTests(enriched);
+        } catch (e) { console.error('Atanan testler yüklenemedi:', e); }
+    };
+
+    const loadTests = async () => {
+        if (!user?.id) return;
+        try { setTestResults(await api.tests.getResults(user.id) || []); }
+        catch (e) { console.error('Test sonuçları yüklenemedi:', e); }
+    };
+
+    const loadTasks = async () => {
+        if (!user?.id) return;
+        try {
+            const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            const userIdStr = String(user.id);
+            let myTasks = allTasks[userIdStr] || allTasks[user.id] || [];
+            if (myTasks.length === 0 && user.schoolNumber) {
+                const bySchoolNo = Object.values(allTasks).flat().filter(t =>
+                    String(t.studentId) === String(user.schoolNumber) ||
+                    String(t.studentId) === String(user.id)
+                );
+                if (bySchoolNo.length > 0) myTasks = bySchoolNo;
+            }
+            if (myTasks.length === 0) {
+                Object.keys(allTasks).forEach(key => {
+                    const matched = (allTasks[key] || []).filter(t =>
+                        String(t.studentId) === String(user.id) ||
+                        String(t.studentId) === String(user.schoolNumber)
+                    );
+                    myTasks = [...myTasks, ...matched];
+                });
+            }
+            setTasks(myTasks);
+        } catch (e) { console.error('Görevler yüklenemedi:', e); }
+    };
+
+    const loadProgram = async () => {
+        if (!user?.id) return;
+        try {
+            // ✅ 1. Önce koçun oluşturduğu programı dene (ProgramBuilderModal tarafından kaydedilen)
+            // Koç, program_schedule_{userId} anahtarına kaydeder, biz aynı key'den okuyoruz
+            const coachScheduleKey = `program_schedule_${user.id}`;
+            const coachSchedule = localStorage.getItem(coachScheduleKey);
+            if (coachSchedule) {
+                const parsed = JSON.parse(coachSchedule);
+                if (parsed && Object.keys(parsed).length > 0) {
+                    setSchedule(parsed);
+                    // Config'i de oku (başlık + etüt sayısı)
+                    const coachConfig = localStorage.getItem(`program_${user.id}_config`);
+                    if (coachConfig) {
+                        const parsedConfig = JSON.parse(coachConfig);
+                        setProgramConfig(prev => ({ ...prev, ...parsedConfig }));
+                    }
+                    return;
+                }
+            }
+
+            // 2. Öğrencinin kendi kaydettiği programları dene (monthly_grid formatı)
+            const scheduleKey = `program_${user.id}_monthly_grid`;
+            const configKey = `program_${user.id}_config`;
+            const savedSchedule = localStorage.getItem(scheduleKey);
+            const savedConfig = localStorage.getItem(configKey);
+            if (savedSchedule) {
+                const parsed = JSON.parse(savedSchedule);
+                if (parsed && Object.keys(parsed).length > 0) {
+                    setSchedule(parsed);
+                    if (savedConfig) setProgramConfig(prev => ({ ...prev, ...JSON.parse(savedConfig) }));
+                    return;
+                }
+            }
+
+            // 3. Legacy format (eski kayıtlar için geriye dönük uyumluluk)
+            const savedLocal = JSON.parse(localStorage.getItem(`program_${user.id}`) || 'null');
+            if (savedLocal?.schedule && Object.keys(savedLocal.schedule).length > 0) {
+                setSchedule(savedLocal.schedule);
+                if (savedLocal?.config) setProgramConfig(prev => ({ ...prev, ...savedLocal.config }));
+            }
+        } catch (e) {
+            console.warn('Program yüklenemedi:', e);
+        }
+    };
+
+
+    const loadExams = async () => {
+        if (!user?.id) return;
+        try {
+            const oldExams = await api.exams.getStudentExams(user.id);
+            const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+            const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+
+            // Türkçe karakterleri normalize et (İ→i, Ş→s vb.)
+            const normTR = normalizeTRName;
+
+            const userName = normTR(user.name);
+            const userParts = userName.split(/\s+/).filter(p => p.length > 1);
+
+            const matchedV2 = v2Results.filter(r => {
+                // 1. ÖNCELİK: Okul Numarası Eşleşmesi
+                const userSchoolNo = normalizeSchoolNumber(user.schoolNumber || '');
+                const rSchoolNo = normalizeSchoolNumber(r.number || r.schoolNumber || '');
+                if (userSchoolNo && rSchoolNo && userSchoolNo === rSchoolNo) return true;
+
+                // 2. İKİNCİ ÖNCELİK: İsim Eşleşmesi
+                const uName = normalizeTRName(user.name);
+                const rName = normalizeTRName(r.student || r.name);
+                const rNameSquash = rName.replace(/\s+/g, '');
+                const uNameSquash = uName.replace(/\s+/g, '');
+                
+                if (!rName || !uName) return false;
+
+                // Harfiyen (boşluksuz) tam eşleşme
+                if (rNameSquash === uNameSquash) return true;
+                
+                // Parçalı eşleşme: 3+ harfli kelimeleri karşılaştır (Fuzzy)
+                const rParts = rName.split(' ').filter(p => p.length >= 3);
+                const uParts = uName.split(' ').filter(p => p.length >= 3);
+                const commonParts = uParts.filter(up => rParts.some(rp =>
+                    rp === up || rp.startsWith(up) || up.startsWith(rp)
+                ));
+                
+                if (commonParts.length >= 2) return true;
+                if (commonParts.length === 1 && (rParts.length === 1 || uParts.length === 1)) return true;
+                
+                return false;
+            }).map(r => {
+                const trial = v2Trials.find(t => String(t.id) === String(r.trialId)) || {};
+                let examType = r.examType || trial.examType || 'TYT';
+                if (examType === 'YDS') examType = 'YDT';
+
+                let totalNet = parseFloat(r.totalNet) || (parseFloat(r.tyt) || 0);
+                if (examType === 'AYT' || examType === 'TYT+AYT') {
+                    const sayNet = parseFloat(r.sayNet) || 0;
+                    const eaNet = parseFloat(r.eaNet) || 0;
+                    const sozNet = parseFloat(r.sozNet) || 0;
+                    const aytMax = Math.max(sayNet, eaNet, sozNet);
+                    totalNet = (parseFloat(r.tyt) || 0) + aytMax;
+                } else if (examType === 'YDT' || examType === 'TYT+YDT') {
+                    const dilNet = parseFloat(r.dilNet || r.dil || 0);
+                    totalNet = (parseFloat(r.tyt) || 0) + dilNet;
+                }
+
+                return {
+                    ...r,
+                    id: r.id, studentId: user.id,
+                    examType,
+                    name: trial.name || r.fileName || 'Deneme',
+                    date: r.uploadedAt || trial.date,
+                    totalNet: parseFloat(totalNet.toFixed(2)),
+                    subjects: r.subjects || {},
+                    turkce: typeof r.turkce === 'number' ? r.turkce : (r.subjects?.tyt_turkce?.net ?? r.subjects?.turkce?.net), 
+                    mat: typeof r.mat === 'number' ? r.mat : (r.subjects?.tyt_mat_toplam?.net ?? r.subjects?.tyt_matematik?.net ?? r.subjects?.mat?.net), 
+                    fen: typeof r.fen === 'number' ? r.fen : (r.subjects?.tyt_fen_toplam?.net ?? r.subjects?.fen?.net), 
+                    sosyal: typeof r.sosyal === 'number' ? r.sosyal : (r.subjects?.tyt_sosyal_toplam?.net ?? r.subjects?.sosyal?.net),
+                    sayNet: r.sayNet, eaNet: r.eaNet, sozNet: r.sozNet, dilNet: r.dilNet || r.dil,
+                    edebiyat: r.edebiyat, aytMat: r.aytMat, fizik: r.fizik,
+                    kimya: r.kimya, biyoloji: r.biyoloji, sosyalAYT: r.sosyalAYT,
+                    gradeLevel: r.gradeLevel, source: 'v2'
+                };
+            });
+
+            console.log(`📊 loadExams: ${matchedV2.length} v2 sonuç eşleşti (toplam: ${v2Results.length})`);
+            setExamData([...(oldExams || []), ...matchedV2].sort((a,b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt)));
+        } catch (e) { console.error('Sınav verisi yüklenemedi:', e); }
+    };
+
+    const loadMessages = async () => {
+        if (!user?.id) return;
+        try {
+            // Hem user.id hem de schoolNumber ile dene (koçun hangi key ile gönderdiğine göre)
+            let msgs = await api.messages.getMessages(user.id);
+            // Eğer schoolNumber ile kaydedildiyse de kontrol et
+            if ((!msgs || msgs.length === 0) && user.schoolNumber) {
+                const msgsAlt = await api.messages.getMessages(user.schoolNumber);
+                if (msgsAlt && msgsAlt.length > 0) msgs = msgsAlt;
+            }
+            if (Array.isArray(msgs)) setMessages(msgs);
+        } catch { /* ignore */ }
+    };
+
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!newMessage.trim()) return;
+        try {
+            // Koçun hangi key ile mesajları sakladığını bul
+            const allMessages = JSON.parse(localStorage.getItem('student_messages') || '{}');
+            // Koçun key'ini bul: user.id veya schoolNumber
+            const useKey = allMessages[user.id] ? user.id :
+                (allMessages[user.schoolNumber] ? user.schoolNumber : user.id);
+            await api.messages.sendMessage(useKey, { sender: 'student', text: newMessage, senderName: user.name });
+            setNewMessage('');
+            loadMessages();
+        } catch { /* ignore */ }
+    };
+
+    const handlePomodoroComplete = (minutes) => {
+        const newTotal = totalStudyTime + minutes;
+        const newCount = dailyPomodoros + 1;
+        setTotalStudyTime(newTotal);
+        setDailyPomodoros(newCount);
+        localStorage.setItem(`pomodoro_${user.id}_total`, newTotal.toString());
+        localStorage.setItem(`pomodoro_${user.id}_daily_${new Date().toDateString()}`, newCount.toString());
+        // 🌟 FAZE 5: Gamification entegrasyonu
+        gamCompletePomodoro(minutes);
+        // Eski istatistik sistemiyle uyumluluk
+        const updatedStats = { ...userStats, pomodorosCompleted: (userStats.pomodorosCompleted || 0) + 1, totalStudyHours: (userStats.totalStudyHours || 0) + minutes / 60 };
+        setUserStats(updatedStats);
+        localStorage.setItem(`user_stats_${user.id}`, JSON.stringify(updatedStats));
+        // Firebase sync
+        firebaseSync.debouncedSync();
+    };
+
+    const handleCompleteTask = (taskId) => {
+        const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+        const userIdStr = String(user.id);
+        if (allTasks[userIdStr]) {
+            allTasks[userIdStr] = allTasks[userIdStr].map(t =>
+                t.id === taskId ? { ...t, status: 'Tamamlandı', completed: true } : t
+            );
+            localStorage.setItem('student_tasks', JSON.stringify(allTasks));
+            // 🌟 FAZE 5: Gamification + Firebase sync
+            gamCompleteTask();
+            firebaseSync.syncKey('student_tasks');
+            loadTasks();
+        }
+        // State güncelle
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Tamamlandı', completed: true } : t));
+    };
+
+    /**
+     * Sekme bildirim rozetleri: koçun yaptığı çalışma öğrencinin ilgili
+     * sekmesinde sayaç olarak belirir, sekmeye girilince kaybolur.
+     *
+     * Hook erken `return`DEN ÖNCE çağrılmak zorunda. Aşağıdaki
+     * `if (loading) return` satırından sonra dursaydı, yükleme bittiği
+     * render'da hook sayısı artar ve React "önceki render'dan fazla
+     * hook çağrıldı" hatasıyla paneli çökertirdi.
+     */
+    const { rozetler, okundu } = useTabBadges('student', user);
+
+    if (loading) return <StudentDashboardSkeleton />;
+
+    const safeSlotCount = Number(programConfig?.dailySlotCount) || 6;
+    const pendingTasks = tasks.filter(t => !t.completed && t.status !== 'Tamamlandı');
+    const completedTasks = tasks.filter(t => t.completed || t.status === 'Tamamlandı');
+
+    // ── SEKMELER
+    // Simgeler konuya özgü, çok renkli illüstrasyonlar (components/icons/ModuleIcons)
+    const TABS = [
+        { id: 'home', icon: MODULE_ICONS.home, label: 'Giriş' },
+        { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
+        { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
+        { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
+        { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
+        { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
+        { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
+        { id: 'program', icon: MODULE_ICONS.program, label: 'Program' },
+        { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
+        { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
+        { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
+        { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
+        { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
+        { id: 'tests', icon: MODULE_ICONS.tests, label: 'Envanter', badge: assignedTests.filter(t => t.status === 'pending').length },
+        { id: 'messages', icon: MODULE_ICONS.messages, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'coach').length },
+    ];
+
+    return (
+        <div className="min-h-screen bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden flex flex-col">
+
+            {/* ── HEADER ───────────────────────────────────────────── */}
+            <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-line transition-all duration-300">
+                <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+                    {/* Sol: Logo & Avatar */}
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div className="relative group">
+                            <div className="on-color absolute -inset-1 bg-gradient-to-tr from-brand to-accent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
+                            <div className="relative w-12 h-12 bg-surface border border-line rounded-2xl flex items-center justify-center text-brand font-bold shadow-xl overflow-hidden">
+                                <span className="text-lg syne">{user?.name?.charAt(0) || 'Ö'}</span>
+                                <div className="on-color absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-brand to-accent" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-lg font-bold text-ink leading-tight syne">
+                                Selam, <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-[#f1d279]">{user?.name?.split(' ')[0] || 'Öğrenci'}</span> 👋
+                            </h1>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
+                                    <Flame size={12} className="text-brand" />
+                                    <span className="text-[10px] font-bold text-brand tracking-wider uppercase">{userStats.currentStreak || 0} GÜN SERİ</span>
+                                </div>
+                                <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
+                                    <Star size={12} className="text-accent" />
+                                    <span className="text-[10px] font-bold text-accent tracking-wider uppercase">SEVİYE {userStats.totalXP ? Math.floor(userStats.totalXP / 100) + 1 : 1}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sağ: Aksiyonlar */}
+                    <div className="flex items-center gap-2 md:gap-4">
+                         {/* 🤖 AI Koç Butonu - Masaüstü */}
+                         <div className="hidden md:block">
+                            <AICoachButton
+                                studentData={{ 
+                                    name: user?.name, 
+                                    grade: user?.grade, 
+                                    lastNet: userStats?.lastNet, 
+                                    targetUniversity: user?.targetUniversity, 
+                                    id: user?.id 
+                                }}
+                                className="premium-button text-sm flex items-center gap-2"
+                            />
+                        </div>
+
+                        {/* Kontrol Paneli */}
+                        <div className="flex items-center gap-1.5 p-1 bg-surface/5 border border-line rounded-2xl">
+                            <ThemeToggle className="mr-1" />
+                            <RealtimeNotificationBell role="student" userId={user?.id} />
+                            
+                            <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 text-ink-3 hover:text-brand hover:bg-surface/5 rounded-xl transition-all duration-300">
+                                <Settings size={18} />
+                            </button>
+
+                            <button 
+                                onClick={() => { logout(); navigate('/login'); }} 
+                                className="p-2.5 text-ink-3 hover:text-danger hover:bg-danger/10 rounded-xl transition-all duration-300"
+                                title="Çıkış Yap"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sekmeler */}
+                <div className="border-t border-line bg-page/50 backdrop-blur-md">
+                    <div className="max-w-7xl mx-auto px-4 flex items-center overflow-x-auto no-scrollbar gap-1 py-1.5 h-14">
+                        {TABS.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
+                                className={`relative flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold tracking-wider whitespace-nowrap transition-all duration-500 rounded-xl group ${activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-brand/20 to-accent/20 text-brand border border-brand/30'
+                                    : 'text-ink-3 hover:text-ink hover:bg-surface/5'
+                                    }`}
+                            >
+                                <tab.icon size={17} className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'group-hover:scale-110'}`} />
+                                <span className={activeTab === tab.id ? 'syne' : 'plus-jakarta'}>
+                                    {tab.label.toUpperCase()}
+                                </span>
+                                {/* Koçtan gelen yeni çalışma sayacı — sekmeye
+                                    girilince sıfırlanır */}
+                                <TabBadge sayi={rozetler[tab.id] || 0} />
+                                {tab.badge > 0 && (
+                                    <span className={`flex items-center justify-center min-w-[18px] h-[18px] text-[9px] font-black rounded-full px-1.5 ${activeTab === tab.id ? 'bg-brand text-ink' : 'bg-accent text-white'}`}>
+                                        {tab.badge}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </header>
+
+            {/* 📡 Çevrimdışı Mod Banner */}
+            <div className="sticky top-[134px] z-20">
+                <OfflineBanner offlineManager={window.offlineManager} />
+            </div>
+
+            {/* ── İÇERİK ───────────────────────────────────────────── */}
+            <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in pb-32">
+
+                {/* ═══════════════ ANA SAYFA ═══════════════ */}
+                {activeTab === 'home' && (
+                    <div className="space-y-8 animate-fade-in">
+                        {/* Hızlı Özet Kartları */}
+                        {/* Canlı sayaçlı, renk kimlikli özet kartları */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
+                            {[
+                                { label: 'Bekleyen Görev', value: pendingTasks.length, sub: `${tasks.length} görevden`, icon: ClipboardList, color: 'var(--highlight)', onClick: () => setActiveTab('tasks') },
+                                { label: 'Deneme Sonucu', value: examData.length, sub: 'Yüklenen deneme', icon: BarChart2, color: 'var(--accent)', onClick: () => setActiveTab('exams') },
+                                { label: 'Bugün Pomodoro', value: dailyPomodoros, sub: 'Odak seansı', icon: Flame, color: 'var(--warn)', onClick: null },
+                                { label: 'Toplam XP', value: userStats.totalXP || 0, sub: 'Kazanılan puan', icon: Star, color: 'var(--highlight)', onClick: () => setActiveTab('stats') },
+                            ].map((card) => (
+                                <VividKpi
+                                    key={card.label}
+                                    label={card.label}
+                                    value={card.value}
+                                    sub={card.sub}
+                                    icon={card.icon}
+                                    color={card.color}
+                                    onClick={card.onClick}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Madde 11: Akıllı Motivasyon Bildirimleri */}
+                        <MotivationNotifications
+                            user={user}
+                            examData={examData}
+                            tasks={tasks}
+                        />
+
+                        {/* Pomodoro & Motivasyon */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Odaklanma Modu */}
+                            <div className="lg:col-span-2 premium-card p-8 relative overflow-hidden group">
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-xl font-black text-ink syne flex items-center gap-3">
+                                            <div className="p-2 bg-brand/10 rounded-lg">
+                                                <PlayCircle size={24} className="text-brand" />
+                                            </div>
+                                            ODAKLANMA MODU
+                                        </h2>
+                                        <div className="flex items-center gap-2 bg-surface border border-line px-4 py-2 rounded-xl">
+                                            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                                            <span className="text-xs font-bold text-accent">CANLI TAKİP</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 mb-8">
+                                        <div className="bg-surface border border-line rounded-2xl p-6 relative group/stat overflow-hidden">
+                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 relative z-10">BUGÜNKÜ TUR</div>
+                                            <div className="text-3xl font-black text-brand syne relative z-10">{dailyPomodoros} <span className="text-sm font-medium text-ink-2">SEANS</span></div>
+                                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover/stat:opacity-10 transition-opacity pointer-events-none">
+                                                <Clock size={80} />
+                                            </div>
+                                        </div>
+                                        <div className="bg-surface border border-line rounded-2xl p-6 relative group/stat overflow-hidden">
+                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 relative z-10">TOPLAM SÜRE</div>
+                                            <div className="text-3xl font-black text-accent syne relative z-10">{totalStudyTime} <span className="text-sm font-medium text-ink-2">DAKİKA</span></div>
+                                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover/stat:opacity-10 transition-opacity pointer-events-none">
+                                                <Target size={80} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <button
+                                            onClick={() => window.dispatchEvent(new CustomEvent('openFocusTimer', { detail: { mode: 0 } }))}
+                                            className="flex-1 premium-button py-4 text-sm flex items-center justify-center gap-3"
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-surface/20 flex items-center justify-center text-[10px]">25</div>
+                                            KLASİK POMODORO
+                                        </button>
+                                        <button
+                                            onClick={() => window.dispatchEvent(new CustomEvent('openFocusTimer', { detail: { mode: 1 } }))}
+                                            className="flex-1 bg-surface/5 hover:bg-surface/10 border border-line text-ink py-4 rounded-2xl font-black text-sm transition-all duration-300 flex items-center justify-center gap-3"
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-[10px]">50</div>
+                                            DERİN ODAKLANMA
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-brand/5 to-transparent blur-3xl pointer-events-none" />
+                            </div>
+
+                            {/* Motivasyon Kartı */}
+                            <div className="premium-card p-8 bg-gradient-to-br from-surface to-page border-brand/20 flex flex-col justify-between relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                                    <Zap size={120} className="text-brand" />
+                                </div>
+                                <div className="relative z-10">
+                                    <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-6">
+                                        <Zap size={20} className="text-brand" />
+                                    </div>
+                                    <h3 className="text-xs font-black text-brand uppercase tracking-[0.2em] mb-4">GÜNLÜK MOTİVASYON</h3>
+                                    <p className="text-2xl font-bold text-ink syne leading-snug italic">
+                                        "Başarı bir yolculuktur, bir varış noktası değil."
+                                    </p>
+                                </div>
+                                <div className="relative z-10 mt-8 p-4 bg-surface/5 rounded-2xl border border-line backdrop-blur-sm">
+                                    <p className="text-xs font-medium text-ink-3 leading-relaxed">
+                                        {dailyPomodoros > 0 
+                                            ? `Harika gidiyorsun! Bugün ${dailyPomodoros} odaklanma seansı tamamladın. Disiplin her şeydir.` 
+                                            : 'Hadi bir seans başlatarak güne ivme kazandır! İlk adım her zaman en zoru ama en önemlisidir.'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Gamification */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <StreakCard currentStreak={gamStats.currentStreak} maxStreak={gamStats.maxStreak} />
+                            <XPBar totalXP={gamStats.totalXP} />
+                        </div>
+
+                        {/* 🎯 Günlük Hedef Kartı & Sınıf Karşılaştırma */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2">
+                                <DailyGoalCard userId={user?.id} onAction={(tab) => setActiveTab(tab)} />
+                            </div>
+                            <div>
+                                <ClassComparisonWidget userId={user?.id} currentStudent={user} />
+                            </div>
+                        </div>
+
+                        {/* Günlük Özet */}
+                        <DailyOverview userStats={userStats} todayTasks={todayTasks} todayGoals={todayGoals} />
+
+                        {/* Bekleyen görevler özeti - Premium Styling */}
+                        {pendingTasks.length > 0 && (
+                            <div className="premium-card p-8 border-brand/20">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center">
+                                            <AlertCircle size={24} className="text-danger" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-black text-ink syne">BEKLEYEN GÖREVLER</h2>
+                                            <p className="text-xs font-bold text-danger/60 uppercase tracking-widest">{pendingTasks.length} ADET KRİTİK GÖREV</p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => setActiveTab('tasks')} 
+                                        className="text-brand text-xs font-black hover:text-[#f1d279] transition-colors flex items-center gap-2 group"
+                                    >
+                                        TÜMÜNE GİT <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {pendingTasks.slice(0, 3).map(task => (
+                                        <div key={task.id} className="bg-surface border border-line rounded-2xl p-5 hover:border-brand/30 transition-all duration-300 group/task">
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <div className="p-2 bg-surface/5 rounded-lg group-hover/task:bg-brand/10 transition-colors">
+                                                    <CategoryIcon category={task.category} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-ink text-sm truncate uppercase tracking-tight">{task.title}</p>
+                                                    <p className="text-[10px] font-bold text-ink-2 mt-1 uppercase">SON: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'YOK'}</p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleCompleteTask(task.id)}
+                                                className="w-full py-2 bg-surface/5 hover:bg-accent/20 text-ink-3 hover:text-accent rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 border border-line hover:border-accent/30"
+                                            >
+                                                TAMAMLA
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══════════════ GÖREVLERİM ═══════════════ */}
+                {activeTab === 'tasks' && (
+                    <div className="space-y-8 animate-fade-in">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <h1 className="text-3xl font-black text-ink syne tracking-tight">GÖREVLERİM</h1>
+                                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GÜNLÜK VE HAFTALIK ÇALIŞMA PLANI</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="bg-surface border border-line px-4 py-2 rounded-xl flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                                    <span className="text-xs font-bold text-ink uppercase tracking-wider">{pendingTasks.length} BEKLİYOR</span>
+                                </div>
+                                <div className="bg-accent/10 border border-accent/20 px-4 py-2 rounded-xl flex items-center gap-3">
+                                    <CheckCircle size={14} className="text-accent" />
+                                    <span className="text-xs font-bold text-accent uppercase tracking-wider">{completedTasks.length} TAMAMLANDI</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {tasks.length === 0 ? (
+                            <div className="premium-card p-20 text-center border-dashed border-line">
+                                <div className="w-20 h-20 bg-surface/5 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-line">
+                                    <ClipboardList size={40} className="text-ink-2" />
+                                </div>
+                                <h3 className="text-xl font-bold text-ink mb-3 syne uppercase">HENÜZ GÖREV ATANMADI</h3>
+                                <p className="text-ink-3 text-sm max-w-sm mx-auto leading-relaxed">
+                                    Koçun sana özel görevler atadığında, çalışma temponu burada düzenli olarak takip edebileceksin.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-12">
+                                {/* Bekleyenler */}
+                                {pendingTasks.length > 0 && (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
+                                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">BEKLEYEN GÖREVLER</h2>
+                                            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {pendingTasks.map(task => (
+                                                <div key={task.id} className="premium-card p-6 flex flex-col justify-between group hover:border-brand/30 transition-all duration-500">
+                                                    <div>
+                                                        <div className="flex items-start justify-between gap-4 mb-4">
+                                                            <div className="p-3 bg-surface/5 rounded-2xl group-hover:bg-brand/10 transition-colors">
+                                                                <CategoryIcon category={task.category} />
+                                                            </div>
+                                                            <PriorityBadge priority={task.priority} />
+                                                        </div>
+                                                        <h3 className="text-lg font-bold text-ink leading-snug syne group-hover:text-brand transition-colors">{task.title}</h3>
+                                                        {task.assignedByName && (
+                                                            <p className="text-[10px] font-black text-brand/60 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                                                <User size={12} /> KOÇ: {task.assignedByName}
+                                                            </p>
+                                                        )}
+                                                        {task.description && (
+                                                            <p className="text-sm text-ink-3 mt-4 leading-relaxed line-clamp-2">{task.description}</p>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="mt-8 pt-6 border-t border-line flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-[11px] font-bold text-ink-2 uppercase tracking-wider">
+                                                            <Calendar size={14} className="text-brand" />
+                                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'SÜRESİZ'}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleCompleteTask(task.id)}
+                                                            className="h-10 px-5 bg-surface/5 hover:bg-accent/20 text-ink-3 hover:text-accent border border-line hover:border-accent/30 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-2"
+                                                        >
+                                                            TAMAMLA
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Tamamlananlar */}
+                                {completedTasks.length > 0 && (
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
+                                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">TAMAMLANANLAR</h2>
+                                            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {completedTasks.map(task => (
+                                                <div key={task.id} className="premium-card p-5 opacity-40 hover:opacity-100 transition-all duration-500 border-line bg-surface/5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+                                                            <Check size={20} className="text-accent" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h3 className="text-sm font-bold text-ink line-through truncate">{task.title}</h3>
+                                                            <p className="text-[10px] text-ink-2 font-bold uppercase tracking-widest mt-0.5">
+                                                                {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'GÖREV'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══════════════ DENEMELERİM ═══════════════ */}
+                {activeTab === 'exams' && (
+                    <ExamDetailSection
+                        examData={examData}
+                        permissions={permissions}
+                        user={user}
+                    />
+                )}
+
+                {/* ═══════════════ TESTLERİM + REHBERLİK ═══════════════ */}
+                {activeTab === 'tests' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">TESTLER & REHBERLİK</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİM ANALİZİ VE ENVANTERLER</p>
+                        </div>
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            <StudentTestsTab user={user} />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ MESAJLAR ═══════════════ */}
+                {activeTab === 'messages' && (() => {
+                    // Tab açıldığında okunmamış mesajları okundu yap
+                    const markAllRead = () => {
+                        try {
+                            const allMsgs = JSON.parse(localStorage.getItem('messages') || '[]');
+                            const updated = allMsgs.map(m =>
+                                (m.receiverId === user?.id || m.receiverName === user?.name) && !m.read
+                                    ? { ...m, read: true }
+                                    : m
+                            );
+                            localStorage.setItem('messages', JSON.stringify(updated));
+                        } catch { /* ignore */ }
+                    };
+
+                    const bulkMessages = (() => {
+                        try {
+                            const all = JSON.parse(localStorage.getItem('messages') || '[]');
+                            return all.filter(m =>
+                                m.receiverId === user?.id ||
+                                m.receiverName === user?.name ||
+                                m.isBulk
+                            ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        } catch { return []; }
+                    })();
+
+                    const unreadCount = bulkMessages.filter(m => !m.read).length;
+
+                    return (
+                        <div className="animate-fade-in space-y-10 pb-10">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div>
+                                    <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">MESAJLARIM</h1>
+                                    <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİLDİRİMLER VE KOÇ İLETİŞİMİ</p>
+                                </div>
+                                {unreadCount > 0 && (
+                                    <button
+                                        onClick={markAllRead}
+                                        className="h-12 px-6 bg-gradient-to-r from-brand/20 to-brand/10 hover:from-brand/30 hover:to-brand/20 border border-brand/30 text-brand rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3"
+                                    >
+                                        <CheckCircle size={16} /> TÜMÜNÜ OKUNDU İŞARETLE ({unreadCount})
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                                {/* Duyurular & Bildirimler */}
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">DUYURULAR ({bulkMessages.length})</h2>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                                    </div>
+                                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {bulkMessages.length === 0 ? (
+                                            <div className="premium-card p-10 text-center opacity-50 border-dashed border-line">
+                                                <p className="text-xs font-bold text-ink-2 uppercase tracking-widest leading-relaxed">HENÜZ BİR DUYURU<br/>BULUNMUYOR</p>
+                                            </div>
+                                        ) : bulkMessages.map((msg, i) => {
+                                            const cfg = {
+                                                urgent: { border: 'border-danger/30', bg: 'bg-danger/5', color: 'text-danger', icon: AlertCircle },
+                                                important: { border: 'border-warn/30', bg: 'bg-warn/5', color: 'text-warn', icon: Zap },
+                                                normal: { border: 'border-line', bg: 'bg-surface', color: 'text-brand', icon: MessageSquare },
+                                            }[msg.priority || 'normal'];
+                                            
+                                            const typeEmoji = {
+                                                motivation: '🔥', exam_reminder: '📅', study_tip: '💡',
+                                                congrats: '🏆', warning: '⚠️', custom: '✉️'
+                                            }[msg.type] || '📨';
+
+                                            return (
+                                                <div key={msg.id || i} className={`premium-card p-5 border-l-4 transition-all duration-300 group ${cfg.border} ${cfg.bg} ${!msg.read ? 'ring-2 ring-white/5' : ''}`}>
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="text-3xl flex-shrink-0 group-hover:scale-110 transition-transform">{typeEmoji}</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <h4 className="font-bold text-ink text-sm syne uppercase truncate">{msg.title || 'KOÇTAN MESAJ'}</h4>
+                                                                {!msg.read && (
+                                                                    <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-ink-3 leading-relaxed font-medium mb-4">{msg.content || msg.text}</p>
+                                                            <div className="flex items-center justify-between border-t border-line pt-3">
+                                                                <span className="text-[9px] font-black text-ink-3 uppercase tracking-widest flex items-center gap-1.5">
+                                                                    <User size={10} className={cfg.color} /> {msg.senderName || 'MERKEZ'}
+                                                                </span>
+                                                                <span className="text-[9px] font-black text-ink-3 uppercase tracking-widest">
+                                                                    {msg.timestamp ? new Date(msg.timestamp).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {unreadCount > 0 && (() => { setTimeout(markAllRead, 2000); return null; })()}
+                                    </div>
+                                </div>
+
+                                {/* Sohbet Arayüzü */}
+                                <div className="lg:col-span-3 space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">KOÇUNLA SOHBET</h2>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                                    </div>
+                                    <div className="premium-card overflow-hidden flex flex-col border-brand/10 bg-transparent backdrop-blur-md" style={{ height: '600px' }}>
+                                        {/* Sohbet Header */}
+                                        <div className="p-5 border-b border-line bg-surface/5 flex items-center gap-4">
+                                            <div className="on-color w-12 h-12 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center p-[2px]">
+                                                <div className="w-full h-full rounded-full bg-surface flex items-center justify-center">
+                                                    <User size={20} className="text-brand" />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-bold text-ink text-sm syne uppercase tracking-wider">KURUMSAL REHBERLİK</h3>
+                                                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                                                </div>
+                                                <p className="text-[10px] font-bold text-brand/60 uppercase tracking-widest mt-0.5">KOÇUN CANLI / AKTİF</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Sohbet Body */}
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-black/20 custom-scrollbar">
+                                            {messages.length === 0 ? (
+                                                <div className="h-full flex flex-col items-center justify-center opacity-30 text-center">
+                                                    <div className="w-20 h-20 bg-surface/5 rounded-full flex items-center justify-center mb-6">
+                                                        <MessageSquare size={40} className="text-ink-3" />
+                                                    </div>
+                                                    <p className="text-xs font-black text-ink-3 uppercase tracking-widest leading-loose">
+                                                        HENÜZ MESAJLAŞMA<br/>BULUNMUYOR
+                                                    </p>
+                                                </div>
+                                            ) : messages.map((msg, idx) => (
+                                                <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                                                    <div className={`max-w-[80%] space-y-1 ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
+                                                        {msg.sender !== 'student' && (
+                                                            <p className="text-[9px] font-black text-brand uppercase tracking-widest ml-1 mb-1">{msg.senderName || 'KOÇ'}</p>
+                                                        )}
+                                                        <div className={`p-4 rounded-2xl text-sm font-medium leading-relaxed ${msg.sender === 'student'
+                                                            ? 'bg-gradient-to-br from-brand to-brand-hover text-white rounded-br-none shadow-xl'
+                                                            : 'bg-surface/5 border border-line text-ink rounded-bl-none'
+                                                            }`}>
+                                                            {msg.text}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1 justify-end opacity-40">
+                                                            <span className="text-[9px] font-black text-ink uppercase tracking-tighter">
+                                                                {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                            </span>
+                                                            {msg.sender === 'student' && <Check size={10} className="text-brand" />}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Sohbet Input */}
+                                        <form onSubmit={handleSendMessage} className="p-4 bg-surface/5 border-t border-line flex gap-3">
+                                            <div className="flex-1 relative group">
+                                                <input
+                                                    value={newMessage}
+                                                    onChange={e => setNewMessage(e.target.value)}
+                                                    placeholder="KOÇUNA MESAJ GÖNDER..."
+                                                    className="w-full bg-page border border-line rounded-2xl px-6 py-4 text-xs font-bold text-ink outline-none focus:border-brand/50 transition-all placeholder:text-ink-2 tracking-wider"
+                                                />
+                                            </div>
+                                            <button 
+                                                type="submit" 
+                                                disabled={!newMessage.trim()} 
+                                                className="on-color w-14 h-14 bg-gradient-to-br from-brand to-accent text-white rounded-2xl flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 transition-all shadow-xl"
+                                            >
+                                                <Send size={20} />
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+
+                {/* ═══════════════ KONU TAKİBİ ═══════════════
+                    Sınav konu listesi; durumlar ders programı ve günlük
+                    soru kaydından otomatik hesaplanır. */}
+                {activeTab === 'topics' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KONU TAKİBİ</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
+                                ÇÖZDÜKÇE YEŞİL TİK — PROGRAM VE SORU KAYDIYLA BAĞLANTILI
+                            </p>
+                        </div>
+                        <TopicTracker user={user} />
+                    </div>
+                )}
+
+                {/* ═══════════════ MATRIX (Trend Analizi) ═══════════════ */}
+                {activeTab === 'matrix' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">SINAV ANALİZ MATRİXİ</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">VERİ TABANLI BAŞARI VE TREND ANALİZİ</p>
+                        </div>
+                        <div className="premium-card p-4 sm:p-8 border-line">
+                            <ExamComparisonMatrix examResults={examData} studentName={user?.name} />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ AKILLI PLAN (AI Program) ═══════════════ */}
+                {activeTab === 'smart-plan' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI DERS PLANI</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SİZE ÖZEL ÇALIŞMA ÇİZELGESİ</p>
+                        </div>
+                        <div className="premium-card p-4 sm:p-8 border-line">
+                            <SmartScheduleSuggestion 
+                                studentId={user?.id} 
+                                studentName={user?.name} 
+                                examResults={examData} 
+                                yksDate={localStorage.getItem('yks_date')}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ POMODORO (Ders Bazlı) ═══════════════ */}
+                {activeTab === 'pomodoro' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ODAKLANMA MERKEZİ</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">DERS BAZLI POMODORO VE ZAMAN YÖNETİMİ</p>
+                        </div>
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            <SubjectPomodoro studentId={user?.id} onComplete={handlePomodoroComplete} />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ DEĞERLENDİRME (Öz-değerlendirme) ═══════════════ */}
+                {activeTab === 'assessment' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ÖZ-DEĞERLENDİRME</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HAFTALIK GELİŞİM VE DURUM ANALİZİ</p>
+                        </div>
+                        <div className="premium-card p-4 sm:p-8 border-line">
+                            <SelfAssessmentForm studentId={user?.id} studentName={user?.name} />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ RANDEVU (Randevu Sistemi) ═══════════════ */}
+                {activeTab === 'appointments' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KOÇ RANDEVUSU</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİREBİR REHBERLİK VE PLANLAMA SEANSI</p>
+                        </div>
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            {/* Öğrenci kendi koçunun saatlerini görür; koç kimliği
+                                yollanmazsa slot deposu bulunamıyordu. */}
+                            <StudentAppointmentBooker
+                                studentId={user?.id}
+                                studentName={user?.name}
+                                coachId={user?.coachId || user?.ownerCoachId}
+                                coachName={user?.coachName || ''}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ PORTFOLYO ═══════════════ */}
+                {activeTab === 'portfolio' && (
+                    <div className="animate-fade-in space-y-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">BAŞARI PORTFOLYOSU</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELECEĞİN İÇİN BİRİKTİRDİĞİİ TÜM BAŞARILAR</p>
+                        </div>
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            <StudentPortfolio 
+                                student={user} 
+                                examResults={examData} 
+                                tasks={tasks} 
+                                gamStats={gamStats} 
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══════════════ PROGRAMIM ═══════════════ */}
+                {activeTab === 'program' && (
+                    <div className="animate-fade-in space-y-10 pb-10">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">DERS PROGRAMIM</h1>
+                                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">KİŞİSEL ÇALIŞMA VE ETKİNLİK PLANI</p>
+                            </div>
+                            <button
+                                onClick={() => setShowProgramBuilder(true)}
+                                className="premium-button h-12 px-6 flex items-center gap-3 text-[10px]"
+                            >
+                                <Zap size={16} /> AKILLI PLANLAYICIYI AÇ
+                            </button>
+                        </div>
+
+                        <div className="space-y-10">
+                            <div className="premium-card p-1 sm:p-2 border-line">
+                                <WeeklyScheduleBuilder user={user} />
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🗓️ GÜNCEL ÇİZELGE</h2>
+                                    <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                                </div>
+                                <div className="premium-card p-1 sm:p-2 border-line">
+                                    <StudentProgramTab
+                                        schedule={schedule}
+                                        programConfig={programConfig}
+                                        user={user}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {showProgramBuilder && (
+                            <ProgramBuilderModal
+                                studentId={user?.id}
+                                studentName={user?.name}
+                                onClose={() => { setShowProgramBuilder(false); loadProgram(); }}
+                            />
+                        )}
+                    </div>
+                )}
+
+
+
+
+
+
+            {/* ── Pomodoro Dialog (Premium) ── */}
+            <dialog id="pomodoro-modal" className="modal bg-transparent p-0 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] open:animate-scale-in">
+                <div className="premium-card border-brand/20 bg-surface p-1 relative overflow-hidden">
+                    <button
+                        onClick={() => document.getElementById('pomodoro-modal').close()}
+                        className="absolute top-4 right-4 text-ink-3 hover:text-brand z-50 transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                    <div className="p-4 sm:p-8">
+                        <PomodoroTimer onSessionComplete={handlePomodoroComplete} />
+                    </div>
+                </div>
+            </dialog>
+            {/* ── Mesaj Modalı (Premium) ── */}
+            {isMessageModalOpen && (
+                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                    <div className="premium-card w-full max-w-md h-[650px] flex flex-col overflow-hidden border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                        <div className="p-6 bg-surface border-b border-line flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                    <MessageSquare size={20} className="text-brand" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-bold text-ink syne uppercase">KOÇUNLA KONUŞ</h3>
+                                    <p className="text-[10px] text-accent font-bold tracking-widest uppercase">ÇEVRİMİÇİ</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsMessageModalOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-black/20">
+                            {messages.length === 0 ? (
+                                <div className="text-center mt-20 opacity-20">
+                                    <MessageSquare size={60} className="mx-auto mb-4" />
+                                    <p className="text-ink text-xs font-bold uppercase tracking-widest">HENÜZ MESAJ YOK</p>
+                                </div>
+                            ) : messages.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] group`}>
+                                        <div className={`p-4 rounded-2xl text-[13px] leading-relaxed shadow-lg ${
+                                            msg.sender === 'student' 
+                                            ? 'bg-gradient-to-br from-accent to-[#145d52] text-white rounded-tr-none' 
+                                            : 'bg-surface/5 border border-line text-ink-2 rounded-tl-none'
+                                        }`}>
+                                            <p>{msg.text}</p>
+                                        </div>
+                                        <span className={`text-[9px] font-black text-ink-3 uppercase mt-2 block ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <form onSubmit={handleSendMessage} className="p-6 bg-surface/5 border-t border-line flex gap-4">
+                            <input 
+                                value={newMessage} 
+                                onChange={e => setNewMessage(e.target.value)} 
+                                placeholder="Mesajınızı buraya yazın..." 
+                                className="flex-1 bg-surface/5 border border-line rounded-xl px-6 py-4 text-sm text-ink outline-none focus:border-brand/50 transition-all" 
+                            />
+                            <button 
+                                type="submit" 
+                                className="on-color w-14 h-14 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50"
+                                disabled={!newMessage.trim()}
+                            >
+                                <Send size={20} />
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ ROZETLERİM ═══════════════ */}
+            {activeTab === 'badges' && (
+                <div className="animate-fade-in space-y-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ROZETLER VE BAŞARILAR</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİM YOLCULUĞUNDAKİ TÜM KAZANIMLARIN</p>
+                        </div>
+                        <div className="flex items-center gap-4 bg-surface border border-line px-6 py-3 rounded-2xl">
+                             <TrendingUp size={20} className="text-brand" />
+                             <div>
+                                 <p className="text-[10px] font-black text-ink-3 uppercase">SIRALAMAN</p>
+                                 <p className="text-lg font-black text-ink syne line-height-none">#12</p>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Sol: XP + Seri */}
+                        <div className="space-y-6">
+                            <XPBar totalXP={gamStats.totalXP} />
+                            <StreakCard currentStreak={gamStats.currentStreak} maxStreak={gamStats.maxStreak} />
+
+                            {/* Hızlı İstatistikler */}
+                            <div className="premium-card p-8 border-line">
+                                <h3 className="text-xs font-black text-brand uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                                    <Star size={16} /> BAŞARI ÖZETİ
+                                </h3>
+                                <div className="space-y-6">
+                                    {[
+                                        { label: 'Tamamlanan Görevler', v: gamStats.tasksCompleted, max: 50, color: 'var(--c1)' },
+                                        { label: 'Pomodoro Seansı', v: gamStats.pomodorosCompleted, max: 50, color: 'var(--c4)' },
+                                        { label: 'İncelenen Denemeler', v: gamStats.examsCompleted, max: 10, color: 'var(--accent)' },
+                                    ].map(s => (
+                                        <div key={s.label}>
+                                            <div className="flex justify-between text-xs mb-2">
+                                                <span className="text-ink-2 font-bold uppercase tracking-wider">{s.label}</span>
+                                                <span className="text-ink font-black syne">{s.v} / {s.max}</span>
+                                            </div>
+                                            <div className="bg-surface/5 rounded-full h-2 overflow-hidden border border-line p-[1px]">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                                                    style={{ 
+                                                        width: `${Math.min((s.v / s.max) * 100, 100)}%`,
+                                                        backgroundColor: s.color 
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sağ: Rozet Koleksiyonu */}
+                        <div className="lg:col-span-2 premium-card p-1 sm:p-2 border-line">
+                            <BadgeCollection
+                                userStats={gamStats}
+                                earnedBadgeIds={gamStats.earnedBadgeIds || []}
+                            />
+                        </div>
+                    </div>
+
+                    {/* 🏆 XP Liderlik Tablosu */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🏆 LİDERLİK TABLOSU</h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                        </div>
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            <XPLeaderboard
+                                students={(() => {
+                                    try { return JSON.parse(localStorage.getItem('coach_students') || '[]'); } catch { return []; }
+                                })()}
+                                currentUserId={user?.id}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ ANALİTİK ═══════════════ */}
+            {activeTab === 'analytics' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ANALİTİK MERKEZİ</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ZAYIF NOKTA VE PERFORMANS ÖNGÖRÜLERİ</p>
+                        </div>
+                        <AICoachButton
+                            studentData={{ name: user?.name, grade: user?.grade }}
+                            className="premium-button shadow-2xl h-12 px-6 text-[10px] font-black"
+                        />
+                    </div>
+
+                    {/* YKS Geri Sayım */}
+                    <div className="premium-card p-1 sm:p-2 border-line">
+                        <YKSCountdownWidget
+                            userId={user?.id}
+                            examData={examData}
+                            userGrade={user?.gradeLevel || user?.grade}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-10">
+                        {/* Zayıf Nokta Analizi */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">📊 DERS BAZINDA ANALİZ</h2>
+                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                            </div>
+                            <div className="premium-card p-6 border-line">
+                                <SubjectWeaknessAnalyzer examData={examData} studentName={user?.name} />
+                            </div>
+                        </div>
+
+                        {/* Mevcut Gelişmiş Analitik */}
+                        {examData.length > 0 && (
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">📈 GELİŞMİŞ ANALİTİK</h2>
+                                    <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                                </div>
+                                <div className="premium-card p-6 border-line">
+                                    <AdvancedAnalytics examData={examData} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ İSTATİSTİKLER ═══════════════ */}
+            {activeTab === 'stats' && (
+                <div className="animate-fade-in space-y-10">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">İSTATİSTİKLER</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİREYSEL BAŞARI VE HEDEF TAKİBİ</p>
+                    </div>
+
+                    {/* Özet İstatistik Kartları */}
+                    {examData.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {[
+                                { label: 'Toplam Deneme', value: examData.length, color: 'var(--highlight)', icon: ClipboardList },
+                                { label: 'En Yüksek Net', value: Math.max(...examData.map(e => parseFloat(e.totalNet || 0))).toFixed(1), color: 'var(--accent)', icon: Trophy },
+                                { label: 'Ortalama Net', value: (examData.reduce((s, e) => s + parseFloat(e.totalNet || 0), 0) / examData.length).toFixed(1), color: 'var(--c1)', icon: TrendingUp },
+                                {
+                                    label: 'Son Deneme', color: 'var(--c4)', icon: Target,
+                                    value: (() => {
+                                        const last = [...examData].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                                        return last ? parseFloat(last.totalNet || 0).toFixed(1) : '-';
+                                    })()
+                                },
+                            ].map((s, i) => (
+                                <div key={i} className="premium-card p-6 group hover:border-brand/30 transition-all">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-surface/5 flex items-center justify-center group-hover:bg-brand/10 transition-colors">
+                                            <s.icon size={24} style={{ color: s.color }} />
+                                        </div>
+                                        <div className="text-[10px] font-black text-ink-3 uppercase tracking-widest">{s.label}</div>
+                                    </div>
+                                    <div className="text-4xl font-black text-ink syne">{s.value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[
+                                { icon: Flame, label: 'GÜNLÜK SERİ', value: `${userStats.currentStreak || 0} GÜN`, color: 'var(--highlight)' },
+                                { icon: Star, label: 'TOPLAM XP', value: userStats.totalXP || 0, color: 'var(--accent)' },
+                                { icon: Trophy, label: 'EN UZUN SERİ', value: `${userStats.maxStreak || 0} GÜN`, color: 'var(--c1)' },
+                                { icon: Clock, label: 'ÇALIŞMA SAATİ', value: `${Math.floor((totalStudyTime || 0) / 60)}S ${(totalStudyTime || 0) % 60}DK`, color: 'var(--c4)' },
+                                { icon: Target, label: 'TAMAMLANAN GÖREV', value: completedTasks.length, color: 'var(--c5)' },
+                                { icon: Award, label: 'POMODORO', value: dailyPomodoros, color: 'var(--warn)' },
+                            ].map((card, i) => (
+                                <div key={i} className="premium-card p-6 flex items-center gap-6 group hover:bg-surface/5 transition-all">
+                                    <div className="w-16 h-16 rounded-2xl bg-surface/5 flex items-center justify-center transition-transform group-hover:scale-110">
+                                        <card.icon size={32} style={{ color: card.color }} />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-black text-ink-3 uppercase tracking-[0.2em] mb-1">{card.label}</div>
+                                        <div className="text-2xl font-black text-ink syne">{card.value}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Konu Performans Radar + Aktivite Akışı */}
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                        <div className="lg:col-span-3 space-y-6">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🎯 PERFORMANS RADARI</h2>
+                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                            </div>
+                            <div className="premium-card p-8 border-line">
+                                <PerformanceRadar />
+                            </div>
+                        </div>
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">⚡ SON AKTİVİTELER</h2>
+                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                            </div>
+                            <div className="premium-card p-6 border-line">
+                                <ActivityFeed maxItems={8} />
+                            </div>
+                        </div>
+                    </div>
+                    {/* Başarı Tahmini */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🔮 BAŞARI TAHMİNİ</h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                        </div>
+                        <div className="premium-card p-8 border-line">
+                            <PredictiveAnalytics targetScore={450} examDate="15 Haziran 2026" />
+                        </div>
+                    </div>
+
+                    {/* Hedef Belirleme Modülü */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🎯 HEDEF YÖNETİMİ</h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                        </div>
+                        <div className="premium-card p-8 border-line">
+                            <GoalSettingModule user={user} examData={examData} />
+                        </div>
+                    </div>
+
+                    {/* Haftalık Program Özeti (Stats içindeki) */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🗓️ HAFTALIK PROGRAM</h2>
+                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                        </div>
+                        <div className="premium-card p-8 border-line">
+                            <WeeklyScheduleBuilder user={user} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ TAKVİM ═══════════════ */}
+            {activeTab === 'calendar' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-8">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ETKİNLİK TAKVİMİ</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SINAVLAR VE ÖNEMLİ TARİHLER</p>
+                    </div>
+                    <div className="premium-card p-1 sm:p-2 border-line">
+                        <ExamCalendar userId={user?.id} />
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ AI KONU ÖNERİLERİ ═══════════════ */}
+            {activeTab === 'suggestions' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-10">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI ÖNERİLER</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">YAPAY ZEKA DESTEKLİ ÇALIŞMA RASYONELİ</p>
+                    </div>
+                    <div className="space-y-10">
+                        <div className="premium-card p-1 sm:p-2 border-line">
+                            <AITopicSuggestions examData={examData} userId={user?.id} />
+                        </div>
+                        {examData.length > 0 && (
+                            <div className="premium-card p-8 border-line">
+                                <h3 className="text-sm font-black text-brand uppercase tracking-[0.2em] mb-6">NET GELİŞİM GRAFİĞİ</h3>
+                                <NetProgressChart examData={examData} userId={user?.id} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════ GÜNLÜK ÇALIŞMA KAYDI ═══════════════ */}
+            {activeTab === 'daily-log' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-6">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">GÜNLÜK KAYIT</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
+                            ÇÖZDÜĞÜN SORU VE OKUDUĞUN SAYFA · KOÇUNA ANINDA DÜŞER
+                        </p>
+                    </div>
+                    <DailyStudyLog studentId={user?.id} />
+                </div>
+            )}
+
+            {/* ═══════════════ E-HATA DEFTERİ ═══════════════ */}
+            {activeTab === 'error-notebook' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-6">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">HATA DEFTERİ</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
+                            YANLIŞLARINI KAYDET · SİSTEM SANA TEKRAR GETİRSİN
+                        </p>
+                    </div>
+                    <ErrorNotebook studentId={user?.id} />
+                </div>
+            )}
+
+            {/* ═══════════════ NOT DEFTERİ ═══════════════ */}
+            {activeTab === 'notebook' && (
+                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-8">
+                    <div>
+                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KİŞİSEL NOTLAR</h1>
+                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ÇALIŞMA NOTLARI VE HATIRLATICILAR</p>
+                    </div>
+                    <div className="premium-card p-1 sm:p-2 border-line min-h-[600px]">
+                        <NoteBook userId={user?.id} />
+                    </div>
+                </div>
+            )}
+
+
+            {/* ── Ayarlar Modalı (Premium) ── */}
+            {isSettingsOpen && (
+                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                    <div className="premium-card w-full max-w-md p-8 border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                    <Key size={20} className="text-brand" />
+                                </div>
+                                <h2 className="text-xl font-bold text-ink syne uppercase">AI AYARLARI</h2>
+                            </div>
+                            <button onClick={() => setIsSettingsOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-brand uppercase tracking-[0.2em] mb-3">GOOGLE GEMINI API ANAHTARI</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={apiKey} 
+                                        onChange={e => setApiKey(e.target.value)} 
+                                        placeholder="AIzSy..." 
+                                        className="w-full bg-surface/5 border border-line rounded-xl px-4 py-4 text-ink outline-none focus:border-brand/50 transition-all font-mono text-xs" 
+                                    />
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-brand opacity-50 shadow-[0_0_10px_#c9a84c]" />
+                                </div>
+                                <p className="text-[10px] text-ink-2 mt-3 leading-relaxed">
+                                    Anahtarınız sadece bu cihazda saklanır. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline font-bold">API KEY ALMAK İÇİN TIKLAYIN</a>
+                                </p>
+                            </div>
+
+                            <div className="flex gap-4 pt-4">
+                                <button 
+                                    onClick={() => setIsSettingsOpen(false)} 
+                                    className="flex-1 h-12 border border-line rounded-xl text-[10px] font-black text-ink-2 hover:bg-surface/5 transition-all uppercase tracking-widest"
+                                >
+                                    İPTAL
+                                </button>
+                                <button 
+                                    onClick={() => { localStorage.setItem('gemini_api_key', apiKey); setIsSettingsOpen(false); }} 
+                                    className="on-color flex-1 h-12 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl text-[10px] font-black transition-all hover:scale-105 active:scale-95 uppercase tracking-widest shadow-xl"
+                                >
+                                    KAYDET
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            </main>
+
+            {/* 📱 Madde 12: Veli QR Modal */}
+            {isParentQROpen && (
+                <ParentQRModal
+                    student={user}
+                    onClose={() => setIsParentQROpen(false)}
+                />
+            )}
+
+            {/* 📱 Mobil Alt Navigasyon */}
+            <StudentBottomNav
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                messageBadge={messages.filter(m => !m.read && m.receiverId === user?.id).length}
+            />
+
+            {/* 📲 PWA Yükleme Önerisi */}
+            <PWAInstallBanner />
+        </div>
+    );
+};
+
+// ErrorBoundary ile sarmak - Firebase/quota hatalarında beyaz ekran önlenir
+const SafeStudentDashboard = () => (
+    <ErrorBoundary>
+        <StudentDashboard />
+    </ErrorBoundary>
+);
+
+export default SafeStudentDashboard;

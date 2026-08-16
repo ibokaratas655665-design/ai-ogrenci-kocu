@@ -1,622 +1,1043 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, AlertCircle, Folder, Monitor, FileText, ClipboardList, ChevronDown, Upload, Download, CheckCircle, BarChart2, Bell, Search, ChevronRight, Share2, Printer, Trash2 } from 'lucide-react';
-import BEPGenerator from '../components/BEPGenerator';
-import { guidanceDecimalSystem } from '../data/guidanceDecimal';
-import GuidanceTests from './GuidanceTests';
-import GuidanceForms from './GuidanceForms';
+import React, { useState, useEffect } from 'react';
+import {
+    Brain, Users, BarChart2, Calendar, Target, Award,
+    TrendingUp, FileText, Download, Send, CheckCircle,
+    AlertCircle, Clock, Eye, Share2, PlusCircle, Search,
+    Filter, ChevronDown, ChevronRight, Star, Activity, Trash2, BookOpen
+} from 'lucide-react';
+import guidanceService from '../services/guidanceService';
+import { jsPDF } from 'jspdf';
+import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
+import { analyzeSociometry } from '../utils/sociometryAnalysis';
 
-const GuidanceOverview = () => (
-    <div className="space-y-6 animate-fade-in">
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Aktif Görüşme</p>
-                    <h3 className="text-2xl font-bold text-gray-800">0</h3>
-                </div>
-                <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                    <Users size={24} />
-                </div>
-            </div>
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Riskli Öğrenci</p>
-                    <h3 className="text-2xl font-bold text-gray-800">0</h3>
-                </div>
-                <div className="bg-red-50 p-2 rounded-lg text-red-600">
-                    <AlertCircle size={24} />
-                </div>
-            </div>
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Yıllık Plan</p>
-                    <h3 className="text-2xl font-bold text-gray-800">%0</h3>
-                </div>
-                <div className="bg-green-50 p-2 rounded-lg text-green-600">
-                    <CheckCircle size={24} />
-                </div>
-            </div>
-            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Bekleyen BEP</p>
-                    <h3 className="text-2xl font-bold text-gray-800">0</h3>
-                </div>
-                <div className="bg-purple-50 p-2 rounded-lg text-purple-600">
-                    <FileText size={24} />
-                </div>
-            </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                        <Bell className="mr-2 text-indigo-500" size={20} />
-                        Güncel Bildirimler & Hatırlatmalar
-                    </h3>
-                    <div className="space-y-3">
-                        <div className="flex items-start p-3 bg-yellow-50 rounded-xl border border-yellow-100">
-                            <AlertCircle size={18} className="text-yellow-600 mt-0.5 mr-3 shrink-0" />
-                            <div>
-                                <h4 className="font-bold text-yellow-800 text-sm">Okul Risk Haritası Veri Girişi</h4>
-                                <p className="text-yellow-700 text-xs mt-1">Sınıf rehber öğretmenlerinden gelen verilerin 15 Şubat'a kadar sisteme işlenmesi gerekmektedir.</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start p-3 bg-blue-50 rounded-xl border border-blue-100">
-                            <Users size={18} className="text-blue-600 mt-0.5 mr-3 shrink-0" />
-                            <div>
-                                <h4 className="font-bold text-blue-800 text-sm">BEP Toplantısı (9/A Sınıfı)</h4>
-                                <p className="text-blue-700 text-xs mt-1">Yarın saat 14:30'da öğretmenler odasında yapılacaktır.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-gray-800">Son Görüşmeler</h3>
-                        <button className="text-sm text-indigo-600 font-medium hover:underline">Tümünü Gör</button>
-                    </div>
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                            <tr>
-                                <th className="py-3 px-4 rounded-tl-lg">Öğrenci</th>
-                                <th className="py-3 px-4">Konu</th>
-                                <th className="py-3 px-4">Tarih</th>
-                                <th className="py-3 px-4 rounded-tr-lg">Durum</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {/* Empty state or loaded data */}
-                            <tr className="bg-gray-50">
-                                <td colSpan="4" className="py-8 text-center text-gray-500">
-                                    Henüz kayıtlı görüşme bulunmamaktadır.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="space-y-6">
-                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white text-center shadow-lg">
-                    <h3 className="font-bold text-lg mb-2">Hızlı İşlemler</h3>
-                    <p className="text-white/80 text-sm mb-6">Sık kullanılan rehberlik araçlarına buradan ulaşabilirsiniz.</p>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-3 rounded-xl transition flex flex-col items-center justify-center">
-                            <FileText size={20} className="mb-2" />
-                            <span className="text-xs font-bold">BEP Hazırla</span>
-                        </button>
-                        <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-3 rounded-xl transition flex flex-col items-center justify-center">
-                            <Users size={20} className="mb-2" />
-                            <span className="text-xs font-bold">Görüşme Ekle</span>
-                        </button>
-                        <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-3 rounded-xl transition flex flex-col items-center justify-center">
-                            <BarChart2 size={20} className="mb-2" />
-                            <span className="text-xs font-bold">Test Ata</span>
-                        </button>
-                        <button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-3 rounded-xl transition flex flex-col items-center justify-center">
-                            <ClipboardList size={20} className="mb-2" />
-                            <span className="text-xs font-bold">Raporlar</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-800 mb-4">Online Anket Linkleri</h3>
-                    <div className="space-y-4">
-                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Sınıf Risk Haritası</span>
-                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            </div>
-                            <div className="flex space-x-2">
-                                <input readOnly value="rehberlik.app/risk/8372" className="flex-1 text-xs bg-white border border-gray-200 rounded px-2 py-1.5 text-gray-600" />
-                                <button className="bg-gray-200 hover:bg-gray-300 p-1.5 rounded transition text-gray-600"><ClipboardList size={14} /></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const GuidanceCounseling = () => (
-    <div className="animate-fade-in flex flex-col items-center justify-center h-[400px] bg-white rounded-2xl border border-gray-200 border-dashed">
-        <div className="bg-indigo-50 p-6 rounded-full mb-4">
-            <Users size={48} className="text-indigo-600" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800">Bireysel Görüşme Modülü</h3>
-        <p className="text-gray-500 mt-2 max-w-md text-center">
-            Öğrenci ve veli görüşmeleri için detaylı form yapısı ve geçmiş kayıtlar burada listelenecek.
-        </p>
-        <button className="mt-6 btn-primary">
-            + Yeni Görüşme Formu Aç (Demo)
-        </button>
-    </div>
-);
-
-const GuidanceRiskMaps = () => {
-    const [viewMode, setViewMode] = useState('summary'); // summary | input | school
-    const [riskType, setRiskType] = useState('student'); // student | teacher
+const GuidanceServiceTab = ({ students = [] }) => {
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tests', 'students', 'analytics'
+    const [tests, setTests] = useState([]);
+    const [selectedTests, setSelectedTests] = useState([]); // Çoklu seçim için
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [studentResults, setStudentResults] = useState([]);
     const [toast, setToast] = useState(null);
+    const [assigningStudent, setAssigningStudent] = useState(null); // Tekil atama için
+    const [selectedStatsClass, setSelectedStatsClass] = useState('all');
 
-    // Dinamik Risk Maddeleri
-    const [studentRisks, setStudentRisks] = useState([
-        'Anne-Baba Ayrı', 'Maddi Yetersizlik', 'Sürekli Devamsızlık', 'Özel Eğitim İhtiyacı', 'Şiddet Eğilimi'
-    ]);
-    const [teacherRisks, setTeacherRisks] = useState([
-        'Mobbing Algısı', 'Tükenmişlik', 'İletişim Sorunu', 'Sınıf Yönetimi Zorluğu'
-    ]);
-    const [newItem, setNewItem] = useState('');
+    useEffect(() => {
+        loadData();
+    }, []);
 
-    const handleAddItem = () => {
-        if (!newItem) return;
-        if (riskType === 'student') setStudentRisks([...studentRisks, newItem]);
-        else setTeacherRisks([...teacherRisks, newItem]);
-        setNewItem('');
-        // Basit toast simülasyonu
-        alert('Yeni risk maddesi eklendi: ' + newItem);
+    const loadData = () => {
+        const allTests = guidanceService.getTests();
+        // Alfabetik sıralama
+        const sortedTests = allTests.sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+        setTests(sortedTests);
+        loadAllStudentResults();
     };
 
-    return (
-        <div className="animate-fade-in space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-red-50 to-white">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <AlertCircle className="text-red-600 mr-2" />
-                        Risk Haritaları Yönetimi
-                    </h2>
-                    <p className="text-gray-500 mt-1">Sınıf ve Okul risk haritalarını tek merkezden yönetin.</p>
-                </div>
-                <div className="flex space-x-2 mt-4 md:mt-0">
-                    <button onClick={() => setViewMode('input')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${viewMode === 'input' ? 'bg-red-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Veri Girişi</button>
-                    <button onClick={() => setViewMode('school')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${viewMode === 'school' ? 'bg-red-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Okul Risk Haritası</button>
-                </div>
-            </div>
+    const loadAllStudentResults = () => {
+        const results = [];
 
-            {viewMode === 'summary' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                        <h3 className="font-bold text-gray-800 mb-4">Sınıf Bazlı Durum (Veri Tamamlanma)</h3>
-                        <div className="space-y-3">
-                            {['9-A', '9-B', '10-A', '10-B', '11-A', '12-A'].map(cls => (
-                                <div key={cls} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <span className="font-bold text-gray-700">{cls}</span>
-                                    <span className={`text-xs px-2 py-1 rounded font-bold ${Math.random() > 0.5 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                        {Math.random() > 0.5 ? 'Tamamlandı' : 'Bekleniyor'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                        <h3 className="font-bold text-gray-800 mb-4">Öğretmen Veri Girişi Durumu</h3>
-                        <div className="flex items-center justify-center h-40">
-                            <div className="text-center">
-                                <div className="text-4xl font-bold text-indigo-600">%75</div>
-                                <div className="text-sm text-gray-500">Tamamlanma Oranı</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+        // 1. Logged-in students results (Unified source)
+        students.forEach(student => {
+            // Check legacy path
+            const legacyKey = `test_results_${student.id}`;
+            const legacyResults = JSON.parse(localStorage.getItem(legacyKey) || '[]');
 
-            {viewMode === 'school' && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 min-h-[400px]">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">Birleştirilmiş Okul Risk Raporu</h3>
+            // Check guidanceService unified path
+            const unifiedResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}')[student.id] || [];
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 className="font-bold text-red-600 mb-4 border-b pb-2">Öğrenci Risk Dağılımı (En Yüksek)</h4>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1 font-medium"><span>Parçalanmış Aile</span><span>%24</span></div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2.5"><div className="bg-red-500 h-2.5 rounded-full" style={{ width: '24%' }}></div></div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1 font-medium"><span>Maddi Yetersizlik</span><span>%18</span></div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2.5"><div className="bg-orange-500 h-2.5 rounded-full" style={{ width: '18%' }}></div></div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1 font-medium"><span>Akademik Başarısızlık</span><span>%32</span></div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2.5"><div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: '32%' }}></div></div>
-                                </div>
-                            </div>
-                        </div>
+            // Merge unique results (based on date/id)
+            const merged = [...legacyResults];
+            unifiedResults.forEach(ur => {
+                if (!merged.find(mr => mr.date === ur.date && mr.testId === ur.testId)) {
+                    merged.push(ur);
+                }
+            });
 
-                        <div>
-                            <h4 className="font-bold text-blue-600 mb-4 border-b pb-2">Öğretmen Risk Algısı</h4>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1 font-medium"><span>Tükenmişlik Hissi</span><span>%12</span></div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2.5"><div className="bg-blue-500 h-2.5 rounded-full" style={{ width: '12%' }}></div></div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1 font-medium"><span>Veli İletişim Sorunları</span><span>%45</span></div>
-                                    <div className="w-full bg-gray-100 rounded-full h-2.5"><div className="bg-indigo-500 h-2.5 rounded-full" style={{ width: '45%' }}></div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            merged.forEach(result => {
+                results.push({
+                    ...result,
+                    studentId: student.id,
+                    studentName: student.name,
+                    grade: student.grade,
+                    section: student.section
+                });
+            });
+        });
 
-                    <div className="mt-8 p-4 bg-gray-50 rounded-xl text-center text-sm text-gray-500">
-                        * Bu rapor tüm sınıf ve öğretmen verilerinin birleştirilmesiyle otomatik oluşturulmuştur.
-                    </div>
-                </div>
-            )}
+        // 2. Public submissions
+        const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
+        publicResults.forEach((publicRes, idx) => {
+            results.push({
+                ...publicRes,
+                studentId: 'public',
+                publicIndex: idx,
+                grade: publicRes.studentInfo?.grade,
+                section: publicRes.studentInfo?.section,
+                studentName: (publicRes.studentInfo?.name || 'İsimsiz') + ' (' + (publicRes.studentInfo?.schoolNumber || 'No Yok') + ') - Açık Link',
+            });
+        });
 
-            {viewMode === 'input' && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 animate-fade-in">
-                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-800">Risk Haritası Veri Girişi</h3>
-                        <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-bold">
-                            <button onClick={() => setRiskType('student')} className={`px-4 py-2 rounded-md transition ${riskType === 'student' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Öğrenci</button>
-                            <button onClick={() => setRiskType('teacher')} className={`px-4 py-2 rounded-md transition ${riskType === 'teacher' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Öğretmen</button>
-                        </div>
-                    </div>
+        // Sort by date (newest first)
+        results.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setStudentResults(results);
+    };
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">
-                                {riskType === 'student' ? 'Sınıf Seçiniz' : 'Branş Seçiniz'}
-                            </label>
-                            <select className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                {riskType === 'student' ? <><option>9-A</option><option>10-A</option></> : <><option>Matematik</option><option>Fizik</option></>}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">
-                                {riskType === 'student' ? 'Öğrenci Seçiniz' : 'Öğretmen Adı'}
-                            </label>
-                            <select className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                {riskType === 'student' ? <><option>Ahmet Yılmaz</option><option>Ayşe Demir</option></> : <><option>Mehmet Hoca</option><option>Zeynep Hoca</option></>}
-                            </select>
-                        </div>
-                    </div>
+    const deleteStudentResult = (result) => {
+        if (!window.confirm('Bu test sonucunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
 
-                    <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-700">Değerlendirme Maddeleri</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {(riskType === 'student' ? studentRisks : teacherRisks).map((item, idx) => (
-                                <label key={idx} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-                                    <input type="checkbox" className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" />
-                                    <span className="text-gray-700 font-medium">{item}</span>
-                                </label>
-                            ))}
-                        </div>
+        if (result.studentId === 'public') {
+            const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
+            const filtered = publicResults.filter(r =>
+                !(r.testId === result.testId && r.date === result.date && r.studentInfo?.schoolNumber === result.studentInfo?.schoolNumber)
+            );
+            localStorage.setItem('public_test_submissions', JSON.stringify(filtered));
+        } else {
+            // Delete from all potential paths
+            const legacyKey = `test_results_${result.studentId}`;
+            const legacyResults = JSON.parse(localStorage.getItem(legacyKey) || '[]');
+            const filteredLegacy = legacyResults.filter(r => !(r.testId === result.testId && r.date === result.date));
+            localStorage.setItem(legacyKey, JSON.stringify(filteredLegacy));
 
-                        {/* Yeni Madde Ekleme */}
-                        <div className="mt-4 flex items-center space-x-2 pt-4 border-t border-gray-100">
-                            <input
-                                type="text"
-                                value={newItem}
-                                onChange={(e) => setNewItem(e.target.value)}
-                                placeholder="Listede olmayan bir risk maddesi ekle..."
-                                className="flex-1 p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500"
-                            />
-                            <button onClick={handleAddItem} className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition">
-                                + Ekle
-                            </button>
-                        </div>
-                    </div>
-
-                    <button className="mt-8 w-full md:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">
-                        Kaydet ve Tamamla
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const GuidanceArchives = ({ openFolders, toggleFolder }) => {
-    // Helper to render specific action buttons based on code
-    const renderActionButtons = (folderCode, fileCode) => {
-        // Özel Kodlar (BEP, Görüşme Formları vb.)
-        if (fileCode === '140.03') { // BEP
-            return <button className="mt-2 text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-bold">BEP Oluştur / Düzenle</button>;
+            const unifiedData = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
+            if (unifiedData[result.studentId]) {
+                unifiedData[result.studentId] = unifiedData[result.studentId].filter(r => !(r.testId === result.testId && r.date === result.date));
+                localStorage.setItem('student_guidance_results', JSON.stringify(unifiedData));
+            }
         }
-        if (folderCode === '250') { // Bireysel Çalışmalar - Görüşme Formları
-            return <button className="mt-2 text-xs bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 font-bold">Görüşme Formu Görüntüle</button>;
+
+        loadAllStudentResults();
+        setToast('Test sonucu başarıyla silindi.');
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const assignTestToStudents = () => {
+        if (selectedTests.length === 0 || selectedStudents.length === 0) {
+            alert('Lütfen en az bir test ve bir öğrenci seçin.');
+            return;
         }
-        return null;
+
+        selectedStudents.forEach(studentId => {
+            const assignedTestsKey = `assigned_tests_${studentId}`;
+            const currentTests = JSON.parse(localStorage.getItem(assignedTestsKey) || '[]');
+
+            // Seçilen her testi ekle
+            selectedTests.forEach(testId => {
+                if (!currentTests.find(t => t.testId === testId)) {
+                    currentTests.push({
+                        testId: testId,
+                        assignedDate: new Date().toISOString(),
+                        status: 'pending'
+                    });
+                }
+            });
+
+            localStorage.setItem(assignedTestsKey, JSON.stringify(currentTests));
+        });
+
+        alert(`${selectedTests.length} test, ${selectedStudents.length} öğrenciye başarıyla atandı!`);
+        setSelectedTests([]);
+        setSelectedStudents([]);
     };
 
-    return (
-        <div className="animate-fade-in space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm sticky top-0 z-10">
-                <h3 className="font-bold text-lg text-gray-700 flex items-center">
-                    <Folder className="mr-2 text-yellow-500" size={24} />
-                    Desimal Dosya Sistemi (Standart)
-                </h3>
-                <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                    <input type="text" placeholder="Dosya veya kod ara..." className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64" />
-                </div>
-            </div>
+    const assignSingleTestToStudent = (studentId, testId) => {
+        const assignedTestsKey = `assigned_tests_${studentId}`;
+        const currentTests = JSON.parse(localStorage.getItem(assignedTestsKey) || '[]');
 
-            <div className="grid grid-cols-1 gap-4">
-                {guidanceDecimalSystem.map((folder) => (
-                    <div key={folder.code} className="bg-white rounded-xl border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-md">
-                        <div
-                            onClick={() => toggleFolder(folder.code)}
-                            className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition"
-                        >
-                            <div className="flex items-center space-x-4">
-                                <span className="font-mono text-sm font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded">{folder.code}</span>
-                                <h3 className="font-semibold text-gray-800">{folder.title}</h3>
-                            </div>
-                            <div className="text-gray-400">
-                                {openFolders[folder.code] ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                            </div>
-                        </div>
+        if (!currentTests.find(t => t.testId === testId)) {
+            currentTests.push({
+                testId: testId,
+                assignedDate: new Date().toISOString(),
+                status: 'pending'
+            });
+            localStorage.setItem(assignedTestsKey, JSON.stringify(currentTests));
+            setToast('Test başarıyla atandı.');
+        } else {
+            setToast('Bu test zaten atanmış.');
+        }
 
-                        {/* Sub Items Accordion */}
-                        {openFolders[folder.code] && (
-                            <div className="bg-gray-50 border-t border-gray-100 p-4 space-y-3 animate-fade-in">
-                                {folder.subItems.map((item) => (
-                                    <div key={item.code} className="flex flex-col items-start p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition group">
-                                        <div className="flex w-full cursor-pointer">
-                                            <div className="mt-1 min-w-[40px]">
-                                                <FileText size={20} className="text-blue-400 group-hover:text-blue-600" />
-                                            </div>
-                                            <div className="flex-1 ml-2">
-                                                <div className="flex items-center">
-                                                    <span className="font-mono text-xs font-bold text-gray-500 mr-2">{item.code}</span>
-                                                    <h4 className="font-medium text-gray-800 group-hover:text-blue-700 transition">{item.title}</h4>
-                                                </div>
-                                                <p className="text-sm text-gray-500 mt-1">{item.content}</p>
-                                            </div>
-                                            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition self-start" title="İndir / Görüntüle">
-                                                <Download size={18} />
-                                            </button>
-                                        </div>
-                                        {/* Action Buttons */}
-                                        <div className="ml-12">
-                                            {renderActionButtons(folder.code, item.code)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-
-const GuidanceServiceTab = ({ students }) => {
-    const [activeSection, setActiveSection] = useState('overview'); // overview | counseling | risk | archive
-    const [activeModal, setActiveModal] = useState(null);
-    const [openFolders, setOpenFolders] = useState({});
-    const [toast, setToast] = useState(null);
-    const [plans, setPlans] = useState([]);
-
-    const toggleFolder = (code) => {
-        setOpenFolders(prev => ({
-            ...prev,
-            [code]: !prev[code]
-        }));
+        setAssigningStudent(null);
+        setTimeout(() => setToast(null), 3000);
     };
 
-    const handleShareBEP = () => {
-        const shareUrl = `${window.location.origin}/bep/generator`;
+    const handleCopyPublicLink = (testId, title) => {
+        const baseUrl = window.location.href.split('#')[0];
+        const shareUrl = `${baseUrl}#/envanter/${testId}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
-            setToast('BEP Hazırlama Modülü linki kopyalandı!');
+            setToast(`"${title}" bağlantısı kopyalandı!`);
             setTimeout(() => setToast(null), 3000);
         });
     };
 
-    const menuItems = [
-        { id: 'overview', label: 'Genel Bakış', icon: LayoutDashboard },
-        { id: 'counseling', label: 'Bireysel Görüşmeler', icon: Users },
-        { id: 'tests', label: 'Testler & Envanterler', icon: ClipboardList },
-        { id: 'forms', label: 'Formlar & Ölçekler', icon: FileText },
-        { id: 'risk', label: 'Risk Haritaları', icon: AlertCircle },
-        { id: 'plans', label: 'Yıllık Plan', icon: BarChart2 }, // New Menu Item
-        { id: 'archive', label: 'Dosya Arşivi (DDS)', icon: Folder },
-    ];
+    const handleShareResult = (result) => {
+        try {
+            // Paylaşılacak veriyi sadeleştir ve encode et
+            const sharedObj = {
+                studentName: result.studentName,
+                testTitle: result.testTitle,
+                level: result.level,
+                comment: result.comment || result.detail,
+                date: result.date,
+                studentInfo: result.studentInfo || {}
+            };
+            const encoded = btoa(JSON.stringify(sharedObj));
+            const shareUrl = `${window.location.origin}${window.location.pathname}#/share/result/${encoded}`;
+
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                setToast('Paylaşım linki kopyalandı!');
+                setTimeout(() => setToast(null), 3000);
+            });
+        } catch (e) {
+            console.error('Paylaşım hatası:', e);
+            alert('Paylaşım linki oluşturulurken bir hata oluştu.');
+        }
+    };
+
+    const toggleTestSelection = (testId) => {
+        setSelectedTests(prev =>
+            prev.includes(testId)
+                ? prev.filter(id => id !== testId)
+                : [...prev, testId]
+        );
+    };
+
+    const toggleStudentSelection = (studentId) => {
+        setSelectedStudents(prev =>
+            prev.includes(studentId)
+                ? prev.filter(id => id !== studentId)
+                : [...prev, studentId]
+        );
+    };
+
+    const downloadDetailedResultPDF = (result) => {
+        try {
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const W = 210; const H = 297;
+            const today = s(new Date(result.date || Date.now()).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }));
+            const testName = s((result.testTitle || 'Rehberlik Envanteri').toUpperCase());
+            const studentName = s(result.studentName || 'Ogrenci');
+
+            // Arka plan (Clean White)
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, 0, W, H, 'F');
+
+            // Lateral accent bar
+            pdf.setFillColor(15, 23, 42); // Navy/Slate
+            pdf.rect(0, 0, 10, H, 'F');
+
+            // Header - Professional/Corporate Look
+            pdf.setFillColor(248, 250, 252);
+            pdf.rect(10, 0, W - 10, 45, 'F');
+
+            pdf.setFontSize(10); pdf.setTextColor(100, 116, 139); pdf.setFont('helvetica', 'bold');
+            pdf.text('AI OGRENCI KOCU - TURKIYE REHBERLIK VE PSIKOLOJIK DANISMANLIK PLATFORMU', 25, 12);
+
+            pdf.setDrawColor(203, 213, 225); pdf.line(25, 15, W - 15, 15);
+
+            pdf.setFontSize(26); pdf.setTextColor(15, 23, 42); pdf.setFont('helvetica', 'bold');
+            pdf.text('BIREYSEL ANALIZ RAPORU', 25, 28);
+
+            pdf.setFontSize(9); pdf.setTextColor(100, 116, 139); pdf.setFont('helvetica', 'normal');
+            pdf.text(`Rapor Kodu: RHB-${result.id || Math.floor(Math.random() * 100000)} | Seri No: G-${today.replace(/\s+/g, '')}`, 25, 36);
+
+            // Information Box
+            pdf.setDrawColor(226, 232, 240); pdf.setFillColor(255, 255, 255);
+            pdf.roundedRect(25, 55, W - 50, 30, 2, 2, 'FD');
+
+            pdf.setFontSize(9); pdf.setTextColor(100, 116, 139);
+            pdf.text('DANISAN BILGILERI', 30, 62);
+
+            pdf.setFontSize(12); pdf.setTextColor(30, 41, 59); pdf.setFont('helvetica', 'bold');
+            pdf.text(studentName, 30, 70);
+            pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+            pdf.text(s(`${result.studentInfo?.schoolNumber || 'No Belirtilmedi'} | Uygulama Tarihi: ${today}`), 30, 76);
+
+            // Main result highlight
+            pdf.setFillColor(241, 245, 249);
+            pdf.roundedRect(25, 95, W - 50, 45, 3, 3, 'F');
+
+            pdf.setFontSize(9); pdf.setTextColor(15, 23, 42); pdf.setFont('helvetica', 'bold');
+            pdf.text(`ENVANTER: ${testName}`, 35, 105);
+
+            pdf.setFontSize(36); pdf.setTextColor(30, 58, 138); // Strong Navy Blue
+            pdf.text(s(result.level || 'Analiz Tamamlandi'), 35, 125);
+
+            // Deep Scientific Analysis Section
+            const textY = 155;
+            pdf.setFontSize(13); pdf.setTextColor(15, 23, 42); pdf.setFont('helvetica', 'bold');
+            pdf.text('AYRINTILI CIKTILAR VE BILIMSEL DEGERLENDIRME', 25, textY);
+            pdf.setDrawColor(30, 58, 138); pdf.line(25, textY + 2, 60, textY + 2);
+
+            pdf.setFontSize(11); pdf.setTextColor(51, 65, 85); pdf.setFont('helvetica', 'normal');
+            const scientificIntro = "Bu rapor, ogrencinin test sirasindaki bilissel yanitlari ve davranissal paternleri uzerine insa edilmistir. Analiz, danısanın bilissel ve psikososyal sureclerine dair kritik gostergeler barındırmaktadır.";
+            const mainComment = s(result.comment || result.detail || 'Test sonucları basarıyla analiz edilmistir.');
+            const deepComment = "\n\nBilimsel Analiz: Veriler, ogrencinin test maddelerine verdigi yanıtların ic tutarlılığını gostermektedir. Bu sonucun, ogrencinin akademik motivasyonu, oz-yeterlilik algısı ve sosyal uyum mekanizmaları uzerinde doğrudan belirleyici bir etkisi oldugu ongorulmektedir. Gerekli durumlarda rehberlik servisi tarafından bireysel gorusme gerceklestirilmesi tavsiye edilir.";
+
+            const finalFullText = scientificIntro + "\n\n" + mainComment + deepComment;
+            const splitText = pdf.splitTextToSize(finalFullText, W - 60);
+            pdf.text(splitText, 25, textY + 12);
+
+            // Stamp Area
+            const stampY = 240;
+            pdf.setDrawColor(226, 232, 240); pdf.rect(W - 75, stampY, 50, 30);
+            pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+            pdf.text('MUHUR VE IMZA ALANI', W - 73, stampY + 5);
+            pdf.text('Dijital Onayli Belgedir', W - 73, stampY + 25);
+
+            // Footer
+            pdf.setFontSize(8); pdf.setTextColor(100, 116, 139);
+            pdf.text('© Bu rapor AI Ogrenci Kocu Gelismis Rehberlik Servisi tarafindan olusturulmustur. Tum haklari saklidir.', W / 2 + 5, H - 10, { align: 'center' });
+
+            savePDF(pdf, `${studentName.replace(/\s+/g, '_')}_Resmi_Rehberlik_Analizi`);
+        } catch (e) {
+            console.error('PDF Hatası:', e);
+            alert('PDF oluşturulurken bir hata oluştu: ' + e.message);
+        }
+    };
+
+    const downloadSociogramPDF = () => {
+        let sociometryResults = studentResults.filter(r => r.testId === 'sociometry');
+        let targetedStudents = students;
+
+        if (selectedStatsClass !== 'all') {
+            const [g, s] = selectedStatsClass.split('/');
+            sociometryResults = sociometryResults.filter(r =>
+                String(r.grade) === String(g) && String(r.section) === String(s)
+            );
+            targetedStudents = students.filter(student =>
+                String(student.grade) === String(g) && String(student.section) === String(s)
+            );
+        }
+
+        if (sociometryResults.length === 0) {
+            alert(selectedStatsClass === 'all'
+                ? 'Henüz hiç sosyometri sonucu bulunamadı.'
+                : `${selectedStatsClass} sınıfı için henüz sosyometri sonucu bulunamadı.`);
+            return;
+        }
+
+        const analysis = analyzeSociometry(sociometryResults, targetedStudents);
+        if (!analysis) return;
+
+        try {
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const W = 210; const H = 297;
+            const today = new Date().toLocaleDateString('tr-TR');
+
+            // Header
+            pdf.setFillColor(30, 58, 138); pdf.rect(0, 0, W, 40, 'F');
+            pdf.setFontSize(22); pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold');
+            pdf.text('SINIF SOSYOGRAM VE ETKI ANALIZI', 15, 20);
+            pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
+            pdf.text(`AI OGRENCI KOCU | REHBERLIK SERVISI | TARIH: ${today}`, 15, 30);
+
+            // 1. Özet İstatistikler
+            pdf.setTextColor(30, 58, 138); pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
+            pdf.text('1. GENEL SINIF PROFILI', 15, 55);
+            pdf.setDrawColor(30, 58, 138); pdf.line(15, 57, 60, 57);
+
+            const stats = [
+                ['Toplam Ogrenci (Sistem):', analysis.stats.totalStudents],
+                ['Testi Tamamlayan:', analysis.stats.submittedCount],
+                ['Grup Bagliligi (Cohesion):', analysis.stats.cohesionIndex],
+                ['Lider/Yildiz Sayisi:', analysis.stats.stars.length],
+                ['Yalniz/Izole Sayisi:', analysis.stats.isolates.length]
+            ];
+
+            pdf.setFontSize(11); pdf.setTextColor(51, 65, 85);
+            stats.forEach((item, i) => {
+                pdf.text(s(String(item[0])), 20, 70 + (i * 8));
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(s(String(item[1])), 80, 70 + (i * 8));
+                pdf.setFont('helvetica', 'normal');
+            });
+
+            // 2. Sosyometrik Roller
+            let currentY = 120;
+            pdf.setTextColor(30, 58, 138); pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');
+            pdf.text('2. SOSYOMETRIK ROLLER VE ANALIZ', 15, currentY);
+            pdf.line(15, currentY + 2, 80, currentY + 2);
+
+            currentY += 15;
+            // Yıldızlar
+            pdf.setTextColor(15, 23, 42); pdf.setFontSize(12);
+            pdf.text('YILDIZLAR (LIDERLER):', 15, currentY);
+            pdf.setFontSize(10); pdf.setTextColor(71, 85, 105);
+            const starsText = analysis.stats.stars.length > 0 ? analysis.stats.stars.join(', ') : 'Tespit edilemedi.';
+            pdf.text(pdf.splitTextToSize(s(starsText), W - 40), 15, currentY + 7);
+
+            currentY += 25;
+            // Yalnızlar
+            pdf.setTextColor(15, 23, 42); pdf.setFontSize(12);
+            pdf.text('IZOLE OGRENCILER (YALNIZLAR):', 15, currentY);
+            pdf.setFontSize(10); pdf.setTextColor(71, 85, 105);
+            const isolatesText = analysis.stats.isolates.length > 0 ? analysis.stats.isolates.join(', ') : 'Tespit edilemedi.';
+            pdf.text(pdf.splitTextToSize(s(isolatesText), W - 40), 15, currentY + 7);
+
+            currentY += 25;
+            // Gruplaşmalar
+            pdf.setTextColor(15, 23, 42); pdf.setFontSize(12);
+            pdf.text('KAPALI GRUPLASMALAR:', 15, currentY);
+            pdf.setFontSize(10); pdf.setTextColor(71, 85, 105);
+            const cliqueStr = analysis.stats.cliques.length > 0
+                ? analysis.stats.cliques.map(c => '[' + c.join('-') + ']').join(', ')
+                : 'Belirgin bir klik yapisi bulunamadi.';
+            pdf.text(pdf.splitTextToSize(s(cliqueStr), W - 40), 15, currentY + 7);
+
+            // 3. Sosyometrik Matris (Tablo) - Yeni Sayfa
+            pdf.addPage();
+            pdf.setFillColor(30, 58, 138); pdf.rect(0, 0, W, 20, 'F');
+            pdf.setFontSize(14); pdf.setTextColor(255, 255, 255);
+            pdf.text('SOSYOMETRIK PUAN TABLOSU VE TERCIH ANALIZI', 15, 13);
+
+            const tableHeaders = ['Ogrenci Adi', 'Secilme Sayisi', 'Agirlikli Puan', 'Karsilikli Secim'];
+            pdf.setFillColor(241, 245, 249); pdf.rect(10, 30, W - 20, 10, 'F');
+            pdf.setFontSize(9); pdf.setTextColor(15, 23, 42); pdf.setFont('helvetica', 'bold');
+
+            tableHeaders.forEach((h, i) => pdf.text(h, 15 + (i * 45), 36));
+
+            pdf.setFont('helvetica', 'normal');
+            analysis.names.forEach((name, i) => {
+                const y = 48 + (i * 8);
+                const data = analysis.matrix[name];
+                pdf.text(s(name), 15, y);
+                pdf.text(String(data.totalChoices), 60, y);
+                pdf.text(String(data.score), 105, y);
+                pdf.text(String(data.mutuals.length), 150, y);
+
+                pdf.setDrawColor(241, 245, 249); pdf.line(10, y + 2, W - 10, y + 2);
+            });
+
+            pdf.addPage();
+            pdf.setFillColor(30, 58, 138); pdf.rect(0, 0, W, 20, 'F');
+            pdf.setFontSize(14); pdf.setTextColor(255, 255, 255);
+            pdf.text('REHBERLIK SERVISI NOTLARI VE ONERILER', 15, 13);
+
+            pdf.setTextColor(51, 65, 85); pdf.setFontSize(11);
+            const recommendations = `
+* YILDIZLAR: Bu ogrenciler sinif genelinde yuksek prestije sahiptir. Sosyal etkinliklerde lider olarak gorevlendirilebilirler.
+* IZOLE OGRENCILER: Bu ogrenciler gruplasma disinda kalmis olabilir. Sinif ici is birligini artiracak kucuk gruplu calismalarda yildiz ogrencilerle bir araya getirilmelidir.
+* KLIKLER: Sinif icinde kapali gruplar olusmus olabilir. Bu gruplarin sinif genelinden kopmamasi icin proje bazli karma gruplar olusturulabilir.
+* COHESION (BAGLILIK): Sinifin genel baglilik indeksi ${analysis.stats.cohesionIndex}'dir. Bu deger yukseldikce sinif ici huzur ve yardimlasma artar.
+            `;
+            pdf.text(pdf.splitTextToSize(s(recommendations), W - 40), 15, 40);
+
+            savePDF(pdf, `Sinif_Sosyogram_AnalizRaporu_${today.replace(/\./g, '_')}`);
+        } catch (e) {
+            console.error('Sosyogram PDF Hatasi:', e);
+            alert('Sosyogram oluşturulurken bir hata oluştu.');
+        }
+    };
+
+    const downloadClassReport = () => {
+        const pdf = new jsPDF();
+
+        // Header
+        pdf.setFillColor(79, 70, 229);
+        pdf.rect(0, 0, 210, 50, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(28);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Toplu Envanter Raporu', 20, 30);
+
+        // Date
+        pdf.setFontSize(12);
+        pdf.text(s(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`), 20, 42);
+
+        // Stats
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Ozet Istatistikler', 20, 65);
+
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(s(`Sistemdeki Ogrenci: ${students.length}`), 20, 75);
+        pdf.text(s(`Toplam Tamamlanan Test: ${studentResults.length}`), 20, 82);
+
+        // Student Results
+        let yPos = 100;
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Test Sonuclari Listesi', 20, yPos);
+        yPos += 10;
+
+        studentResults.forEach((result, idx) => {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(40, 40, 40);
+            const titleText = s(`${idx + 1}. ${result.studentName} - ${result.testTitle}`);
+            pdf.text(titleText, 20, yPos);
+            yPos += 6;
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(80, 80, 80);
+            const levelText = s(`Sonuc Ozeti: ${result.level || 'Tamamlandi'}`);
+            const splitLevel = pdf.splitTextToSize(levelText, 170);
+            pdf.text(splitLevel, 25, yPos);
+            yPos += (splitLevel.length * 5) + 4; // Add spacing
+
+            if (yPos > 270) {
+                pdf.addPage();
+                yPos = 20;
+            }
+        });
+
+        // Footer
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text('AI Ogrenci Kocu - Rehberlik Hizmetleri', 20, 285);
+
+        savePDF(pdf, `Toplu_Envanter_Raporu_${new Date().toLocaleDateString('tr-TR')}`);
+    };
+
+    const filteredStudents = students.filter(s =>
+        s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const stats = {
+        totalStudents: students.length,
+        completedTests: studentResults.length,
+        activeTests: tests.length,
+        avgCompletion: studentResults.length > 0
+            ? Math.round((studentResults.length / students.length) * 100)
+            : 0
+    };
 
     return (
-        <div className="bg-gray-50/50 rounded-2xl border border-gray-200 min-h-[600px] flex overflow-hidden relative">
-            {/* Toast Notification */}
+        <div className="space-y-8 animate-fade-in relative">
             {toast && (
-                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[80] bg-gray-800 text-white px-6 py-3 rounded-full shadow-xl flex items-center animate-fade-in">
-                    <CheckCircle size={18} className="mr-2 text-green-400" />
+                <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[60] bg-surface-inv text-white px-6 py-3 rounded-full shadow-xl flex items-center animate-fade-in">
+                    <CheckCircle size={18} className="mr-2 text-ok" />
                     <span className="text-sm font-medium">{toast}</span>
                 </div>
             )}
-
-            {/* Sidebar */}
-            <div className="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
-                <div className="p-6 border-b border-gray-100">
-                    <h2 className="font-bold text-gray-800 text-lg flex items-center">
-                        <Monitor className="mr-2 text-indigo-600" size={24} />
-                        Rehberlik<br />Servisi
-                    </h2>
+            {/* Premium Header */}
+            <div className="on-color bg-gradient-to-r from-brand via-purple-600 to-pink-600 rounded-3xl p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
+                    <Brain size={350} className="absolute -top-20 -right-20" />
                 </div>
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveSection(item.id)}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition text-sm font-medium ${activeSection === item.id
-                                ? 'bg-indigo-50 text-indigo-700 shadow-sm'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
-                        >
-                            <item.icon size={20} strokeWidth={2} />
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
-
-                    <div className="pt-4 mt-4 border-t border-gray-100">
-                        <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hızlı İşlemler</p>
-                        <div className="flex space-x-2 px-4 mb-2">
-                            <button onClick={() => setActiveModal('bep')} className="flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 transition border border-blue-100 font-bold">
-                                <FileText size={16} />
-                                <span>BEP</span>
-                            </button>
-                            <button onClick={handleShareBEP} className="p-2 rounded-lg bg-gray-100 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition border border-gray-200" title="BEP Aracını Paylaş">
-                                <Share2 size={16} />
-                            </button>
+                <div className="relative z-10">
+                    <div className="flex items-center mb-6">
+                        <Brain size={56} className="mr-4" />
+                        <div>
+                            <h1 className="text-4xl sm:text-5xl font-black mb-2">Rehberlik Hizmetleri</h1>
+                            <p className="text-brand text-lg">Öğrencilerinizin gelişimini profesyonelce yönetin</p>
                         </div>
-                        <button onClick={() => setActiveSection('tests')} className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-green-50 hover:text-green-600 transition">
-                            <ClipboardList size={18} />
-                            <span>Anket Oluştur</span>
-                        </button>
-
-                        <button onClick={() => setActiveModal('plan')} className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-purple-50 hover:text-purple-600 transition mt-1">
-                            <Upload size={18} />
-                            <span>Yıllık Plan Yükle</span>
-                        </button>
                     </div>
-                </nav>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                        {[
+                            { label: 'Toplam Öğrenci', value: stats.totalStudents, icon: Users, color: 'bg-surface/10' },
+                            { label: 'Tamamlanan Test', value: stats.completedTests, icon: CheckCircle, color: 'bg-ok/20' },
+                            { label: 'Aktif Test', value: stats.activeTests, icon: FileText, color: 'bg-info/20' },
+                            { label: 'Tamamlanma Oranı', value: `${stats.avgCompletion}%`, icon: TrendingUp, color: 'bg-warn/20' }
+                        ].map((stat, idx) => (
+                            <div key={idx} className={`${stat.color} backdrop-blur rounded-2xl p-4`}>
+                                <stat.icon size={24} className="mb-2 opacity-90" />
+                                <div className="text-2xl font-black mb-1">{stat.value}</div>
+                                <div className="text-sm text-brand">{stat.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 bg-gray-50/30 p-8 overflow-y-auto max-h-[800px]">
-                <div className="max-w-5xl mx-auto">
-                    {/* Header */}
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-gray-800">
-                            {menuItems.find(m => m.id === activeSection)?.label}
-                        </h2>
-                        <p className="text-gray-500 text-sm mt-1">
-                            {activeSection === 'overview' && 'Rehberlik servisi genel durum özeti ve anlık bildirimler.'}
-                            {activeSection === 'counseling' && 'Öğrenci ve veli görüşme kayıtlarını buradan yönetebilirsiniz.'}
-                            {activeSection === 'tests' && 'Öğrencilere yönelik psikolojik test ve envanterleri buradan uygulayabilirsiniz.'}
-                            {activeSection === 'forms' && 'Bakanlık standartlarına uygun form ve ölçeklere buradan ulaşabilirsiniz.'}
-                            {activeSection === 'risk' && 'Sınıf ve okul risk haritası verilerini girin ve analiz edin.'}
-                            {activeSection === 'plans' && 'Okul Yıllık Rehberlik Planlarını buradan yönetin.'}
-                            {activeSection === 'archive' && 'Bakanlık standartlarına uygun Desimal Dosya Sistemi.'}
-                        </p>
-                    </div>
+            {/* Navigation Tabs */}
+            <div className="flex space-x-2 bg-surface p-2 rounded-2xl shadow-sm border border-line">
+                {[
+                    { id: 'overview', label: 'Genel Bakış', icon: BarChart2 },
+                    { id: 'students_mgmt', label: 'Öğrenci Yönetimi', icon: Users },
+                    { id: 'tests', label: 'Toplu Atama', icon: Send },
+                    { id: 'students', label: 'Envanter Sonuçları', icon: BookOpen },
+                    { id: 'analytics', label: 'Analitik', icon: Activity }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 ${activeTab === tab.id
+                            ? 'bg-gradient-to-r from-brand to-purple-600 text-white shadow-lg'
+                            : 'text-ink-2 hover:bg-surface-2'
+                            }`}
+                    >
+                        <tab.icon size={18} />
+                        <span className="hidden sm:inline">{tab.label}</span>
+                    </button>
+                ))}
+            </div>
 
-                    {/* Dynamic Content */}
-                    {activeSection === 'overview' && <GuidanceOverview />}
-                    {activeSection === 'counseling' && <GuidanceCounseling />}
-                    {activeSection === 'tests' && <GuidanceTests />}
-                    {activeSection === 'forms' && <GuidanceForms />}
-                    {activeSection === 'risk' && <GuidanceRiskMaps />}
-                    {activeSection === 'archive' && <GuidanceArchives openFolders={openFolders} toggleFolder={toggleFolder} />}
-
-                    {activeSection === 'plans' && (
-                        <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                            <div className="flex justify-between mb-6">
-                                <h3 className="font-bold text-gray-800">Yüklü Planlar</h3>
-                                <button onClick={() => setActiveModal('plan')} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition flex items-center">
-                                    <Upload size={16} className="mr-2" /> Yeni Plan Yükle
-                                </button>
-                            </div>
+            {/* Content */}
+            <div>
+                {/* OVERVIEW TAB */}
+                {activeTab === 'overview' && (
+                    <div className="space-y-6">
+                        {/* Recent Activity */}
+                        <div className="glass-card p-6 border-l-4 border-brand">
+                            <h2 className="text-2xl font-bold text-ink mb-4 flex items-center">
+                                <Clock className="mr-2 text-brand" size={28} />
+                                Son Aktiviteler
+                            </h2>
                             <div className="space-y-3">
-                                {plans.map(p => (
-                                    <div key={p.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100 hover:shadow-sm transition">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`${p.type === 'pdf' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} p-2 rounded-lg`}>
-                                                <FileText size={20} />
+                                {studentResults.slice(0, 5).map((result, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-4 bg-surface rounded-xl border border-line hover:shadow-md transition">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="on-color w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center text-ink">
+                                                <CheckCircle size={20} />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-gray-800">{p.name}</h4>
-                                                <p className="text-xs text-gray-500">Yüklenme Tarihi: {p.date}</p>
+                                                <p className="font-bold text-ink">{result.studentName}</p>
+                                                <p className="text-sm text-ink-2">{result.testTitle} tamamladı</p>
                                             </div>
                                         </div>
-                                        <div className="flex space-x-2">
-                                            <button className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition"><Download size={18} /></button>
-                                            <button className="p-2 text-gray-500 hover:text-red-600 hover:bg-white rounded-lg transition"><Trash2 size={18} /></button>
+                                        <span className="text-xs text-ink-3">
+                                            {new Date(result.date).toLocaleDateString('tr-TR')}
+                                        </span>
+                                    </div>
+                                ))}
+                                {studentResults.length === 0 && (
+                                    <div className="text-center py-8 text-ink-3">
+                                        <Activity size={48} className="mx-auto mb-2 opacity-50" />
+                                        <p>Henüz aktivite yok</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <button
+                                onClick={() => setActiveTab('students_mgmt')}
+                                className="on-color p-6 bg-gradient-to-br from-indigo-500 to-brand text-white rounded-2xl hover:shadow-2xl transition-all group"
+                            >
+                                <Users size={32} className="mb-3 group-hover:scale-110 transition" />
+                                <h3 className="text-lg font-bold mb-1">Öğrenci Yönetimi</h3>
+                                <p className="text-sm text-brand">Öğrencilere bireysel test atayın</p>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('tests')}
+                                className="on-color p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-ink rounded-2xl hover:shadow-2xl transition-all group"
+                            >
+                                <Send size={32} className="mb-3 group-hover:scale-110 transition" />
+                                <h3 className="text-lg font-bold mb-1">Toplu Atama</h3>
+                                <p className="text-sm text-c4">Bir testi tüm sınıfa atayın</p>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('students')}
+                                className="on-color p-6 bg-gradient-to-br from-pink-500 to-pink-600 text-ink rounded-2xl hover:shadow-2xl transition-all group"
+                            >
+                                <BookOpen size={32} className="mb-3 group-hover:scale-110 transition" />
+                                <h3 className="text-lg font-bold mb-1">Sonuç Arşivi</h3>
+                                <p className="text-sm text-c5">Tamamlanan tüm raporlar</p>
+                            </button>
+                            <button
+                                onClick={downloadClassReport}
+                                className="on-color p-6 bg-gradient-to-br from-emerald-500 to-emerald-600 text-ink rounded-2xl hover:shadow-2xl transition-all group"
+                            >
+                                <Download size={32} className="mb-3 group-hover:scale-110 transition" />
+                                <h3 className="text-lg font-bold mb-1">Toplu Rapor</h3>
+                                <p className="text-sm text-ok">Sınıf genel analizini indirin</p>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* STUDENT MANAGEMENT TAB (Bireysel Atama) */}
+                {activeTab === 'students_mgmt' && (
+                    <div className="glass-card p-6 animate-fade-in">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-ink">Bireysel Rehberlik Ataması</h2>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-3" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Öğrenci ara..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10 pr-4 py-2 border border-line rounded-xl outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredStudents.map(student => (
+                                <div key={student.id} className="bg-surface p-5 rounded-2xl border border-line shadow-sm hover:shadow-md transition group">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 bg-brand-soft rounded-xl flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-ink transition-colors duration-300">
+                                            <Users size={24} />
+                                        </div>
+                                        <button
+                                            onClick={() => setAssigningStudent(student)}
+                                            className="px-4 py-2 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-hover transition"
+                                        >
+                                            Test Ata
+                                        </button>
+                                    </div>
+                                    <h3 className="font-bold text-ink text-lg">{student.name}</h3>
+                                    <div className="flex items-center text-xs text-ink-2 space-x-2 mt-1">
+                                        <span className="bg-surface-3 px-2 py-0.5 rounded-md font-medium text-ink-2">{student.grade || '9/A'}</span>
+                                        <span className="bg-surface-3 px-2 py-0.5 rounded-md font-medium text-ink-2">No: {student.schoolNumber || '-'}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* TEST ASSIGNMENT TAB */}
+                {activeTab === 'tests' && (
+                    <div className="space-y-6">
+                        {/* Test Selection */}
+                        <div className="glass-card p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-2xl font-bold text-ink">1️⃣ Test Seçin (Çoklu)</h2>
+                                <button
+                                    onClick={() => {
+                                        if (selectedTests.length === tests.length) {
+                                            setSelectedTests([]);
+                                        } else {
+                                            setSelectedTests(tests.map(t => t.id));
+                                        }
+                                    }}
+                                    className="text-brand font-bold hover:text-brand transition"
+                                >
+                                    {selectedTests.length === tests.length ? 'Hiçbirini Seçme' : 'Tümünü Seç'} ({selectedTests.length}/{tests.length})
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {tests.map(test => (
+                                    <div
+                                        key={test.id}
+                                        onClick={() => toggleTestSelection(test.id)}
+                                        className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedTests.includes(test.id)
+                                            ? 'border-indigo-600 bg-brand-soft shadow-lg'
+                                            : 'border-line hover:border-brand-line hover:shadow-md'
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <FileText size={24} className={selectedTests.includes(test.id) ? 'text-brand' : 'text-ink-3'} />
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopyPublicLink(test.id, test.title);
+                                                    }}
+                                                    className="p-1.5 bg-brand-soft hover:bg-brand-soft text-brand rounded-lg transition"
+                                                    title="Öğrenci Linkini Kopyala (Giriş gerektirmez)"
+                                                >
+                                                    <Share2 size={16} />
+                                                </button>
+                                            </div>
+                                            <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${selectedTests.includes(test.id)
+                                                ? 'border-indigo-600 bg-brand'
+                                                : 'border-line-2'
+                                                }`}>
+                                                {selectedTests.includes(test.id) && (
+                                                    <CheckCircle size={16} className="text-ink" />
+                                                )}
+                                            </div>
+                                        </div>
+                                        <h3 className="font-bold text-ink mb-2">{test.title}</h3>
+                                        <p className="text-sm text-ink-2">{test.questions?.length} Soru</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Student Selection */}
+                        <div className="glass-card p-6">
+                            <h2 className="text-2xl font-bold text-ink mb-4">2️⃣ Öğrenci Seçin</h2>
+
+                            {/* Search */}
+                            <div className="mb-4">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ink-3" size={20} />
+                                    <input
+                                        type="text"
+                                        placeholder="Öğrenci ara..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 border-2 border-line rounded-xl focus:border-brand outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Select All */}
+                            <div className="mb-4">
+                                <button
+                                    onClick={() => {
+                                        if (selectedStudents.length === filteredStudents.length) {
+                                            setSelectedStudents([]);
+                                        } else {
+                                            setSelectedStudents(filteredStudents.map(s => s.id));
+                                        }
+                                    }}
+                                    className="text-brand font-bold hover:text-brand transition"
+                                >
+                                    {selectedStudents.length === filteredStudents.length ? 'Tümünü Kaldır' : 'Tümünü Seç'}
+                                </button>
+                                <span className="ml-3 text-ink-2">({selectedStudents.length} seçili)</span>
+                            </div>
+
+                            {/* Student List */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                                {filteredStudents.map(student => (
+                                    <div
+                                        key={student.id}
+                                        onClick={() => toggleStudentSelection(student.id)}
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center space-x-3 ${selectedStudents.includes(student.id)
+                                            ? 'border-indigo-600 bg-brand-soft'
+                                            : 'border-line hover:border-brand-line'
+                                            }`}
+                                    >
+                                        <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${selectedStudents.includes(student.id)
+                                            ? 'border-indigo-600 bg-brand'
+                                            : 'border-line-2'
+                                            }`}>
+                                            {selectedStudents.includes(student.id) && (
+                                                <CheckCircle size={16} className="text-ink" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-ink">{student.name}</p>
+                                            <p className="text-xs text-ink-2">{student.grade || 'Sınıf bilgisi yok'}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
 
-            {/* Modals */}
-            {activeModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in z-[60]">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800 text-lg">
-                                {activeModal === 'bep' && 'Öğrenci BEP Hazırlama'}
-                                {activeModal === 'plan' && 'Yıllık Rehberlik Planı Yükle'}
-                            </h3>
-                            <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-gray-600">
-                                <ChevronDown size={24} className="transform rotate-180" />
-                            </button>
-                        </div>
-                        <div className="p-0">
-                            {activeModal === 'bep' && <BEPGenerator students={students} closeModal={() => setActiveModal(null)} />}
-                            {activeModal === 'plan' && (
-                                <div className="text-center py-8 p-6">
-                                    <input
-                                        type="file"
-                                        id="planUpload"
-                                        className="hidden"
-                                        accept=".xlsx, .xls, .pdf"
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                setPlans(prev => [...prev, {
-                                                    id: Date.now(),
-                                                    name: file.name,
-                                                    date: new Date().toLocaleDateString('tr-TR'),
-                                                    type: file.name.endsWith('.pdf') ? 'pdf' : 'excel'
-                                                }]);
-                                                setToast(`${file.name} başarıyla yüklendi!`);
-                                                setTimeout(() => setActiveModal(null), 1000);
-                                                setTimeout(() => setToast(null), 3000);
-                                            }
-                                        }}
-                                    />
-                                    <label
-                                        htmlFor="planUpload"
-                                        className="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition bg-gray-50/50"
-                                    >
-                                        <Upload size={48} className="text-indigo-500 mb-4" />
-                                        <p className="font-bold text-gray-800 text-lg">Excel veya PDF Dosyası Seçin</p>
-                                        <p className="text-sm text-gray-500 mt-2 max-w-xs">
-                                            MEB formatındaki yıllık planlarınızı (.xlsx, .pdf) buraya yükleyerek sisteme entegre edebilirsiniz.
-                                        </p>
-                                        <span className="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition inline-block">
-                                            Dosya Seç
-                                        </span>
-                                    </label>
-                                    <div className="mt-4 text-left bg-blue-50 p-4 rounded-lg flex items-start">
-                                        <AlertCircle size={16} className="text-blue-600 mt-0.5 mr-2 shrink-0" />
-                                        <p className="text-xs text-blue-800">
-                                            PDF dosyaları görüntüleme amaçlı, Excel dosyaları ise takvim entegrasyonu için kullanılır.
-                                        </p>
+                        {/* Assign Button */}
+                        <button
+                            onClick={assignTestToStudents}
+                            disabled={selectedTests.length === 0 || selectedStudents.length === 0}
+                            className="on-color w-full py-4 bg-gradient-to-r from-brand to-purple-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                        >
+                            <Send size={24} />
+                            <span>{selectedTests.length} Testi {selectedStudents.length} Öğrenciye Ata</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* STUDENT RESULTS TAB */}
+                {activeTab === 'students' && (
+                    <div className="space-y-4">
+                        {studentResults.length > 0 ? (
+                            studentResults.map((result, idx) => (
+                                <div key={idx} className="glass-card p-6 hover:shadow-lg transition">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                        <div className="flex items-start space-x-4">
+                                            <div className="on-color w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center text-ink flex-shrink-0">
+                                                <Star size={28} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-ink">{result.studentName}</h3>
+                                                <p className="text-ink-2 font-medium">{result.testTitle}</p>
+                                                <div className="flex items-center space-x-4 mt-2 text-sm text-ink-2">
+                                                    <span className="flex items-center">
+                                                        <Calendar size={14} className="mr-1" />
+                                                        {new Date(result.date).toLocaleDateString('tr-TR')}
+                                                    </span>
+                                                    <span className="px-3 py-1 bg-brand-soft text-brand rounded-full font-bold">
+                                                        {result.level || 'Tamamlandı'}
+                                                    </span>
+                                                </div>
+                                                {result.comment && (
+                                                    <p className="text-ink-2 mt-2 italic text-sm">"{result.comment}"</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <button
+                                                onClick={() => downloadDetailedResultPDF(result)}
+                                                className="flex items-center space-x-2 bg-brand text-white px-5 py-2.5 rounded-2xl font-bold hover:shadow-xl hover:scale-105 active:scale-95 transition-all whitespace-nowrap shadow-indigo-100"
+                                            >
+                                                <Download size={18} />
+                                                <span>Detaylı Analiz PDF</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleShareResult(result)}
+                                                className="flex items-center space-x-2 bg-info-soft text-info px-5 py-2.5 rounded-2xl font-bold hover:bg-info-soft active:scale-95 transition-all whitespace-nowrap"
+                                                title="Sonucu Paylaşılabilir Link Olarak Kopyala"
+                                            >
+                                                <Share2 size={18} />
+                                                <span>Paylaş</span>
+                                            </button>
+                                            <button
+                                                onClick={() => deleteStudentResult(result)}
+                                                className="p-3 bg-danger-soft text-danger hover:bg-danger hover:text-ink rounded-2xl transition-all shadow-sm active:scale-95 flex items-center justify-center group"
+                                                title="Sonucu Sil"
+                                            >
+                                                <Trash2 size={20} className="group-hover:scale-110 transition" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            )}
+                            ))
+                        ) : (
+                            <div className="text-center py-20 bg-surface rounded-3xl border-2 border-dashed border-line">
+                                <Users size={64} className="mx-auto mb-4 text-ink-3" />
+                                <h3 className="text-2xl font-bold text-ink mb-2">Henüz Test Sonucu Yok</h3>
+                                <p className="text-ink-2 max-w-md mx-auto">
+                                    Öğrenciler test tamamladıkça sonuçlar burada görünecek.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ANALYTICS TAB */}
+                {activeTab === 'analytics' && (() => {
+                    // Sınıf seçeneklerini belirle
+                    const availableClasses = Array.from(new Set(students.map(s => `${s.grade}/${s.section}`)))
+                        .filter(c => c && c !== 'undefined/undefined')
+                        .sort();
+
+                    // İstatistikleri seçilen sınıfa göre filtrele
+                    let filteredResults = studentResults;
+                    let filteredStudentsList = students;
+
+                    if (selectedStatsClass !== 'all') {
+                        const [g, s] = selectedStatsClass.split('/');
+                        filteredResults = studentResults.filter(r => String(r.grade) === String(g) && String(r.section) === String(s));
+                        filteredStudentsList = students.filter(st => String(st.grade) === String(g) && String(st.section) === String(s));
+                    }
+
+                    const stats = {
+                        avgCompletion: filteredStudentsList.length > 0 ? Math.round((filteredResults.length / filteredStudentsList.length) * 100) : 0,
+                        activeTests: tests.length,
+                        totalSubmissions: filteredResults.length
+                    };
+
+                    return (
+                        <div className="glass-card p-8">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                                <h2 className="text-3xl font-bold text-ink flex items-center">
+                                    <Activity className="mr-3 text-brand" size={36} />
+                                    İstatistiksel Analiz
+                                </h2>
+
+                                <div className="flex items-center gap-2 bg-brand-soft p-2 rounded-2xl border border-brand-line">
+                                    <span className="text-sm font-bold text-brand ml-2">Sınıf Seçin:</span>
+                                    <select
+                                        value={selectedStatsClass}
+                                        onChange={(e) => setSelectedStatsClass(e.target.value)}
+                                        className="bg-surface border-none rounded-xl px-4 py-2 text-sm font-bold text-ink-2 outline-none shadow-sm cursor-pointer"
+                                    >
+                                        <option value="all">Tüm Okul</option>
+                                        {availableClasses.map(c => (
+                                            <option key={c} value={c}>{c} Sınıfı</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Test Completion Rate */}
+                                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl border border-brand-line">
+                                    <h3 className="font-bold text-ink mb-4 flex items-center">
+                                        <TrendingUp className="mr-2 text-brand" size={20} />
+                                        Test Tamamlanma Oranı
+                                    </h3>
+                                    <div className="text-5xl font-black text-brand mb-2">{stats.avgCompletion}%</div>
+                                    <p className="text-ink-2">
+                                        {filteredResults.length} / {filteredStudentsList.length} öğrenci test tamamladı
+                                    </p>
+                                </div>
+
+                                {/* Total Submissions */}
+                                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border border-[color-mix(in_srgb,var(--c4)_35%,transparent)]">
+                                    <h3 className="font-bold text-ink mb-4 flex items-center">
+                                        <FileText className="mr-2 text-c4" size={20} />
+                                        Toplam Yanıt Sayısı
+                                    </h3>
+                                    <div className="text-5xl font-black text-c4 mb-2">{stats.totalSubmissions}</div>
+                                    <p className="text-ink-2">
+                                        Seçilen gruptaki toplam kayıtlı yanıt
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Sosyometri Özel Bölümü */}
+                            <div className="mt-8 bg-surface p-6 rounded-2xl border-2 border-dashed border-brand-line">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-ink flex items-center">
+                                            <Star className="mr-2 text-warn" size={24} />
+                                            Gelişmiş Sosyometri Analizi ({selectedStatsClass === 'all' ? 'Tüm Okul' : selectedStatsClass})
+                                        </h3>
+                                        <p className="text-sm text-ink-2 mt-1">Sınıf içi liderleri ve sosyal dinamikleri analiz edin.</p>
+                                    </div>
+                                    <div className="bg-brand-soft text-brand px-4 py-1.5 rounded-full font-bold text-sm">
+                                        {filteredResults.filter(r => r.testId === 'sociometry').length} Yanıt Mevcut
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <div className="bg-surface-2 p-4 rounded-xl border border-line">
+                                        <p className="text-xs text-ink-3 font-bold uppercase mb-2">Sosyogram Nedir?</p>
+                                        <p className="text-xs text-ink-2 leading-relaxed">Seçilen sınıftaki sosyal haritayı çıkarır. Liderleri ve klikleri belirler.</p>
+                                    </div>
+                                    <div className="bg-surface-2 p-4 rounded-xl border border-line">
+                                        <p className="text-xs text-ink-3 font-bold uppercase mb-2">Sınıf Bazlı Analiz</p>
+                                        <p className="text-xs text-ink-2 leading-relaxed">Sosyometri doğası gereği sınıf bazında değerlendirilmelidir. Lütfen yukarıdan ilgili sınıfı seçin.</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={downloadSociogramPDF}
+                                    className={`w-full py-4 rounded-2xl font-bold transition shadow-lg flex items-center justify-center space-x-2 ${selectedStatsClass === 'all'
+                                            ? 'bg-surface-3 text-ink-2 cursor-not-allowed'
+                                            : 'bg-brand text-white hover:bg-brand-hover'
+                                        }`}
+                                    disabled={selectedStatsClass === 'all'}
+                                >
+                                    <Star size={20} fill="currentColor" />
+                                    <span>{selectedStatsClass === 'all' ? 'Lütfen Önce Sınıf Seçin' : `${selectedStatsClass} Sosyogram Raporunu İndir`}</span>
+                                </button>
+                                {selectedStatsClass === 'all' && (
+                                    <p className="text-center text-xs text-warn mt-3 font-medium">⚠️ Sosyometri raporu oluşturmak için yukarıdan bir sınıf seçmelisiniz.</p>
+                                )}
+                            </div>
+
+                            <div className="mt-8 border-t border-line pt-8">
+                                <button
+                                    onClick={downloadClassReport}
+                                    className="w-full py-4 bg-surface-inv text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center space-x-2"
+                                >
+                                    <Download size={24} />
+                                    <span>{selectedStatsClass === 'all' ? 'Tüm Okul' : selectedStatsClass} Rapor Kartlarını İndir (PDF)</span>
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </div>
+
+            {/* Bireysel Atama Modalı */}
+            {assigningStudent && (
+                <div className="fixed inset-0 z-modal-top bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setAssigningStudent(null)}>
+                    <div className="bg-surface rounded-3xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 bg-brand text-white border-b border-indigo-700">
+                            <h3 className="text-xl font-bold">{assigningStudent.name} İÇİN ENVANTER ATA</h3>
+                            <p className="text-brand text-sm mt-1">Rehberlik servisi tarafından uygulanacak testi seçin</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                            {tests.map(test => (
+                                <button
+                                    key={test.id}
+                                    onClick={() => assignSingleTestToStudent(assigningStudent.id, test.id)}
+                                    className="w-full p-4 border border-line rounded-2xl text-left bg-surface-2 hover:bg-brand-soft hover:border-brand-line transition group flex items-center justify-between"
+                                >
+                                    <div>
+                                        <p className="font-bold text-ink group-hover:text-brand transition-colors uppercase tracking-tight">{test.title}</p>
+                                        <p className="text-xs text-ink-3 mt-0.5">{test.questions?.length} Soru • {test.desc}</p>
+                                    </div>
+                                    <PlusCircle size={24} className="text-brand group-hover:text-brand transition" />
+                                </button>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-surface-2 border-t border-line flex justify-end">
+                            <button onClick={() => setAssigningStudent(null)} className="px-6 py-2 text-ink-2 font-bold hover:bg-surface-3 rounded-xl transition">Kapat</button>
                         </div>
                     </div>
                 </div>

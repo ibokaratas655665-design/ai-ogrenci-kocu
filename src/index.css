@@ -1,92 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ════ Premium Design System ════════════════════════════════════════════ */
+
+:root {
+  /* Core Colors (Dynamic User Background or Default) */
+  --user-bg: #07080f;
+  --user-primary: #c9a84c;
+  
+  --bg0: var(--user-bg);
+  --bg1: color-mix(in srgb, var(--user-bg) 95%, white);
+  --bg2: color-mix(in srgb, var(--user-bg) 90%, white);
+  --bg3: color-mix(in srgb, var(--user-bg) 85%, white);
+  --bg4: color-mix(in srgb, var(--user-bg) 80%, white);
+  --bg5: color-mix(in srgb, var(--user-bg) 75%, white);
+  
+  --gold: var(--user-primary);
+  --gold2: color-mix(in srgb, var(--user-primary) 85%, white);
+  --gold3: color-mix(in srgb, var(--user-primary) 70%, white);
+  --goldg: color-mix(in srgb, var(--user-primary) 18%, transparent);
+  
+  --teal: #1f8a7a;
+  --teal2: #28b89e;
+  --teal3: #5dd6bf;
+  --tealg: rgba(31, 138, 122, 0.15);
+  
+  --coral: #e05c3a;
+  --violet: #7c5fc8;
+  --sky: #4a9fd4;
+  --green: #2ecc71;
+  
+  --t0: #f2f0ea;
+  --t1: #c8c4b8;
+  --t2: #8a8680;
+  --t3: #4e4c48;
+  
+  --b0: rgba(255, 255, 255, 0.06);
+  --b1: rgba(255, 255, 255, 0.10);
+  --b2: rgba(255, 255, 255, 0.16);
+  
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+
+  /* Legacy Variable Bridges */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --text-primary: #0f172a;
+  --accent-primary: #1f8a7a;
+  --accent-secondary: #c9a84c;
+}
+
+html.dark {
+  --bg-primary: var(--bg0);
+  --bg-secondary: var(--bg1);
+  --bg-tertiary: var(--bg2);
+  --text-primary: var(--t0);
+  --text-secondary: var(--t1);
+  --text-muted: var(--t2);
+  --border-color: var(--b1);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --card-bg: var(--bg2);
+}
+
+/* ════ Base Overrides ═════════════════════════════════════════════════ */
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans;
+    @apply font-sans;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  h1, h2, h3, .syne {
+    font-family: 'Syne', sans-serif;
   }
 }
 
+/* ════ ZirveKoç Utility Components ═══════════════════════════════════ */
 @layer components {
-  .glass-panel {
-    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  /* Premium Cards — derinlik katmanı (styles/depth.css ile aynı dil) */
+  /* Gölge ve ışık değerleri artık temadan gelir (styles/theme.css);
+     eskiden koyu temaya göre sabitti ve açık zeminde kirli duruyordu. */
+  .premium-card {
+    @apply rounded-[20px];
+    position: relative;
+    background:
+      linear-gradient(180deg, var(--sheen) 0%, transparent 42%),
+      var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--sh-1);
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1),
+                box-shadow 220ms cubic-bezier(.2, .8, .2, 1),
+                border-color 220ms ease;
   }
 
-  .glass-card {
-    @apply bg-white/60 backdrop-blur-md border border-white/30 shadow-lg rounded-2xl;
+  .premium-card:hover {
+    border-color: var(--line-2);
+    box-shadow: var(--sh-2);
   }
 
-  .btn-primary {
-    @apply px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 hover:scale-105 transition-all duration-300 font-bold tracking-wide active:scale-95;
+  .premium-card-gold {
+    @apply premium-card;
+    border-color: var(--brand-line);
   }
 
-  .btn-secondary {
-    @apply px-6 py-3 bg-white text-indigo-700 border-2 border-indigo-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50 hover:shadow-md transition-all duration-300 font-bold active:scale-95;
+  .premium-card-teal {
+    @apply premium-card;
+    border-color: var(--accent-line);
   }
 
-  .btn-accent {
-    @apply px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl hover:shadow-lg hover:shadow-orange-200 hover:scale-105 transition-all duration-300 font-bold tracking-wide active:scale-95;
+  /* KPI Card Style */
+  .kpi-card {
+    @apply premium-card p-4 relative overflow-hidden active:scale-[0.98];
+  }
+  
+  .kpi-card::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 h-0.5 opacity-0 transition-opacity;
+  }
+  
+  .kpi-card:hover::after {
+    @apply opacity-100;
   }
 
-  .btn-glass {
-    @apply px-6 py-3 bg-white/20 backdrop-blur-md text-white border border-white/30 rounded-xl hover:bg-white/30 transition-all duration-300 font-bold;
+  .kpi-val {
+    @apply text-2xl font-black leading-none tracking-tight syne;
+  }
+
+  /* Glassmorphism */
+  .premium-glass {
+    @apply backdrop-blur-xl border;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    border-color: var(--b1);
+  }
+
+  /* Buttons */
+  .btn-premium-gold {
+    @apply px-6 py-3 rounded-2xl font-extrabold syne transition-all active:scale-95;
+    background: var(--brand);
+    color: var(--ink-on);
+  }
+
+  .btn-premium-teal {
+    @apply px-6 py-3 rounded-2xl font-extrabold syne transition-all active:scale-95;
+    background: var(--accent);
+    color: var(--ink-on);
+  }
+
+  /* AI Glow Backgrounds */
+  .ai-glow-gold {
+    background: radial-gradient(circle, var(--goldg), transparent 70%);
+  }
+  
+  .ai-glow-teal {
+    background: radial-gradient(circle, var(--tealg), transparent 70%);
+  }
+
+  /* Message Bubbles */
+  .mbub-ai {
+    @apply p-4 rounded-2xl premium-card text-sm leading-relaxed;
+    background: var(--surface-2);
+    color: var(--ink-2);
+  }
+
+  .mbub-user {
+    @apply p-4 rounded-2xl text-sm leading-relaxed;
+    background: var(--brand);
+    color: var(--ink-on);
   }
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+/* ════ Animations ═════════════════════════════════════════════════════ */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.sk {
+  @apply rounded-xl;
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
-}
+/* ════ Interactive Scroll ════════════════════════════════════════════ */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-}
+/* Select / option renkleri styles/theme.css tarafından yönetiliyor —
+   buradaki sabit beyaz zorlaması koyu temayı bozuyordu. */
 
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-.animate-blob {
-  animation: blob 7s infinite;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
+/* Eski sabit-hex !important ezmeleri kaldirildi: renkler artik
+   styles/theme.css degiskenlerinden geliyor, o sinif adlari da
+   anlamli siniflara (bg-page, bg-brand, text-ink...) donusturuldu. */

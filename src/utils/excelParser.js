@@ -2,349 +2,387 @@ import * as XLSX from 'xlsx';
 
 /**
  * Parses an Excel file for Exam Results.
- * Auto-detects headers for: Student Name, TYT/AYT/YKS scores, and specific subjects (Turkce, Mat, Fen, Sosyal).
+ * Supports multiple sheets for combined exams (TYT+AYT, TYT+YDT).
  * 
  * @param {File} file - The uploaded Excel file.
- * @returns {Promise<Array>} - Array of standardized student result objects.
+ * @param {string} examType - The type of exam (TYT, AYT, TYT+AYT, LGS, etc.)
+ * @returns {Promise<Object>} - Standardized student results and metadata.
  */
-/**
- * Parses an Excel file for Exam Results.
- * Auto-detects headers for: Student Name, TYT/AYT/YKS scores, and specific subjects (Turkce, Mat, Fen, Sosyal).
- * Now supports Detailed Analysis: Detects "Doğru" (D), "Yanlış" (Y), and "Net" (N) columns for each subject.
- * 
- * @param {File} file - The uploaded Excel file.
- * @returns {Promise<Array>} - Array of standardized student result objects.
- */
-export const parseExcelExamData = (file) => {
+
+import { normalizeTRName, normalizeSchoolNumber, normalizeNameForKeys, getOBPScore } from './scoreCalculator';
+
+const parseNum = (val) => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const float = parseFloat(String(val).replace(',', '.'));
+    return isNaN(float) ? 0 : float;
+};
+
+const processSubjects = (row, colMap) => {
+    const subjects = {};
+    const calcNet = (d, y) => parseFloat((parseNum(d) - (parseNum(y) * 0.25)).toFixed(2));
+
+    Object.keys(colMap.subjects || {}).forEach(key => {
+        const cols = colMap.subjects[key];
+        const d = cols && cols.d !== -1 ? parseNum(row[cols.d]) : 0;
+        const y = cols && cols.y !== -1 ? parseNum(row[cols.y]) : 0;
+        const n = cols && cols.n !== -1 ? parseNum(row[cols.n]) : calcNet(d, y);
+        if (d !== 0 || y !== 0 || n !== 0) {
+            subjects[key] = { d, y, net: n };
+        }
+    });
+    return subjects;
+};
+
+const parseSingleWorksheet = (worksheet, examType, detectedInfo = {}) => {
+    let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    if (!jsonData || jsonData.length === 0) return { results: [] };
+
+    // 1. Find Metric Row (The one with D, Y, N or Correct, Wrong, Net)
+    let metricsRowIndex = -1;
+    let maxDynCount = 0;
+
+    for (let i = 0; i < Math.min(jsonData.length, 30); i++) {
+        const row = jsonData[i];
+        if (!row || row.length < 5) continue;
+
+        const dynCount = row.filter(c => {
+            const s = String(c || '').trim().toUpperCase();
+            return s === 'D' || s === 'Y' || s === 'N' || s === 'DOĞRU' || s === 'YANLIŞ' || s === 'NET';
+        }).length;
+
+        if (dynCount > maxDynCount) {
+            maxDynCount = dynCount;
+            metricsRowIndex = i;
+        }
+    }
+
+    if (metricsRowIndex === -1) metricsRowIndex = 0;
+
+    // Header rows (the row itself and potential row above for subjects names)
+    const metricsRow = jsonData[metricsRowIndex] || [];
+    const subjectRow = metricsRowIndex > 0 ? jsonData[metricsRowIndex - 1] : [];
+
+    const subjectsConfig = {
+        TYT: {
+            turkce: ["temsil", "türkçe", "turkce", "tr", "türk", "t.d.ed", "tded"],
+            mat: ["temel matematik", "temel mat", "matematik", "mat", "mat1", "t.mat", "matematik-1"],
+            fen: ["fen bilimleri", "fen", "fkb", "fen1"],
+            sosyal: ["sosyal bilimler", "sosyal", "sos", "sos1", "tarih-1", "coğrafya-1", "felsefe", "din", "ahlak"]
+        },
+        AYT: {
+            aytMat: ["ayt mat", "ayt matematik", "alan matematik", "matematik", "mat2", "mat-2", "a.mat", "matematik-2"],
+            edebiyat: ["edebiyat", "tde", "türk dili", "t.d.ed", "tded"],
+            tarih1: ["tarih-1", "tar1", "tarih1"],
+            cografya1: ["coğrafya-1", "cog1", "coğ1"],
+            tarih2: ["tarih-2", "tar2", "tarih2"],
+            cografya2: ["coğrafya-2", "cog2", "coğ2"],
+            felsefe: ["felsefe", "grubu", "fel", "felsefe grubu"],
+            din: ["din", "kültürü", "dkab", "ahlak", "ahl. bil."],
+            fizik: ["fizik", "fiz"],
+            kimya: ["kimya", "kim"],
+            biyoloji: ["biyoloji", "biy"],
+            geometri: ["geometri", "geo"],
+            sayNet: ["say net", "sayısal net", "sayisan net", "saypuan"],
+            eaNet: ["ea net", "eşit ağırlık net", "esit agirlik net", "eapuan"],
+            sozNet: ["söz net", "sözel net", "sozel net", "sozpuan"],
+            dilNet: ["dil net", "yabancı dil net", "dilpuan"]
+        },
+        YDT: {
+            dil: ["yabancı dil", "ingilizce", "ydt", "dil", "ing", "alm", "fra"]
+        },
+        LGS: {
+            turkce: ["türkçe", "tr"],
+            mat: ["matematik", "mat"],
+            fen: ["fen"],
+            inkilap: ["inkılap", "tarih"],
+            din: ["din"],
+            ingilizce: ["ingilizce", "dil"]
+        },
+        'TYT+AYT': {
+            turkce: ["tyt türkçe", "temel türkçe", "türkçe", "tr", "türk"],
+            mat: ["tyt matematik", "temel matematik", "matematik", "mat1", "matematik-1"],
+            fen: ["tyt fen", "fen bilimleri", "fen"],
+            sosyal: ["tyt sosyal", "temel sosyal", "sosyal bilimler", "sosyal"],
+            aytMat: ["alan matematik", "ayt matematik", "ayt mat", "mat2", "matematik-2"],
+            edebiyat: ["edebiyat", "tde", "türk dili", "tded"],
+            tarih1: ["tarih-1", "tar1", "tarih1"],
+            cografya1: ["coğrafya-1", "cog1", "coğ1"],
+            tarih2: ["tarih-2", "tar2", "tarih2"],
+            cografya2: ["coğrafya-2", "cog2", "coğ2"],
+            felsefe: ["ayt felsefe", "felsefe", "felsefe grubu"],
+            din: ["ayt din", "din kült", "din", "ahlak", "dkab"],
+            fizik: ["ayt fizik", "fizik", "fiz"],
+            kimya: ["ayt kimya", "kimya", "kim"],
+            biyoloji: ["ayt biyoloji", "biyoloji", "biy"],
+            sayNet: ["say net", "sayısal net", "sayisan net", "saypuan"],
+            eaNet: ["ea net", "eşit ağırlık net", "esit agirlik net", "eapuan"],
+            sozNet: ["söz net", "sözel net", "sozel net", "sozpuan"],
+            dilNet: ["dil net", "yabancı dil net", "dilpuan"]
+        },
+        'TYT+YDT': {
+            turkce: ["tyt türkçe", "türkçe"],
+            mat: ["tyt matematik", "matematik"],
+            fen: ["tyt fen", "fen"],
+            sosyal: ["tyt sosyal", "sosyal"],
+            dil: ["yabancı dil", "ingilizce", "ydt", "dil"]
+        }
+    };
+
+    const currentConfig = subjectsConfig[examType] || subjectsConfig['TYT'];
+
+    // Map columns
+    const colMap = {
+        name: -1, firstName: -1, lastName: -1, number: -1, score: -1, totalNet: -1, subjects: {}
+    };
+
+    // Try to find student info in multiple potential header rows
+    const rowsToSearch = [metricsRow];
+    if (metricsRowIndex > 0) rowsToSearch.push(jsonData[metricsRowIndex - 1]);
+    if (metricsRowIndex > 1) rowsToSearch.push(jsonData[metricsRowIndex - 2]);
+
+    rowsToSearch.forEach(row => {
+        if (!row) return;
+        row.forEach((cell, idx) => {
+            const s = normalizeName(cell);
+            if (s.includes("adsoyad") || s.includes("adisoyadi") || s.includes("ogrenci") || (s.includes("ad") && s.includes("soy"))) {
+                if (colMap.name === -1) colMap.name = idx;
+            } else if (s === "ad" || s === "adi" || s === "isim" || s === "ogrenciadi") {
+                if (colMap.firstName === -1) colMap.firstName = idx;
+            } else if (s === "soyad" || s === "soyadi" || s === "soyisim") {
+                if (colMap.lastName === -1) colMap.lastName = idx;
+            } else if (s.includes("no") || s.includes("numara") || s === "sn" || s === "ogrno") {
+                if (colMap.number === -1) colMap.number = idx;
+            } else if (s.includes("puan") || s.includes("yerlesme") || s.includes("yks")) {
+                if (colMap.score === -1) colMap.score = idx;
+            } else if (s.includes("toplamnet") || s === "genelnet" || (s === "net" && idx > 15)) {
+                if (colMap.totalNet === -1) colMap.totalNet = idx;
+            }
+        });
+    });
+
+    // Smart Fallback for colMap.name if not detected
+    if (colMap.name === -1 && colMap.firstName === -1) {
+        const firstDataRow = jsonData[metricsRowIndex + 1] || [];
+        if (firstDataRow[1] && String(firstDataRow[1]).length > 5) colMap.name = 1;
+        else if (firstDataRow[0] && String(firstDataRow[0]).length > 5) colMap.name = 0;
+        else colMap.name = 1;
+    }
+
+    // Detect Subject Columns (D-Y-N groups or just N)
+    let lastSubject = "";
+    metricsRow.forEach((cell, idx) => {
+        const s = String(cell || "").trim().toUpperCase();
+        const isNet = s === 'N' || s === 'NET' || s === 'TOPLAM NET';
+        const isCorrect = s === 'D' || s === 'DOĞRU' || s === 'DOGRU';
+
+        if (isCorrect || isNet) {
+            // Found a potential subject column. Let's find out which subject it belongs to.
+            // Look up to 3 rows above for names (for nested headers)
+            let foundName = "";
+            for (let rOffset = 1; rOffset <= 3; rOffset++) {
+                if (metricsRowIndex - rOffset >= 0) {
+                    const rowAbove = jsonData[metricsRowIndex - rOffset];
+                    if (rowAbove && String(rowAbove[idx] || "").trim()) {
+                        foundName = String(rowAbove[idx]).trim();
+                        break;
+                    }
+                }
+            }
+
+            if (!foundName) {
+                // Look backwards in the row directly above
+                const directAbove = jsonData[metricsRowIndex - 1] || [];
+                for (let k = idx; k >= 0; k--) {
+                    if (String(directAbove[k] || "").trim()) {
+                        foundName = String(directAbove[k]).trim();
+                        break;
+                    }
+                }
+            }
+            if (!foundName) foundName = lastSubject;
+            lastSubject = foundName;
+
+            const lowerName = foundName.toLowerCase();
+
+            // Find best matching key for this specific column
+            let bestKey = null;
+            let longestMatchLen = 0;
+
+            Object.keys(currentConfig).forEach(key => {
+                const keywords = currentConfig[key];
+                keywords.forEach(kw => {
+                    const normKw = normalizeName(kw);
+                    const normFound = normalizeName(foundName);
+                    if (normFound.includes(normKw) && normKw.length > longestMatchLen) {
+                        longestMatchLen = normKw.length;
+                        bestKey = key;
+                    }
+                });
+            });
+
+            if (bestKey) {
+                // If it was a 'D' (Correct), we expect Y and N to follow
+                if (isCorrect) {
+                    colMap.subjects[bestKey] = { d: idx, y: idx + 1, n: idx + 2 };
+                } else if (isNet && !colMap.subjects[bestKey]) {
+                    // Only Net column found for this subject
+                    colMap.subjects[bestKey] = { d: -1, y: -1, n: idx };
+                }
+            }
+        }
+    });
+
+    const results = [];
+    for (let i = metricsRowIndex + 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (!row || row.length < 2) continue;
+
+        let studentName = "";
+        if (colMap.name !== -1 && row[colMap.name]) studentName = String(row[colMap.name]).trim();
+        else if (colMap.firstName !== -1) {
+            const f = String(row[colMap.firstName] || "").trim();
+            const l = colMap.lastName !== -1 ? String(row[colMap.lastName] || "").trim() : "";
+            studentName = `${f} ${l}`.trim();
+        }
+
+        // Filter out summary rows (average, total, headers etc.)
+        const lowerName = studentName.toLowerCase();
+        const skipKeywords = ["ortalama", "toplam", "genel", "kurum", "sube", "puan", "derece", "ogrenci", "adsoyad"];
+        if (!studentName || studentName.length < 3 || skipKeywords.some(k => lowerName.includes(k))) continue;
+
+        const subjects = processSubjects(row, colMap);
+        const totalNetVal = colMap.totalNet !== -1 ? parseNum(row[colMap.totalNet]) : Object.values(subjects).reduce((a, b) => a + (b.net || 0), 0);
+        
+        const schoolNumber = colMap.number !== -1 ? normalizeSchoolNumber(row[colMap.number]) : '';
+        const obpScore = getOBPScore(studentName, schoolNumber);
+
+        results.push({
+            student: studentName,
+            number: schoolNumber,
+            subjects,
+            totalNet: parseFloat(totalNetVal.toFixed(2)),
+            score: colMap.score !== -1 ? parseNum(row[colMap.score]) : 0,
+            obpScore: obpScore,
+            examType
+        });
+    }
+
+    return { results, detectedInfo };
+};
+
+export const normalizeName = (name) => {
+    return normalizeNameForKeys(name);
+};
+
+
+export const parseExcelExamData = (file, examType = 'TYT') => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-
         reader.onload = (e) => {
             try {
-                let workbook;
-                try {
-                    const data = e.target.result;
-                    workbook = XLSX.read(data, { type: 'array' });
-                } catch (readErr) {
-                    throw new Error(`Excel dosyası okunamadı. Dosya bozuk veya şifreli olabilir. (${readErr.message})`);
-                }
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: 'array' });
+                const safeExamType = String(examType || 'TYT');
+                const isCombined = ['TYT+AYT', 'TYT+YDT', 'TYT+YDS'].includes(safeExamType);
 
-                const firstSheetName = workbook.SheetNames[0];
-                if (!firstSheetName) {
-                    throw new Error("Excel dosyasında çalışma sayfası bulunamadı.");
-                }
-                const worksheet = workbook.Sheets[firstSheetName];
+                if (workbook.SheetNames.length === 0) throw new Error("Excel dosyası boş.");
 
-                // Convert to array of arrays (loosest format to find headers)
-                let jsonData;
-                try {
-                    jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                } catch (jsonErr) {
-                    throw new Error(`Excel verisi tabloya dönüştürülemedi. (${jsonErr.message})`);
-                }
-                console.log("Step 1: JSON data extracted.");
+                let tytSheet = null;
+                let secondSheet = null;
+                let secondType = safeExamType.includes('AYT') ? 'AYT' : (safeExamType.includes('YDT') ? 'YDT' : 'AYT');
 
-                if (!jsonData || jsonData.length === 0) {
-                    throw new Error("Dosya boş veya Excel formatında değil.");
-                }
-
-                // 1. Metadata Extraction (School, Year, Class, Section) - BEFORE finding headers
-                let detectedClass = "";
-                let detectedSection = "";
-                let detectedSchool = "";
-
-                // Scan first 10 rows for metadata
-                for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
-                    const rowStr = (jsonData[i] || []).map(cell => String(cell)).join(" ").toUpperCase();
-
-                    // Pattern: Match 8, 10, 11, 12. Exclude 9 explicitly or implicitly.
-                    const classMatch = rowStr.match(/(8|10|11|12)\.\s*SINIF/i) || rowStr.match(/(8|10|11|12)\s*\/\s*([A-Z])/i);
-                    if (classMatch) {
-                        detectedClass = classMatch[1];
-                        if (classMatch[2]) detectedSection = classMatch[2];
-                    }
-
-                    // Pattern: "A Şubesi"
-                    const sectionMatch = rowStr.match(/\/\s*([A-Z])\s*ŞUBESI/i) || rowStr.match(/\s+([A-Z])\s+ŞUBESI/i);
-                    if (sectionMatch && !detectedSection) {
-                        detectedSection = sectionMatch[1];
-                    }
-
-                    // School Name (Heuristic: usually contains "LİSESİ" or "OKULU")
-                    if (rowStr.includes("LİSESİ") || rowStr.includes("OKULU") || rowStr.includes("KOLEJİ")) {
-                        detectedSchool = rowStr;
-                    }
-                }
-
-                // 2. Find the Header Row
-                let headerRowIndex = -1;
-                const nameKeywords = ["ad", "isim", "name", "öğrenci", "ogrenci", "ad soyad", "adı"];
-
-                // 2. Find the Header Row - ROBUST LOGIC
-                let bestRowIndex = 0;
-                let maxScore = 0;
-
-                for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
-                    const row = jsonData[i];
-                    if (!row || row.length < 1) continue;
-
-                    const rowStr = row.map(cell => String(cell).toLowerCase().trim());
-                    let score = 0;
-
-                    // Keywords scoring - Safe Includes
-                    if (rowStr.some(c => c && (c.includes("ad") || c.includes("isim") || c.includes("name") || c.includes("öğrenci")))) score += 2;
-                    if (rowStr.some(c => c && c.includes("soyad"))) score += 2;
-                    if (rowStr.some(c => c && (c.includes("no") || c.includes("numara")))) score += 1;
-                    if (rowStr.some(c => c && (c.includes("sınıf") || c.includes("şube")))) score += 1;
-                    if (rowStr.some(c => c && (c.includes("türkçe") || c.includes("matematik")))) score += 1;
-
-                    if (score > maxScore) {
-                        maxScore = score;
-                        bestRowIndex = i;
-                    }
-                }
-
-                headerRowIndex = bestRowIndex;
-                console.log(`Header detection selected row ${headerRowIndex} with score ${maxScore}`);
-
-                if (!jsonData[headerRowIndex]) {
-                    throw new Error("Başlık satırı okunamadı (Satır " + headerRowIndex + ").");
-                }
-
-                const headers = jsonData[headerRowIndex].map(h => String(h || "").trim().toLowerCase());
-
-                // 2. Helper to find columns for a specific subject (Net, Correct, Incorrect)
-                /* 
-                   Strategy:
-                   1. Find all columns that match the subject keyword (e.g. "mat").
-                   2. Check their neighbors or suffixes for "d", "y", "n".
-                   3. Map them to { d: idx, y: idx, net: idx }.
-                */
-                // 2. Advanced Column Mapper
-                const mapSubjectColumns = (subjectKeywords) => {
-                    const mapping = { net: -1, d: -1, y: -1 };
-
-                    try {
-                        // Helper to find index by regex
-                        const findIndex = (regex) => headers.findIndex(h => regex.test(h));
-
-                        const kwPattern = subjectKeywords.join("|");
-
-                        // 1. Explicit NET (e.g. "Mat Net", "Mat N", "Matematik Net")
-                        // matches: (mat|...) followed by space/dot/nothing then (net|n) end-of-param or space
-                        mapping.net = findIndex(new RegExp(`(${kwPattern}).*[\\s\\.\\-\\_]?(net|n)$`, 'i'));
-
-                        // 2. Explicit D/Y (Correct/Incorrect)
-                        mapping.d = findIndex(new RegExp(`(${kwPattern}).*[\\s\\.\\-\\_]?(doğru|dogru|d)$`, 'i'));
-                        mapping.y = findIndex(new RegExp(`(${kwPattern}).*[\\s\\.\\-\\_]?(yanlış|yanlis|y)$`, 'i'));
-
-                        // 3. Implicit NET (Just "Matematik" or "Türkçe")
-                        // Only if we haven't found an explicit Net column, use the subject name itself
-                        // But ensure it's NOT the D or Y column we just found
-                        if (mapping.net === -1) {
-                            const simpleMatch = findIndex(new RegExp(`^(${kwPattern})$`, 'i'));
-                            if (simpleMatch !== -1 && simpleMatch !== mapping.d && simpleMatch !== mapping.y) {
-                                mapping.net = simpleMatch;
-                            }
-                        }
-
-                        // 4. Fallback: Contains subject name but doesn't contain D/Y (and is not Name)
-                        if (mapping.net === -1) {
-                            // Look for headers containing subject keyword but NOT d/y/correct/incorrect
-                            mapping.net = headers.findIndex(h =>
-                                h && subjectKeywords.some(kw => h.includes(kw)) &&
-                                !/d|y|dogru|doğru|yanlış|yanlis/i.test(h)
-                            );
-                        }
-
-                    } catch (err) {
-                        console.error("Mapping error for keywords:", subjectKeywords, err);
-                    }
-                    return mapping;
-                };
-
-                // 3. Map Columns Defensively - IMPROVED FOR OFFICIAL LISTS
-                const safeFind = (keywords) => {
-                    const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
-                    // 1. Exact match first (Priority for "Adı", "Soyadı", "Öğrenci No")
-                    let idx = normalizedHeaders.findIndex(h => keywords.some(kw => h === kw));
-                    if (idx !== -1) return idx;
-
-                    // 2. Contains match (Relaxed)
-                    return normalizedHeaders.findIndex(h => h && keywords.some(kw => h.includes(kw)));
-                };
-
-                const colMap = {
-                    // Specific columns matching the User's Image
-                    firstName: safeFind(["adı", "adi", "ad"]),
-                    lastName: safeFind(["soyadı", "soyadi", "soyad"]),
-                    number: safeFind(["öğrenci no", "ogrenci no", "no", "numara"]),
-                    gender: safeFind(["cinsiyeti", "cinsiyet"]),
-                    boarding: safeFind(["pansiyon", "barınma"]),
-
-                    // Fallback for full name if separate columns don't exist
-                    name: safeFind(["ad soyad", "adı soyadı", "isim soyisim", "student"]),
-
-                    // Other metadata
-                    grade: safeFind(["sınıf", "sinif", "şube"]),
-                    tyt: safeFind(["tyt puan", "tyt net", "tyt total", "tyt"]),
-                    rank: safeFind(["sıra", "derece", "rank"]),
-
-                    turkce: mapSubjectColumns(["türkçe", "turkce", "tr"]),
-                    mat: mapSubjectColumns(["matematik", "mat"]),
-                    fen: mapSubjectColumns(["fen", "fizik"]),
-                    sosyal: mapSubjectColumns(["sosyal", "tarih"])
-                };
-
-                // Validate critical column
-                // Logic: If we have separate First/Last Name columns, we can reconstruct Name.
-                // If we only have Name column, we use that.
-                if (colMap.name === -1 && (colMap.firstName === -1 || colMap.lastName === -1)) {
-                    // Try column 0 as fallback only if absolutely nothing found
-                    // But for official lists, let's be strict or smart.
-                    if (colMap.firstName !== -1 && colMap.lastName === -1) {
-                        // Found First Name but no Last Name? Treat as Full Name
-                        colMap.name = colMap.firstName;
-                    } else {
-                        colMap.name = 0;
-                        console.warn("Name column not identified, defaulting to column 0.");
-                    }
-                }
-
-                console.log("Step 3: Column mapping completed.", colMap);
-
-                // 3. Extract Data & Metadata
-                let metadataColumns = [];
-                try {
-                    const usedIndices = new Set([
-                        colMap.name, colMap.tyt, colMap.rank,
-                        colMap.turkce.d, colMap.turkce.y, colMap.turkce.net,
-                        colMap.mat.d, colMap.mat.y, colMap.mat.net,
-                        colMap.fen.d, colMap.fen.y, colMap.fen.net,
-                        colMap.sosyal.d, colMap.sosyal.y, colMap.sosyal.net
-                    ]);
-
-                    // Identify Metadata Columns (Any column NOT in usedIndices)
-                    metadataColumns = headers.map((h, idx) => {
-                        if (usedIndices.has(idx) || idx === -1 || !h) return null;
-                        // Capitalize first letter for display
-                        const label = h.charAt(0).toUpperCase() + h.slice(1);
-                        return { index: idx, label };
-                    }).filter(Boolean);
-                    console.log("Step 4: Metadata columns identified.", metadataColumns);
-                } catch (metaErr) {
-                    console.warn("Metadata columns error, continuing without extra metadata:", metaErr);
-                    // Continue without metadata if this fails
-                }
-
-                const results = [];
-                console.log("Step 5: Starting data extraction loop.");
-                for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (!row || row.length === 0) continue;
-
-                    // Name Logic: Combine First + Last if available, else use Full Name col
-                    let rawName = "";
-                    if (colMap.firstName !== -1 && colMap.lastName !== -1) {
-                        const first = row[colMap.firstName] || "";
-                        const last = row[colMap.lastName] || "";
-                        rawName = `${first} ${last}`.trim();
-                    } else {
-                        rawName = colMap.name !== -1 ? row[colMap.name] : row[0];
-                    }
-
-                    if (!rawName) continue;
-
-                    // SMART FILTERING: Exclude non-student rows
-                    const nameStr = String(rawName).toLowerCase();
-                    const invalidKeywords = ["ortalama", "toplam", "genel", "ders", "kurum", "okul", "ilçe", "il", "derece"];
-                    if (invalidKeywords.some(kw => kw && nameStr.includes(kw))) {
-                        continue;
-                    }
-
-                    try {
-                        const parseNum = (val) => {
-                            if (typeof val === 'number') return val;
-                            if (!val) return 0;
-                            const float = parseFloat(String(val).replace(',', '.'));
-                            return isNaN(float) ? 0 : float;
-                        };
-
-                        const extractSubjectStats = (mapping) => {
-                            const d = mapping.d !== -1 ? parseNum(row[mapping.d]) : 0;
-                            const y = mapping.y !== -1 ? parseNum(row[mapping.y]) : 0;
-                            let net = mapping.net !== -1 ? parseNum(row[mapping.net]) : 0;
-
-                            // Auto-calculate Net if missing but D/Y exist (Standard: D - Y/4)
-                            if (net === 0 && d > 0) {
-                                net = d - (y / 4);
-                            }
-                            return { d, y, net };
-                        };
-
-                        // Capture Metadata
-                        const metadata = {};
-                        metadataColumns.forEach(col => {
-                            const val = row[col.index];
-                            if (val !== undefined && val !== null && val !== '') {
-                                metadata[col.label] = val;
-                            }
-                        });
-
-                        const result = {
-                            student: String(rawName).trim(),
-                            number: colMap.number !== -1 ? row[colMap.number] : null,
-                            firstName: colMap.firstName !== -1 ? row[colMap.firstName] : null,
-                            lastName: colMap.lastName !== -1 ? row[colMap.lastName] : null,
-                            gender: colMap.gender !== -1 ? row[colMap.gender] : null,
-                            boarding: colMap.boarding !== -1 ? row[colMap.boarding] : null,
-
-                            tyt: colMap.tyt !== -1 ? parseNum(row[colMap.tyt]) : 0,
-                            rank: colMap.rank !== -1 ? row[colMap.rank] : (i - headerRowIndex),
-                            subjects: {
-                                turkce: extractSubjectStats(colMap.turkce),
-                                mat: extractSubjectStats(colMap.mat),
-                                fen: extractSubjectStats(colMap.fen),
-                                sosyal: extractSubjectStats(colMap.sosyal),
-                            },
-                            metadata: metadata // Store extra info here
-                        };
-
-                        // Auto-calculate Total TYT if missing
-                        if (result.tyt === 0) {
-                            result.tyt = result.subjects.turkce.net + result.subjects.mat.net + result.subjects.fen.net + result.subjects.sosyal.net;
-                        }
-
-                        results.push(result);
-                    } catch (rowError) {
-                        console.warn(`Row parsing skipped for index ${i}:`, rowError);
-                        continue;
-                    }
-                }
-                console.log("Step 6: Data extraction complete. Resolving results.");
-
-                resolve({
-                    results,
-                    metadata: {
-                        school: detectedSchool,
-                        classLevel: detectedClass,
-                        section: detectedSection,
-                        title: `${detectedClass}. Sınıf / ${detectedSection} Şubesi`
-                    },
-                    debugInfo: {
-                        headers,
-                        colMap,
-                        firstRow: jsonData[headerRowIndex + 1] // Return first data row for debugging
+                // Identify sheets
+                workbook.SheetNames.forEach(name => {
+                    const lowerName = name.toLowerCase();
+                    if (lowerName.includes('tyt') || lowerName.includes('temel') || lowerName.includes('1.oturum')) {
+                        tytSheet = workbook.Sheets[name];
+                    } else if (lowerName.includes('ayt') || lowerName.includes('alan') || lowerName.includes('2.oturum') || lowerName.includes('ydt') || lowerName.includes('dil')) {
+                        secondSheet = workbook.Sheets[name];
                     }
                 });
 
+                // Single sheet fallback: If no sheet matched by keyword, pick the first one(s)
+                if (!tytSheet && workbook.SheetNames.length > 0) tytSheet = workbook.Sheets[workbook.SheetNames[0]];
+                if (!secondSheet && workbook.SheetNames.length > 1) secondSheet = workbook.Sheets[workbook.SheetNames[1]];
+
+                // Fixed: Pass correct examType based on combination logic
+                let primaryExamType = safeExamType;
+                if (isCombined && secondSheet) primaryExamType = 'TYT'; // If multi-sheet combo, first is TYT
+
+                const tytOutput = parseSingleWorksheet(tytSheet, primaryExamType);
+                let finalResults = tytOutput.results.map(r => ({ ...r, examType: safeExamType }));
+
+                if (isCombined && secondSheet) {
+                    const secondOutput = parseSingleWorksheet(secondSheet, secondType);
+                    const secondMapByNumber = new Map();
+                    const secondMapByName = new Map();
+
+                    secondOutput.results.forEach(r => {
+                        const num = String(r.number || '').trim();
+                        if (num) {
+                            secondMapByNumber.set(num, r);
+                        } else {
+                            secondMapByName.set(normalizeName(r.student), r);
+                        }
+                    });
+
+                    finalResults.forEach(student => {
+                        const sNum = String(student.number || '').trim();
+                        const sNameKey = normalizeName(student.student);
+                        
+                        // Priority 1: Match by School Number
+                        // Priority 2: Match by Name (Fallback if number is missing in either)
+                        const match = (sNum && secondMapByNumber.get(sNum)) || secondMapByName.get(sNameKey);
+                        
+                        if (match) {
+                            student.subjects = { ...student.subjects, ...match.subjects };
+                            student.tyt = student.totalNet;
+                            student.totalNet = parseFloat((student.totalNet + match.totalNet).toFixed(2));
+                            if (match.score > 0) student.score = match.score;
+
+                            // Explicitly copy area nets if present in AYT report
+                            if (match.sayNet !== undefined) student.sayNet = match.sayNet;
+                            if (match.eaNet !== undefined) student.eaNet = match.eaNet;
+                            if (match.sozNet !== undefined) student.sozNet = match.sozNet;
+                            if (match.dilNet !== undefined) student.dilNet = match.dilNet;
+                            
+                            // Cleanup used matches
+                            if (sNum) secondMapByNumber.delete(sNum);
+                            else secondMapByName.delete(sNameKey);
+                        } else {
+                            student.tyt = student.totalNet;
+                        }
+                    });
+
+                    secondMapByNumber.forEach((match) => {
+                        finalResults.push({ ...match, tyt: 0, examType: safeExamType });
+                    });
+                    secondMapByName.forEach((match) => {
+                        finalResults.push({ ...match, tyt: 0, examType: safeExamType });
+                    });
+                } else if (isCombined && !secondSheet) {
+                    // Single sheet combo: totalNet might already contain everything, or we split it
+                    finalResults.forEach(r => {
+                        // Calculate TYT portion specifically
+                        const tytKeys = ["turkce", "mat", "fen", "sosyal"];
+                        const tytNet = Object.keys(r.subjects)
+                            .filter(k => tytKeys.includes(k))
+                            .reduce((sum, k) => sum + (r.subjects[k].net || 0), 0);
+                        r.tyt = parseFloat(tytNet.toFixed(2));
+                    });
+                }
+
+                resolve({
+                    results: finalResults,
+                    metadata: { ...tytOutput.detectedInfo, examType: safeExamType }
+                });
             } catch (error) {
-                console.error("Excel Parser Fatal Error:", error);
-                reject(error.message || "Excel işlenirken bilinmeyen bir hata oluştu.");
+                console.error("Excel Parser Error:", error);
+                reject(error.message);
             }
         };
-
-        reader.onerror = (err) => reject("Dosya okuma hatası: " + err);
+        reader.onerror = (err) => reject("Dosya okunurken hata oluştu.");
         reader.readAsArrayBuffer(file);
     });
 };

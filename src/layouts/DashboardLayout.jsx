@@ -1,94 +1,111 @@
-import React from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import {
-    LayoutDashboard,
-    BookOpen,
-    BarChart2,
-    BrainCircuit,
-    LogOut,
-    Users
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { BrainCircuit, LogOut, Moon, Sun } from 'lucide-react';
 import Chatbot from '../components/Chatbot';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { NotificationBell } from '../components/NotificationPanel';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
-    const isStudent = user?.role === 'student' || !user; // Fallback to student layout if no user (for demo)
+    const { isDark, toggleTheme } = useTheme();
+    const location = useLocation();
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 10);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
-                <div className="p-6 flex items-center space-x-2 border-b border-gray-100">
-                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                        <BrainCircuit className="text-white" size={20} />
+        <div className="min-h-screen transition-colors duration-300"
+            style={{ backgroundColor: 'var(--bg-primary)' }}>
+
+            {/* ── Modern Topbar ─────────────────────────────────────── */}
+            <header
+                className={`sticky top-0 z-30 transition-all duration-300 ${scrolled
+                    ? 'shadow-md border-b'
+                    : 'border-b border-transparent'
+                    }`}
+                style={{
+                    backgroundColor: 'var(--header-bg)',
+                    backdropFilter: 'blur(12px)',
+                    borderColor: scrolled ? 'var(--border-color)' : 'transparent',
+                }}
+            >
+                <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+
+                    {/* Logo */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="on-color w-9 h-9 bg-gradient-to-br from-brand to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                            <BrainCircuit className="text-ink" size={20} />
+                        </div>
+                        <div className="hidden sm:block">
+                            <span className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-brand to-violet-600 block leading-tight">
+                                AI Öğrenci Koçu
+                            </span>
+                            <span className="text-[10px] leading-tight block" style={{ color: 'var(--text-muted)' }}>
+                                {user?.name || 'Misafir'}
+                            </span>
+                        </div>
                     </div>
-                    <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                        İBRAHİM KARATAŞ
-                    </span>
-                </div>
 
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-4 mt-4">Menü</div>
+                    {/* Sağ: User info + araçlar */}
+                    <div className="flex items-center gap-2">
+                        {user?.name && (
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border"
+                                style={{ backgroundColor: 'var(--hover-bg)', borderColor: 'var(--border-color)' }}>
+                                <div className="on-color w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-ink text-[10px] font-bold flex-shrink-0">
+                                    {user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-sm font-semibold max-w-[140px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                                    {user.name}
+                                </span>
+                                {user?.role === 'coach' && (
+                                    <span className="text-[10px] font-bold text-brand bg-brand-soft px-1.5 py-0.5 rounded-md">
+                                        KOÇ
+                                    </span>
+                                )}
+                            </div>
+                        )}
 
-                    {isStudent ? (
-                        <>
-                            <NavLink to="/student/dashboard" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <LayoutDashboard size={20} className="mr-3" />
-                                Ana Sayfa
-                            </NavLink>
+                        {/* 🔔 Bildirim Zili */}
+                        <NotificationBell />
 
-                            <NavLink to="/student/planner" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <BookOpen size={20} className="mr-3" />
-                                Çalışma Planı
-                            </NavLink>
+                        {/* 🌙 Dark Mode Toggle */}
+                        <button
+                            onClick={toggleTheme}
+                            className="p-2 rounded-xl transition-all duration-300 hover:scale-110"
+                            style={{ color: 'var(--text-muted)' }}
+                            title={isDark ? 'Aydınlık Moda Geç' : 'Karanlık Moda Geç'}
+                        >
+                            {isDark
+                                ? <Sun size={20} className="text-warn" />
+                                : <Moon size={20} />
+                            }
+                        </button>
 
-                            <NavLink to="/student/analytics" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <BarChart2 size={20} className="mr-3" />
-                                Analiz & Deneme
-                            </NavLink>
-
-                            <NavLink to="/student/guidance" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <BrainCircuit size={20} className="mr-3" />
-                                Rehberlik & Testler
-                            </NavLink>
-                        </>
-                    ) : (
-                        <>
-                            <NavLink to="/coach/dashboard" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <LayoutDashboard size={20} className="mr-3" />
-                                Koç Paneli
-                            </NavLink>
-                            <NavLink to="/coach/research" className={({ isActive }) => `flex items-center p-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
-                                <BrainCircuit size={20} className="mr-3" />
-                                Materyal Üretici
-                            </NavLink>
-                            {/* Koç için öğrenci listesi vb. eklenebilir. Şimdilik dashboard ana merkez. */}
-                        </>
-                    )}
-                </nav>
-
-                <div className="p-4 border-t border-gray-100">
-                    <div className="px-4 py-2 mb-2">
-                        <p className="text-xs text-gray-500">Giriş yapan:</p>
-                        <p className="text-sm font-bold text-gray-800">{user?.name || 'Misafir'}</p>
+                        {/* Çıkış */}
+                        <button
+                            onClick={logout}
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 border border-transparent hover:border-danger hover:text-danger hover:bg-danger-soft"
+                            style={{ color: 'var(--text-muted)' }}
+                        >
+                            <LogOut size={16} />
+                            <span className="hidden sm:inline">Çıkış</span>
+                        </button>
                     </div>
-                    <button onClick={logout} className="flex items-center w-full p-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors">
-                        <LogOut size={20} className="mr-3" />
-                        Çıkış Yap
-                    </button>
                 </div>
-            </aside>
+            </header>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative">
-                {/* Background decorative elements */}
-                <div className="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/50 to-transparent -z-10 pointer-events-none" />
-
+            {/* ── Ana İçerik ──────────────────────────────────────────── */}
+            <main className="flex-1 relative page-enter">
+                <div className="fixed top-0 left-0 right-0 h-80 bg-gradient-to-b from-indigo-50/20 to-transparent -z-10 pointer-events-none dark:from-indigo-900/10" />
                 <Outlet />
             </main>
 
-            {/* AI Assistant Chatbot */}
+            {/* AI Chatbot */}
             <Chatbot />
         </div>
     );

@@ -1,0 +1,11 @@
+# Uygulama panelleri kişisel veri içerir; arama motorlarına açılmaz.
+# Yalnızca tanıtım sayfası taranabilir.
+
+User-agent: *
+Allow: /$
+Disallow: /login
+Disallow: /register
+Disallow: /coach
+Disallow: /student
+Disallow: /parent
+Disallow: /admin

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft, TrendingUp, Brain, Target, MessageSquare, User,
     Calendar, Plus, BookOpen, CheckCircle, Clock, Edit2, Trash2,
-    FileText, Activity, X, Send
+    FileText, Activity, X, Send, ClipboardList, Layers, BarChart2, Award
 } from 'lucide-react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -14,6 +14,9 @@ import { api } from '../services/api';
 import PerformanceHeatmap from './PerformanceHeatmap';
 import GoalTracking from './GoalTracking';
 import ProgramBuilderModal from '../components/ProgramBuilderModal';
+import SubjectAnalysis from '../components/charts/SubjectAnalysis';
+import StudentReportCard from '../components/coach/StudentReportCard';
+import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
 
 const StudentDetailPage = () => {
     const { id } = useParams();
@@ -21,7 +24,7 @@ const StudentDetailPage = () => {
 
     // State
     const [student, setStudent] = useState(null);
-    const [activeTab, setActiveTab] = useState('academic');
+    const [activeTab, setActiveTab] = useState('karne');
     const [guidanceResults, setGuidanceResults] = useState(null);
     const [homeworks, setHomeworks] = useState([]);
     const [showHomeworkModal, setShowHomeworkModal] = useState(false);
@@ -35,6 +38,18 @@ const StudentDetailPage = () => {
     const [target, setTarget] = useState('Tıp Fakültesi');
     const [isEditingTarget, setIsEditingTarget] = useState(false);
     const [notFound, setNotFound] = useState(false);
+    const [programData, setProgramData] = useState({ schedule: {}, config: {} });
+    const [prgWeek, setPrgWeek] = useState(1);
+    const [prgMonth, setPrgMonth] = useState(1);
+    const chatEndRef = useRef(null);
+    // Öğrenci istatistikleri
+    const [studentStats, setStudentStats] = useState({});
+    const [studentTestResults, setStudentTestResults] = useState([]);
+    const [examResults, setExamResults] = useState([]);
+
+    // CRITICAL: Bu dizinin isimleri ProgramBuilderModal.jsx'teki DAYS ile birebir aynı olmalı!
+    const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    const DAYS_LABEL = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
     // Mock Graph Data
     const GRAPH_DATA = [
@@ -45,38 +60,134 @@ const StudentDetailPage = () => {
         { name: 'Mayıs', tyt: 72, ayt: 48 },
     ];
 
-    useEffect(() => {
-        const loadData = () => {
-            try {
-                // Load student data safely
-                const allStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
-                const found = allStudents.find(s => s.id.toString() === id);
+    // Tüm verileri yükleyen merkezi fonksiyon
+    const loadAllData = useCallback(() => {
+        try {
+            // 🔒 GÜVENLI: Öğrenciyi id'ye göre bul (null/undefined korumalı)
+            const allStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const found = allStudents.find(s => s && s.id != null && String(s.id) === String(id));
 
-                if (found) {
-                    setStudent(found);
-                    setTarget(found.target || 'Hedef Belirlenmedi');
-                } else {
-                    console.warn(`Student with id ${id} not found.`);
-                    setNotFound(true);
-                }
-
-                // Load guidance results safely
-                const savedGuidance = localStorage.getItem('student_guidance_results');
-                if (savedGuidance) {
-                    setGuidanceResults(JSON.parse(savedGuidance));
-                }
-            } catch (error) {
-                console.error("Error loading student details:", error);
+            if (found) {
+                setStudent(found);
+                setTarget(found.target || 'Hedef Belirlenmedi');
+            } else {
+                console.warn(`Student with id ${id} not found in coach_students.`);
                 setNotFound(true);
             }
-        };
 
-        loadData();
+            // Rehberlik sonuçları
+            const savedGuidance = localStorage.getItem('student_guidance_results');
+            if (savedGuidance) {
+                try { setGuidanceResults(JSON.parse(savedGuidance)); } catch { }
+            }
+
+            // Görevleri yükle
+            const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            setHomeworks(allTasks[id] || allTasks[String(id)] || []);
+
+            // Programı yükle
+            const scheduleKey = `program_schedule_${id}`;
+            const configKey = `program_${id}_config`;
+            const monthlyKey = `program_${id}_monthly_grid`;
+            const schedData = localStorage.getItem(scheduleKey) || localStorage.getItem(monthlyKey);
+            const configData = localStorage.getItem(configKey);
+            if (schedData) {
+                try {
+                    setProgramData({
+                        schedule: JSON.parse(schedData),
+                        config: configData ? JSON.parse(configData) : { title: 'Çalışma Programı', dailySlotCount: 6 }
+                    });
+                } catch { }
+            }
+
+            // Öğrenci istatistikleri
+            try {
+                const stats = JSON.parse(localStorage.getItem(`user_stats_${id}`) || '{}');
+                const totalTime = parseInt(localStorage.getItem(`pomodoro_${id}_total`) || '0');
+                const dailyKey2 = `pomodoro_${id}_daily_${new Date().toDateString()}`;
+                const dailyPom = parseInt(localStorage.getItem(dailyKey2) || '0');
+                setStudentStats({ ...stats, totalStudyTime: totalTime, dailyPomodoros: dailyPom });
+            } catch { }
+
+            // Test sonuçları
+            try {
+                const testRes = JSON.parse(localStorage.getItem(`test_results_${id}`) || '[]');
+                setStudentTestResults(testRes);
+            } catch { }
+
+            // 📊 Deneme sonuçlarını yükle (YKS) - Gelişmiş eşleşme mantığı
+            try {
+                const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+                const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+                const legacyResults = JSON.parse(localStorage.getItem('exams_data') || '[]');
+
+                const coachStudents2 = JSON.parse(localStorage.getItem('coach_students') || '[]');
+                const curr = coachStudents2.find(s => s && s.id != null && String(s.id) === String(id));
+
+                if (curr) {
+                    const sName = (curr.name || '').toLowerCase().replace(/[İIıi]/g,'i').trim();
+                    const sNum = String(curr.schoolNumber || curr.number || '').trim();
+
+                    const filteredV2 = v2Results.filter(r => {
+                        if (sNum && r.number && String(r.number).trim() === sNum) return true;
+                        if (r.student) {
+                            const rName = r.student.toLowerCase().replace(/[İIıi]/g,'i').trim();
+                            if (rName === sName) return true;
+                            if (sName && rName.includes(sName)) return true;
+                        }
+                        return false;
+                    }).map(r => {
+                        const trial = v2Trials.find(t => String(t.id) === String(r.trialId)) || {};
+                        return {
+                            ...r,
+                            name: trial.name || r.name || 'Deneme',
+                            date: r.uploadedAt || trial.date || r.date,
+                            examType: r.examType || trial.examType || 'TYT',
+                            totalNet: parseFloat(r.totalNet || r.tyt || 0)
+                        };
+                    });
+
+                    const filteredLegacy = legacyResults.filter(r =>
+                        (r.studentId && String(r.studentId) === String(id)) ||
+                        (sNum && r.number && String(r.number).trim() === sNum) ||
+                        (r.student && r.student.toLowerCase().replace(/[İIıi]/g,'i').trim() === sName)
+                    );
+
+                    const combined = [...filteredV2, ...filteredLegacy].sort((a, b) => new Date(a.date) - new Date(b.date));
+                    setExamResults(combined);
+                }
+            } catch (e) { console.error('Exam load error:', e); }
+
+        } catch (error) {
+            console.error("Error loading student details:", error);
+            setNotFound(true);
+        }
     }, [id]);
+
+    useEffect(() => {
+        if (!id) return;
+        loadAllData();
+        loadMessages();
+
+        // 📡 Cross-tab / Firebase real-time senkronizasyon
+        const handleStorageUpdate = (e) => {
+            if (!e.key || e.key.startsWith('_fbtime_')) return;
+            if (e.key === 'coach_students' || e.key === 'student_tasks' ||
+                e.key === 'v2_results_data' || e.key === 'v2_trials_data' ||
+                e.key === 'exams_data' || e.key === 'student_messages' ||
+                e.key?.startsWith(`program_schedule_${id}`) ||
+                e.key?.startsWith(`program_${id}`)) {
+                loadAllData();
+                loadMessages();
+            }
+        };
+        window.addEventListener('storage', handleStorageUpdate);
+        return () => window.removeEventListener('storage', handleStorageUpdate);
+    }, [id, loadAllData]);
+
 
     const loadMessages = async () => {
         try {
-            // Mock API or LocalStorage for messages
             const msgs = await api.messages.getMessages(id) || [];
             setMessages(msgs);
         } catch (error) {
@@ -84,16 +195,36 @@ const StudentDetailPage = () => {
         }
     };
 
+    // Mesajları periyodik olarak yenile
+    useEffect(() => {
+        if (!id) return;
+        const interval = setInterval(loadMessages, 5000);
+        return () => clearInterval(interval);
+    }, [id]);
+
+    // Chat scroll
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
         try {
-            // Mock send
-            const msg = { text: newMessage, sender: 'coach', timestamp: new Date() };
+            const msg = {
+                text: newMessage,
+                sender: 'coach',
+                senderName: 'Koç',
+                timestamp: new Date().toISOString()
+            };
+
+            // API çağrısı - öğrenciye mesaj gönder
+            await api.messages.sendMessage(id, msg);
+
+            // Local state güncelle
             setMessages([...messages, msg]);
             setNewMessage('');
-            // api.messages.sendMessage(id, msg);
         } catch (error) {
             console.error("Error sending message:", error);
         }
@@ -109,8 +240,21 @@ const StudentDetailPage = () => {
             dueDate: form.dueDate.value,
             status: 'Beklemede',
             isEditing: false,
+            createdAt: new Date().toISOString(),
+            studentId: id,
+            studentName: student.name
         };
-        setHomeworks([...homeworks, newHomework]);
+
+        const updatedHomeworks = [...homeworks, newHomework];
+        setHomeworks(updatedHomeworks);
+
+        // LocalStorage'a kaydet - öğrenciye ulaşsın (key her zaman string)
+        const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+        const keyStr = String(id);
+        if (!allTasks[keyStr]) allTasks[keyStr] = [];
+        allTasks[keyStr].push(newHomework);
+        localStorage.setItem('student_tasks', JSON.stringify(allTasks));
+
         setShowHomeworkModal(false);
     };
 
@@ -121,10 +265,10 @@ const StudentDetailPage = () => {
 
     if (notFound) {
         return (
-            <div className="p-8 text-center text-gray-500 h-screen flex flex-col items-center justify-center">
+            <div className="p-8 text-center text-ink-2 h-screen flex flex-col items-center justify-center">
                 <p className="text-xl font-bold mb-4">Öğrenci Bulunamadı</p>
                 <p className="mb-6">Aradığınız öğrenci sistemde kayıtlı değil veya silinmiş.</p>
-                <button onClick={() => navigate('/coach/dashboard')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-lg font-bold">
+                <button onClick={() => navigate('/coach/dashboard')} className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand-hover transition shadow-lg font-bold">
                     Koç Paneline Dön
                 </button>
             </div>
@@ -133,7 +277,7 @@ const StudentDetailPage = () => {
 
     if (!student) {
         return (
-            <div className="p-8 text-center text-gray-500 h-screen flex items-center justify-center">
+            <div className="p-8 text-center text-ink-2 h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             </div>
         );
@@ -144,35 +288,48 @@ const StudentDetailPage = () => {
 
             {/* Back & Header */}
             <div className="flex items-center space-x-4 mb-4">
-                <button onClick={() => navigate(-1)} className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition shadow-sm">
-                    <ChevronLeft size={20} className="text-gray-600" />
+                <button onClick={() => navigate(-1)} className="p-2 bg-surface border border-line rounded-lg hover:bg-surface-2 transition shadow-sm">
+                    <ChevronLeft size={20} className="text-ink-2" />
                 </button>
                 <div className="flex-1 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{student.name} {student.surname}</h1>
-                        <p className="text-gray-500 text-sm">{student.schoolNumber} • {student.grade || '12. Sınıf'} • {student.section || 'A'} Şubesi</p>
+                        <h1 className="text-2xl font-bold text-ink">{student.name} {student.surname}</h1>
+                        <p className="text-ink-2 text-sm">
+                            {student.schoolNumber && <span>{student.schoolNumber}</span>}
+                            {student.schoolNumber && (student.grade || student.section) && <span> • </span>}
+                            {(student.grade || student.section) && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-brand-soft text-brand mr-1">
+                                    {student.grade}{student.section ? `/${student.section}` : ''}
+                                </span>
+                            )}
+                            {(student.grade || student.section) && <span>Şubesi</span>}
+                        </p>
                     </div>
 
                     {/* Tab Switcher */}
-                    <div className="bg-white p-1 rounded-xl flex space-x-1 shadow-sm border border-gray-100">
-                        <button
-                            onClick={() => setActiveTab('academic')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center ${activeTab === 'academic' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <TrendingUp size={16} className="mr-2" /> Akademik
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('guidance')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center ${activeTab === 'guidance' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <Brain size={16} className="mr-2" /> Rehberlik
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('goals')}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center ${activeTab === 'goals' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            <Target size={16} className="mr-2" /> Hedefler
-                        </button>
+                    <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto">
+                        {[
+                            { id: 'karne', icon: Award, label: 'Karne' },
+                            { id: 'academic', icon: TrendingUp, label: 'Akademik' },
+                            { id: 'program', icon: Calendar, label: 'Program' },
+                            { id: 'guidance', icon: Brain, label: 'Rehberlik' },
+                            { id: 'messages', icon: MessageSquare, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'student').length },
+                            { id: 'goals', icon: Target, label: 'Hedefler' },
+                            { id: 'stats', icon: Activity, label: 'İstatistikler' },
+                            { id: 'tests', icon: ClipboardList, label: 'Test Sonuçları', badge: studentTestResults.length },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`relative px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1 ${activeTab === tab.id ? 'bg-brand-soft text-brand' : 'text-ink-2 hover:text-ink-2'
+                                    }`}
+                            >
+                                <tab.icon size={14} /> {tab.label}
+                                {tab.badge > 0 && (
+                                    <span className="bg-danger text-white text-[9px] font-black rounded-full px-1 min-w-[14px] text-center">{tab.badge}</span>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -182,34 +339,57 @@ const StudentDetailPage = () => {
                 {/* Sol Kolon: Profil Kartı (Sabit) */}
                 <div className="space-y-6">
                     <div className="glass-card p-6 text-center relative overflow-hidden group">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 h-28 absolute top-0 left-0 w-full"></div>
+                        <div className="on-color bg-gradient-to-r from-brand to-purple-600 h-28 absolute top-0 left-0 w-full"></div>
                         <div className="relative mt-12">
-                            <div className="w-28 h-28 mx-auto bg-white rounded-full p-1.5 shadow-xl">
-                                <div className="w-full h-full bg-indigo-50 rounded-full flex items-center justify-center text-4xl font-bold text-indigo-600 uppercase">
+                            <div className="w-28 h-28 mx-auto bg-surface rounded-full p-1.5 shadow-xl">
+                                <div className="w-full h-full bg-brand-soft rounded-full flex items-center justify-center text-4xl font-bold text-brand uppercase">
                                     {student.name.charAt(0)}
                                 </div>
                             </div>
-                            <h2 className="text-xl font-bold text-gray-800 mt-4">{student.name}</h2>
-                            <p className="text-gray-500 font-medium text-sm">{student.grade || '12. Sınıf'} Öğrencisi</p>
+                            <h2 className="text-xl font-bold text-ink mt-4">{student.name}</h2>
+                            {(student.grade || student.section) ? (
+                                <p className="text-ink-2 font-medium text-sm">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-brand-soft text-brand">
+                                        {student.grade}{student.section ? `/${student.section}` : ''}
+                                    </span>
+                                    {' '}Öğrencisi
+                                </p>
+                            ) : (
+                                <p className="text-ink-2 font-medium text-sm">Öğrenci</p>
+                            )}
 
                             <div className="mt-6 flex justify-center space-x-2">
                                 <button
-                                    onClick={() => { setIsMessageModalOpen(true); loadMessages(); }}
-                                    className="flex-1 flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 transition"
+                                    onClick={() => { setActiveTab('messages'); loadMessages(); }}
+                                    className="flex-1 flex items-center justify-center px-4 py-2 bg-brand-soft text-brand rounded-xl text-sm font-bold hover:bg-brand-soft transition"
                                 >
                                     <MessageSquare size={18} className="mr-2" />
                                     Mesaj
                                 </button>
-                                <button className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-100 transition">
+                                <button className="flex-1 flex items-center justify-center px-4 py-2 bg-surface-2 text-ink-2 rounded-xl text-sm font-bold hover:bg-surface-3 transition">
                                     <User size={18} className="mr-2" />
                                     Profil
                                 </button>
                             </div>
                         </div>
 
-                        <div className="mt-8 border-t border-gray-100 pt-6 text-left space-y-4">
+                        <div className="mt-8 border-t border-line pt-6 text-left space-y-4">
+                            {(student.grade || student.section) && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-ink-3 text-xs uppercase font-bold tracking-wider">Sınıf / Şube</span>
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-brand-soft text-brand">
+                                        {student.grade}{student.section ? `/${student.section}` : ''}
+                                    </span>
+                                </div>
+                            )}
+                            {student.schoolNumber && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-ink-3 text-xs uppercase font-bold tracking-wider">Okul No</span>
+                                    <span className="font-bold text-ink-2 text-sm">{student.schoolNumber}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center group">
-                                <span className="text-gray-400 text-xs uppercase font-bold tracking-wider">Hedef</span>
+                                <span className="text-ink-3 text-xs uppercase font-bold tracking-wider">Hedef</span>
                                 {isEditingTarget ? (
                                     <input
                                         type="text"
@@ -218,12 +398,12 @@ const StudentDetailPage = () => {
                                         onBlur={() => setIsEditingTarget(false)}
                                         onKeyDown={(e) => e.key === 'Enter' && setIsEditingTarget(false)}
                                         autoFocus
-                                        className="font-bold text-gray-800 text-sm border-b border-indigo-500 outline-none bg-transparent w-32"
+                                        className="font-bold text-ink text-sm border-b border-brand outline-none bg-transparent w-32"
                                     />
                                 ) : (
                                     <span
                                         onClick={() => setIsEditingTarget(true)}
-                                        className="font-bold text-gray-800 text-sm cursor-pointer hover:text-indigo-600 hover:bg-gray-50 px-2 py-0.5 rounded transition"
+                                        className="font-bold text-ink text-sm cursor-pointer hover:text-brand hover:bg-surface-2 px-2 py-0.5 rounded transition"
                                         title="Düzenlemek için tıklayın"
                                     >
                                         {target}
@@ -231,366 +411,574 @@ const StudentDetailPage = () => {
                                 )}
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-xs uppercase font-bold tracking-wider">Sınava Kalan</span>
-                                <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-sm">{daysLeft} Gün</span>
+                                <span className="text-ink-3 text-xs uppercase font-bold tracking-wider">Sınava Kalan</span>
+                                <span className="font-bold text-brand bg-brand-soft px-2 py-0.5 rounded text-sm">{daysLeft} Gün</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-xs uppercase font-bold tracking-wider">Durum</span>
-                                <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded text-sm">Aktif Takipte</span>
+                                <span className="text-ink-3 text-xs uppercase font-bold tracking-wider">Durum</span>
+                                <span className="font-bold text-ok bg-ok-soft px-2 py-0.5 rounded text-sm">Aktif Takipte</span>
                             </div>
                         </div>
                     </div>
 
                     <div className="glass-card p-6">
-                        <h3 className="font-bold text-gray-800 mb-4">Koç Notları</h3>
+                        <h3 className="font-bold text-ink mb-4">Koç Notları</h3>
                         <textarea
-                            className="w-full h-32 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm resize-none"
+                            className="w-full h-32 p-3 bg-surface-2 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none text-sm resize-none"
                             placeholder="Öğrenci ile ilgili özel notlarınızı buraya alın..."
                         ></textarea>
-                        <button className="mt-2 w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition">Notu Kaydet</button>
+                        <button className="mt-2 w-full py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover transition">Notu Kaydet</button>
                     </div>
 
                     {/* Program Oluşturma Araçları */}
                     <div className="glass-card p-6 border-l-4 border-l-green-500">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                            <Calendar className="mr-2 text-green-500" size={20} />
+                        <h3 className="font-bold text-ink mb-4 flex items-center">
+                            <Calendar className="mr-2 text-ok" size={20} />
                             Program Oluştur
                         </h3>
                         {/* Only one big button now to open the Advanced Builder */}
                         <div className="space-y-3">
                             <button
                                 onClick={() => setShowProgramBuilder(true)}
-                                className="w-full flex items-center justify-between px-4 py-4 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl hover:shadow-lg transition group"
+                                className="w-full flex items-center justify-between px-4 py-4 bg-gradient-to-r from-green-50 to-green-100 border border-ok rounded-xl hover:shadow-lg transition group"
                             >
                                 <div>
-                                    <span className="block text-lg font-bold text-green-800 mb-1">Verimli Planlayıcı</span>
-                                    <span className="text-xs text-green-600 block">Sayısal/Sözel dengeli, akıllı dağıtım</span>
+                                    <span className="block text-lg font-bold text-ok mb-1">Verimli Planlayıcı</span>
+                                    <span className="text-xs text-ok block">Sayısal/Sözel dengeli, akıllı dağıtım</span>
                                 </div>
-                                <div className="bg-white p-2 rounded-full shadow-sm">
-                                    <Plus size={24} className="text-green-600 group-hover:scale-110 transition" />
+                                <div className="bg-surface p-2 rounded-full shadow-sm">
+                                    <Plus size={24} className="text-ok group-hover:scale-110 transition" />
                                 </div>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Orta ve Sağ Kolon İçeriği */}
-                <div className="lg:col-span-2 space-y-8">
+                {/* Sağ kolon: sekme içerikleri.
+                    Eskiden bu blok ızgaranın doğrudan çocuğuydu ve col-span
+                    almadığı için 3 kolonun YALNIZCA BİRİNİ kaplıyordu; karne
+                    dar bir şeride sıkışıp sağda geniş boşluk kalıyordu. */}
+                <div className="lg:col-span-2 space-y-6">
 
-                    {/* --- AKADEMİK SEKME --- */}
-                    {activeTab === 'academic' && (
-                        <div className="space-y-8 animate-fade-in">
-                            {/* Grafik Alanı */}
-                            <div className="glass-card p-6">
-                                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
-                                    <TrendingUp className="mr-2 text-indigo-500" size={20} />
-                                    Net Gelişimi (TYT & AYT)
+                {/* --- PROGRAM SEKMESİ --- */}
+                {activeTab === 'program' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden">
+                            <div className="on-color bg-gradient-to-r from-green-500 to-emerald-600 p-5 text-ink">
+                                <h3 className="font-black text-xl flex items-center gap-2">
+                                    <Calendar size={22} />
+                                    {programData.config?.title || 'Çalışma Programı'}
                                 </h3>
-                                <div className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={GRAPH_DATA}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Line type="monotone" dataKey="tyt" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5' }} activeDot={{ r: 6 }} name="TYT Net" />
-                                            <Line type="monotone" dataKey="ayt" stroke="#EC4899" strokeWidth={3} dot={{ r: 4, fill: '#EC4899' }} activeDot={{ r: 6 }} name="AYT Net" />
-                                        </LineChart>
-                                    </ResponsiveContainer>
+                                <p className="text-ok text-sm mt-1">Koçun tarafından oluşturulan haftalık program</p>
+                            </div>
+                            {Object.keys(programData.schedule).length === 0 ? (
+                                <div className="p-16 text-center">
+                                    <Calendar size={48} className="mx-auto text-ink-3 mb-4" />
+                                    <p className="text-ink-2 font-semibold">Henüz program oluşturulmadı.</p>
+                                    <p className="text-ink-3 text-sm mt-1">Sol paneldeki "Verimli Planlayıcı" ile bir program oluşturun.</p>
+                                    <button
+                                        onClick={() => setShowProgramBuilder(true)}
+                                        className="mt-4 px-6 py-3 bg-ok text-white rounded-xl font-bold hover:bg-ok transition"
+                                    >Yeni Program Oluştur</button>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto p-4">
+                                    <div className="min-w-[500px]">
+                                        {/* Ay + Hafta seçici */}
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {Array.from({ length: Number(programData.config?.programDurationMonths) || 1 }, (_, i) => i + 1).map(m => (
+                                                <button
+                                                    key={m}
+                                                    onClick={() => { setPrgMonth(m); setPrgWeek(1); }}
+                                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition ${prgMonth === m ? 'bg-ok text-ink' : 'bg-surface-3 text-ink-2 hover:bg-ok-soft'}`}
+                                                >{m}. Ay</button>
+                                            ))}
+                                        </div>
+                                        <div className="flex gap-2 mb-4">
+                                            {[1, 2, 3, 4].map(w => (
+                                                <button
+                                                    key={w}
+                                                    onClick={() => setPrgWeek(w)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${prgWeek === w ? 'bg-ok text-ink' : 'bg-surface-3 text-ink-2 hover:bg-ok-soft'}`}
+                                                >{w}. Hafta</button>
+                                            ))}
+                                        </div>
+                                        <div
+                                            className="grid border-2 border-line rounded-xl overflow-hidden"
+                                            style={{ gridTemplateColumns: `50px repeat(7, 1fr)` }}
+                                        >
+                                            <div className="bg-surface-inv text-white text-[10px] font-bold p-1.5 text-center">Etüt</div>
+                                            {DAYS_LABEL.map(d => (
+                                                <div key={d} className="bg-surface-3 text-ink-2 text-[10px] font-bold p-1.5 text-center border-l border-line">{d}</div>
+                                            ))}
+                                            {Array.from({ length: Number(programData.config?.dailySlotCount) || 6 }).map((_, slotIdx) => (
+                                                <React.Fragment key={slotIdx}>
+                                                    <div className="bg-surface-2 text-ink-2 text-[10px] font-semibold p-1 text-center border-b border-r border-line">{slotIdx + 1}.</div>
+                                                    {DAYS_TR.map(day => {
+                                                        // ProgramBuilderModal aynı key formatını kullanıyor: m{ay}-w{hafta}-{gün}-{slot}
+                                                        const cellKey = `m${prgMonth}-w${prgWeek}-${day}-${slotIdx}`;
+                                                        const cell = programData.schedule[cellKey];
+                                                        return (
+                                                            <div key={day} className={`border-b border-r border-line min-h-[44px] p-0.5 ${cell ? cell.color || 'bg-ok-soft' : ''}`}>
+                                                                {cell && (
+                                                                    <div className="text-center h-full flex flex-col justify-center">
+                                                                        <span className="text-[8px] font-bold opacity-60 uppercase leading-tight">{String(cell.subject || '')}</span>
+                                                                        <span className="text-[9px] font-black leading-tight">{String(cell.topic || '')}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </React.Fragment>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- MESAJLAR SEKMESİ --- */}
+                {activeTab === 'messages' && (
+                    <div className="animate-fade-in">
+                        <div className="bg-surface rounded-2xl border border-line shadow-sm flex flex-col" style={{ height: '520px' }}>
+                            <div className="bg-brand p-4 text-white rounded-t-2xl flex items-center gap-3">
+                                <div className="w-9 h-9 bg-surface/20 rounded-full flex items-center justify-center">
+                                    <User size={18} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm">{student.name}</p>
+                                    <p className="text-brand text-xs">Öğrenci Mesajlaşma Kanalı</p>
                                 </div>
                             </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface-2">
+                                {messages.length === 0 ? (
+                                    <div className="text-center mt-16">
+                                        <MessageSquare size={40} className="text-ink-3 mx-auto mb-3" />
+                                        <p className="text-ink-3 text-sm">Henüz mesaj yok.</p>
+                                    </div>
+                                ) : messages.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.sender === 'coach' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[78%] p-3 rounded-2xl text-sm ${msg.sender === 'coach'
+                                            ? 'bg-brand text-white rounded-br-none'
+                                            : 'bg-surface border border-line text-ink rounded-bl-none shadow-sm'
+                                            }`}>
+                                            {msg.sender !== 'coach' && (
+                                                <p className="text-xs font-bold text-brand mb-0.5">{msg.senderName || student.name}</p>
+                                            )}
+                                            <p>{msg.text}</p>
+                                            <span className="text-[10px] opacity-60 block mt-1">
+                                                {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                            </div>
+                            <form onSubmit={handleSendMessage} className="p-3 bg-surface border-t border-line flex gap-2 rounded-b-2xl">
+                                <input
+                                    value={newMessage}
+                                    onChange={e => setNewMessage(e.target.value)}
+                                    placeholder="Öğrenciye mesaj gönder..."
+                                    className="flex-1 bg-surface-3 rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                                />
+                                <button type="submit" disabled={!newMessage.trim()} className="p-2.5 bg-brand text-white rounded-full hover:bg-brand-hover disabled:opacity-40 transition">
+                                    <Send size={18} />
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
-                            {/* Akıllı Konu Analizi Heatmap */}
-                            <PerformanceHeatmap />
+                {/* --- AKADEMİK SEKME --- */}
+                {activeTab === 'karne' && student && (
+                    <div className="animate-fade-in">
+                        <StudentReportCard student={student} />
+                    </div>
+                )}
 
-                            {/* Ödevler Listesi */}
-                            <div className="glass-card p-6">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                                        <BookOpen className="mr-2 text-purple-500" size={20} />
-                                        Atanan Görevler & Ödevler
-                                    </h3>
-                                    <button
-                                        onClick={() => setShowHomeworkModal(true)}
-                                        className="flex items-center px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-100 transition"
-                                    >
-                                        <Plus size={16} className="mr-1" />
-                                        Yeni Görev
-                                    </button>
+                {activeTab === 'academic' && (
+                    <div className="space-y-8 animate-fade-in">
+                        {/* Grafik Alanı */}
+                        <div className="glass-card p-6">
+                            <h3 className="text-lg font-bold text-ink mb-6 flex items-center">
+                                <TrendingUp className="mr-2 text-brand" size={20} />
+                                Net Gelişimi (TYT & AYT)
+                            </h3>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={GRAPH_DATA}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                        <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Line type="monotone" dataKey="tyt" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5' }} activeDot={{ r: 6 }} name="TYT Net" />
+                                        <Line type="monotone" dataKey="ayt" stroke="var(--c5)" strokeWidth={3} dot={{ r: 4, fill: 'var(--c5)' }} activeDot={{ r: 6 }} name="AYT Net" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Gelişmiş Deneme Analizleri */}
+                        <div className="space-y-8">
+                            <h3 className="text-xl font-black text-ink flex items-center gap-2 border-b border-line pb-4">
+                                <BarChart2 size={24} className="text-brand" />
+                                Detaylı Deneme Analizi
+                            </h3>
+                            
+                            {examResults.length > 0 ? (
+                                <>
+                                    <ComparativeAnalysis studentResults={examResults} />
+                                    <SubjectAnalysis results={examResults} />
+                                </>
+                            ) : (
+                                <div className="bg-surface-2 border-2 border-dashed border-line rounded-3xl p-12 text-center">
+                                    <p className="text-ink-3 font-medium">Bu öğrenciye ait henüz deneme sınavı kaydı bulunamadı.</p>
+                                    <p className="text-xs text-ink-3 mt-2">Denemeler tabından veri ekleyebilirsiniz.</p>
                                 </div>
+                            )}
+                        </div>
 
-                                <div className="space-y-4">
-                                    {homeworks.map((hw) => (
-                                        <div key={hw.id} className="flex items-center p-4 border border-gray-100 rounded-xl hover:border-purple-200 transition bg-white group">
-                                            <div className={`p-2 rounded-lg mr-4 ${hw.status === 'Tamamlandı' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                                                {hw.status === 'Tamamlandı' ? <CheckCircle size={20} /> : <Clock size={20} />}
-                                            </div>
-                                            <div className="flex-1">
-                                                {hw.isEditing ? (
-                                                    <div className="flex flex-col space-y-2">
+                        {/* Akıllı Konu Analizi Heatmap */}
+                        <PerformanceHeatmap />
+
+                        {/* Ödevler Listesi */}
+                        <div className="glass-card p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-bold text-ink flex items-center">
+                                    <BookOpen className="mr-2 text-c4" size={20} />
+                                    Atanan Görevler & Ödevler
+                                </h3>
+                                <button
+                                    onClick={() => setShowHomeworkModal(true)}
+                                    className="flex items-center px-3 py-1.5 bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4 rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] transition"
+                                >
+                                    <Plus size={16} className="mr-1" />
+                                    Yeni Görev
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {homeworks.map((hw) => (
+                                    <div key={hw.id} className="flex items-center p-4 border border-line rounded-xl hover:border-[color-mix(in_srgb,var(--c4)_35%,transparent)] transition bg-surface group">
+                                        <div className={`p-2 rounded-lg mr-4 ${hw.status === 'Tamamlandı' ? 'bg-ok-soft text-ok' : 'bg-surface-3 text-ink-2'}`}>
+                                            {hw.status === 'Tamamlandı' ? <CheckCircle size={20} /> : <Clock size={20} />}
+                                        </div>
+                                        <div className="flex-1">
+                                            {hw.isEditing ? (
+                                                <div className="flex flex-col space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        defaultValue={hw.title}
+                                                        onChange={(e) => {
+                                                            const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, title: e.target.value } : h);
+                                                            setHomeworks(newHomeworks);
+                                                        }}
+                                                        className="text-sm font-semibold border border-[color-mix(in_srgb,var(--c4)_35%,transparent)] rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                                    />
+                                                    <div className="flex space-x-2">
                                                         <input
                                                             type="text"
-                                                            defaultValue={hw.title}
+                                                            defaultValue={hw.subject}
                                                             onChange={(e) => {
-                                                                const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, title: e.target.value } : h);
+                                                                const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, subject: e.target.value } : h);
                                                                 setHomeworks(newHomeworks);
                                                             }}
-                                                            className="text-sm font-semibold border border-purple-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                                            className="text-xs border border-line-2 rounded px-2 py-1 w-24"
                                                         />
-                                                        <div className="flex space-x-2">
-                                                            <input
-                                                                type="text"
-                                                                defaultValue={hw.subject}
-                                                                onChange={(e) => {
-                                                                    const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, subject: e.target.value } : h);
-                                                                    setHomeworks(newHomeworks);
-                                                                }}
-                                                                className="text-xs border border-gray-300 rounded px-2 py-1 w-24"
-                                                            />
-                                                            <input
-                                                                type="date"
-                                                                defaultValue={hw.dueDate}
-                                                                onChange={(e) => {
-                                                                    const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, dueDate: e.target.value } : h);
-                                                                    setHomeworks(newHomeworks);
-                                                                }}
-                                                                className="text-xs border border-gray-300 rounded px-2 py-1"
-                                                            />
-                                                        </div>
+                                                        <input
+                                                            type="date"
+                                                            defaultValue={hw.dueDate}
+                                                            onChange={(e) => {
+                                                                const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, dueDate: e.target.value } : h);
+                                                                setHomeworks(newHomeworks);
+                                                            }}
+                                                            className="text-xs border border-line-2 rounded px-2 py-1"
+                                                        />
                                                     </div>
-                                                ) : (
-                                                    <>
-                                                        <h4 className="font-semibold text-gray-800">{hw.title}</h4>
-                                                        <p className="text-xs text-gray-500">{hw.subject} • Son Tarih: {hw.dueDate}</p>
-                                                    </>
-                                                )}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <h4 className="font-semibold text-ink">{hw.title}</h4>
+                                                    <p className="text-xs text-ink-2">{hw.subject} • Son Tarih: {hw.dueDate}</p>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            {!hw.isEditing && (
+                                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${hw.status === 'Tamamlandı' ? 'bg-ok-soft text-ok' : 'bg-warn-soft text-warn'}`}>
+                                                    {hw.status}
+                                                </span>
+                                            )}
+
+                                            <button
+                                                onClick={() => {
+                                                    const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, isEditing: !h.isEditing } : h);
+                                                    setHomeworks(newHomeworks);
+                                                }}
+                                                className={`p-1.5 rounded-lg transition ${hw.isEditing ? 'bg-ok-soft text-ok hover:bg-green-200' : 'text-brand hover:text-brand hover:bg-brand-soft'} opacity-0 group-hover:opacity-100 focus:opacity-100`}
+                                                title={hw.isEditing ? "Kaydet" : "Düzenle"}
+                                            >
+                                                {hw.isEditing ? <CheckCircle size={16} /> : <Edit2 size={16} />}
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) {
+                                                        setHomeworks(homeworks.filter(h => h.id !== hw.id));
+                                                    }
+                                                }}
+                                                className="text-danger hover:text-danger p-1 opacity-0 group-hover:opacity-100 transition hover:bg-danger-soft rounded-lg"
+                                                title="Ödevi Sil"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+                {/* --- REHBERLİK RAPORLARI SEKMESİ --- */}
+                {activeTab === 'guidance' && (
+                    <div className="space-y-8 animate-fade-in">
+                        {!guidanceResults ? (
+                            <div className="glass-card p-12 text-center text-ink-2">
+                                <FileText size={48} className="mx-auto mb-4 opacity-20" />
+                                <p>Henüz çözülmüş bir rehberlik testi bulunmuyor.</p>
+                                <p className="text-sm">Öğrenci "Rehberlik" sayfasından test çözdükçe sonuçlar buraya düşecektir.</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* 1. Holland ve Çoklu Zeka Grafikleri */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                    {/* Holland Radar Chart */}
+                                    {guidanceResults.holland && (
+                                        <div className="glass-card p-6">
+                                            <h3 className="font-bold text-ink mb-4 flex items-center">
+                                                <Brain className="mr-2 text-brand" size={20} /> Mesleki İlgi Alanları
+                                            </h3>
+                                            <div className="h-[250px] w-full relative" style={{ minHeight: '250px' }}>
+                                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                                    <RadarChart outerRadius="80%" data={guidanceResults.holland.chartData}>
+                                                        <PolarGrid />
+                                                        <PolarAngleAxis dataKey="name" tick={{ fontSize: 10 }} />
+                                                        <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} />
+                                                        <Radar name="Skor" dataKey="score" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.4} />
+                                                    </RadarChart>
+                                                </ResponsiveContainer>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                {!hw.isEditing && (
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${hw.status === 'Tamamlandı' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                                                        {hw.status}
-                                                    </span>
-                                                )}
+                                            <p className="text-sm text-ink-2 mt-2 text-center font-medium bg-brand-soft p-2 rounded-lg">
+                                                {guidanceResults.holland.summary}
+                                            </p>
+                                        </div>
+                                    )}
 
+                                    {/* Çoklu Zeka Bar Chart */}
+                                    {guidanceResults.multiple_intelligence && (
+                                        <div className="glass-card p-6">
+                                            <h3 className="font-bold text-ink mb-4 flex items-center">
+                                                <Activity className="mr-2 text-danger" size={20} /> Zeka Türleri
+                                            </h3>
+                                            <div className="h-[250px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={guidanceResults.multiple_intelligence.chartData} layout="vertical" margin={{ left: 40 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                        <XAxis type="number" hide />
+                                                        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
+                                                        <Tooltip cursor={{ fill: '#f4f4f5' }} contentStyle={{ borderRadius: '8px' }} />
+                                                        <Bar dataKey="score" fill="var(--c5)" radius={[0, 4, 4, 0]} barSize={20} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            <p className="text-sm text-ink-2 mt-2 text-center font-medium bg-danger-soft p-2 rounded-lg">
+                                                {guidanceResults.multiple_intelligence.summary}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 2. Diğer Testlerin Sonuç Kartları */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {Object.entries(guidanceResults).map(([key, res]) => {
+                                        if (key === 'holland' || key === 'multiple_intelligence') return null;
+                                        return (
+                                            <div key={key} className="glass-card p-6 border-l-4 border-l-indigo-500 relative group">
                                                 <button
                                                     onClick={() => {
-                                                        const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, isEditing: !h.isEditing } : h);
-                                                        setHomeworks(newHomeworks);
-                                                    }}
-                                                    className={`p-1.5 rounded-lg transition ${hw.isEditing ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'text-indigo-300 hover:text-indigo-500 hover:bg-indigo-50'} opacity-0 group-hover:opacity-100 focus:opacity-100`}
-                                                    title={hw.isEditing ? "Kaydet" : "Düzenle"}
-                                                >
-                                                    {hw.isEditing ? <CheckCircle size={16} /> : <Edit2 size={16} />}
-                                                </button>
-
-                                                <button
-                                                    onClick={() => {
-                                                        if (window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) {
-                                                            setHomeworks(homeworks.filter(h => h.id !== hw.id));
+                                                        if (window.confirm('Bu raporu silmek istediğinize emin misiniz?')) {
+                                                            const newResults = { ...guidanceResults };
+                                                            delete newResults[key];
+                                                            setGuidanceResults(newResults);
                                                         }
                                                     }}
-                                                    className="text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition hover:bg-red-50 rounded-lg"
-                                                    title="Ödevi Sil"
+                                                    className="absolute top-4 right-4 text-danger hover:text-danger opacity-0 group-hover:opacity-100 transition p-1"
+                                                    title="Raporu Sil"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={18} />
                                                 </button>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h4 className="font-bold text-ink">{res.testName}</h4>
+                                                    <span className="text-xs text-ink-3">{new Date(res.date).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="text-2xl font-bold text-brand mb-2">{res.summary}</div>
+                                                <p className="text-sm text-ink-2">{res.detail}</p>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* --- HEDEFLER SEKMESİ --- */}
+                {activeTab === 'goals' && (
+                    <GoalTracking />
+                )}
+
+                {/* --- İSTATİSTİKLER SEKMESİ (Koç görünümü) --- */}
+                {activeTab === 'stats' && (
+                    <div className="animate-fade-in space-y-6">
+                        <h2 className="text-xl font-black text-ink flex items-center gap-2">
+                            <Activity size={20} className="text-brand" />
+                            {student.name} — Öğrenci İstatistikleri
+                        </h2>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {[
+                                { icon: '🔥', label: 'Günlük Seri', value: `${studentStats.currentStreak || 0} Gün`, bg: 'bg-warn-soft', text: 'text-warn' },
+                                { icon: '⭐', label: 'Toplam XP', value: studentStats.totalXP || 0, bg: 'bg-warn-soft', text: 'text-warn' },
+                                { icon: '🏆', label: 'En Uzun Seri', value: `${studentStats.maxStreak || 0} Gün`, bg: 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))]', text: 'text-c4' },
+                                { icon: '⏱️', label: 'Toplam Çalışma', value: `${Math.floor((studentStats.totalStudyTime || 0) / 60)}s ${(studentStats.totalStudyTime || 0) % 60}dk`, bg: 'bg-info-soft', text: 'text-info' },
+                                { icon: '🎯', label: 'Günlük Pomodoro', value: studentStats.dailyPomodoros || 0, bg: 'bg-ok-soft', text: 'text-ok' },
+                                { icon: '📊', label: 'Seviye', value: `Sv.${studentStats.totalXP ? Math.floor(studentStats.totalXP / 100) + 1 : 1}`, bg: 'bg-brand-soft', text: 'text-brand' },
+                            ].map((card, i) => (
+                                <div key={i} className={`${card.bg} rounded-2xl p-4 shadow-sm border border-white flex items-center gap-3`}>
+                                    <span className="text-2xl">{card.icon}</span>
+                                    <div>
+                                        <p className="text-xs text-ink-2 font-medium">{card.label}</p>
+                                        <p className={`text-lg font-black ${card.text}`}>{card.value}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {(studentStats.totalStudyTime || 0) === 0 && (studentStats.totalXP || 0) === 0 && (
+                            <div className="bg-surface rounded-2xl p-8 text-center border border-dashed border-line">
+                                <p className="text-3xl mb-2">📊</p>
+                                <p className="text-ink-2 font-medium">Öğrenci henüz uygulama içinde aktif değil.</p>
+                                <p className="text-xs text-ink-3 mt-1">Veri oluştuğunda burada görünecek.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- TEST SONUÇLARI SEKMESİ (Koç görünümü) --- */}
+                {activeTab === 'tests' && (
+                    <div className="animate-fade-in space-y-4">
+                        <h2 className="text-xl font-black text-ink flex items-center gap-2">
+                            <ClipboardList size={20} className="text-brand" />
+                            {student.name} — Test Sonuçları
+                        </h2>
+
+                        {studentTestResults.length === 0 ? (
+                            <div className="bg-surface rounded-2xl p-12 text-center border border-dashed border-line">
+                                <p className="text-3xl mb-2">🧠</p>
+                                <p className="text-ink-2 font-medium">Henüz tamamlanmış test yok</p>
+                                <p className="text-xs text-ink-3 mt-1">Öğrenci test tamamladığında sonuçlar burada görünür.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {studentTestResults.map((r, idx) => (
+                                    <div key={idx} className="bg-surface rounded-xl p-4 shadow-sm border border-line flex items-center gap-4">
+                                        <div className="on-color w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center text-ink text-lg font-bold flex-shrink-0">
+                                            ✓
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-ink truncate">{r.testTitle || 'Test'}</p>
+                                            <p className="text-xs text-ink-2">{r.date ? new Date(r.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <span className="inline-block bg-brand-soft text-brand px-3 py-1 rounded-lg text-sm font-bold">
+                                                {r.level || 'Tamamlandı'}
+                                            </span>
+                                            {r.comment && (
+                                                <p className="text-xs text-ink-3 mt-1 max-w-[160px] truncate" title={r.comment}>{r.comment}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+                </div>
+
+                {/* Ödev Atama Modalı */}
+                {
+                    showHomeworkModal && (
+                        <div className="fixed inset-0 z-modal-base flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                            <div className="bg-surface rounded-2xl w-full max-w-md p-6 animate-fade-in shadow-2xl">
+                                <h3 className="text-xl font-bold text-ink mb-4">Yeni Görev Ata</h3>
+                                <form onSubmit={handleAddHomework} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-ink-2 mb-1">Ders / Konu</label>
+                                        <select name="subject" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none">
+                                            <option>Matematik</option>
+                                            <option>Fizik</option>
+                                            <option>Kimya</option>
+                                            <option>Türkçe</option>
+                                            <option>Geometri</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-ink-2 mb-1">Görev Başlığı</label>
+                                        <input required name="title" type="text" placeholder="Örn: 50 Soru Çözümü" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-ink-2 mb-1">Son Tarih</label>
+                                        <input required name="dueDate" type="date" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
+                                    </div>
+                                    <div className="flex space-x-3 pt-4">
+                                        <button type="button" onClick={() => setShowHomeworkModal(false)} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-xl font-medium hover:bg-surface-3 transition">
+                                            İptal
+                                        </button>
+                                        <button type="submit" className="flex-1 py-2 bg-brand text-white rounded-xl font-medium hover:bg-brand-hover transition">
+                                            Görevi Ata
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                    )}
+                    )
+                }
 
+                {/* Program Builder Modal */}
+                {
+                    showProgramBuilder && (
+                        <ProgramBuilderModal
+                            studentId={id}
+                            studentName={student.name}
+                            onClose={() => {
+                                setShowProgramBuilder(false);
+                                const s = localStorage.getItem(`program_schedule_${id}`) || localStorage.getItem(`program_${id}_monthly_grid`);
+                                const c = localStorage.getItem(`program_${id}_config`);
+                                if (s) setProgramData({ schedule: JSON.parse(s), config: c ? JSON.parse(c) : { title: 'Çalışma Programı', dailySlotCount: 6 } });
+                            }}
+                        />
+                    )
+                }
 
-                    {/* --- REHBERLİK RAPORLARI SEKMESİ --- */}
-                    {activeTab === 'guidance' && (
-                        <div className="space-y-8 animate-fade-in">
-                            {!guidanceResults ? (
-                                <div className="glass-card p-12 text-center text-gray-500">
-                                    <FileText size={48} className="mx-auto mb-4 opacity-20" />
-                                    <p>Henüz çözülmüş bir rehberlik testi bulunmuyor.</p>
-                                    <p className="text-sm">Öğrenci "Rehberlik" sayfasından test çözdükçe sonuçlar buraya düşecektir.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* 1. Holland ve Çoklu Zeka Grafikleri */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                                        {/* Holland Radar Chart */}
-                                        {guidanceResults.holland && (
-                                            <div className="glass-card p-6">
-                                                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                                                    <Brain className="mr-2 text-indigo-500" size={20} /> Mesleki İlgi Alanları
-                                                </h3>
-                                                <div className="h-[250px] w-full">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <RadarChart outerRadius="80%" data={guidanceResults.holland.chartData}>
-                                                            <PolarGrid />
-                                                            <PolarAngleAxis dataKey="name" tick={{ fontSize: 10 }} />
-                                                            <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} />
-                                                            <Radar name="Skor" dataKey="score" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.4} />
-                                                        </RadarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                                <p className="text-sm text-gray-600 mt-2 text-center font-medium bg-indigo-50 p-2 rounded-lg">
-                                                    {guidanceResults.holland.summary}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Çoklu Zeka Bar Chart */}
-                                        {guidanceResults.multiple_intelligence && (
-                                            <div className="glass-card p-6">
-                                                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                                                    <Activity className="mr-2 text-rose-500" size={20} /> Zeka Türleri
-                                                </h3>
-                                                <div className="h-[250px] w-full">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={guidanceResults.multiple_intelligence.chartData} layout="vertical" margin={{ left: 40 }}>
-                                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                                            <XAxis type="number" hide />
-                                                            <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
-                                                            <Tooltip cursor={{ fill: '#f4f4f5' }} contentStyle={{ borderRadius: '8px' }} />
-                                                            <Bar dataKey="score" fill="#F43F5E" radius={[0, 4, 4, 0]} barSize={20} />
-                                                        </BarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                                <p className="text-sm text-gray-600 mt-2 text-center font-medium bg-rose-50 p-2 rounded-lg">
-                                                    {guidanceResults.multiple_intelligence.summary}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* 2. Diğer Testlerin Sonuç Kartları */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {Object.entries(guidanceResults).map(([key, res]) => {
-                                            if (key === 'holland' || key === 'multiple_intelligence') return null;
-                                            return (
-                                                <div key={key} className="glass-card p-6 border-l-4 border-l-indigo-500 relative group">
-                                                    <button
-                                                        onClick={() => {
-                                                            if (window.confirm('Bu raporu silmek istediğinize emin misiniz?')) {
-                                                                const newResults = { ...guidanceResults };
-                                                                delete newResults[key];
-                                                                setGuidanceResults(newResults);
-                                                            }
-                                                        }}
-                                                        className="absolute top-4 right-4 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition p-1"
-                                                        title="Raporu Sil"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-gray-800">{res.testName}</h4>
-                                                        <span className="text-xs text-gray-400">{new Date(res.date).toLocaleDateString()}</span>
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-indigo-600 mb-2">{res.summary}</div>
-                                                    <p className="text-sm text-gray-600">{res.detail}</p>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    {/* --- HEDEFLER SEKMESİ --- */}
-                    {activeTab === 'goals' && (
-                        <GoalTracking />
-                    )}
-
-                </div>
             </div>
-
-            {/* Ödev Atama Modalı */}
-            {showHomeworkModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-fade-in shadow-2xl">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4">Yeni Görev Ata</h3>
-                        <form onSubmit={handleAddHomework} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ders / Konu</label>
-                                <select name="subject" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                                    <option>Matematik</option>
-                                    <option>Fizik</option>
-                                    <option>Kimya</option>
-                                    <option>Türkçe</option>
-                                    <option>Geometri</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Görev Başlığı</label>
-                                <input required name="title" type="text" placeholder="Örn: 50 Soru Çözümü" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Son Tarih</label>
-                                <input required name="dueDate" type="date" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                            </div>
-
-                            <div className="flex space-x-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowHomeworkModal(false)}
-                                    className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition"
-                                >
-                                    Görevi Ata
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Program Builder Modal */}
-            {showProgramBuilder && (
-                <ProgramBuilderModal
-                    studentId={id}
-                    studentName={student.name}
-                    onClose={() => setShowProgramBuilder(false)}
-                />
-            )}
-
-            {/* Message Modal */}
-            {isMessageModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-md h-[600px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in">
-                        <div className="bg-indigo-600 p-4 text-white flex justify-between items-center">
-                            <h3 className="font-bold flex items-center"><MessageSquare size={18} className="mr-2" /> Öğrenciyle Mesajlaş</h3>
-                            <button onClick={() => setIsMessageModalOpen(false)}><X size={24} className="hover:text-indigo-200 transition" /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-                            {messages.length === 0 ? (
-                                <p className="text-center text-gray-400 text-sm mt-10">Henüz mesaj yok. Bir şeyler yazın...</p>
-                            ) : (
-                                messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex ${msg.sender === 'coach' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[80%] p-3 rounded-xl text-sm ${msg.sender === 'coach' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'}`}>
-                                            <p>{msg.text}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-200 flex gap-2">
-                            <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Mesajınızı yazın..." className="flex-1 bg-gray-100 border-none rounded-full px-4 text-sm focus:outline-none" />
-                            <button type="submit" className="p-2 bg-indigo-600 text-white rounded-full hover:scale-105 transition"><Send size={20} /></button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-        </div>
+        </div >
     );
 };
 

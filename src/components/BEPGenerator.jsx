@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, ChevronDown, CheckCircle, Upload, Printer, Download, BookOpen, Folder, ClipboardList, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
+import { FileText, X, ChevronDown, CheckCircle, Upload, Printer, Download, BookOpen, Folder, ClipboardList, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import { bepData } from '../data/bepData';
 
 const BEPGenerator = ({ students, closeModal }) => {
@@ -106,15 +106,15 @@ const BEPGenerator = ({ students, closeModal }) => {
             : [];
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto w-full h-full">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden my-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-high p-4 animate-fade-in overflow-y-auto w-full h-full">
+            <div className="bg-surface rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden my-8">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-blue-700 to-indigo-600 px-8 py-5 flex justify-between items-center text-white shrink-0">
+                <div className="on-color bg-gradient-to-r from-blue-700 to-brand px-8 py-5 flex justify-between items-center text-white shrink-0">
                     <div>
                         <h3 className="font-bold text-2xl flex items-center">
                             <FileText className="mr-2" /> MEB Standartlarında BEP Hazırlama
                         </h3>
-                        <p className="text-indigo-100 text-sm opacity-90 mt-1">
+                        <p className="text-brand text-sm opacity-90 mt-1">
                             {step === 1 && 'Adım 1: Okul ve Öğrenci Bilgileri'}
                             {step === 2 && 'Adım 2: Eğitsel Performans Düzeyi'}
                             {step === 3 && 'Adım 3: Amaçlar ve Tarihler'}
@@ -122,57 +122,63 @@ const BEPGenerator = ({ students, closeModal }) => {
                             {step === 5 && 'Adım 5: Görüntüleme ve Çıktı'}
                         </p>
                     </div>
-                    <button onClick={closeModal} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
-                        <ChevronDown size={24} className="transform rotate-180" />
+                    {/* Kapatma butonu ters çevrilmiş bir oktu; ne kullanıcı ne de
+                        ESC/perde kapatma mantığı bunu kapatma olarak tanıyordu. */}
+                    <button
+                        onClick={closeModal}
+                        aria-label="Kapat"
+                        className="bg-surface/20 p-2 rounded-full hover:bg-surface/35 transition shrink-0"
+                    >
+                        <X size={22} />
                     </button>
                 </div>
 
                 {/* Content - Scrollable */}
-                <div className="p-8 overflow-y-auto flex-1 bg-gray-50">
+                <div className="p-8 overflow-y-auto flex-1 bg-surface-2">
                     {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-8">
-                        <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${(step / 5) * 100}%` }}></div>
+                    <div className="w-full bg-surface-3 rounded-full h-2.5 mb-8">
+                        <div className="bg-info h-2.5 rounded-full transition-all duration-500" style={{ width: `${(step / 5) * 100}%` }}></div>
                     </div>
 
                     {step === 1 && (
                         <div className="space-y-6 animate-fade-in">
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                                <h4 className="font-bold text-gray-800 mb-4 border-b pb-2">Okul ve Öğrenci Bilgileri</h4>
+                            <div className="bg-surface p-6 rounded-xl border border-line shadow-sm">
+                                <h4 className="font-bold text-ink mb-4 border-b pb-2">Okul ve Öğrenci Bilgileri</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">İlçe Adı</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">İlçe Adı</label>
                                         <input
                                             type="text"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             placeholder="Örn: Kadıköy"
                                             value={formData.districtName}
                                             onChange={(e) => setFormData({ ...formData, districtName: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Okul Adı</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Okul Adı</label>
                                         <input
                                             type="text"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             placeholder="Örn: Cumhuriyet Anadolu Lisesi"
                                             value={formData.schoolName}
                                             onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Eğitim Öğretim Yılı</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Eğitim Öğretim Yılı</label>
                                         <input
                                             type="text"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             placeholder="Örn: 2024-2025"
                                             value={formData.academicYear}
                                             onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Öğrenci Adı Soyadı</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Adı Soyadı</label>
                                         <select
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
                                             value={formData.studentName}
                                         >
@@ -183,38 +189,38 @@ const BEPGenerator = ({ students, closeModal }) => {
                                     </div>
                                     {formData.studentName === 'Manuel' && (
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1">Ad Soyad Giriniz</label>
+                                            <label className="block text-sm font-bold text-ink-2 mb-1">Ad Soyad Giriniz</label>
                                             <input
                                                 type="text"
-                                                className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                                 onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
                                             />
                                         </div>
                                     )}
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Öğrenci Numarası</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Numarası</label>
                                         <input
                                             type="text"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             placeholder="Örn: 1245"
                                             value={formData.studentNumber}
                                             onChange={(e) => setFormData({ ...formData, studentNumber: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Sınıfı / Şubesi</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Sınıfı / Şubesi</label>
                                         <input
                                             type="text"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full border-line-2 rounded-lg focus:ring-blue-500 focus:border-info"
                                             placeholder="Örn: 9/A"
                                             value={formData.studentClass}
                                             onChange={(e) => setFormData({ ...formData, studentClass: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Eğitsel Tanı / Yetersizlik</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">Eğitsel Tanı / Yetersizlik</label>
                                         <select
-                                            className="w-full border-gray-300 rounded-lg"
+                                            className="w-full border-line-2 rounded-lg"
                                             onChange={(e) => setFormData({ ...formData, disabilityType: e.target.value })}
                                             value={formData.disabilityType}
                                         >
@@ -223,9 +229,9 @@ const BEPGenerator = ({ students, closeModal }) => {
                                         </select>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">BEP Hazırlanacak Ders</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">BEP Hazırlanacak Ders</label>
                                         <select
-                                            className="w-full border-gray-300 rounded-lg"
+                                            className="w-full border-line-2 rounded-lg"
                                             onChange={(e) => setFormData({ ...formData, course: e.target.value })}
                                             value={formData.course}
                                         >
@@ -234,19 +240,19 @@ const BEPGenerator = ({ students, closeModal }) => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">BEP Başlangıç Tarihi</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">BEP Başlangıç Tarihi</label>
                                         <input
                                             type="date"
-                                            className="w-full border-gray-300 rounded-lg"
+                                            className="w-full border-line-2 rounded-lg"
                                             value={formData.bepStartDate}
                                             onChange={(e) => setFormData({ ...formData, bepStartDate: e.target.value })}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">BEP Bitiş Tarihi</label>
+                                        <label className="block text-sm font-bold text-ink-2 mb-1">BEP Bitiş Tarihi</label>
                                         <input
                                             type="date"
-                                            className="w-full border-gray-300 rounded-lg"
+                                            className="w-full border-line-2 rounded-lg"
                                             value={formData.bepEndDate}
                                             onChange={(e) => setFormData({ ...formData, bepEndDate: e.target.value })}
                                         />
@@ -258,22 +264,22 @@ const BEPGenerator = ({ students, closeModal }) => {
 
                     {step === 2 && (
                         <div className="space-y-6 animate-fade-in">
-                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                            <div className="bg-surface p-6 rounded-xl border border-line shadow-sm">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-gray-800">Eğitsel Performans Düzeyi</h4>
+                                    <h4 className="font-bold text-ink">Eğitsel Performans Düzeyi</h4>
                                     <button
                                         onClick={generatePerformanceLevel}
-                                        className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition flex items-center"
+                                        className="text-xs bg-brand-soft text-brand px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition flex items-center"
                                         disabled={!formData.disabilityType}
                                     >
                                         <RefreshCw size={14} className="mr-1" /> Otomatik Oluştur
                                     </button>
                                 </div>
-                                <p className="text-sm text-gray-500 mb-3">
+                                <p className="text-sm text-ink-2 mb-3">
                                     Öğrencinin bu ders özelinde yapabildiklerini ve yapamadıklarını detaylıca açıklayan bir metin giriniz.
                                 </p>
                                 <textarea
-                                    className="w-full h-40 border-gray-300 rounded-lg p-4 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full h-40 border-line-2 rounded-lg p-4 text-sm focus:ring-blue-500 focus:border-info"
                                     placeholder="Öğrenci; okuma yazma becerilerine sahiptir ancak okuduğunu anlamada yaşıtlarından geridedir..."
                                     value={formData.performanceLevel}
                                     onChange={(e) => setFormData({ ...formData, performanceLevel: e.target.value })}
@@ -286,60 +292,60 @@ const BEPGenerator = ({ students, closeModal }) => {
                         <div className="space-y-6 animate-fade-in">
                             {currentGoals.length > 0 ? (
                                 <div className="space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm text-blue-800 mb-4">
+                                    <div className="bg-info-soft p-4 rounded-lg border border-info text-sm text-info mb-4">
                                         <AlertCircle size={16} className="inline mr-2" />
                                         Önce <strong>Uzun Dönemli Amaç (UDA)</strong> seçin, ardından açılan listeden <strong>Kısa Dönemli Amaçları (KDA)</strong> belirleyin ve her biri için tarih aralığı girin.
                                     </div>
                                     {currentGoals.map((goalGroup, idx) => (
-                                        <div key={idx} className={`bg-white p-6 rounded-xl border transition ${formData.selectedLongTermGoals.includes(goalGroup.uda) ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'}`}>
+                                        <div key={idx} className={`bg-surface p-6 rounded-xl border transition ${formData.selectedLongTermGoals.includes(goalGroup.uda) ? 'border-info ring-2 ring-blue-100' : 'border-line'}`}>
                                             <div className="flex flex-col md:flex-row md:items-start justify-between space-y-4 md:space-y-0">
                                                 <div className="flex items-start space-x-3 flex-1">
                                                     <input
                                                         type="checkbox"
-                                                        className="mt-1 w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                                        className="mt-1 w-5 h-5 text-info rounded focus:ring-blue-500"
                                                         checked={formData.selectedLongTermGoals.includes(goalGroup.uda)}
                                                         onChange={() => handleToggleUDA(goalGroup.uda)}
                                                     />
                                                     <div>
-                                                        <span className="font-bold text-gray-800 block text-lg">{goalGroup.uda}</span>
-                                                        <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded">Uzun Dönemli Amaç (UDA)</span>
+                                                        <span className="font-bold text-ink block text-lg">{goalGroup.uda}</span>
+                                                        <span className="text-xs text-info font-medium bg-info-soft px-2 py-0.5 rounded">Uzun Dönemli Amaç (UDA)</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {formData.selectedLongTermGoals.includes(goalGroup.uda) && (
-                                                <div className="ml-8 mt-4 pl-4 border-l-2 border-gray-100 space-y-3">
-                                                    <p className="text-sm font-semibold text-gray-500 mb-2">Kısa Dönemli Amaçlar (KDA) ve Tarihleri:</p>
+                                                <div className="ml-8 mt-4 pl-4 border-l-2 border-line space-y-3">
+                                                    <p className="text-sm font-semibold text-ink-2 mb-2">Kısa Dönemli Amaçlar (KDA) ve Tarihleri:</p>
                                                     {goalGroup.kda.map((kda, kIdx) => {
                                                         const isKdaSelected = formData.selectedShortTermGoals[goalGroup.uda]?.includes(kda) || false;
                                                         return (
-                                                            <div key={kIdx} className="flex flex-col md:flex-row md:items-center justify-between p-2 rounded-lg transition hover:bg-gray-50 border border-transparent hover:border-gray-200">
+                                                            <div key={kIdx} className="flex flex-col md:flex-row md:items-center justify-between p-2 rounded-lg transition hover:bg-surface-2 border border-transparent hover:border-line">
                                                                 <label className="flex items-center space-x-3 cursor-pointer flex-1 mr-4">
                                                                     <input
                                                                         type="checkbox"
-                                                                        className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                                                                        className="w-4 h-4 text-ok rounded focus:ring-green-500"
                                                                         checked={isKdaSelected}
                                                                         onChange={() => handleToggleKDA(goalGroup.uda, kda)}
                                                                     />
-                                                                    <span className="text-gray-700 text-sm">{kda}</span>
+                                                                    <span className="text-ink-2 text-sm">{kda}</span>
                                                                 </label>
 
                                                                 {isKdaSelected && (
                                                                     <div className="flex space-x-2 mt-2 md:mt-0 animate-fade-in">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-[9px] text-gray-400">Başlangıç</span>
+                                                                            <span className="text-[9px] text-ink-3">Başlangıç</span>
                                                                             <input
                                                                                 type="date"
-                                                                                className="text-xs border-gray-200 rounded py-1 px-2 w-24"
+                                                                                className="text-xs border-line rounded py-1 px-2 w-24"
                                                                                 value={formData.goalDates[kda]?.start || formData.bepStartDate}
                                                                                 onChange={(e) => handleDateChange(kda, 'start', e.target.value)}
                                                                             />
                                                                         </div>
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-[9px] text-gray-400">Bitiş</span>
+                                                                            <span className="text-[9px] text-ink-3">Bitiş</span>
                                                                             <input
                                                                                 type="date"
-                                                                                className="text-xs border-gray-200 rounded py-1 px-2 w-24"
+                                                                                className="text-xs border-line rounded py-1 px-2 w-24"
                                                                                 value={formData.goalDates[kda]?.end || formData.bepEndDate}
                                                                                 onChange={(e) => handleDateChange(kda, 'end', e.target.value)}
                                                                             />
@@ -355,10 +361,10 @@ const BEPGenerator = ({ students, closeModal }) => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-gray-300 rounded-xl">
-                                    <AlertCircle className="text-yellow-500 mb-4" size={48} />
-                                    <h4 className="text-xl font-bold text-gray-700">Bu ders için hazır hedef bulunamadı.</h4>
-                                    <p className="text-gray-500 mt-2">Lütfen veritabanının güncellenmesini bekleyin veya manuel olarak devam edin.</p>
+                                <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-line-2 rounded-xl">
+                                    <AlertCircle className="text-warn mb-4" size={48} />
+                                    <h4 className="text-xl font-bold text-ink-2">Bu ders için hazır hedef bulunamadı.</h4>
+                                    <p className="text-ink-2 mt-2">Lütfen veritabanının güncellenmesini bekleyin veya manuel olarak devam edin.</p>
                                 </div>
                             )}
                         </div>
@@ -367,34 +373,34 @@ const BEPGenerator = ({ students, closeModal }) => {
                     {step === 4 && (
                         <div className="space-y-6 animate-fade-in">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-5 rounded-xl border border-gray-200">
-                                    <h4 className="font-bold text-gray-800 mb-3 flex items-center"><BookOpen size={18} className="mr-2 text-indigo-500" /> Öğretim Yöntemleri</h4>
+                                <div className="bg-surface p-5 rounded-xl border border-line">
+                                    <h4 className="font-bold text-ink mb-3 flex items-center"><BookOpen size={18} className="mr-2 text-brand" /> Öğretim Yöntemleri</h4>
                                     <div className="space-y-2 h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {bepData.teachingMethods.map((m, i) => (
-                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded">
-                                                <input type="checkbox" checked={formData.methods.includes(m)} onChange={() => handleMultiSelect('methods', m)} className="rounded text-indigo-600" />
+                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-surface-2 p-1.5 rounded">
+                                                <input type="checkbox" checked={formData.methods.includes(m)} onChange={() => handleMultiSelect('methods', m)} className="rounded text-brand" />
                                                 <span>{m}</span>
                                             </label>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 rounded-xl border border-gray-200">
-                                    <h4 className="font-bold text-gray-800 mb-3 flex items-center"><Folder size={18} className="mr-2 text-orange-500" /> Materyaller</h4>
+                                <div className="bg-surface p-5 rounded-xl border border-line">
+                                    <h4 className="font-bold text-ink mb-3 flex items-center"><Folder size={18} className="mr-2 text-warn" /> Materyaller</h4>
                                     <div className="space-y-2 h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {bepData.teachingMaterials.map((m, i) => (
-                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded">
-                                                <input type="checkbox" checked={formData.materials.includes(m)} onChange={() => handleMultiSelect('materials', m)} className="rounded text-orange-600" />
+                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-surface-2 p-1.5 rounded">
+                                                <input type="checkbox" checked={formData.materials.includes(m)} onChange={() => handleMultiSelect('materials', m)} className="rounded text-warn" />
                                                 <span>{m}</span>
                                             </label>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="bg-white p-5 rounded-xl border border-gray-200">
-                                    <h4 className="font-bold text-gray-800 mb-3 flex items-center"><ClipboardList size={18} className="mr-2 text-green-500" /> Değerlendirme</h4>
+                                <div className="bg-surface p-5 rounded-xl border border-line">
+                                    <h4 className="font-bold text-ink mb-3 flex items-center"><ClipboardList size={18} className="mr-2 text-ok" /> Değerlendirme</h4>
                                     <div className="space-y-2 h-64 overflow-y-auto pr-2 custom-scrollbar">
                                         {bepData.evaluationMethods.map((m, i) => (
-                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 p-1.5 rounded">
-                                                <input type="checkbox" checked={formData.evaluation.includes(m)} onChange={() => handleMultiSelect('evaluation', m)} className="rounded text-green-600" />
+                                            <label key={i} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-surface-2 p-1.5 rounded">
+                                                <input type="checkbox" checked={formData.evaluation.includes(m)} onChange={() => handleMultiSelect('evaluation', m)} className="rounded text-ok" />
                                                 <span>{m}</span>
                                             </label>
                                         ))}
@@ -405,7 +411,7 @@ const BEPGenerator = ({ students, closeModal }) => {
                     )}
 
                     {step === 5 && (
-                        <div className="animate-fade-in bg-white shadow-xl p-8 rounded-none border border-gray-200 max-w-[21cm] mx-auto min-h-[29.7cm] text-black">
+                        <div className="animate-fade-in bg-surface shadow-xl p-8 rounded-none border border-line max-w-[21cm] mx-auto min-h-[29.7cm] text-ink">
                             {/* Resmi BEP Form Tasarımı (Print Preview) */}
                             <div className="text-center border-b-2 border-black pb-4 mb-6">
                                 <h2 className="text-xl font-bold uppercase">Bireyselleştirilmiş Eğitim Programı (BEP)</h2>
@@ -446,13 +452,13 @@ const BEPGenerator = ({ students, closeModal }) => {
 
                             <div className="mb-6">
                                 <h3 className="font-bold border-b border-black mb-2 uppercase text-sm">Eğitsel Performans Düzeyi</h3>
-                                <p className="text-sm p-2 border border-black min-h-[80px] bg-gray-50">{formData.performanceLevel}</p>
+                                <p className="text-sm p-2 border border-black min-h-[80px] bg-surface-2">{formData.performanceLevel}</p>
                             </div>
 
                             <div className="mb-6">
                                 <table className="w-full border-collapse border border-black text-xs">
                                     <thead>
-                                        <tr className="bg-gray-100">
+                                        <tr className="bg-surface-3">
                                             <th className="border border-black p-2 w-[30%] text-left">Uzun Dönemli Amaçlar</th>
                                             <th className="border border-black p-2 w-[30%] text-left">Kısa Dönemli Amaçlar</th>
                                             <th className="border border-black p-2 w-[15%] text-center">Başlama / Bitiş Tarihi</th>
@@ -467,8 +473,8 @@ const BEPGenerator = ({ students, closeModal }) => {
                                                     <table className="w-full border-collapse">
                                                         <tbody>
                                                             {formData.selectedShortTermGoals[uda]?.map((kda, kIdx) => (
-                                                                <tr key={kIdx} className="border-b border-gray-200 last:border-0">
-                                                                    <td className="p-2 border-r border-gray-300">{kda}</td>
+                                                                <tr key={kIdx} className="border-b border-line last:border-0">
+                                                                    <td className="p-2 border-r border-line-2">{kda}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
@@ -478,11 +484,11 @@ const BEPGenerator = ({ students, closeModal }) => {
                                                     <table className="w-full border-collapse">
                                                         <tbody>
                                                             {formData.selectedShortTermGoals[uda]?.map((kda, kIdx) => (
-                                                                <tr key={kIdx} className="border-b border-gray-200 last:border-0">
+                                                                <tr key={kIdx} className="border-b border-line last:border-0">
                                                                     <td className="p-2 whitespace-nowrap">
                                                                         <div className="flex flex-col text-[10px]">
                                                                             <span>{formData.goalDates[kda]?.start || '-'}</span>
-                                                                            <span className="font-bold text-gray-400">/</span>
+                                                                            <span className="font-bold text-ink-3">/</span>
                                                                             <span>{formData.goalDates[kda]?.end || '-'}</span>
                                                                         </div>
                                                                     </td>
@@ -540,11 +546,11 @@ const BEPGenerator = ({ students, closeModal }) => {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-6 bg-white border-t border-gray-200 flex justify-between items-center shrink-0">
+                <div className="p-6 bg-surface border-t border-line flex justify-between items-center shrink-0">
                     <button
                         onClick={() => setStep(prev => Math.max(1, prev - 1))}
                         disabled={step === 1}
-                        className="px-6 py-3 rounded-xl font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 transition disabled:opacity-50"
+                        className="px-6 py-3 rounded-xl font-bold bg-surface-3 text-ink-2 hover:bg-surface-3 transition disabled:opacity-50"
                     >
                         Geri
                     </button>
@@ -563,11 +569,11 @@ const BEPGenerator = ({ students, closeModal }) => {
                         </button>
                     ) : (
                         <div className="flex space-x-3">
-                            <button onClick={() => window.print()} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center shadow-lg shadow-blue-200">
+                            <button onClick={() => window.print()} className="px-6 py-3 bg-info text-white rounded-xl font-bold hover:bg-info transition flex items-center shadow-lg shadow-blue-200">
                                 <Printer size={20} className="mr-2" />
                                 Yazdır
                             </button>
-                            <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center shadow-lg shadow-indigo-200">
+                            <button className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-brand-hover transition flex items-center shadow-lg shadow-indigo-200">
                                 <Download size={20} className="mr-2" />
                                 PDF İndir
                             </button>

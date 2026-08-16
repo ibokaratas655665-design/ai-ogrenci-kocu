@@ -1,0 +1,108 @@
+rules_version = '2';
+
+/**
+ * 🔐 FIRESTORE GÜVENLİK KURALLARI
+ *
+ * ⚠️ ÖNCEKİ HÂLİ CANLIYA ALINAMAZDI:
+ *
+ *     match /{document=**} { allow read, write: if true; }
+ *
+ * Bu kural, veritabanı kimliği herkese açık olan bir web uygulamasında
+ * "internetteki HERKES bütün öğrenci kayıtlarını okuyabilir, silebilir,
+ * değiştirebilir" demektir. Uygulama T.C. kimlik numarası, veli telefonu,
+ * rehberlik görüşme kaydı ve sağlık kurulu raporu bilgisi tutuyor;
+ * bu veriler KVKK kapsamında özel nitelikli kişisel veridir.
+ *
+ * Aşağıdaki kurallar şu ilkelerle yazıldı:
+ *   1. Kimliği doğrulanmamış hiçbir istek kabul edilmez.
+ *   2. Bir kullanıcı yalnızca KENDİ verisine erişir.
+ *   3. Mesaj/bildirim gibi iki taraflı kayıtlarda gönderen ya da alan
+ *      olmak gerekir.
+ *   4. Tanımlanmayan hiçbir yol açık bırakılmaz (varsayılan: reddet).
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Yardımcılar ──────────────────────────────────────────
+    function girisYapmis() {
+      return request.auth != null;
+    }
+
+    function sahibi(userId) {
+      return girisYapmis() && request.auth.uid == userId;
+    }
+
+    // Alan sayısı ve boyut sınırı — bozuk/şişkin belge yazımını engeller
+    function makulBoyut() {
+      return request.resource.size() < 1000000;
+    }
+
+    // ── syncData: uygulamanın localStorage yedeği ────────────
+    // Belge kimliği kullanıcının uid'sidir; başkasınınkine erişilemez.
+    match /syncData/{userId} {
+      allow read, write: if sahibi(userId) && makulBoyut();
+
+      // Alt anahtar belgeleri de aynı kullanıcıya bağlıdır
+      match /{document=**} {
+        allow read, write: if sahibi(userId);
+      }
+    }
+
+    // ── users: kullanıcı profilleri ──────────────────────────
+    match /users/{userId} {
+      // Kendi profilini okur ve günceller
+      allow read, update, delete: if sahibi(userId);
+
+      // Kayıt sırasında kendi belgesini oluşturabilir; ancak
+      // kendini yönetici ilan edemez — rol yükseltme kapalıdır.
+      allow create: if sahibi(userId)
+        && request.resource.data.role in ['student', 'coach', 'parent'];
+    }
+
+    // ── trusted_devices: iki adımlı giriş cihaz kayıtları ────
+    match /trusted_devices/{userId} {
+      allow read, write: if sahibi(userId);
+    }
+
+    // ── messages: koç ↔ öğrenci/veli yazışması ───────────────
+    match /messages/{messageId} {
+      // Yalnızca tarafları okuyabilir
+      allow read: if girisYapmis()
+        && (resource.data.fromUserId == request.auth.uid
+            || resource.data.toUserId == request.auth.uid);
+
+      // Gönderen kendisi olmak zorunda — başkası adına mesaj atılamaz
+      allow create: if girisYapmis()
+        && request.resource.data.fromUserId == request.auth.uid
+        && makulBoyut();
+
+      // Okundu işareti gibi güncellemeleri alıcı yapar
+      allow update: if girisYapmis()
+        && resource.data.toUserId == request.auth.uid;
+
+      // Mesaj silmek yalnızca gönderene açık
+      allow delete: if girisYapmis()
+        && resource.data.fromUserId == request.auth.uid;
+    }
+
+    // ── notifications: bildirimler ───────────────────────────
+    match /notifications/{notificationId} {
+      allow read, update, delete: if girisYapmis()
+        && resource.data.toUserId == request.auth.uid;
+
+      // Bildirim oluşturan kendi kimliğini yazmak zorunda
+      allow create: if girisYapmis()
+        && request.resource.data.fromUserId == request.auth.uid
+        && makulBoyut();
+    }
+
+    // ── Varsayılan: REDDET ───────────────────────────────────
+    // Yukarıda açıkça izin verilmeyen her yol kapalıdır. Yeni bir
+    // koleksiyon eklenirse kuralı da buraya yazılmalıdır; aksi hâlde
+    // sessizce açık kalmaz, çalışmaz.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

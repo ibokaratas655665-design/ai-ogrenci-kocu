@@ -1,0 +1,850 @@
+/* ══════════════════════════════════════════════════════════════════════
+   🏛️  YÜZEY VE DERİNLİK SİSTEMİ
+
+   Uygulama düz duruyordu: kartlar zeminden ayrışmıyor, butonlar
+   tıklanabilir görünmüyor, başlık ve sekmeler aynı düzlemde duruyordu.
+
+   Buradaki model tek bir fiziksel kurala dayanır:
+
+       IŞIK YUKARIDAN GELİR.
+
+   Bunun üç sonucu vardır ve her yüzey üçünü birden taşır:
+     1. ÜST kenar açık   → yüzey ışığı yakalar (inset üst çizgi)
+     2. ALT kenar koyu   → yüzey kendi kalınlığını gösterir
+     3. ALTINDA gölge    → yüzey zeminden ne kadar yükseldiğini söyler
+
+   Yükseklik kademeleri (elevation):
+     e0  zemine gömülü  — form alanı, girinti, ilerleme yuvası
+     e1  zemine yakın   — satır, liste öğesi, sekme
+     e2  yükselmiş      — kart, panel
+     e3  yüzen          — açılır menü, ipucu
+     e4  ayrı katman    — modal, pencere
+
+   Kademe arttıkça gölge yumuşar ve yayılır; bu, gerçek ışıkta
+   yüksek cismin gölgesinin daha geniş ve soft olmasıyla aynıdır.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* Işık ve gölge yoğunluğu — koyu temada yeniden tanımlanır */
+    --lit: rgba(255, 255, 255, .9);      /* üst kenar ışığı */
+    --lit-soft: rgba(255, 255, 255, .55);
+    --shade: rgba(15, 23, 42, .09);      /* alt kenar koyuluğu */
+    --cast: 15, 23, 42;                  /* düşen gölgenin rgb'si */
+
+    /* Yükseklik kademeleri */
+    --e0: inset 0 2px 4px rgba(var(--cast), .09),
+          inset 0 -1px 0 var(--lit-soft);
+    --e1: 0 1px 0 var(--lit) inset,
+          0 1px 2px rgba(var(--cast), .07),
+          0 1px 1px rgba(var(--cast), .05);
+    --e2: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(var(--cast), .04),
+          0 2px 4px -1px rgba(var(--cast), .07),
+          0 8px 16px -6px rgba(var(--cast), .12);
+    --e3: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(var(--cast), .05),
+          0 6px 12px -4px rgba(var(--cast), .11),
+          0 18px 32px -12px rgba(var(--cast), .18);
+    --e4: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(var(--cast), .06),
+          0 12px 24px -8px rgba(var(--cast), .16),
+          0 36px 64px -20px rgba(var(--cast), .28);
+
+    /* Köşe yuvarlaklığı ölçeği — rastgele değil, üç kademe */
+    --r-sm: 10px;   /* rozet, küçük buton, etiket */
+    --r-md: 14px;   /* buton, form alanı, liste öğesi */
+    --r-lg: 20px;   /* kart, panel */
+    --r-xl: 26px;   /* modal, büyük bölüm */
+}
+
+:root[data-theme="dark"] {
+    /* Koyu temada ışık zayıflar, gölge derinleşir */
+    --lit: rgba(255, 255, 255, .07);
+    --lit-soft: rgba(255, 255, 255, .04);
+    --shade: rgba(0, 0, 0, .5);
+    --cast: 0, 0, 0;
+
+    --e0: inset 0 2px 5px rgba(0, 0, 0, .55),
+          inset 0 -1px 0 var(--lit-soft);
+    --e1: 0 1px 0 var(--lit) inset,
+          0 1px 2px rgba(0, 0, 0, .4);
+    --e2: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(255, 255, 255, .04),
+          0 3px 6px -2px rgba(0, 0, 0, .5),
+          0 10px 20px -8px rgba(0, 0, 0, .6);
+    --e3: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(255, 255, 255, .05),
+          0 8px 16px -6px rgba(0, 0, 0, .6),
+          0 20px 36px -14px rgba(0, 0, 0, .75);
+    --e4: 0 1px 0 var(--lit) inset,
+          0 0 0 1px rgba(255, 255, 255, .06),
+          0 16px 30px -10px rgba(0, 0, 0, .7),
+          0 40px 72px -24px rgba(0, 0, 0, .9);
+}
+
+/* ══════════════════════════════════════════════════════════
+   1. YÜZEYLER
+   ══════════════════════════════════════════════════════════ */
+
+.srf {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--e2);
+}
+
+/* Üstten gelen ışığın yüzeyde bıraktığı ince parlaklık */
+.srf::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, var(--lit-soft) 0%, transparent 38%);
+    opacity: .7;
+}
+
+.srf > * { position: relative; }
+
+.srf-1 { box-shadow: var(--e1); border-radius: var(--r-md); }
+.srf-3 { box-shadow: var(--e3); }
+.srf-4 { box-shadow: var(--e4); border-radius: var(--r-xl); }
+
+/* Zemine gömülü yüzey — form alanı, ilerleme yuvası, kod bloğu */
+.srf-in {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--e0);
+}
+
+/* Etkileşimli yüzey: üzerine gelince yükselir */
+.srf-hover {
+    transition: box-shadow .22s cubic-bezier(.2, .8, .2, 1),
+                transform .22s cubic-bezier(.2, .8, .2, 1),
+                border-color .22s ease;
+}
+
+.srf-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--e3);
+    border-color: var(--line-2);
+}
+
+.srf-hover:active { transform: translateY(0); box-shadow: var(--e1); }
+
+/* Renk kimlikli kart: sol kenarda renk şeridi */
+.srf-accent {
+    border-left: 3px solid var(--acc, var(--brand));
+}
+
+/* ══════════════════════════════════════════════════════════
+   2. BUTONLAR — fiziksel his
+
+   Bir buton üç katmandan oluşur:
+     · üst kenarda ışık çizgisi (kabarık görünsün)
+     · gövde degradesi (silindirik hacim)
+     · altında gölge (zeminden yüksek dursun)
+   Basıldığında ışık söner, gölge kaybolur, gövde 1px çöker.
+   ══════════════════════════════════════════════════════════ */
+
+.b {
+    --c: var(--brand);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .62rem 1.1rem;
+    border-radius: var(--r-md);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: -.006em;
+    line-height: 1.15;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: transform .12s cubic-bezier(.2, .8, .2, 1),
+                box-shadow .18s ease, background-color .18s ease,
+                border-color .18s ease, color .18s ease;
+}
+
+.b:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 32%, transparent),
+                var(--e2);
+}
+
+.b:disabled, .b[aria-disabled="true"] {
+    opacity: .42;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ── Dolu (birincil eylem) ─────────────────────────────── */
+.b-fill {
+    color: var(--ink-on);
+    border-color: color-mix(in srgb, var(--c) 76%, black);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--c) 84%, white) 0%,
+        var(--c) 46%,
+        color-mix(in srgb, var(--c) 88%, black) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .34),
+        inset 0 -1px 0 rgba(0, 0, 0, .18),
+        0 1px 2px rgba(var(--cast), .18),
+        0 4px 10px -3px color-mix(in srgb, var(--c) 55%, transparent);
+}
+
+.b-fill:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--c) 76%, white) 0%,
+        color-mix(in srgb, var(--c) 94%, white) 46%,
+        color-mix(in srgb, var(--c) 92%, black) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .4),
+        inset 0 -1px 0 rgba(0, 0, 0, .18),
+        0 2px 4px rgba(var(--cast), .2),
+        0 10px 20px -6px color-mix(in srgb, var(--c) 62%, transparent);
+}
+
+.b-fill:active:not(:disabled) {
+    transform: translateY(1px);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--c) 92%, black) 0%,
+        var(--c) 100%);
+    box-shadow:
+        inset 0 2px 5px rgba(0, 0, 0, .28),
+        0 0 0 rgba(0, 0, 0, 0);
+}
+
+/* ── Çerçeveli (ikincil eylem) ─────────────────────────── */
+.b-line {
+    color: var(--ink-2);
+    background: var(--surface);
+    border-color: var(--line-2);
+    box-shadow:
+        inset 0 1px 0 var(--lit),
+        0 1px 2px rgba(var(--cast), .07);
+}
+
+.b-line:hover:not(:disabled) {
+    transform: translateY(-1px);
+    color: var(--ink);
+    border-color: color-mix(in srgb, var(--c) 45%, var(--line-2));
+    box-shadow:
+        inset 0 1px 0 var(--lit),
+        0 4px 10px -3px rgba(var(--cast), .14);
+}
+
+.b-line:active:not(:disabled) {
+    transform: translateY(1px);
+    background: var(--surface-3);
+    box-shadow: inset 0 2px 4px rgba(var(--cast), .12);
+}
+
+/* ── Yumuşak (renk kimlikli, hafif) ────────────────────── */
+.b-soft {
+    color: var(--c);
+    background: color-mix(in srgb, var(--c) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--c) 26%, transparent);
+    box-shadow: inset 0 1px 0 var(--lit-soft);
+}
+
+.b-soft:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--c) 20%, var(--surface));
+    box-shadow:
+        inset 0 1px 0 var(--lit-soft),
+        0 4px 10px -4px color-mix(in srgb, var(--c) 50%, transparent);
+}
+
+.b-soft:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 4px color-mix(in srgb, var(--c) 22%, transparent);
+}
+
+/* Renkli bir başlık bandının İÇİNDEKİ çerçeveli buton, yüzey zeminini
+   kullanınca o bandın rengiyle çakışıyordu. Orada yarı saydam beyaz
+   zemine ve beyaz yazıya döner. */
+.on-color .b-line,
+[class*="bg-gradient-to-"].text-white .b-line {
+    background: rgba(255, 255, 255, .16);
+    border-color: rgba(255, 255, 255, .32);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
+.on-color .b-line:hover:not(:disabled),
+[class*="bg-gradient-to-"].text-white .b-line:hover:not(:disabled) {
+    background: rgba(255, 255, 255, .26);
+    border-color: rgba(255, 255, 255, .45);
+    color: #fff;
+}
+
+/* ── Düz (üçüncül) ─────────────────────────────────────── */
+.b-bare {
+    color: var(--ink-3);
+    background: transparent;
+}
+.b-bare:hover:not(:disabled) { color: var(--ink); background: var(--surface-3); }
+.b-bare:active:not(:disabled) { box-shadow: inset 0 2px 4px rgba(var(--cast), .1); }
+
+/* ── Simge butonu (kare) ───────────────────────────────── */
+.b-icon { padding: .55rem; width: 2.35rem; height: 2.35rem; }
+
+/* ── Boyutlar ──────────────────────────────────────────── */
+.b-xs { padding: .3rem .6rem;  font-size: .68rem; border-radius: var(--r-sm); gap: .3rem; }
+.b-sm { padding: .45rem .85rem; font-size: .74rem; border-radius: var(--r-sm); gap: .4rem; }
+.b-lg { padding: .8rem 1.5rem;  font-size: .9rem;  border-radius: var(--r-lg); }
+
+/* ── Renk varyantları ──────────────────────────────────── */
+.b-brand   { --c: var(--brand); }
+.b-accent  { --c: var(--accent); }
+.b-ok      { --c: var(--ok); }
+.b-warn    { --c: var(--warn); }
+.b-danger  { --c: var(--danger); }
+.b-info    { --c: var(--info); }
+
+/* ══════════════════════════════════════════════════════════
+   3. SEKMELER — aktif olan gerçekten "öne çıkar"
+   ══════════════════════════════════════════════════════════ */
+
+.tabbar {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .3rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--r-md) + 4px);
+    box-shadow: var(--e0);
+
+    /* Sekmeler dar kaba sığmayınca eskiden kutunun dışına taşıp
+       kesiliyordu: koç karnesinde YKS'nin 5 bölümünden yalnızca üçü
+       görünüyor, "AYT Sözel" ve "AYT Dil" hiç erişilemiyordu.
+       Artık alt satıra iner; kaydırmaya gerek kalmadan hepsi görünür. */
+    flex-wrap: wrap;
+    row-gap: .3rem;
+}
+
+/* Tek satırda kalması istenen yerlerde (üst gezinme çubuğu gibi)
+   sarmalamak yerine yatay kaydırma daha doğru. */
+.tabbar.tabbar-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tabbar.tabbar-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.tabbar .tb {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .5rem .9rem;
+    border-radius: var(--r-md);
+    font-size: .76rem;
+    font-weight: 700;
+    color: var(--ink-3);
+    background: transparent;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color .18s ease, background-color .18s ease,
+                box-shadow .2s ease, transform .18s ease;
+}
+
+.tabbar .tb:hover { color: var(--ink); }
+
+.tabbar .tb[aria-selected="true"],
+.tabbar .tb.is-on {
+    color: var(--ink);
+    background: var(--surface);
+    border-color: var(--line);
+    box-shadow:
+        inset 0 1px 0 var(--lit),
+        0 1px 2px rgba(var(--cast), .1),
+        0 4px 8px -4px rgba(var(--cast), .14);
+}
+
+/* Aktif sekmenin altında ince marka çizgisi */
+.tabbar .tb[aria-selected="true"]::after,
+.tabbar .tb.is-on::after {
+    content: '';
+    position: absolute;
+    left: 22%;
+    right: 22%;
+    bottom: 3px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--brand);
+}
+
+/* ══════════════════════════════════════════════════════════
+   4. FORM ALANLARI — zemine gömülü
+   ══════════════════════════════════════════════════════════ */
+
+.fld {
+    width: 100%;
+    padding: .58rem .8rem;
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line-2);
+    border-radius: var(--r-md);
+    box-shadow: var(--e0);
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.fld::placeholder { color: var(--ink-3); }
+
+.fld:hover:not(:focus) { border-color: var(--ink-3); }
+
+.fld:focus {
+    outline: none;
+    background: var(--surface);
+    border-color: var(--brand);
+    box-shadow:
+        inset 0 1px 2px rgba(var(--cast), .05),
+        0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+.fld:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ══════════════════════════════════════════════════════════
+   5. BAŞLIK ŞERİDİ — cam yüzey, altında ışık çizgisi
+   ══════════════════════════════════════════════════════════ */
+
+.topbar {
+    position: relative;
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 0 var(--lit), 0 6px 18px -12px rgba(var(--cast), .3);
+}
+
+/* ══════════════════════════════════════════════════════════
+   6. TİPOGRAFİ ÖLÇEĞİ
+   Başlıklar rastgele boyutlardaydı; dört kademeye indirildi.
+   ══════════════════════════════════════════════════════════ */
+
+.h1 { font-size: 1.6rem;  font-weight: 800; letter-spacing: -.022em; color: var(--ink); line-height: 1.15; }
+.h2 { font-size: 1.15rem; font-weight: 800; letter-spacing: -.016em; color: var(--ink); line-height: 1.25; }
+.h3 { font-size: .92rem;  font-weight: 700; letter-spacing: -.01em;  color: var(--ink); line-height: 1.3; }
+
+.eyebrow {
+    font-size: .625rem;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+/* ══════════════════════════════════════════════════════════
+   7. BÖLÜM BAŞLIĞI — her panelin üstünde aynı yapı
+   ══════════════════════════════════════════════════════════ */
+
+.sec-head {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding-bottom: .7rem;
+    margin-bottom: .9rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.sec-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--r-sm);
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--acc, var(--brand));
+    background: color-mix(in srgb, var(--acc, var(--brand)) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--acc, var(--brand)) 26%, transparent);
+    box-shadow: inset 0 1px 0 var(--lit-soft);
+}
+
+/* ══════════════════════════════════════════════════════════
+   8. İLERLEME ÇUBUĞU — yuva gömülü, dolgu kabarık
+   ══════════════════════════════════════════════════════════ */
+
+.bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface-3);
+    box-shadow: var(--e0);
+    overflow: hidden;
+}
+
+.bar > i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--acc, var(--brand)) 78%, white),
+        var(--acc, var(--brand)));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+    transition: width .5s cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   9. HAREKET AZALTMA
+   ══════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    .b, .srf-hover, .tabbar .tb, .bar > i { transition: none !important; }
+    .b:hover, .b:active, .srf-hover:hover { transform: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   10. MEVCUT SINIFLARIN BU SİSTEME BAĞLANMASI
+
+   Uygulamada zaten yüzlerce yerde kullanılan sınıflar var
+   (premium-card, btn-v, surface-3d, chart-card…). Hepsini tek tek
+   değiştirmek yerine buradan yeni derinlik diline bağlanıyor:
+   dosyalara dokunmadan tüm ekranlar aynı anda güncelleniyor.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.premium-card,
+.surface-3d,
+.surface-3d-light,
+.chart-card,
+.vivid-kpi,
+.vivid-kpi-light {
+    box-shadow: var(--e2) !important;
+    border-color: var(--line) !important;
+}
+
+.premium-card:hover,
+.surface-3d:hover,
+.surface-3d-light:hover,
+.vivid-kpi:hover {
+    box-shadow: var(--e3) !important;
+    border-color: var(--line-2) !important;
+}
+
+/* KPI kartı: renk kimliği üst şeritte kalsın, gölge sistemden gelsin */
+.vivid-kpi {
+    border-radius: var(--r-lg);
+    background:
+        linear-gradient(180deg, var(--lit-soft) 0%, transparent 34%),
+        radial-gradient(130% 120% at 8% -14%,
+            color-mix(in srgb, var(--kpi, var(--brand)) 10%, transparent) 0%, transparent 56%),
+        var(--surface) !important;
+}
+
+.vivid-kpi:hover { transform: translateY(-3px); }
+
+/* Eski buton sınıfları yeni fiziksel butona bağlanır */
+.btn-v {
+    padding: .62rem 1.1rem;
+    border-radius: var(--r-md);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: -.006em;
+    color: var(--ink-on);
+    border: 1px solid color-mix(in srgb, var(--btn) 76%, black);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--btn) 84%, white) 0%,
+        var(--btn) 46%,
+        color-mix(in srgb, var(--btn) 88%, black) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .34),
+        inset 0 -1px 0 rgba(0, 0, 0, .18),
+        0 1px 2px rgba(var(--cast), .18),
+        0 4px 10px -3px color-mix(in srgb, var(--btn) 55%, transparent);
+}
+
+.btn-v:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: none;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .4),
+        inset 0 -1px 0 rgba(0, 0, 0, .18),
+        0 2px 4px rgba(var(--cast), .2),
+        0 10px 20px -6px color-mix(in srgb, var(--btn) 62%, transparent);
+}
+
+.btn-v:active:not(:disabled) {
+    transform: translateY(1px) scale(1);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .28);
+}
+
+.btn-v-ghost {
+    color: var(--ink-2);
+    background: var(--surface);
+    border-color: var(--line-2);
+    box-shadow: inset 0 1px 0 var(--lit), 0 1px 2px rgba(var(--cast), .07);
+}
+
+.btn-v-ghost:hover:not(:disabled) {
+    color: var(--ink);
+    background: var(--surface);
+    border-color: color-mix(in srgb, var(--btn) 45%, var(--line-2));
+    box-shadow: inset 0 1px 0 var(--lit), 0 4px 10px -3px rgba(var(--cast), .14);
+}
+
+/* Cam paneller */
+.premium-glass {
+    background: color-mix(in srgb, var(--surface) 84%, transparent) !important;
+    border-color: var(--line) !important;
+    box-shadow: var(--e2);
+}
+
+/* Eski gölge yardımcıları da sisteme bağlansın */
+.shadow-e1 { box-shadow: var(--e1); }
+.shadow-e2 { box-shadow: var(--e2); }
+.shadow-e3 { box-shadow: var(--e3); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODAL GÖRÜNÜRLÜK GÜVENCESİ
+
+   Bazı modal perdeleri `animate-fade-in` ile açılıyordu. O animasyon
+   opacity 0'dan başlıyor; animasyon herhangi bir nedenle çalışmazsa
+   (sekme arka planda, kare üretimi durmuş, hareket azaltma açık)
+   pencere GÖRÜNMEZ kalıyor ama tıklamaları yutmaya devam ediyordu —
+   ekranda hiçbir şey yokken arayüz kilitli görünüyordu.
+
+   Perdeler artık her koşulda görünür; giriş animasyonu yalnızca
+   içeriğe ve opacity'yi sıfırlamadan uygulanır.
+   ══════════════════════════════════════════════════════════════════════ */
+.fixed.inset-0.z-modal-base,
+.fixed.inset-0.z-modal-high,
+.fixed.inset-0.z-modal-top,
+.fixed.inset-0.z-program-builder,
+.fixed.inset-0.z-search-progress,
+.fixed.inset-0.z-settings {
+    opacity: 1 !important;
+    animation: modal-in .22s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes modal-in {
+    from { backdrop-filter: blur(0); }
+    to   { backdrop-filter: blur(6px); }
+}
+
+/* Pencere kutusu yumuşak girer — perde opaklığına dokunmadan */
+.fixed.inset-0.z-modal-base > *,
+.fixed.inset-0.z-modal-high > *,
+.fixed.inset-0.z-modal-top > *,
+.fixed.inset-0.z-settings > * {
+    animation: modal-box-in .24s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes modal-box-in {
+    from { transform: translateY(8px) scale(.985); }
+    to   { transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fixed.inset-0[class*="z-modal"],
+    .fixed.inset-0[class*="z-modal"] > * { animation: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   GİRİŞ ANİMASYONLARI — MODAL TUZAĞI
+
+   `rise-in`, `stagger`, `animate-fade-in` gibi giriş animasyonları
+   opacity ve transform'u birlikte kullanıyor. İkisi de "stacking context"
+   yaratır. İçinde bir modal açıldığında (`position: fixed`), o modal
+   z-index'i ne olursa olsun bu bağlamın DIŞINA çıkamaz — arkadaki
+   içeriğin altında kalır ve kapatma butonuna tıklanamaz.
+   BEP plan penceresinde tam olarak bu oluyordu.
+
+   Çözüm: animasyon bittiğinde context kalkmalı. `both` yerine `forwards`
+   fill kullanılır (başlangıç karesi elemana yapışmaz) ve animasyonu
+   ilerlemeyen durumlarda içerik yine de görünür kalır.
+   ══════════════════════════════════════════════════════════════════════ */
+.rise-in,
+.stagger > *,
+.animate-fade-in,
+.animate-fade-in-up,
+.animate-scale-in {
+    animation-fill-mode: forwards !important;
+    opacity: 1;
+}
+
+/* Modal barındıran sarmalayıcılarda animasyon hiç uygulanmasın */
+.rise-in:has(.fixed.inset-0),
+.stagger > *:has(.fixed.inset-0),
+.animate-fade-in:has(.fixed.inset-0),
+.animate-fade-in-up:has(.fixed.inset-0),
+.animate-scale-in:has(.fixed.inset-0) {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   11. ELLE YAZILMIŞ BUTONLARIN OTOMATİK KAZANIMI
+
+   Uygulamada 500'den fazla buton doğrudan Tailwind sınıflarıyla
+   yazılmış (`<button className="bg-brand text-white rounded-2xl …">`).
+   Hepsini elle dönüştürmek yerine, ELEMENT TÜRÜ + ZEMİN eşleşmesiyle
+   fiziksel buton görünümü veriliyor. Kural yalnızca <button> ve
+   role="button" için geçerli — aynı sınıfları taşıyan kartlar,
+   rozetler ve etiketler etkilenmez.
+   ══════════════════════════════════════════════════════════════════════ */
+
+button, [role="button"] { transition: transform .12s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, filter .18s ease; }
+
+/* ── Dolu renkli butonlar ─────────────────────────────── */
+button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
+          .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight, .bg-surface-inv):not(.b):not(.btn-v) {
+    position: relative;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, .22);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .2) 0%,
+                                              rgba(255, 255, 255, 0) 48%,
+                                              rgba(0, 0, 0, .1) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .32),
+        inset 0 -1px 0 rgba(0, 0, 0, .16),
+        0 1px 2px rgba(var(--cast), .18),
+        0 4px 10px -3px rgba(var(--cast), .22);
+}
+
+button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
+          .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight,
+          .bg-surface-inv):not(.b):not(.btn-v):hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .38),
+        inset 0 -1px 0 rgba(0, 0, 0, .16),
+        0 2px 4px rgba(var(--cast), .2),
+        0 10px 20px -6px rgba(var(--cast), .28);
+}
+
+button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
+          .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight,
+          .bg-surface-inv):not(.b):not(.btn-v):active:not(:disabled) {
+    transform: translateY(1px);
+    filter: brightness(.94);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, .3);
+}
+
+/* ── Yüzey zeminli (ikincil) butonlar ──────────────────── */
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb) {
+    box-shadow: inset 0 1px 0 var(--lit), 0 1px 2px rgba(var(--cast), .07);
+}
+
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 var(--lit), 0 4px 10px -3px rgba(var(--cast), .14);
+}
+
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(var(--cast), .12);
+}
+
+/* ── Yumuşak renkli butonlar ───────────────────────────── */
+button:is(.bg-brand-soft, .bg-accent-soft, .bg-ok-soft, .bg-warn-soft,
+          .bg-danger-soft, .bg-info-soft, .bg-highlight-soft):not(.b):hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px -4px rgba(var(--cast), .18);
+}
+
+/* ── Degrade zeminli butonlar ──────────────────────────────
+   Koyu temada marka renkleri açıldığı için degradeler soluklaşıp
+   üstlerindeki beyaz yazıyı 3:1'e düşürüyordu. `inset` gölge zemini
+   karartır ama metnin altında çizilir, dolayısıyla yazı etkilenmez.
+   Aynı bildirimde 3B kabartma da verilir.                        */
+:root[data-theme="dark"] button[class*="bg-gradient-to-"]:not(.b):not(.tb) {
+    box-shadow:
+        inset 0 0 0 999px rgba(0, 0, 0, .32),
+        inset 0 1px 0 rgba(255, 255, 255, .18),
+        0 1px 2px rgba(0, 0, 0, .4),
+        0 4px 10px -3px rgba(0, 0, 0, .55);
+}
+
+:root[data-theme="dark"] button[class*="bg-gradient-to-"]:not(.b):not(.tb):hover:not(:disabled) {
+    box-shadow:
+        inset 0 0 0 999px rgba(0, 0, 0, .24),
+        inset 0 1px 0 rgba(255, 255, 255, .22),
+        0 2px 4px rgba(0, 0, 0, .45),
+        0 10px 20px -6px rgba(0, 0, 0, .6);
+}
+
+/* Açık temada degrade butonlar da hacim kazansın */
+button[class*="bg-gradient-to-"]:not(.b):not(.tb) {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .3),
+        inset 0 -1px 0 rgba(0, 0, 0, .14),
+        0 1px 2px rgba(var(--cast), .18),
+        0 4px 10px -3px rgba(var(--cast), .24);
+}
+
+button:disabled { transform: none !important; filter: none !important; }
+
+/* Odak halkası — klavye kullanıcısı için her yerde aynı */
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   12. FORM ALANLARI — genel kazanım
+
+   Girdiler her ekranda ayrı ayrı biçimlendirilmişti. Tür bazlı bu kural
+   hepsine zemine gömülü görünüm ve tutarlı odak halkası verir.
+   ══════════════════════════════════════════════════════════════════════ */
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+    box-shadow: var(--e0);
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--brand) !important;
+    box-shadow:
+        inset 0 1px 2px rgba(var(--cast), .06),
+        0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+/* Onay kutusu ve radyo — marka rengiyle */
+input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--brand);
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   13. TABLO — okunabilir satır ayrımı
+   ══════════════════════════════════════════════════════════════════════ */
+
+table thead th {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    box-shadow: inset 0 -1px 0 var(--line), inset 0 1px 0 var(--lit-soft);
+}
+
+table tbody tr { transition: background-color .14s ease; }
+table tbody tr:hover { background: var(--surface-3); }

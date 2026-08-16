@@ -61,46 +61,47 @@ const SearchProgress = ({ topic, onComplete }) => {
     const CurrentIcon = steps[step]?.icon || Loader2;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-            <div className="w-full max-w-lg bg-gray-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-800">
+        // İlerleme perdesi: araştırma sürerken ESC/perde tıklaması kapatmasın
+        <div data-no-dismiss className="fixed inset-0 z-search-progress flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+            <div className="w-full max-w-lg bg-surface-inv rounded-2xl shadow-2xl overflow-hidden border border-line-2">
                 {/* Header */}
-                <div className="bg-gray-800 p-4 border-b border-gray-700 flex items-center justify-between">
+                <div className="bg-surface-inv p-4 border-b border-line-2 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse delay-75" />
-                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse delay-150" />
+                        <div className="w-3 h-3 rounded-full bg-danger animate-pulse" />
+                        <div className="w-3 h-3 rounded-full bg-warn animate-pulse delay-75" />
+                        <div className="w-3 h-3 rounded-full bg-ok animate-pulse delay-150" />
                     </div>
-                    <span className="text-xs font-mono text-gray-400">AI RESEARCH ENGINE v2.4</span>
+                    <span className="text-xs font-mono text-ink-3">AI RESEARCH ENGINE v2.4</span>
                 </div>
 
                 {/* Main Content */}
                 <div className="p-8 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6 relative">
-                        <div className="absolute inset-0 border-4 border-indigo-500/30 rounded-full animate-spin-slow border-t-indigo-500" />
-                        <CurrentIcon size={32} className="text-indigo-400 animate-pulse" />
+                    <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mb-6 relative">
+                        <div className="absolute inset-0 border-4 border-brand/30 rounded-full animate-spin-slow border-t-indigo-500" />
+                        <CurrentIcon size={32} className="text-brand animate-pulse" />
                     </div>
 
-                    <h3 className="text-xl font-bold text-white mb-2">Derin Araştırma Yapılıyor</h3>
-                    <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                    <h3 className="text-xl font-bold text-ink mb-2">Derin Araştırma Yapılıyor</h3>
+                    <p className="text-ink-3 text-sm mb-6 max-w-xs mx-auto">
                         Yapay zeka, belirlediğiniz konu hakkında en güncel ve doğru bilgileri topluyor.
                     </p>
 
                     {/* Terminal Logs */}
-                    <div className="w-full bg-black/50 rounded-lg p-4 font-mono text-xs text-left h-40 overflow-y-auto border border-gray-700/50 shadow-inner">
+                    <div className="w-full bg-black/50 rounded-lg p-4 font-mono text-xs text-left h-40 overflow-y-auto border border-line-2/50 shadow-inner">
                         {logs.map((log, i) => (
-                            <div key={i} className="mb-1.5 text-green-400/90 flex gap-2">
+                            <div key={i} className="mb-1.5 text-ok/90 flex gap-2">
                                 <span className="opacity-50 select-none">{'>'}</span>
                                 <span className="animate-typewriter">{log}</span>
                             </div>
                         ))}
-                        <div className="animate-pulse text-indigo-400 mt-2">_</div>
+                        <div className="animate-pulse text-brand mt-2">_</div>
                     </div>
                 </div>
 
                 {/* Footer Progress */}
-                <div className="h-1 bg-gray-800 w-full">
+                <div className="h-1 bg-surface-inv w-full">
                     <div
-                        className="h-full bg-indigo-500 transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        className="h-full bg-brand transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(99,102,241,0.5)]"
                         style={{ width: `${((step + 1) / steps.length) * 100}%` }}
                     />
                 </div>

@@ -1,21 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr" translate="no" class="notranslate">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <!-- Google Translate'i devre dışı bırak - React DOM'u bozuyor -->
+  <meta name="google" content="notranslate" />
+  <meta name="googlebot" content="notranslate" />
+  <link rel="icon" type="image/svg+xml" href="/logo512.svg" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>İbrahim Karataş - Yapay Zeka Destekli Eğitim Koçu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- iOS PWA (Apple) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AI Koç" />
+  <!-- iOS requires PNG icons, not SVG -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120.png" />
+  <!-- iOS Splash Screens -->
+  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#312e81" media="(prefers-color-scheme: dark)" />
+  <title>AI Öğrenci Koçu — Koçluk ve Rehberlik Sistemi</title>
   <meta name="description"
-    content="Türkiye'nin ilk ve tek yapay zeka destekli öğrenci koçluğu sistemi. YKS, LGS ve Ara Sınıflar için kişiselleştirilmiş programlar, deneme analizleri ve rehberlik." />
+    content="Özel öğrenci koçluğu ve okul rehberlik servisi tek uygulamada: ders programı, deneme analizi, görev takibi ve MEB düzenine uygun rehberlik dosyaları." />
 
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://ibrahimkaratas-koc.netlify.app/" />
-  <meta property="og:title" content="İbrahim Karataş - Yapay Zeka Koçluk Sistemi" />
+  <meta property="og:title" content="AI Öğrenci Koçu — Koçluk ve Rehberlik Sistemi" />
   <meta property="og:description"
-    content="Öğrencinizin başarısını şansa bırakmayın. Yapay zeka ile kişiye özel çalışma programı ve detaylı analizler." />
+    content="Koçluk çalışmanız ve rehberlik dosyanız tek uygulamada. Öğrenci ve veli hesapları ücretsiz." />
   <meta property="og:image" content="/logo512.svg" />
 
   <!-- Twitter -->
@@ -27,7 +46,7 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root" translate="no"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 

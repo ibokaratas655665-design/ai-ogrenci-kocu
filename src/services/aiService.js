@@ -112,7 +112,7 @@ export const aiService = {
                         title: "Biliyor muydunuz?",
                         subtitle: "İlginç Bir Bilgi",
                         content: `${baseTitle} yöntemlerini kullanan öğrencilerin odaklanma sürelerinin %40 daha yüksek olduğunu biliyor muydunuz? Küçük değişimler büyük farklar yaratır.`,
-                        color: "bg-indigo-50",
+                        color: "bg-brand-soft",
                         icon: "Lightbulb"
                     },
                     {
@@ -120,7 +120,7 @@ export const aiService = {
                         title: "İletişim & Kaynaklar",
                         subtitle: "Bize Ulaşın",
                         content: "Daha fazla bilgi ve kaynak için rehberlik servisine başvurabilirsiniz.\nwww.aiogrencikocu.com",
-                        color: "bg-gray-50",
+                        color: "bg-surface-2",
                         isContact: true
                     },
                     {
