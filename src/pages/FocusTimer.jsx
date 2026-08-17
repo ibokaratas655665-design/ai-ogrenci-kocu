@@ -72,11 +72,11 @@ const FocusTimer = () => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 bg-brand hover:bg-brand-hover text-white p-4 rounded-full shadow-xl transition transform hover:scale-110 z-50 flex items-center justify-center group"
+                style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }} className="fixed bottom-[84px] lg:bottom-6 right-4 lg:right-6 bg-brand hover:bg-brand-hover text-white p-4 rounded-full shadow-xl transition transform hover:scale-110 z-50 flex items-center justify-center group"
                 title="Odaklanma Modunu Aç"
             >
                 <Clock size={24} />
-                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap group-hover:ml-2 font-bold text-sm">
+                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-yavas ease-in-out whitespace-nowrap group-hover:ml-2 font-bold text-sm">
                     Odaklan
                 </span>
             </button>
@@ -85,7 +85,7 @@ const FocusTimer = () => {
 
     if (isMinimized) {
         return (
-            <div className="fixed bottom-6 right-6 bg-surface border border-line p-2 px-4 rounded-2xl shadow-xl z-50 flex items-center gap-3">
+            <div style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }} className="fixed bottom-[84px] lg:bottom-6 right-4 lg:right-6 bg-surface border border-line p-2 px-4 rounded-2xl shadow-xl z-50 flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-ok animate-pulse' : 'bg-gray-400'}`} />
                 <span className="font-mono font-bold text-ink">{formatTime(timeLeft)}</span>
                 <span className="text-xs text-ink-3">{MODES[selectedMode].label}</span>
@@ -97,7 +97,7 @@ const FocusTimer = () => {
     }
 
     return (
-        <div className="fixed bottom-6 right-6 w-72 bg-surface rounded-3xl shadow-2xl border border-line z-50 overflow-hidden">
+        <div style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }} className="fixed bottom-[84px] lg:bottom-6 right-4 lg:right-6 w-72 bg-surface rounded-3xl shadow-2xl border border-line z-50 overflow-hidden">
             {/* Header */}
             <div className={`on-color p-4 flex justify-between items-center ${MODES[selectedMode].color}`}>
                 <div className="flex items-center gap-2">

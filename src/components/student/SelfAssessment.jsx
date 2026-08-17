@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Star, Send, CheckCircle, TrendingUp, Brain, Heart, Zap, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
+import { bildir } from '../../services/uiGeriBildirim';
 
 const QUESTIONS = [
     { id: 'motivation',  label: 'Bu hafta motivasyonumu nasıl değerlendiriyorum?', icon: Zap,       color: 'amber' },
@@ -39,7 +40,7 @@ const StarRating = ({ value, onChange, color }) => {
                     onClick={() => onChange(n)}
                     onMouseEnter={() => setHover(n)}
                     onMouseLeave={() => setHover(0)}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center border-2 transition-all duration-150 ${(hover || value) >= n
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center border-2 transition-all duration-hizli ${(hover || value) >= n
                         ? `${c.fill} text-ink border-transparent scale-110 shadow-sm`
                         : 'bg-surface border-line text-ink-3 hover:border-line-2'
                     }`}
@@ -76,7 +77,7 @@ export const SelfAssessmentForm = ({ userId, userName, onClose }) => {
 
     const handleSubmit = () => {
         if (Object.values(scores).some(v => v === 0)) {
-            alert('Lütfen tüm soruları puanlayın.');
+            bildir('Lütfen tüm soruları puanlayın.', 'uyari');
             return;
         }
         setLoading(true);

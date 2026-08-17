@@ -42,7 +42,7 @@ const AnalyticsCharts = ({ examData }) => {
     if (!examData || examData.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-10 bg-surface rounded-2xl border border-line h-48">
-                <BarChart2 size={36} className="text-ink-3 mb-3" />
+                <BarChart2 size={36} className="text-ink-3 mb-3"  animationDuration={300} />
                 <p className="text-ink-3 font-medium">Henüz deneme sonucu yok.</p>
                 <p className="text-xs text-ink-3 mt-1">Koçun deneme yüklediğinde grafikler burada belirecek.</p>
             </div>
@@ -203,7 +203,7 @@ const AnalyticsCharts = ({ examData }) => {
                             <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={tytProgressData} margin={{ left: -10, right: 10 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                                         <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} tickLine={false} axisLine={false} />
                                         <Tooltip content={<CustomTooltip />} />
@@ -218,7 +218,7 @@ const AnalyticsCharts = ({ examData }) => {
                                                 dot={{ r: key === 'Toplam Net' ? 5 : 3, fill: LINE_COLORS[key] }}
                                                 activeDot={{ r: 7 }}
                                                 strokeDasharray={key === 'Toplam Net' ? undefined : '4 3'}
-                                            />
+                                             animationDuration={300} />
                                         ))}
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -235,7 +235,7 @@ const AnalyticsCharts = ({ examData }) => {
                             <div className="h-56">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={aytProgressData} margin={{ left: -10, right: 10 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                                         <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                         <Tooltip content={<CustomTooltip />} />
@@ -250,7 +250,7 @@ const AnalyticsCharts = ({ examData }) => {
                                                 dot={{ r: 4, fill: LINE_COLORS[key] }}
                                                 activeDot={{ r: 7 }}
                                                 strokeDasharray={key === 'Toplam Net' ? undefined : '4 3'}
-                                            />
+                                             animationDuration={300} />
                                         ))}
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -272,7 +272,7 @@ const AnalyticsCharts = ({ examData }) => {
                             <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={tytWithDelta.slice(1)} margin={{ left: -10, right: 10 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                         <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
                                         <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                         <Tooltip
@@ -289,7 +289,7 @@ const AnalyticsCharts = ({ examData }) => {
                                                 );
                                             }}
                                         />
-                                        <ReferenceLine y={0} stroke="#e5e7eb" strokeWidth={2} />
+                                        <ReferenceLine y={0} stroke="var(--line)" strokeWidth={2} />
                                         <Bar
                                             dataKey="delta"
                                             name="Değişim (Δ Net)"
@@ -358,10 +358,10 @@ const AnalyticsCharts = ({ examData }) => {
                     <div className="h-64 w-full relative" style={{ minHeight: '256px' }}>
                         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                <PolarGrid stroke="#e5e7eb" />
+                                <PolarGrid stroke="var(--line)" />
                                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#374151', fontSize: 12, fontWeight: 'bold' }} />
                                 <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
-                                <Radar name="Son Deneme" dataKey="A" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.4} strokeWidth={2} />
+                                <Radar name="Son Deneme" dataKey="A" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.4} strokeWidth={2}  animationDuration={300} />
                                 <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
                         </ResponsiveContainer>

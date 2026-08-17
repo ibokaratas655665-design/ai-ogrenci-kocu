@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { GamificationProvider } from './context/GamificationContext';
+import { UIGeriBildirimProvider } from './context/UIGeriBildirimContext';
 import { api } from './services/api';
 import DashboardLayout from './layouts/DashboardLayout';
 import NotificationPanel from './components/NotificationPanel';
@@ -89,11 +90,42 @@ class GlobalErrorBoundary extends React.Component {
   }
 }
 
-// Loading Component
+/**
+ * Sayfa yükleme iskeleti.
+ *
+ * Eskiden dönen bir çember + "Yükleniyor…" yazısıydı: bekleme süresi
+ * boyunca ekran boş görünüyor, kullanıcı ne geleceğini bilmiyordu.
+ * İskelet gelecek düzenin şeklini gösterir — üst şerit, başlık ve
+ * kart ızgarası — böylece bekleme kısa hissettirir ve içerik yerine
+ * oturduğunda sayfa zıplamaz.
+ */
 const PageLoader = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-surface-2">
-    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
-    <div className="text-brand font-bold text-lg animate-pulse">Başarı Kampı Yükleniyor...</div>
+  <div className="min-h-screen bg-page" role="status" aria-label="Sayfa yükleniyor">
+    {/* Üst şerit */}
+    <div className="h-16 lg:h-[88px] border-b border-line flex items-center px-4 sm:px-6 lg:px-8 gap-3">
+      <div className="iskelet-parilti w-9 h-9 rounded-dmd bg-surface-3" />
+      <div className="iskelet-parilti h-4 w-32 rounded-dsm bg-surface-3" />
+      <div className="ml-auto flex gap-2">
+        <div className="iskelet-parilti w-11 h-11 rounded-pill bg-surface-3" />
+        <div className="iskelet-parilti w-11 h-11 rounded-pill bg-surface-3" />
+      </div>
+    </div>
+
+    {/* Gövde */}
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
+      <div className="iskelet-parilti h-7 w-56 rounded-dsm bg-surface-3" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-dlg border border-line bg-surface p-kart space-y-3">
+            <div className="iskelet-parilti h-4 w-2/3 rounded-dsm bg-surface-3" />
+            <div className="iskelet-parilti h-3 w-full rounded-dsm bg-surface-3" />
+            <div className="iskelet-parilti h-3 w-4/5 rounded-dsm bg-surface-3" />
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <span className="sr-only">Başarı Kampı yükleniyor</span>
   </div>
 );
 
@@ -138,6 +170,9 @@ function App() {
       <NotificationProvider>
         <GamificationProvider>
           <AuthProvider>
+            {/* Toast ve onay penceresi tek yerden; tarayıcının
+                alert/confirm diyaloglarının yerini alır */}
+            <UIGeriBildirimProvider>
             <GlobalErrorBoundary>
               <HashRouter>
                 <Suspense fallback={<PageLoader />}>
@@ -250,6 +285,7 @@ function App() {
               </Suspense>
             </HashRouter>
           </GlobalErrorBoundary>
+            </UIGeriBildirimProvider>
         </AuthProvider>
         </GamificationProvider>
       </NotificationProvider>

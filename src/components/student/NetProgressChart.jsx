@@ -89,7 +89,7 @@ const NetProgressChart = ({ examData = [], userId }) => {
     if (examData.length === 0) {
         return (
             <div className="bg-surface rounded-2xl p-8 shadow-sm border border-line text-center">
-                <BarChart2 size={48} className="text-ink-3 mx-auto mb-3" />
+                <BarChart2 size={48} className="text-ink-3 mx-auto mb-3"  animationDuration={300} />
                 <p className="font-bold text-ink-3">Henüz deneme sonucu yok</p>
                 <p className="text-sm text-ink-3 mt-1">Koçun deneme yüklediğinde grafikler burada görünecek</p>
             </div>
@@ -133,11 +133,11 @@ const NetProgressChart = ({ examData = [], userId }) => {
                                     <stop offset="95%" stopColor="var(--c1)" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
                             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="net" stroke="var(--c1)" strokeWidth={3} fill="url(#netGrad)" name="Toplam Net" dot={{ fill: 'var(--c1)', r: 5 }} activeDot={{ r: 7 }} />
+                            <Area type="monotone" dataKey="net" stroke="var(--c1)" strokeWidth={3} fill="url(#netGrad)" name="Toplam Net" dot={{ fill: 'var(--c1)', r: 5 }} activeDot={{ r: 7 }}  animationDuration={300} />
                         </AreaChart>
                     </ResponsiveContainer>
                 )}
@@ -150,11 +150,11 @@ const NetProgressChart = ({ examData = [], userId }) => {
                                     <stop offset="95%" stopColor="var(--c4)" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
                             <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#9ca3af' }} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Area type="monotone" dataKey="score" stroke="var(--c4)" strokeWidth={3} fill="url(#scoreGrad)" name="Sınav Puanı" dot={{ fill: 'var(--c4)', r: 5 }} activeDot={{ r: 7 }} />
+                            <Area type="monotone" dataKey="score" stroke="var(--c4)" strokeWidth={3} fill="url(#scoreGrad)" name="Sınav Puanı" dot={{ fill: 'var(--c4)', r: 5 }} activeDot={{ r: 7 }}  animationDuration={300} />
                         </AreaChart>
                     </ResponsiveContainer>
                 )}
@@ -164,11 +164,11 @@ const NetProgressChart = ({ examData = [], userId }) => {
                     ) : (
                         <ResponsiveContainer width="100%" height={280}>
                             <BarChart data={deltaData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af' }} />
                                 <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
                                 <Tooltip content={<CustomTooltip />} />
-                                <ReferenceLine y={0} stroke="#e5e7eb" strokeWidth={2} />
+                                <ReferenceLine y={0} stroke="var(--line)" strokeWidth={2} />
                                 <Bar dataKey="değişim" name="Net Değişimi" fill="var(--c1)" label={false}>
                                     {deltaData.map((d, i) => <Cell key={i} fill={d.değişim >= 0 ? 'var(--ok)' : 'var(--c5)'} />)}
                                 </Bar>
@@ -188,7 +188,7 @@ const NetProgressChart = ({ examData = [], userId }) => {
                                         <span className="font-black text-ink">{s.ort} <span className="text-ink-3 font-normal text-xs">/ {s.max}</span></span>
                                     </div>
                                     <div className="w-full bg-surface-3 rounded-full h-3 overflow-hidden">
-                                        <div className="h-3 rounded-full transition-all duration-700" style={{ width: `${Math.min((s.ort / s.max) * 100, 100)}%`, backgroundColor: s.color }} />
+                                        <div className="h-3 rounded-full transition-all duration-yavas" style={{ width: `${Math.min((s.ort / s.max) * 100, 100)}%`, backgroundColor: s.color }} />
                                     </div>
                                     <div className="text-right text-xs text-ink-3 mt-0.5">%{Math.round((s.ort / s.max) * 100)} doluluk</div>
                                 </div>

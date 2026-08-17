@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, Award, ChevronRight, Loader2 } from 'lucide-react';
 import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
 
 const PublicOBPEntry = () => {
     const navigate = useNavigate();
@@ -22,12 +24,12 @@ const PublicOBPEntry = () => {
 
         let score = parseFloat(diplomaScore);
         if (isNaN(score) || score < 0 || score > 100) {
-            alert("Lütfen 0 ile 100 arasında geçerli bir diploma notu giriniz.");
+            bildir("Lütfen 0 ile 100 arasında geçerli bir diploma notu giriniz.", 'uyari');
             return;
         }
 
         if (!studentName.trim() || !schoolNumber.trim()) {
-            alert("Lütfen Ad Soyad ve Okul Numarası giriniz.");
+            bildir("Lütfen Ad Soyad ve Okul Numarası giriniz.", 'uyari');
             return;
         }
 
@@ -74,7 +76,7 @@ const PublicOBPEntry = () => {
 
             setStep('success');
         } catch (err) {
-            alert('Hata oluştu: ' + err.message);
+            bildir(hataAnlat(err), 'hata');
         } finally {
             setLoading(false);
         }

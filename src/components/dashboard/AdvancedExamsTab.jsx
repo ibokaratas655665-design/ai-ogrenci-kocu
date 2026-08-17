@@ -22,6 +22,8 @@ import SubjectAnalysis from '../charts/SubjectAnalysis';
 import firebaseSync from '../../services/firebaseSync';
 import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResources, removeExamResource } from '../../data/curriculum';
 import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
+import { bildir } from '../../services/uiGeriBildirim';
+import { hataAnlat } from '../../services/hataMesaji';
 
 const CurriculumManager = () => {
     const [selectedExam, setSelectedExam] = useState('TYT');
@@ -149,12 +151,12 @@ const OBPManager = () => {
 
     const handleSave = () => {
         if (!newStudent.trim() || !newScore || !newNumber.trim()) {
-            alert("Lütfen Ad Soyad, Okul No ve Diploma Notu alanlarını doldurun.");
+            bildir("Lütfen Ad Soyad, Okul No ve Diploma Notu alanlarını doldurun.", 'uyari');
             return;
         }
         const score = parseFloat(newScore);
         if (score < 0 || score > 100) {
-            alert("Lütfen 0-100 arası geçerli bir diploma notu girin.");
+            bildir("Lütfen 0-100 arası geçerli bir diploma notu girin.", 'uyari');
             return;
         }
 
@@ -193,7 +195,7 @@ const OBPManager = () => {
         const coachId = user?.id || 'default';
         const link = window.location.origin + window.location.pathname + `#/obp-girisi?c=${coachId}`;
         navigator.clipboard.writeText(link);
-        alert('Bağlantı kopyalandı:\n' + link + '\n\nÖğrencilerinizle paylaşabilirsiniz.');
+        bildir('Bağlantı kopyalandı:\n' + link + '\n\nÖğrencilerinizle paylaşabilirsiniz.');
     };
 
     const handleExcelUpload = async (e) => {
@@ -209,7 +211,7 @@ const OBPManager = () => {
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
             if (jsonData.length < 2) {
-                alert("Excel dosyası boş veya beklenen formatta değil.");
+                bildir("Excel dosyası boş veya beklenen formatta değil.", 'uyari');
                 return;
             }
 
@@ -237,7 +239,7 @@ const OBPManager = () => {
             }
 
             if (nameIdx === -1 || obpIdx === -1) {
-                alert("Excel formatı geçersiz. 'AD SOYAD' ve 'OBP' (veya Diploma Notu) sütunları bulunamadı. Lütfen başlıkları kontrol edin.");
+                bildir("Excel formatı geçersiz. 'AD SOYAD' ve 'OBP' (veya Diploma Notu) sütunları bulunamadı. Lütfen başlıkları kontrol edin.", 'hata');
                 return;
             }
 
@@ -278,10 +280,10 @@ const OBPManager = () => {
             firebaseSync.syncKey('v2_obp_data').catch(() => { });
             window.dispatchEvent(new StorageEvent('storage', { key: 'v2_obp_data', newValue: JSON.stringify(updated) }));
 
-            alert(`${uploadedCount} öğrencinin OBP/Diploma Notu başarıyla aktarıldı!`);
+            bildir(`${uploadedCount} öğrencinin OBP/Diploma Notu başarıyla aktarıldı!`, 'basari');
 
         } catch (error) {
-            alert('Excel dosyası okunurken hata oluştu: ' + error.message);
+            bildir(hataAnlat(error, 'excel'), 'hata');
         }
         e.target.value = null; // reset file input
     };
@@ -607,7 +609,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
 
             doc.save(`${activeExamType}_analiz_raporu_${new Date().toISOString().slice(0, 10)}.pdf`);
         } catch (e) {
-            alert('PDF oluşturulamadı: ' + e.message);
+            bildir('PDF oluşturulamadı: ' + e.message);
         } finally {
             setPdfLoading(false);
         }
@@ -670,10 +672,10 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                                         formatter={(v, name) => [`${v} net`, name]} />
                                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                                     <Line type="monotone" dataKey="Ort. Net" stroke="var(--c4)" strokeWidth={3}
-                                        dot={{ r: 5, fill: 'var(--c4)', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 7 }} />
+                                        dot={{ r: 5, fill: 'var(--c4)', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 7 }}  animationDuration={300} />
                                     {activeExamType === 'TYT' && ['Türkçe', 'Matematik', 'Fen', 'Sosyal'].map(s => (
                                         <Line key={s} type="monotone" dataKey={s} stroke={LINE_COLORS[s]} strokeWidth={1.5}
-                                            strokeDasharray="4 3" dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                                            strokeDasharray="4 3" dot={{ r: 3 }} activeDot={{ r: 5 }}  animationDuration={300} />
                                     ))}
                                 </LineChart>
                             </ResponsiveContainer>
@@ -725,7 +727,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                         <div className="h-52">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={classData} barSize={Math.max(28, Math.min(56, 240 / Math.max(classData.length, 1)))}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                     <RechartsTooltip contentStyle={{ borderRadius: 10, fontSize: 11 }}
@@ -738,7 +740,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                                         ))}
                                     </Bar>
                                     <Bar dataKey="max" name="En Yüksek" radius={[4, 4, 0, 0]} fill="transparent"
-                                        stroke="var(--ink-3)" strokeWidth={1.5} fillOpacity={0} strokeDasharray="3 2" />
+                                        stroke="var(--ink-3)" strokeWidth={1.5} fillOpacity={0} strokeDasharray="3 2"  animationDuration={300} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -781,12 +783,11 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                     <RechartsTooltip contentStyle={{ borderRadius: 10, fontSize: 11 }}
                                         formatter={(v, name) => [`${v} net`, name]} />
-                                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
                                     {displaySubjects.map(subj => (
                                         <Line key={subj} type="monotone" dataKey={subj}
                                             stroke={LINE_COLORS[subj] || 'var(--c4)'} strokeWidth={2.5}
                                             dot={{ r: 4, fill: LINE_COLORS[subj] || 'var(--c4)', stroke: '#fff', strokeWidth: 1.5 }}
-                                            activeDot={{ r: 6 }} />
+                                            activeDot={{ r: 6 }}  animationDuration={300} />
                                     ))}
                                 </LineChart>
                             </ResponsiveContainer>
@@ -895,7 +896,7 @@ const NewTrialModal = ({ onClose, onCreate, initialExamType }) => {
                             />
                         </div>
                     </div>
-                    <div className="flex gap-3 pt-2">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
                         <button type="submit" className="on-color flex-1 bg-gradient-to-r from-purple-600 to-brand text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg shadow-purple-200">
                             Deneme Oluştur
@@ -1397,7 +1398,7 @@ const ManualResultModal = ({ onClose, onSave, trials, initialData }) => {
                         )}
                     </div>
 
-                    <div className="flex gap-3 pt-1">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
                         <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
                         <button type="submit" disabled={!student.trim() || !trialId}
                             className="on-color flex-1 bg-gradient-to-r from-brand to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
@@ -1607,7 +1608,7 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                 onClick={() => setExpanded(!expanded)}
             >
                 <div className="flex items-center gap-3">
-                    <div className={`transition-transform duration-300 ${expanded ? 'rotate-90' : ''}`}>
+                    <div className={`transition-transform duration-yavas ${expanded ? 'rotate-90' : ''}`}>
                         <ChevronRight size={20} className="text-ink-3" />
                     </div>
                     <div>
@@ -1680,20 +1681,20 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                         <div className="px-5 pb-4">
                             <div className="bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl p-4">
                                 <h5 className="text-sm font-bold text-ink-2 mb-3 flex items-center gap-2">
-                                    <BarChart2 size={15} className="text-brand" />
+                                    <BarChart2 size={15} className="text-brand"  animationDuration={300} />
                                     Sınıf Karşılaştırması
                                 </h5>
                                 <div className="h-32">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={gradeCompareData} barSize={40}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
                                             <RechartsTooltip
                                                 contentStyle={{ borderRadius: '10px', border: 'none', fontSize: 12 }}
                                                 formatter={(v) => [`${v} net`, 'Ortalama']}
                                             />
-                                            <Bar dataKey="ortalama" fill="url(#gradientBar)" radius={[6, 6, 0, 0]} />
+                                            <Bar dataKey="ortalama" fill="url(#gradientBar)" radius={[6, 6, 0, 0]}  animationDuration={300} />
                                             <defs>
                                                 <linearGradient id="gradientBar" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="0%" stopColor="var(--c4)" />
@@ -1736,7 +1737,7 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                                             try {
                                                 generateBulkExamReport(trial, activeResults, students);
                                             } catch (err) {
-                                                if (setToast) setToast('PDF oluşturulurken hata: ' + err.message);
+                                                if (setToast) setToast(hataAnlat(err, 'pdf'));
                                             }
                                         }}
                                         className="flex items-center gap-1.5 bg-brand-soft text-brand px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-200 transition"
@@ -1843,7 +1844,7 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                                                         <td className="px-4 py-2.5 text-ink-3 font-bold text-xs">{idx + 1}</td>
                                                         <td className="px-4 py-2.5 font-semibold text-ink">
                                                             <div className="flex items-center gap-1">
-                                                                <span className={`text-[10px] transition-transform duration-200 ${isRowExpanded ? 'rotate-90' : ''} text-brand`}>▶</span>
+                                                                <span className={`text-[10px] transition-transform duration-normal ${isRowExpanded ? 'rotate-90' : ''} text-brand`}>▶</span>
                                                                 {result.student}
                                                                 {result.number && <span className="ml-2 text-xs text-ink-3">#{result.number}</span>}
                                                             </div>
@@ -2154,7 +2155,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             const rawResults = Array.isArray(parsedOutput) ? parsedOutput : parsedOutput.results;
 
             if (!rawResults || rawResults.length === 0) {
-                alert('Excel dosyasında öğrenci verisi bulunamadı.\n\nLütfen dosyanızı kontrol edin:\n• Öğrenci adları dolu mu?\n• D, Y, N sütunları var mı?\n• Dosya TYT formatında mı?');
+                bildir('Excel dosyasında öğrenci verisi bulunamadı.\n\nLütfen dosyanızı kontrol edin:\n• Öğrenci adları dolu mu?\n• D, Y, N sütunları var mı?\n• Dosya TYT formatında mı?', 'hata');
                 setLoadingGrade(null);
                 return;
             }
@@ -2304,7 +2305,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
 
         } catch (err) {
             console.error('Grade upload error:', err);
-            alert(`Yükleme Hatası:\n\n${err.message || err}\n\nLütfen Excel dosyanızın TYT formatında olduğundan emin olun.`);
+            bildir(hataAnlat(err, 'excel'), 'hata');
             if (setToast) setToast('❌ Yükleme sırasında hata oluştu.');
         } finally {
             setLoadingGrade(null);
@@ -2480,7 +2481,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             <div className="flex justify-between items-start flex-wrap gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-ink flex items-center gap-2">
-                        <BarChart2 className="text-c4" size={24} />
+                        <BarChart2 className="text-c4" size={24}  animationDuration={300} />
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-brand">
                             Deneme Merkezi
                         </span>
@@ -2595,7 +2596,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             ) : filteredTrials.length === 0 ? (
                 <div className="text-center py-16 bg-surface rounded-2xl border-2 border-dashed border-line">
                     <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <BarChart2 size={32} className="text-c4" />
+                        <BarChart2 size={32} className="text-c4"  animationDuration={300} />
                     </div>
                     <h3 className="text-lg font-bold text-ink-2 mb-2">
                         {examCategory === 'kazanim' ? `${kazanimGrade}. Sınıf kazanım testi yok` : `${examCategory} denemesi yok`}
@@ -2617,7 +2618,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center font-black">
-                                                <BarChart2 size={20} />
+                                                <BarChart2 size={20}  animationDuration={300} />
                                             </div>
                                             <div>
                                                 <h3 className="font-black text-ink text-base leading-tight">{examCategory} DENEMELERİ</h3>
@@ -2755,7 +2756,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                             <div className="animate-fade-in border-2 border-brand-line rounded-2xl overflow-hidden shadow-lg">
                                 <div className="on-color bg-gradient-to-r from-brand to-purple-600 px-5 py-3 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <BarChart2 size={18} className="text-ink-2" />
+                                        <BarChart2 size={18} className="text-ink-2"  animationDuration={300} />
                                         <h3 className="text-ink font-bold">{trial.name}</h3>
                                         <span className="bg-surface/20 text-ink text-xs font-bold px-2 py-0.5 rounded-full">{trial.examType}</span>
                                     </div>

@@ -211,7 +211,7 @@ const DavetFormu = ({ onKapat, onUret }) => {
                         onChange={(e) => yaz('not', e.target.value)} />
                 </label>
 
-                <div className="flex gap-2 pt-1">
+                <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-1">
                     <button onClick={onKapat} className="b b-line flex-1">İptal</button>
                     <button onClick={() => onUret(f)} className="b b-fill b-brand flex-1">Oluştur</button>
                 </div>

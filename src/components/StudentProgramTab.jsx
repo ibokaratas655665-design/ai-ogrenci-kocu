@@ -11,6 +11,7 @@ import { CURRICULUM, SUBJECT_COLORS, getTopicName, getTopicWeight } from '../dat
 import ProgramCell from './program/ProgramCell';
 import { getCellColor, getSubjectLabel, ACTIVITY_TYPES } from '../data/programColors';
 import programProgress from '../services/programProgressService';
+import { bildir } from '../services/uiGeriBildirim';
 
 // ─── Sabitler ──────────────────────────────────────────────────
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -184,7 +185,7 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
     const handleDownloadPDF = async () => {
         const weekDivs = document.querySelectorAll('[data-pdf-week-student]');
         if (!weekDivs || weekDivs.length === 0) {
-            alert('Önce program oluşturulmalı.');
+            bildir('Önce program oluşturulmalı.');
             return;
         }
 
@@ -224,7 +225,7 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
             doc.save(`Calisma_Programi_Tum_Haftalar.pdf`);
         } catch (error) {
             console.error('PDF Hatası:', error);
-            alert('PDF oluşturulurken bir hata oluştu.');
+            bildir('PDF oluşturulurken bir hata oluştu.', 'hata');
         }
     };
 
@@ -244,7 +245,7 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
                         <span className="text-sm font-black text-brand">{completedCount}/{filledCells} etüt</span>
                     </div>
                     <div className="w-full bg-surface-3 rounded-full h-3 overflow-hidden">
-                        <div className="on-color h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500" style={{ width: `${completionRate}%` }} />
+                        <div className="on-color h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-yavas" style={{ width: `${completionRate}%` }} />
                     </div>
                 </div>
             )}
@@ -508,7 +509,7 @@ const AIPlannerView = ({ userId }) => {
 
     const handleGenerate = () => {
         const pool = buildPool();
-        if (pool.length === 0) { alert('Bu sınav türü için konu bulunamadı.'); return; }
+        if (pool.length === 0) { bildir('Bu sınav türü için konu bulunamadı.'); return; }
         setGenerating(true);
         setSavedOk(false);
         setTimeout(() => {

@@ -12,6 +12,7 @@ import coupons from './couponService';
 import subscription from './subscriptionService';
 import { planBul, DENEME_GUN } from '../data/pricingPlans';
 import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
+import { hataAnlat } from './hataMesaji';
 
 /**
  * Doğru şifreyle giriş yapan eski (düz metin) kaydı özete çevirir.
@@ -363,12 +364,25 @@ export const loginStudent = async (schoolNumber, name) => {
                  * öğrencinin tam adını öğrenebiliyordu.
                  */
                 if (foundStudent.password) {
+                    /**
+                     * ⚠️ BURASI ŞİFREYİ FİİLEN İŞE YARAMAZ HÂLE GETİRİYORDU:
+                     *
+                     *   if (!gecerli && !isNameMatch(...))   → VEYA mantığı
+                     *
+                     * Şifre yanlış olsa bile ad tutuyorsa giriş kabul
+                     * ediliyordu. Okul numarası + ad bilen herkes, öğrenci
+                     * şifre kurmuş olmasına rağmen hesaba giriyordu; yani
+                     * şifre koymak hiçbir koruma sağlamıyordu.
+                     *
+                     * Şifre kurulmuşsa artık TEK geçerli anahtar şifredir.
+                     * Şifresini unutan öğrencinin şifresini koçu sıfırlar.
+                     */
                     const gecerli = await credential.dogrula(
                         name,
                         foundStudent.password,
                         (yeniOzet) => yukseltOgrenciSifresi(foundStudent.id, yeniOzet)
                     );
-                    if (!gecerli && !isNameMatch(foundStudent.name, nameStr)) {
+                    if (!gecerli) {
                         return { success: false, error: 'İsim veya şifre hatalı.' };
                     }
                 } else if (!isNameMatch(foundStudent.name, nameStr)) {
@@ -455,15 +469,20 @@ export const loginStudent = async (schoolNumber, name) => {
                         };
                     }
 
-                    // Düz metin karşılaştırma yerine özet doğrulaması
-                    const sifreGecerli = studentData.password
-                        ? await credential.dogrula(name, studentData.password)
-                        : false;
-
-                    if (!sifreGecerli && !isNameMatch(studentData.name, nameStr)) {
+                    /**
+                     * Yerel daldaki ile aynı kural: şifre kurulmuşsa yalnızca
+                     * şifre geçerlidir, ad eşleşmesi şifrenin yerine geçmez.
+                     * Şifre yoksa tam ad eşleşmesi aranır.
+                     */
+                    if (studentData.password) {
+                        const sifreGecerli = await credential.dogrula(name, studentData.password);
+                        if (!sifreGecerli) {
+                            return { success: false, error: 'İsim veya şifre hatalı.' };
+                        }
+                    } else if (!isNameMatch(studentData.name, nameStr)) {
                         return {
                             success: false,
-                            error: 'İsim veya şifre hatalı.'
+                            error: 'İsim bilgisi hatalı. Lütfen sisteme kayıtlı adınızı girin.'
                         };
                     }
 
@@ -480,7 +499,16 @@ export const loginStudent = async (schoolNumber, name) => {
                 );
 
                 if (coachStudent) {
-                    if (!isNameMatch(coachStudent.name, nameStr)) {
+                    /**
+                     * ⚠️ Bu dal şifreyi HİÇ SORMUYORDU: şifresini kurmuş bir
+                     * öğrenci bile yalnızca adı yazılarak taklit edilebiliyordu.
+                     */
+                    if (coachStudent.password) {
+                        const sifreGecerli = await credential.dogrula(name, coachStudent.password);
+                        if (!sifreGecerli) {
+                            return { success: false, error: 'İsim veya şifre hatalı.' };
+                        }
+                    } else if (!isNameMatch(coachStudent.name, nameStr)) {
                         return {
                             success: false,
                             error: 'İsim bilgisi eşleşmedi.'
@@ -673,7 +701,7 @@ export const registerCoach = async (data) => {
         console.error('Coach register hatası:', error);
         return {
             success: false,
-            error: 'Kayıt sırasında hata oluştu: ' + error.message
+            error: hataAnlat(error, 'kaydet')
         };
     }
 };

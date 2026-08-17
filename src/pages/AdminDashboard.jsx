@@ -10,6 +10,8 @@ import {
     Edit2, Shield, Save
 } from 'lucide-react';
 import firebaseSync from '../services/firebaseSync';
+import { bildir } from '../services/uiGeriBildirim';
+import { DataTable, Badge, Button, Avatar } from '../components/ui';
 
 // ── Onay Dialogu ─────────────────────────────────────────────
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
@@ -21,7 +23,7 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
                 </div>
                 <p className="text-ink font-medium">{message}</p>
             </div>
-            <div className="flex gap-3 mt-5">
+            <div className="pencere-alt-cubuk bg-surface flex gap-3 mt-5">
                 <button onClick={onCancel} className="flex-1 py-2.5 border border-line rounded-xl text-ink-2 font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
                 <button onClick={onConfirm} className="flex-1 py-2.5 bg-danger text-white rounded-xl font-semibold hover:bg-danger transition text-sm flex items-center justify-center gap-2">
                     <Trash2 size={14} /> Evet, Sil
@@ -51,7 +53,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
     };
 
     const handleSave = async () => {
-        if (!form.name.trim()) { alert('Ad Soyad zorunludur.'); return; }
+        if (!form.name.trim()) { bildir('Ad Soyad zorunludur.'); return; }
         setSaving(true);
         await onSave(user, form);
         setSaving(false);
@@ -169,7 +171,7 @@ const EditUserModal = ({ user, onClose, onSave }) => {
                     )}
 
                     {/* Butonlar */}
-                    <div className="flex gap-3 pt-1">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
                         <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">
                             İptal
                         </button>
@@ -621,74 +623,58 @@ export default function AdminDashboard() {
 
                         {loading ? <p className="text-ink-2">Yukleniyor...</p> : (
                             <div className="bg-surface rounded-xl shadow-sm border border-line overflow-hidden">
-                                <table className="w-full text-left">
-                                    <thead className="bg-surface-2 border-b border-line">
-                                        <tr>
-                                            <th className="px-6 py-4 font-semibold text-ink-2">Isim</th>
-                                            <th className="px-6 py-4 font-semibold text-ink-2">Telefon</th>
-                                            <th className="px-6 py-4 font-semibold text-ink-2">E-posta</th>
-                                            <th className="px-6 py-4 font-semibold text-ink-2">Rol</th>
-                                            <th className="px-6 py-4 font-semibold text-ink-2 text-right">Islem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-line">
-                                        {allUsers.map((user, idx) => (
-                                            <tr
-                                                key={user.id || user.phone || idx}
-                                                className="hover:bg-brand-soft/40 transition cursor-pointer"
-                                                onClick={() => setEditingUser(user)}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-ink font-bold text-xs shrink-0 ${user.role === 'coach' || user.role === 'admin' ? 'bg-gradient-to-br from-indigo-500 to-violet-500' : 'bg-gradient-to-br from-blue-400 to-cyan-500'}`}>
-                                                            {(user.name || '?').charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <span className="font-medium text-ink">{user.name || '—'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-ink-2 text-sm">{user.phone || '—'}</td>
-                                                <td className="px-6 py-4 text-ink-2 text-sm">{user.email || '—'}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${user.role === 'student' ? 'bg-info-soft text-info' : 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4'}`}>
-                                                            {user.role === 'student' ? 'Ogrenci' : 'Koc'}
-                                                        </span>
-                                                        {(user.role === 'coach' || user.role === 'admin') && user.coachRole === 'masterCoach' && (
-                                                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warn-soft text-warn w-fit">Yönetici</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
-                                                    <div className="flex justify-end items-center gap-2">
-                                                        <button
-                                                            onClick={e => { e.stopPropagation(); setEditingUser(user); }}
-                                                            className="inline-flex items-center gap-1.5 text-brand hover:bg-brand-soft text-sm font-semibold px-3 py-1.5 rounded-lg transition border border-brand-line"
-                                                        >
-                                                            <Edit2 size={12} /> Düzenle
-                                                        </button>
-                                                        <button
-                                                            onClick={e => { e.stopPropagation(); handleDelete(user); }}
-                                                            className="inline-flex items-center gap-1.5 text-danger hover:bg-danger-soft hover:text-danger text-sm font-semibold px-3 py-1.5 rounded-lg transition border border-danger"
-                                                        >
-                                                            <Trash2 size={12} /> Sil
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {allUsers.length === 0 && (
-                                            <tr>
-                                                <td colSpan="5" className="px-6 py-10 text-center text-ink-3">
-                                                    <Users size={32} className="mx-auto mb-2 opacity-30" />
-                                                    <p>Henuz kayitli kullanici yok.</p>
-                                                    <button onClick={() => setShowAddCoach(true)} className="mt-2 text-brand text-sm font-semibold hover:underline">
-                                                        + Ilk kocu ekle
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                {/* Ortak veri tablosu: arama, sıralama ve sayfalama hazır gelir.
+                                    Bu tabloda hiç duyarlı davranış yoktu — beş sütun telefonda
+                                    yatay kayıyor, kaydırınca başlık satırı kayboluyordu.
+                                    DataTable dar ekranda kart listesine geçer. */}
+                                <DataTable
+                                    sutunlar={[
+                                        {
+                                            anahtar: 'name', baslik: 'İsim',
+                                            bicim: (u) => (
+                                                <span className="flex items-center gap-2.5">
+                                                    <Avatar ad={u.name || '?'} boyut="sm" />
+                                                    <span className="font-semibold text-ink truncate">{u.name || '—'}</span>
+                                                </span>
+                                            ),
+                                        },
+                                        { anahtar: 'phone', baslik: 'Telefon', bicim: (u) => u.phone || '—' },
+                                        { anahtar: 'email', baslik: 'E-posta', bicim: (u) => u.email || '—' },
+                                        {
+                                            anahtar: 'role', baslik: 'Rol',
+                                            bicim: (u) => (
+                                                <span className="flex flex-wrap gap-1">
+                                                    <Badge ton={u.role === 'student' ? 'bilgi' : 'marka'} boyut="sm">
+                                                        {u.role === 'student' ? 'Öğrenci' : 'Koç'}
+                                                    </Badge>
+                                                    {(u.role === 'coach' || u.role === 'admin') && u.coachRole === 'masterCoach' && (
+                                                        <Badge ton="uyari" boyut="sm">Yönetici</Badge>
+                                                    )}
+                                                </span>
+                                            ),
+                                        },
+                                        {
+                                            anahtar: 'islem', baslik: 'İşlem', hizala: 'sag', siralanabilir: false, mobilGizle: true,
+                                            bicim: (u) => (
+                                                <span className="inline-flex justify-end items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                    <Button varyant="outline" boyut="sm" simge={Edit2}
+                                                        onClick={(e) => { e.stopPropagation(); setEditingUser(u); }}>Düzenle</Button>
+                                                    <Button varyant="ghost" boyut="sm" simge={Trash2}
+                                                        className="text-danger hover:bg-danger-soft"
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(u); }}>Sil</Button>
+                                                </span>
+                                            ),
+                                        },
+                                    ]}
+                                    satirlar={allUsers}
+                                    anahtarAlan="id"
+                                    aramaAlanlari={['name', 'phone', 'email']}
+                                    aramaIpucu="İsim, telefon veya e-posta ara…"
+                                    sayfaBoyutu={20}
+                                    onSatirTikla={(u) => setEditingUser(u)}
+                                    bosBaslik="Kullanıcı yok"
+                                    bosAciklama="Koç ekleyerek başlayabilirsiniz."
+                                />
                                 <div className="px-6 py-3 bg-surface-2 border-t border-line text-xs text-ink-3">
                                     Toplam {allUsers.length} kullanici • Düzenlemek için satıra tıklayın
                                 </div>

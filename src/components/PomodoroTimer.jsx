@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, CheckCircle, Volume2, VolumeX } from 'lucide-react';
+import { bildir } from '../services/uiGeriBildirim';
 
 const PomodoroTimer = ({ onSessionComplete }) => {
     const [mode, setMode] = useState('focus'); // 'focus', 'shortBreak', 'longBreak'
@@ -39,11 +40,11 @@ const PomodoroTimer = ({ onSessionComplete }) => {
             if (onSessionComplete) {
                 onSessionComplete(25); // Log 25 minutes
             }
-            alert("Harika! Bir odaklanma periyodunu tamamladın. Şimdi mola zamanı!");
+            bildir("Harika! Bir odaklanma periyodunu tamamladın. Şimdi mola zamanı!");
             setMode('shortBreak');
             setTimeLeft(MODES.shortBreak.time);
         } else {
-            alert("Mola bitti! Hadi tekrar odaklanalım.");
+            bildir("Mola bitti! Hadi tekrar odaklanalım.");
             setMode('focus');
             setTimeLeft(MODES.focus.time);
         }
@@ -86,7 +87,7 @@ const PomodoroTimer = ({ onSessionComplete }) => {
     const progress = 100 - (timeLeft / MODES[mode].time) * 100;
 
     return (
-        <div className={`p-8 rounded-3xl border-2 ${MODES[mode].border} ${MODES[mode].bg} shadow-lg transition-all duration-500`}>
+        <div className={`p-8 rounded-3xl border-2 ${MODES[mode].border} ${MODES[mode].bg} shadow-lg transition-all duration-yavas`}>
             {/* Mode Switcher */}
             <div className="flex justify-center space-x-2 mb-8 bg-surface p-1 rounded-xl shadow-sm inline-block mx-auto w-max">
                 <button
@@ -131,7 +132,7 @@ const PomodoroTimer = ({ onSessionComplete }) => {
                         strokeDasharray="283"
                         strokeDashoffset={283 - (283 * progress) / 100}
                         strokeLinecap="round"
-                        className={`${MODES[mode].color} transition-all duration-1000`}
+                        className={`${MODES[mode].color} transition-all duration-yavas`}
                     />
                 </svg>
 

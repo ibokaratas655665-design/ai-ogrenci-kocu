@@ -94,7 +94,7 @@ const ResearchPage = () => {
                                     type="button"
                                     onClick={() => setSelectedType(type.id)}
                                     disabled={isGenerating}
-                                    className={`relative p-6 rounded-xl border-2 text-left transition-all duration-200 group ${selectedType === type.id
+                                    className={`relative p-6 rounded-xl border-2 text-left transition-all duration-normal group ${selectedType === type.id
                                         ? 'border-indigo-600 bg-brand-soft/50 shadow-md transform scale-[1.02]'
                                         : 'border-line hover:border-brand-line hover:bg-surface-2'
                                         }`}

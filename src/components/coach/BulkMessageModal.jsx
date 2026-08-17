@@ -8,6 +8,8 @@ import {
     AlertTriangle, Star, Clock, ChevronDown, Search,
     MessageSquare, Zap, BookOpen, Trophy, Target
 } from 'lucide-react';
+import { bildir } from '../../services/uiGeriBildirim';
+import { hataAnlat } from '../../services/hataMesaji';
 
 // ─── Mesaj Şablonları ─────────────────────────────────────────────────
 const TEMPLATES = [
@@ -176,7 +178,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
         } catch (err) {
             console.error('Mesaj gönderme hatası:', err);
             setSending(false);
-            alert('Mesaj gönderilemedi: ' + err.message);
+            bildir(hataAnlat(err, 'mesaj'), 'hata');
         }
     };
 
@@ -456,7 +458,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
 
                 {/* ── FOOTER ────────────────────────────────────────── */}
                 {step < 4 && (
-                    <div className="p-4 border-t border-line flex gap-3 flex-shrink-0">
+                    <div className="pencere-alt-cubuk bg-surface p-4 border-t border-line flex gap-3 flex-shrink-0">
                         <button
                             onClick={() => step > 1 ? setStep(step - 1) : onClose()}
                             className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-bold text-sm hover:bg-surface-2 transition"

@@ -134,7 +134,7 @@ const NoteBook = ({ userId }) => {
                             <Pin size={12} /> Sabitle
                         </button>
                     </div>
-                    <div className="flex gap-2 pt-1">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-1">
                         <button onClick={() => { setShowForm(false); setEditingId(null); }} className="flex-1 py-2 border border-line rounded-xl text-sm text-ink-2 hover:bg-surface-2">İptal</button>
                         <button onClick={handleSave} className="flex-1 py-2 bg-warn text-ink rounded-xl text-sm font-black hover:bg-warn transition flex items-center justify-center gap-2">
                             <Check size={14} /> Kaydet

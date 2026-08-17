@@ -75,6 +75,43 @@ html.dark {
   h1, h2, h3, .syne {
     font-family: 'Syne', sans-serif;
   }
+
+  /**
+   * ⌨️ KLAVYE ODAĞI
+   *
+   * Denetimde tüm kod tabanında yalnızca 5 `focus-visible` kullanımı
+   * bulundu; klavyeyle gezen biri nerede olduğunu göremiyordu.
+   * `:focus-visible` yalnızca klavye/yardımcı teknoloji odağında
+   * görünür — fareyle tıklamada halka çıkmaz, görünüm bozulmaz.
+   */
+  :focus-visible {
+    outline: 2px solid var(--brand, #6366f1);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Fare ile tıklamada tarayıcının varsayılan halkası çıkmasın */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /**
+   * 🎬 HAREKET AZALTMA
+   *
+   * İşletim sisteminde "hareketi azalt" seçen kullanıcıya animasyon
+   * gösterilmiyor. Erişilebilirlik gereği ve uygulama mağazası
+   * incelemelerinde aranan bir ayar.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 /* ════ ZirveKoç Utility Components ═══════════════════════════════════ */
@@ -90,9 +127,9 @@ html.dark {
       var(--surface);
     border: 1px solid var(--line);
     box-shadow: var(--sh-1);
-    transition: transform 220ms cubic-bezier(.2, .8, .2, 1),
-                box-shadow 220ms cubic-bezier(.2, .8, .2, 1),
-                border-color 220ms ease;
+    transition: transform var(--sure-normal) cubic-bezier(.2, .8, .2, 1),
+                box-shadow var(--sure-normal) cubic-bezier(.2, .8, .2, 1),
+                border-color var(--sure-normal) ease;
   }
 
   .premium-card:hover {

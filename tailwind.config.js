@@ -18,7 +18,13 @@ export default {
                     DEFAULT: 'var(--surface)',
                     2: 'var(--surface-2)',
                     3: 'var(--surface-3)',
+                    e: 'var(--surface-e)',      // yükseltilmiş: modal, dropdown, tooltip
                     inv: 'var(--surface-inv)',
+                },
+                // Devre dışı öğeler — `opacity-50` taklidi yerine gerçek renk
+                disabled: {
+                    DEFAULT: 'var(--disabled)',
+                    ink: 'var(--disabled-ink)',
                 },
                 line: {
                     DEFAULT: 'var(--line)',
@@ -68,14 +74,74 @@ export default {
                     600: 'var(--accent)',
                 },
             },
+            /**
+             * Yükseklik merdiveni. `e1/e2/e3` eski adlar (korunuyor);
+             * yeni kod ne olduğunu söyleyen adı kullanır: `shadow-kart`,
+             * `shadow-modal`. Böylece bir kartın gölgesi projenin her
+             * yerinde aynı olur.
+             */
             boxShadow: {
                 e1: 'var(--sh-1)',
                 e2: 'var(--sh-2)',
                 e3: 'var(--sh-3)',
+                kart: 'var(--yukseklik-kart)',
+                acilir: 'var(--yukseklik-acilir)',
+                yuzen: 'var(--yukseklik-yuzen)',
+                modal: 'var(--yukseklik-modal)',
             },
+
+            /**
+             * ⚠️ Tailwind'in kendi `rounded-lg/xl/2xl` sınıfları
+             * DEĞİŞTİRİLMEDİ — kodda 1700'den fazla yerde kullanılıyor
+             * ve hepsini kırardı. Bunlar ek, anlamlı adlar.
+             */
+            borderRadius: {
+                dsm: 'var(--yaricap-sm)',     // rozet, küçük etiket
+                dmd: 'var(--yaricap-md)',     // düğme, giriş alanı
+                dlg: 'var(--yaricap-lg)',     // kart, panel, modal
+                pill: 'var(--yaricap-pill)',  // sekme hapı, avatar
+            },
+
+            /** Anlamlı boşluk adları — `p-kart`, `gap-alan` gibi. */
+            spacing: {
+                sikisik: 'var(--bosluk-2)',
+                alan: 'var(--bosluk-3)',      // form alanları arası
+                kart: 'var(--bosluk-5)',      // kart iç dolgusu
+                bolum: 'var(--bosluk-8)',     // bölümler arası
+                sayfa: 'var(--bosluk-12)',
+            },
+
+            /**
+             * DEFAULT de belirtece bağlı: süre yazılmadan kullanılan
+             * `transition-colors` / `transition-all` sınıfları Tailwind'in
+             * 150 ms varsayılanını getiriyordu ve ölçümde dördüncü bir
+             * süre değeri olarak görünüyordu. Artık üç basamak dışında
+             * süre üretmek mümkün değil.
+             */
+            transitionDuration: {
+                DEFAULT: 'var(--sure-hizli)',
+                hizli: 'var(--sure-hizli)',
+                normal: 'var(--sure-normal)',
+                yavas: 'var(--sure-yavas)',
+            },
+
+            /** Tek yumuşama eğrisi — her hareket aynı fizikle çalışsın. */
+            transitionTimingFunction: {
+                DEFAULT: 'var(--egri)',
+                dizge: 'var(--egri)',
+            },
+            /**
+             * ⚠️ Burada Inter ve Outfit yazıyordu ama index.css bu iki fontu
+             * HİÇ yüklemiyor; yüklenen fontlar Plus Jakarta Sans ve Syne.
+             * Yani `font-sans` ve `font-display` sessizce sistem yazı tipine
+             * düşüyordu — kodun 84 yerde kullandığı `syne` sınıfı ise CSS'ten
+             * geliyordu. Üç ayrı tipografi aynı anda yaşıyordu.
+             *
+             * Artık tanım gerçekten yüklenen fontlarla aynı.
+             */
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+                sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+                display: ['Syne', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
             },
             animation: {
                 'blob': 'blob 7s infinite',

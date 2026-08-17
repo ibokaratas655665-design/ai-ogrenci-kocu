@@ -15,6 +15,8 @@
  * görüyor ve üzerinde işlem yapabiliyordu.
  */
 
+import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
+
 const OGRENCI_KEY = 'coach_students';
 const KOC_KEY = 'managed_coaches';
 

@@ -434,7 +434,7 @@ const GrafikDetay = ({ denemeler }) => {
             <div className="srf p-4">
                 <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={veri} margin={{ top: 8, right: 12, bottom: 4, left: -18 }}>
-                        <CartesianGrid {...lightGrid} />
+                        <CartesianGrid {...lightGrid}  vertical={false} />
                         <XAxis dataKey="ad" {...lightAxis} />
                         <YAxis {...lightAxis} />
                         <Tooltip
@@ -452,7 +452,7 @@ const GrafikDetay = ({ denemeler }) => {
                             strokeWidth={2.5}
                             dot={{ r: 4, fill: 'var(--brand)' }}
                             activeDot={{ r: 6 }}
-                        />
+                         animationDuration={300} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>

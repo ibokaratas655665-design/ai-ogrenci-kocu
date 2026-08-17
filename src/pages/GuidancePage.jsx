@@ -10,6 +10,7 @@ import {
 import guidanceService from '../services/guidanceService';
 import { jsPDF } from 'jspdf';
 import { savePDF } from '../utils/pdfSave';
+import { bildir } from '../services/uiGeriBildirim';
 
 const GuidancePage = () => {
     const { user } = useAuth();
@@ -102,7 +103,7 @@ const GuidancePage = () => {
         if (!activeTest) return;
 
         if (Object.keys(answers).length < activeTest.questions.length) {
-            alert("Lütfen tüm soruları cevaplayın.");
+            bildir("Lütfen tüm soruları cevaplayın.", 'uyari');
             return;
         }
 
@@ -145,7 +146,7 @@ const GuidancePage = () => {
             const encoded = btoa(JSON.stringify(sharedObj));
             const shareUrl = `${window.location.origin}${window.location.pathname}#/share/result/${encoded}`;
             navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('Paylaşım linki kopyalandı!');
+                bildir('Paylaşım linki kopyalandı!');
             });
         } catch (e) {
             console.error('Paylaşım hatası:', e);
@@ -231,7 +232,7 @@ const GuidancePage = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 py-4 px-6 rounded-xl font-bold transition-all duration-300 flex items-center justify-center space-x-2 ${activeTab === tab.id
+                            className={`flex-1 py-4 px-6 rounded-xl font-bold transition-all duration-yavas flex items-center justify-center space-x-2 ${activeTab === tab.id
                                 ? `bg-gradient-to-r from-${tab.color}-600 to-${tab.color}-700 text-ink shadow-lg shadow-${tab.color}-200`
                                 : 'text-ink-2 hover:bg-surface-2'
                                 }`}
@@ -250,7 +251,7 @@ const GuidancePage = () => {
                             {tests.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {tests.map(test => (
-                                        <div key={test.id} className="group bg-surface rounded-2xl shadow-sm border border-line hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                                        <div key={test.id} className="group bg-surface rounded-2xl shadow-sm border border-line hover:shadow-2xl transition-all duration-yavas overflow-hidden">
                                             {/* Card Header */}
                                             <div className="on-color bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-ink relative overflow-hidden">
                                                 <div className="absolute -top-10 -right-10 opacity-20 pointer-events-none">
@@ -281,7 +282,7 @@ const GuidancePage = () => {
                                                 </p>
                                                 <button
                                                     onClick={() => startTest(test)}
-                                                    className="on-color w-full bg-gradient-to-r from-brand to-purple-600 text-white py-3 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                                                    className="on-color w-full bg-gradient-to-r from-brand to-purple-600 text-white py-3 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all duration-yavas flex items-center justify-center space-x-2"
                                                 >
                                                     <Play size={18} className="fill-current" />
                                                     <span>Teste Başla</span>
@@ -431,7 +432,7 @@ const GuidancePage = () => {
                             {/* Progress Bar */}
                             <div className="w-full bg-surface/20 rounded-full h-2 overflow-hidden">
                                 <div
-                                    className="h-full bg-surface rounded-full transition-all duration-500"
+                                    className="h-full bg-surface rounded-full transition-all duration-yavas"
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
@@ -444,7 +445,7 @@ const GuidancePage = () => {
                                     {activeTest.questions.map((q, idx) => (
                                         <div
                                             key={q.id}
-                                            className={`transition-all duration-500 ${idx === currentQuestion ? 'opacity-100' : 'hidden'}`}
+                                            className={`transition-all duration-yavas ${idx === currentQuestion ? 'opacity-100' : 'hidden'}`}
                                         >
                                             <div className="bg-surface p-8 rounded-2xl shadow-lg border border-line">
                                                 <div className="flex items-start mb-6">
@@ -460,7 +461,7 @@ const GuidancePage = () => {
                                                         <button
                                                             key={optIdx}
                                                             onClick={() => handleAnswer(q.id, optIdx)}
-                                                            className={`w-full text-left p-5 rounded-xl text-base font-medium transition-all duration-300 flex items-center border-2 ${answers[q.id] === optIdx
+                                                            className={`w-full text-left p-5 rounded-xl text-base font-medium transition-all duration-yavas flex items-center border-2 ${answers[q.id] === optIdx
                                                                 ? 'bg-gradient-to-r from-brand to-purple-600 text-white border-indigo-600 shadow-lg scale-105'
                                                                 : 'bg-surface hover:bg-surface-2 text-ink-2 border-line hover:border-brand-line hover:shadow-md'
                                                                 }`}

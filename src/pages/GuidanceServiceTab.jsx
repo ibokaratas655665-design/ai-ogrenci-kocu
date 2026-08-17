@@ -9,6 +9,7 @@ import guidanceService from '../services/guidanceService';
 import { jsPDF } from 'jspdf';
 import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { analyzeSociometry } from '../utils/sociometryAnalysis';
+import { bildir, onayla } from '../services/uiGeriBildirim';
 
 const GuidanceServiceTab = ({ students = [] }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tests', 'students', 'analytics'
@@ -82,8 +83,8 @@ const GuidanceServiceTab = ({ students = [] }) => {
         setStudentResults(results);
     };
 
-    const deleteStudentResult = (result) => {
-        if (!window.confirm('Bu test sonucunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+    const deleteStudentResult = async (result) => {
+        if (!(await onayla({ mesaj: 'Bu test sonucunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', tehlikeli: true }))) return;
 
         if (result.studentId === 'public') {
             const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
@@ -112,7 +113,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
     const assignTestToStudents = () => {
         if (selectedTests.length === 0 || selectedStudents.length === 0) {
-            alert('Lütfen en az bir test ve bir öğrenci seçin.');
+            bildir('Lütfen en az bir test ve bir öğrenci seçin.', 'uyari');
             return;
         }
 
@@ -134,7 +135,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             localStorage.setItem(assignedTestsKey, JSON.stringify(currentTests));
         });
 
-        alert(`${selectedTests.length} test, ${selectedStudents.length} öğrenciye başarıyla atandı!`);
+        bildir(`${selectedTests.length} test, ${selectedStudents.length} öğrenciye başarıyla atandı!`, 'basari');
         setSelectedTests([]);
         setSelectedStudents([]);
     };
@@ -188,7 +189,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             });
         } catch (e) {
             console.error('Paylaşım hatası:', e);
-            alert('Paylaşım linki oluşturulurken bir hata oluştu.');
+            bildir('Paylaşım linki oluşturulurken bir hata oluştu.', 'hata');
         }
     };
 
@@ -290,7 +291,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             savePDF(pdf, `${studentName.replace(/\s+/g, '_')}_Resmi_Rehberlik_Analizi`);
         } catch (e) {
             console.error('PDF Hatası:', e);
-            alert('PDF oluşturulurken bir hata oluştu: ' + e.message);
+            bildir('PDF oluşturulurken bir hata oluştu: ' + e.message, 'hata');
         }
     };
 
@@ -309,7 +310,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
         }
 
         if (sociometryResults.length === 0) {
-            alert(selectedStatsClass === 'all'
+            bildir(selectedStatsClass === 'all'
                 ? 'Henüz hiç sosyometri sonucu bulunamadı.'
                 : `${selectedStatsClass} sınıfı için henüz sosyometri sonucu bulunamadı.`);
             return;
@@ -424,7 +425,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             savePDF(pdf, `Sinif_Sosyogram_AnalizRaporu_${today.replace(/\./g, '_')}`);
         } catch (e) {
             console.error('Sosyogram PDF Hatasi:', e);
-            alert('Sosyogram oluşturulurken bir hata oluştu.');
+            bildir('Sosyogram oluşturulurken bir hata oluştu.', 'hata');
         }
     };
 
@@ -662,7 +663,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
                             {filteredStudents.map(student => (
                                 <div key={student.id} className="bg-surface p-5 rounded-2xl border border-line shadow-sm hover:shadow-md transition group">
                                     <div className="flex items-center justify-between mb-4">
-                                        <div className="w-12 h-12 bg-brand-soft rounded-xl flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-ink transition-colors duration-300">
+                                        <div className="w-12 h-12 bg-brand-soft rounded-xl flex items-center justify-center text-brand group-hover:bg-brand group-hover:text-ink transition-colors duration-yavas">
                                             <Users size={24} />
                                         </div>
                                         <button

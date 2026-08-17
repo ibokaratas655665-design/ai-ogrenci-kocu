@@ -4,7 +4,7 @@
  * Uygulama masaüstü genişliğinde geliştirildi; telefonda açıldığında
  * açılır pencerelerin bir kısmı ekrandan taşıyor, uzun içerikli olanlar
  * kaydırılamıyordu (yükseklik sınırı ve kaydırma tanımlı değildi —
- * 25 pencere dosyasında eksikti).
+ * 43 pencerede eksikti).
  *
  * Pencerelerin ortak bir sınıfı olmadığı için düzeltme yapısal desene
  * göre yapılıyor: tam ekran kaplayan bir katmanın (`position: fixed` +
@@ -14,22 +14,126 @@
  * olduğu gibi kalır.
  */
 
-@media (max-width: 640px) {
+/* ════════════════════════════════════════════════════════════════
+   GERÇEK EKRAN YÜKSEKLİĞİ  (dvh)
+   ════════════════════════════════════════════════════════════════
+
+   `vh`, mobil tarayıcıda BÜYÜK görünüm alanını ölçer: adres çubuğu
+   ekrandayken bile sanki yokmuş gibi hesaplar. Bu yüzden `90vh`
+   yüksekliğindeki bir pencerenin alt kısmı —çoğu zaman tam da kaydet
+   düğmesinin bulunduğu yer— adres çubuğunun arkasında kalıyordu.
+
+   `dvh` görünen alanı ölçer ve adres çubuğu açılıp kapandıkça
+   güncellenir. Önce `vh` yazılıyor: `dvh` desteklemeyen eski
+   tarayıcılar o satırda kalır, destekleyenler ikinciyle ezer.
+   (Chrome 108+, Safari 15.4+ — 2022'den beri.)                        */
+
+.pencere-yukseklik {
+    max-height: 90vh;
+    max-height: 90dvh;
+}
+
+.pencere-tam-ekran {
+    height: 100vh;
+    height: 100dvh;
+}
+
+/**
+ * Tailwind'in `h-screen` / `min-h-screen` sınıfları da `vh` kullanır.
+ * Kod içinde 75 yerde geçiyor; hepsini tek tek değiştirmek yerine
+ * burada gerçek görünüm yüksekliğine bağlanıyor. `@supports` sayesinde
+ * `dvh` bilmeyen tarayıcı bu bloğu hiç görmez, Tailwind'in `vh`
+ * değerinde kalır.
+ */
+@supports (height: 100dvh) {
+    .h-screen {
+        height: 100dvh;
+    }
+
+    .min-h-screen {
+        min-height: 100dvh;
+    }
+}
+
+/**
+ * Pencere gövdesi: ekrana sığar, içeriği kaydırılır ve kaydırma
+ * pencerenin içinde kalır (arkadaki sayfa kaymaz).
+ */
+.pencere-govde {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/**
+ * Pencere içindeki kaydet/iptal satırı.
+ *
+ * Uzun formlarda bu satır içeriğin en altında kalıyor ve pencere
+ * açıldığında ekranda görünmüyordu; kullanıcı pencerenin İÇİNDE
+ * kaydırması gerektiğini anlamayıp "kaydet düğmesi yok" sanıyordu.
+ * Satır artık pencerenin altına yapışık durur.
+ *
+ * Yanına Tailwind'in `bg-surface` sınıfı verilir ki altından kayan
+ * içerik görünmesin; buradaki negatif kenar boşluğu satırı gövdenin
+ * yatay dolgusunu taşarak kenardan kenara yayar.
+ */
+.pencere-alt-cubuk {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/**
+ * Pencere gövdesi ekrana sığsın ve içeriği kaydırılabilsin.
+ *
+ * `position: absolute` olan çocuklar hariç tutuldu: bunlar pencere
+ * gövdesi değil, kapatma düğmesi / dekoratif katman gibi öğeler.
+ *
+ * Yükseklik `dvh` ile ölçülüyor (yukarıdaki açıklamaya bakınız);
+ * eskiden `92vh` yazıyordu ve pencerenin altı ekran dışında kalıyordu.
+ *
+ * Sınır 1024 piksele kadar geçerli: telefonun yatay hâli ve küçük
+ * tabletler 640 pikselin üstünde kalıp bu düzeltmenin dışında
+ * kalıyordu. Yükseklik sınırı ve kaydırma, geniş ekranda da zararsız.
+ */
+@media (max-width: 1023px) {
 
     /**
-     * Pencere gövdesi ekrana sığsın ve içeriği kaydırılabilsin.
-     *
-     * `position: absolute` olan çocuklar hariç tutuldu: bunlar pencere
-     * gövdesi değil, kapatma düğmesi / dekoratif katman gibi öğeler.
+     * `[data-ui-pencere]` hariç tutuldu: ortak `ui/Modal` bileşeni kendi
+     * yüksekliğini, kaydırmasını ve yapışık başlık/alt çubuğunu zaten
+     * yönetiyor. Bu genel kural ona da uygulanınca iç düzenini eziyor ve
+     * pencere ekranın 7 piksel dışına taşıyordu.
      */
-    .fixed.inset-0 > div:not(.absolute):not(.fixed) {
+    .fixed.inset-0 > div:not(.absolute):not(.fixed):not([data-ui-pencere]) {
         max-height: 92vh;
+        max-height: 92dvh;
         max-width: calc(100vw - 1.5rem);
         overflow-y: auto;
         overflow-x: hidden;
+        /* Kaydırma pencerede kalsın, arkadaki sayfaya geçmesin */
+        overscroll-behavior: contain;
         /* iOS'ta parmakla kaydırma akıcı olsun */
         -webkit-overflow-scrolling: touch;
     }
+
+    /**
+     * Kendi iç düzenini yöneten pencereler bu kuralın dışında.
+     * Ders programı gibi tam ekran çalışan, başlığı sabit kalıp
+     * yalnızca gövdesi kayan pencerelerde dıştan kaydırma
+     * başlığı da kaydırıp düzeni bozuyordu.
+     */
+    .fixed.inset-0 > div.pencere-kendi-duzeni {
+        max-height: none;
+        max-width: none;
+        overflow: hidden;
+    }
+
+}
+
+@media (max-width: 640px) {
 
     /**
      * Pencere içindeki tablolar taşmasın; kendi içinde yatay kaysın.
@@ -48,15 +152,19 @@
      * Simge düğmeleri 18–21 piksele kadar düşüyordu; parmakla isabet
      * ettirmek zordu. Görsel boyut değişmeden dokunma alanı büyütülüyor.
      */
-    button,
-    a[role='button'],
-    [role='tab'] {
-        min-height: 40px;
-    }
+    /* Dokunma hedefleri için asıl kural aşağıdaki 1024px bloğunda —
+       tablet de parmakla kullanılıyor (bkz. o bloktaki açıklama). */
 
-    /* Yalnızca simge taşıyan kare düğmeler — genişlik de büyütülür */
-    button:not(:has(span)):not(:has(p)) {
-        min-width: 40px;
+
+    /**
+     * iOS Safari, yazı boyutu 16 pikselden küçük olan bir alana
+     * dokunulduğunda sayfayı otomatik yakınlaştırır ve geri
+     * uzaklaştırmaz; düzen bozulmuş görünür. 16 piksel bunu keser.
+     */
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea {
+        font-size: 16px;
     }
 
     /**
@@ -65,5 +173,29 @@
      */
     body {
         padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+}
+
+/**
+ * 👆 DOKUNMA HEDEFLERİ — 1024 piksel DAHİL
+ *
+ * Sınır 1023'te bitince iPad'in yatay kullanımı (tam 1024 piksel)
+ * kuralın dışında kalıyor ve düğmeler 34–40 piksele düşüyordu.
+ * Ölçümde 1024 pikselde 17 küçük hedef çıktı.
+ *
+ * Büyük dokunma hedefi masaüstünde de zarar vermez; asıl risk
+ * tersidir — fare kullanıcısı 34 pikselle yaşayabilir, parmak yaşayamaz.
+ */
+@media (max-width: 1024px) {
+
+    button,
+    a[role='button'],
+    [role='tab'],
+    .tb {
+        min-height: 44px;
+    }
+
+    button:not(:has(span)):not(:has(p)) {
+        min-width: 44px;
     }
 }

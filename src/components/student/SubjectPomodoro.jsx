@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Volume2, VolumeX, BookOpen, BarChart2, ChevronDown, X } from 'lucide-react';
+import { bildir } from '../../services/uiGeriBildirim';
 
 const SUBJECTS = [
     'Türkçe', 'Matematik', 'Fen Bilimleri', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü',
@@ -194,7 +195,7 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
 
     const toggleTimer = () => {
         if (!isActive && mode === 'focus' && !selectedSubject) {
-            alert('Lütfen önce çalışacağınız dersi seçin!');
+            bildir('Lütfen önce çalışacağınız dersi seçin!', 'uyari');
             return;
         }
         if (!isActive) setSessionStart(new Date().toISOString());
@@ -220,7 +221,7 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
     const strokeColor = COLOR_MAP[m.color];
 
     return (
-        <div className={`rounded-3xl border-2 ${isActive ? 'border-brand-line shadow-lg shadow-indigo-100' : 'border-line'} bg-surface overflow-hidden transition-all duration-500`}>
+        <div className={`rounded-3xl border-2 ${isActive ? 'border-brand-line shadow-lg shadow-indigo-100' : 'border-line'} bg-surface overflow-hidden transition-all duration-yavas`}>
             {/* Header */}
             <div className={`on-color bg-gradient-to-r ${m.bgClass} p-4 flex items-center justify-between`}>
                 <div className="flex items-center gap-2">
@@ -267,7 +268,7 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
                             strokeDasharray={`${2 * Math.PI * 44}`}
                             strokeDashoffset={`${2 * Math.PI * 44 * (1 - progress / 100)}`}
                             strokeLinecap="round"
-                            className="transition-all duration-1000"
+                            className="transition-all duration-yavas"
                         />
                     </svg>
                     <div className="text-center z-10">
@@ -289,7 +290,7 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
                 <div className="flex justify-center items-center gap-4">
                     <button
                         onClick={resetTimer}
-                        className="w-12 h-12 rounded-xl bg-surface-3 text-ink-2 hover:bg-surface-3 flex items-center justify-center transition hover:rotate-180 duration-500"
+                        className="w-12 h-12 rounded-xl bg-surface-3 text-ink-2 hover:bg-surface-3 flex items-center justify-center transition hover:rotate-180 duration-yavas"
                     >
                         <RotateCcw size={18} />
                     </button>

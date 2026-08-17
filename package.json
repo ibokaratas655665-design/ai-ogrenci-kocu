@@ -14,7 +14,8 @@
     "preview:dist": "npx serve dist --single",
     "electron:dev": "npm run build:electron && electron .",
     "electron:build": "npm run build:electron && electron-builder",
-    "ikonlar": "node scripts/ikon-uret.mjs"
+    "ikonlar": "node scripts/ikon-uret.mjs",
+    "lint:hatalar": "eslint . --quiet"
   },
   "build": {
     "appId": "com.ogrencikocu.app",

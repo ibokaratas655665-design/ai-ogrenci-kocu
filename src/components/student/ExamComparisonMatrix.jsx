@@ -97,7 +97,7 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
     if (examResults.length === 0) {
         return (
             <div className="text-center py-14 text-ink-3">
-                <BarChart2 size={40} className="mx-auto mb-3 opacity-30" />
+                <BarChart2 size={40} className="mx-auto mb-3 opacity-30"  animationDuration={300} />
                 <p className="font-bold text-ink-2">Deneme Sonucu Yok</p>
                 <p className="text-sm mt-1">Deneme sonuçları yüklendiğinde karşılaştırma burada görünür.</p>
             </div>
@@ -137,7 +137,7 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
             {/* Grafik Tipi & Filtreler */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex gap-1 bg-surface-3 p-1 rounded-xl">
-                    {[['line', <Activity size={14} />, 'Trend'], ['bar', <BarChart2 size={14} />, 'Sütun'], ['radar', <Layers size={14} />, 'Radar']].map(([type, icon, label]) => (
+                    {[['line', <Activity size={14} />, 'Trend'], ['bar', <BarChart2 size={14}  animationDuration={300} />, 'Sütun'], ['radar', <Layers size={14} />, 'Radar']].map(([type, icon, label]) => (
                         <button
                             key={type}
                             onClick={() => setChartType(type)}
@@ -197,7 +197,7 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
                 ) : chartType === 'line' ? (
                     <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: -10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} />
                             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
                             <Tooltip content={<CustomTooltip />} />
@@ -212,31 +212,31 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
                                     strokeWidth={2.5}
                                     dot={{ fill: SUBJECTS[key]?.color, strokeWidth: 0, r: 4 }}
                                     activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
-                                />
+                                 animationDuration={300} />
                             ))}
                         </LineChart>
                     </ResponsiveContainer>
                 ) : chartType === 'bar' ? (
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: -10 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} />
                             <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
                             <Tooltip content={<CustomTooltip />} />
                             <Legend wrapperStyle={{ fontSize: 11 }} />
                             {selectedSubjects.map(key => (
-                                <Bar key={key} dataKey={key} name={SUBJECTS[key]?.label} fill={SUBJECTS[key]?.color} radius={[3, 3, 0, 0]} />
+                                <Bar key={key} dataKey={key} name={SUBJECTS[key]?.label} fill={SUBJECTS[key]?.color} radius={[3, 3, 0, 0]}  animationDuration={300} />
                             ))}
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
                     <ResponsiveContainer width="100%" height={300}>
                         <RadarChart data={radarData}>
-                            <PolarGrid stroke="#f3f4f6" />
+                            <PolarGrid stroke="var(--line)" />
                             <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#6b7280' }} />
-                            <Radar name="Son Deneme" dataKey="last" stroke="var(--c1)" fill="var(--c1)" fillOpacity={0.3} strokeWidth={2} />
+                            <Radar name="Son Deneme" dataKey="last" stroke="var(--c1)" fill="var(--c1)" fillOpacity={0.3} strokeWidth={2}  animationDuration={300} />
                             {radarData[0]?.first !== null && (
-                                <Radar name="İlk Deneme" dataKey="first" stroke="var(--ink-3)" fill="var(--ink-3)" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 4" />
+                                <Radar name="İlk Deneme" dataKey="first" stroke="var(--ink-3)" fill="var(--ink-3)" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 4"  animationDuration={300} />
                             )}
                             <Legend wrapperStyle={{ fontSize: 11 }} />
                         </RadarChart>

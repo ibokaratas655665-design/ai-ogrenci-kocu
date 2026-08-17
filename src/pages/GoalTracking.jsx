@@ -104,13 +104,13 @@ const GoalTracking = () => {
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={data} layout="vertical" margin={{ left: 40 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false}  vertical={false} />
                                 <XAxis type="number" hide />
                                 <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12, fontWeight: 'bold' }} />
                                 <Tooltip cursor={{ fill: '#f4f4f5' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                 <Legend />
-                                <Bar dataKey="mevcut" name="Mevcut Net" fill="#9333EA" radius={[0, 4, 4, 0]} barSize={20} />
-                                <Bar dataKey="hedef" name="Gereken Net" fill="#E5E7EB" radius={[0, 4, 4, 0]} barSize={20} />
+                                <Bar dataKey="mevcut" name="Mevcut Net" fill="#9333EA" radius={[0, 4, 4, 0]} barSize={20}  animationDuration={300} />
+                                <Bar dataKey="hedef" name="Gereken Net" fill="#E5E7EB" radius={[0, 4, 4, 0]} barSize={20}  animationDuration={300} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

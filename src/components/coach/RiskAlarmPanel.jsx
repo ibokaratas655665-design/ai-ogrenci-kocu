@@ -196,7 +196,7 @@ const QuickMessageModal = ({ student, onClose, onSend }) => {
                     rows={3}
                     className="w-full p-3 border border-line rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none resize-none"
                 />
-                <div className="flex gap-2 mt-3">
+                <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-3">
                     <button onClick={onClose} className="flex-1 py-2 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
                     <button
                         onClick={() => { onSend(student, msg); onClose(); }}

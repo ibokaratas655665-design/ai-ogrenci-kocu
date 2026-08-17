@@ -218,7 +218,7 @@ const PresentationsTab = ({ students, setToast }) => {
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
                                 <button
                                     onClick={resetForm}
                                     className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"

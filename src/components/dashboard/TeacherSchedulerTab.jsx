@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
+import { bildir, onayla } from '../../services/uiGeriBildirim';
 
 // Utility for Tailwind classes
 const cn = (...inputs) => twMerge(clsx(inputs));
@@ -73,8 +74,8 @@ const TeacherSchedulerTab = () => {
         setIsAddingPair(false);
     };
 
-    const deleteTeacher = (id) => {
-        if (window.confirm('Öğretmeni ve programını silmek istediğinize emin misiniz?')) {
+    const deleteTeacher = async (id) => {
+        if (await onayla({ mesaj: 'Öğretmeni ve programını silmek istediğinize emin misiniz?', tehlikeli: true })) {
             setTeachers(teachers.filter(t => t.id !== id));
             setPairings(pairings.filter(p => p.teacherId !== id));
             const newSched = { ...schedule };
@@ -83,8 +84,8 @@ const TeacherSchedulerTab = () => {
         }
     };
 
-    const deletePairing = (id) => {
-        if (window.confirm('Bu ders eşleştirmesini silmek istediğinize emin misiniz?')) {
+    const deletePairing = async (id) => {
+        if (await onayla({ mesaj: 'Bu ders eşleştirmesini silmek istediğinize emin misiniz?', tehlikeli: true })) {
             const pair = pairings.find(p => p.id === id);
             setPairings(pairings.filter(p => p.id !== id));
             const newSched = { ...schedule };
@@ -121,18 +122,18 @@ const TeacherSchedulerTab = () => {
         const isTcBusy = Object.keys(schedule).some(k => k.startsWith(`${dIdx}-${hIdx}`) && schedule[k].teacherId === pair.teacherId);
         const isStBusy = Object.keys(schedule).some(k => k.startsWith(`${dIdx}-${hIdx}`) && schedule[k].studentId === pair.studentId);
         
-        if (isTcBusy) return alert('Öğretmen bu saatte başka bir odada derste!');
-        if (isStBusy) return alert('Öğrenci bu saatte başka bir odada derste!');
-        if (existing) return alert('Bu derslik bu saatte dolu!');
+        if (isTcBusy) return bildir('Öğretmen bu saatte başka bir odada derste!');
+        if (isStBusy) return bildir('Öğrenci bu saatte başka bir odada derste!');
+        if (existing) return bildir('Bu derslik bu saatte dolu!');
 
         const assignedCount = Object.values(schedule).filter(s => s.teacherId === pair.teacherId && s.studentId === pair.studentId).length;
-        if (assignedCount >= pair.totalHours) return alert('Bu eşleştirme için planlanan tüm saatler doldu!');
+        if (assignedCount >= pair.totalHours) return bildir('Bu eşleştirme için planlanan tüm saatler doldu!');
 
         setSchedule({ ...schedule, [cellId]: { teacherId: pair.teacherId, studentId: pair.studentId, studentName: `${students.find(s=>s.id===pair.studentId)?.name}` } });
     };
 
-    const autoDistribute = () => {
-        if (!window.confirm('Tüm dersler müsaitlik durumuna göre otomatik dağıtılacak. Mevcut program sıfırlanabilir. Devam?')) return;
+    const autoDistribute = async () => {
+        if (!(await onayla({ mesaj: 'Tüm dersler müsaitlik durumuna göre otomatik dağıtılacak. Mevcut program sıfırlanabilir. Devam?', tehlikeli: false }))) return;
         
         let newSchedule = {};
         const sortedPairings = [...pairings].sort((a, b) => b.totalHours - a.totalHours);
@@ -162,7 +163,7 @@ const TeacherSchedulerTab = () => {
             }
         }
         setSchedule(newSchedule);
-        alert('Otomatik dağıtım tamamlandı!');
+        bildir('Otomatik dağıtım tamamlandı!', 'basari');
     };
 
     const exportPDF = () => {

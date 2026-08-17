@@ -189,16 +189,16 @@ const StudentComparisonTable = ({ students = [] }) => {
                                 <th className="px-3 py-3 text-center">
                                     <SortHeader label="Ort. Net" field="avgNet" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                                 </th>
-                                <th className="px-3 py-3 text-center">
+                                <th className="px-3 py-3 text-center hidden sm:table-cell">
                                     <SortHeader label="Maks Net" field="maxNet" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                                 </th>
-                                <th className="px-3 py-3 text-center">
+                                <th className="px-3 py-3 text-center hidden sm:table-cell">
                                     <SortHeader label="Trend" field="trend" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                                 </th>
-                                <th className="px-3 py-3 text-center">
+                                <th className="px-3 py-3 text-center hidden md:table-cell">
                                     <SortHeader label="Deneme" field="examCount" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                                 </th>
-                                <th className="px-3 py-3 text-center">
+                                <th className="px-3 py-3 text-center hidden md:table-cell">
                                     <SortHeader label="Görev %" field="taskRate" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
                                 </th>
                             </tr>
@@ -239,16 +239,16 @@ const StudentComparisonTable = ({ students = [] }) => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-3 text-center">
+                                    <td className="px-3 py-3 text-center hidden sm:table-cell">
                                         <span className="font-bold text-brand text-sm">{s.maxNet || '—'}</span>
                                     </td>
-                                    <td className="px-3 py-3 text-center">
+                                    <td className="px-3 py-3 text-center hidden sm:table-cell">
                                         <TrendBadge value={s.trend} />
                                     </td>
-                                    <td className="px-3 py-3 text-center">
+                                    <td className="px-3 py-3 text-center hidden md:table-cell">
                                         <span className="text-sm font-bold text-ink-2">{s.examCount}</span>
                                     </td>
-                                    <td className="px-3 py-3 text-center">
+                                    <td className="px-3 py-3 text-center hidden md:table-cell">
                                         <div className="flex flex-col items-center gap-0.5">
                                             <span className={`text-sm font-black ${s.taskRate >= 70 ? 'text-ok' : s.taskRate >= 40 ? 'text-warn' : 'text-danger'}`}>
                                                 %{s.taskRate}
@@ -263,7 +263,7 @@ const StudentComparisonTable = ({ students = [] }) => {
 
                     {filtered.length === 0 && (
                         <div className="text-center py-12 text-ink-3">
-                            <BarChart2 size={36} className="mx-auto mb-2 opacity-30" />
+                            <BarChart2 size={36} className="mx-auto mb-2 opacity-30"  animationDuration={300} />
                             <p className="text-sm">Eşleşen öğrenci bulunamadı</p>
                         </div>
                     )}
@@ -274,12 +274,12 @@ const StudentComparisonTable = ({ students = [] }) => {
             {viewMode === 'chart' && (
                 <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
                     <h3 className="font-black text-ink mb-4 text-sm flex items-center gap-2">
-                        <BarChart2 size={16} className="text-brand" />
+                        <BarChart2 size={16} className="text-brand"  animationDuration={300} />
                         Net Karşılaştırma (İlk 15)
                     </h3>
                     <ResponsiveContainer width="100%" height={320}>
                         <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 50 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"  vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 11, fontWeight: 700 }} angle={-35} textAnchor="end" interval={0} />
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip content={<CustomTooltip />} />

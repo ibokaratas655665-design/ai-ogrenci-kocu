@@ -441,7 +441,7 @@ const StudentReportCard = ({ student, compact = false }) => {
                                     data={exams.history.map((h, i) => ({ ...h, short: `D${i + 1}` }))}
                                     margin={{ top: 8, right: 12, bottom: 4 }}
                                 >
-                                    <CartesianGrid {...lightGrid} />
+                                    <CartesianGrid {...lightGrid}  vertical={false} />
                                     <XAxis dataKey="short" {...lightAxis} />
                                     <YAxis {...lightAxis} width={34} />
                                     <Tooltip
@@ -449,7 +449,7 @@ const StudentReportCard = ({ student, compact = false }) => {
                                         formatter={(v) => [`${v} net`, 'Toplam']}
                                         labelFormatter={(_, p) => p?.[0]?.payload?.name || ''}
                                     />
-                                    <Line type="monotone" dataKey="net" stroke="#4F46E5" strokeWidth={2.5} dot={{ r: 3.5, fill: '#4F46E5' }} />
+                                    <Line type="monotone" dataKey="net" stroke="#4F46E5" strokeWidth={2.5} dot={{ r: 3.5, fill: '#4F46E5' }}  animationDuration={300} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>

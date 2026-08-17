@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Brain, CheckCircle, ChevronRight, Play } from 'lucide-react';
 import guidanceService from '../services/guidanceService';
+import { bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
 
 const PublicTestEntry = () => {
     const { testId } = useParams();
@@ -25,7 +27,7 @@ const PublicTestEntry = () => {
         if (found) {
             setTest(found);
         } else {
-            alert('Geçersiz Test Bağlantısı!');
+            bildir('Geçersiz Test Bağlantısı!', 'hata');
             navigate('/');
         }
     }, [testId, navigate]);
@@ -60,7 +62,7 @@ const PublicTestEntry = () => {
     const handleLoginSubmit = (e) => {
         e.preventDefault();
         if (!schoolNumber.trim()) {
-            alert('Lütfen Okul Numaranızı giriniz.');
+            bildir('Lütfen Okul Numaranızı giriniz.', 'uyari');
             return;
         }
         setStep('intro');
@@ -84,7 +86,7 @@ const PublicTestEntry = () => {
                 return { ...prev, [key]: current.filter(n => n !== studentName) };
             }
             if (current.length >= maxSelect) {
-                alert(`En fazla ${maxSelect} kişi seçebilirsiniz.`);
+                bildir(`En fazla ${maxSelect} kişi seçebilirsiniz.`);
                 return prev;
             }
             return { ...prev, [key]: [...current, studentName] };
@@ -96,7 +98,7 @@ const PublicTestEntry = () => {
         const isText = test.inputType === 'text';
         const isClassList = test.inputType === 'class_list';
         if (!isText && !isClassList && Object.keys(answers).length < test.questions.length) {
-            alert(`Lütfen tüm soruları cevaplayın. (${Object.keys(answers).length}/${test.questions.length})`);
+            bildir(`Lütfen tüm soruları cevaplayın. (${Object.keys(answers).length}/${test.questions.length})`, 'uyari');
             return;
         }
         setSubmitting(true);
@@ -127,7 +129,7 @@ const PublicTestEntry = () => {
             setTestResult(entry);
             setStep('result');
         } catch (err) {
-            alert('Sonuç hesaplanırken hata oluştu: ' + err.message);
+            bildir(hataAnlat(err, 'sonuc'), 'hata');
         }
         setSubmitting(false);
     };
@@ -236,7 +238,7 @@ const PublicTestEntry = () => {
                                 <span className="text-xs font-bold text-brand">% {Math.round(progress)}</span>
                             </div>
                             <div className="w-full bg-surface-3 rounded-full h-2">
-                                <div className="bg-brand h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                <div className="bg-brand h-2 rounded-full transition-all duration-yavas" style={{ width: `${progress}%` }}></div>
                             </div>
                         </div>
 
@@ -307,7 +309,7 @@ const PublicTestEntry = () => {
 
                                                 {/* Açılan Sınıf Listesi */}
                                                 {showSociometryList && (
-                                                    <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-yavas">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {classmates.length === 0 ? (
                                                                 <div className="col-span-1 sm:col-span-2 text-center text-ink-2 text-sm py-8 bg-surface rounded-2xl border-2 border-dashed border-line">
@@ -324,7 +326,7 @@ const PublicTestEntry = () => {
                                                                     >
                                                                         <span className="truncate">{c.name}</span>
                                                                         {isSelected && (
-                                                                            <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-200">
+                                                                            <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-normal">
                                                                                 {selectedIndex + 1}
                                                                             </div>
                                                                         )}

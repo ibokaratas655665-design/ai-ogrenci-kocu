@@ -141,7 +141,7 @@ const AITopicSuggestions = ({ examData = [], userId }) => {
                         <p className="text-sm font-black text-brand">{completedCount}/{suggestions.length} tamamlandı</p>
                     </div>
                     <div className="w-full bg-brand-soft rounded-full h-2.5 overflow-hidden">
-                        <div className="on-color h-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+                        <div className="on-color h-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-yavas" style={{ width: `${progressPct}%` }} />
                     </div>
                     {progressPct === 100 && (
                         <p className="text-xs text-brand font-bold mt-2 flex items-center gap-1">
@@ -168,7 +168,7 @@ const AITopicSuggestions = ({ examData = [], userId }) => {
                         const isDone = completedIds.includes(sug.id);
                         const pLabel = PRIORITY_LABELS[sug.priority];
                         return (
-                            <div key={sug.id} className={`bg-surface rounded-2xl p-5 shadow-sm border transition-all duration-300 ${isDone ? 'border-ok bg-ok-soft/30 opacity-70' : 'border-line hover:shadow-md hover:-translate-y-0.5'}`}>
+                            <div key={sug.id} className={`bg-surface rounded-2xl p-5 shadow-sm border transition-all duration-yavas ${isDone ? 'border-ok bg-ok-soft/30 opacity-70' : 'border-line hover:shadow-md hover:-translate-y-0.5'}`}>
                                 <div className="flex items-start justify-between gap-3 mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${isDone ? 'bg-ok-soft' : 'bg-surface-2'}`}>

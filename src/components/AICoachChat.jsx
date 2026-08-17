@@ -6,6 +6,7 @@ import {
     AlertCircle, ExternalLink
 } from 'lucide-react';
 import { pendingFor } from '../services/taskStore';
+import { hataAnlat } from '../services/hataMesaji';
 
 // ─── Gemini API şablonu (öğrenci odaklı koç) ─────────────────
 const COACH_SYSTEM_PROMPT = `Sen "AI Koç" adında bir YKS (Türkiye Yükseköğretim Kurumları Sınavı) uzmanı ve kişisel eğitim koçusun. 
@@ -271,7 +272,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
                 ? '❌ API anahtarı geçersiz. Ayarlardan yenileyin.'
                 : err.message?.includes('RESOURCE_EXHAUSTED')
                     ? '⚠️ Günlük istek limiti doldu. Yarın tekrar deneyin.'
-                    : `Hata: ${err.message}`;
+                    : hataAnlat(err);
             setMessages(prev => [...prev, { role: 'assistant', content: errMsg, timestamp: Date.now() }]);
         } finally {
             setLoading(false);
@@ -390,7 +391,7 @@ export const AICoachButton = ({ studentData = null, className = '' }) => {
         <>
             <button
                 onClick={() => setOpen(true)}
-                className={`on-color flex items-center gap-2 bg-gradient-to-r from-violet-600 to-brand text-white font-bold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 ${className}`}
+                className={`on-color flex items-center gap-2 bg-gradient-to-r from-violet-600 to-brand text-white font-bold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-normal ${className}`}
             >
                 <Bot size={16} />
                 AI Koç

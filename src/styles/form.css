@@ -1,0 +1,218 @@
+/**
+ * 🧾 FORM ALANLARI — dizgeye bağlanmış yerel öğeler
+ *
+ * Kod tabanında 267 `<input>`, 80 `<select>` ve 33 `<textarea>` var ve
+ * her biri kendi sınıf yığınını taşıyor. Hepsini tek tek `ui/Field`
+ * bileşenine taşımak ekranları kırma riski taşıdığı için, ilk adım
+ * olarak YEREL öğelerin kendisi dizgeye bağlanıyor: hiçbir JSX
+ * değişmeden yedi durumun tamamı tutarlı hâle geliyor.
+ *
+ *   default · hover · focus · filled · error · success · disabled
+ *
+ * ⚠️ Bu kurallar yalnızca "çıplak" alanlara uygulanır. Bileşen kendi
+ * arka planını ya da kenarını veriyorsa (`bg-*`, `border-*` sınıfı
+ * taşıyorsa) Tailwind yardımcı sınıfları burayı ezer — kasıtlı: özel
+ * tasarlanmış alanlar (arama kutuları, satır içi düzenleme) bozulmasın.
+ *
+ * `ui/Field` üzerinden gelen alanlar zaten kendi sınıflarını taşıdığı
+ * için buradan etkilenmez.
+ */
+
+/* Düz CSS: öğe seçicileri (input, select) Tailwind'in sınıf
+   yardımcılarından DAHA DÜŞÜK özgüllüktedir, dolayısıyla bir bileşen
+   kendi `bg-*`/`border-*` sınıfını verdiğinde burası kendiliğinden
+   geri çekilir. Tam istenen davranış. */
+
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']),
+    select,
+    textarea {
+        background-color: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: var(--yaricap-md);
+        min-height: 44px;
+        padding: 0.625rem 0.75rem;
+        line-height: 1.45;
+        transition:
+            border-color var(--sure-hizli) var(--egri),
+            box-shadow var(--sure-hizli) var(--egri),
+            background-color var(--sure-hizli) var(--egri);
+    }
+
+    textarea {
+        min-height: 96px;
+        padding-top: 0.5rem;
+        resize: vertical;
+    }
+
+    /* ── Yer tutucu ─────────────────────────────────────────── */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--ink-3);
+        opacity: 1;   /* Firefox varsayılanı soluklaştırıp okunmaz kılıyor */
+    }
+
+    /* ── hover ──────────────────────────────────────────────── */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']):not(:disabled):not(:focus):hover,
+    select:not(:disabled):not(:focus):hover,
+    textarea:not(:disabled):not(:focus):hover {
+        border-color: var(--line-2);
+    }
+
+    /* ── focus ──────────────────────────────────────────────── */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']):focus,
+    select:focus,
+    textarea:focus {
+        outline: none;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+    }
+
+    /**
+     * ── filled ──────────────────────────────────────────────
+     * Dolu alan boş alandan ayırt edilebilsin. Uzun formlarda hangi
+     * alanların doldurulduğu görünmüyordu; kenar bir tık koyulaşıyor.
+     */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']):not(:placeholder-shown):not(:focus):not(:disabled):not([aria-invalid='true']):not(.alan-hata):not(.alan-basari),
+    textarea:not(:placeholder-shown):not(:focus):not(:disabled):not([aria-invalid='true']):not(.alan-hata):not(.alan-basari) {
+        border-color: var(--line-2);
+    }
+
+    /* ── error ──────────────────────────────────────────────── */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file'])[aria-invalid='true'],
+    select[aria-invalid='true'],
+    textarea[aria-invalid='true'],
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']).alan-hata,
+    select.alan-hata,
+    textarea.alan-hata {
+        border-color: var(--danger);
+        background-color: color-mix(in srgb, var(--danger) 5%, var(--surface));
+    }
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file'])[aria-invalid='true']:focus,
+    select[aria-invalid='true']:focus,
+    textarea[aria-invalid='true']:focus,
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']).alan-hata:focus {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
+    }
+
+    /* ── success ────────────────────────────────────────────── */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']).alan-basari,
+    select.alan-basari,
+    textarea.alan-basari {
+        border-color: var(--ok);
+    }
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']).alan-basari:focus,
+    select.alan-basari:focus,
+    textarea.alan-basari:focus {
+        border-color: var(--ok);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);
+    }
+
+    /**
+     * ── disabled ────────────────────────────────────────────
+     * Saydamlık (`opacity`) yerine gerçek renk: saydam alan arkadaki
+     * içeriği gösterip okunaksızlaştırıyordu.
+     */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']):disabled,
+    select:disabled,
+    textarea:disabled {
+        background-color: var(--disabled);
+        color: var(--disabled-ink);
+        border-color: var(--line);
+        cursor: not-allowed;
+    }
+
+    /* Salt okunur alan devre dışı gibi görünmesin ama yazılamadığı belli olsun */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='file']):read-only:not(:disabled),
+    textarea:read-only:not(:disabled) {
+        background-color: var(--surface-2);
+    }
+
+    /* ── Onay kutusu ve radyo ───────────────────────────────── */
+    input[type='checkbox'],
+    input[type='radio'] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--brand);
+        cursor: pointer;
+        /* Dokunma hedefi görsel boyutu büyütmeden genişletilir */
+        outline-offset: 3px;
+    }
+
+    input[type='checkbox']:disabled,
+    input[type='radio']:disabled {
+        cursor: not-allowed;
+        accent-color: var(--disabled-ink);
+    }
+
+    /* ── Tarih alanı ────────────────────────────────────────── */
+    input[type='date'],
+    input[type='time'],
+    input[type='datetime-local'] {
+        /* Takvim simgesi koyu temada siyah kalıp kayboluyordu */
+        color-scheme: light dark;
+    }
+
+    /* ── Dosya seçici ───────────────────────────────────────── */
+    input[type='file'] {
+        color: var(--ink-2);
+        font-size: 0.875rem;
+    }
+
+    input[type='file']::file-selector-button {
+        margin-right: 0.75rem;
+        padding: 0.5rem 0.875rem;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: var(--yaricap-md);
+        background: var(--surface-2);
+        color: var(--ink-2);
+        font-weight: 700;
+        font-size: 0.8125rem;
+        cursor: pointer;
+        transition: background-color var(--sure-hizli) var(--egri);
+    }
+
+    input[type='file']::file-selector-button:hover {
+        background: var(--surface-3);
+    }
+
+    /* ── Açılır liste oku ───────────────────────────────────── */
+    select {
+        appearance: none;
+        background-image:
+            linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+            linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+        background-position:
+            calc(100% - 18px) calc(50% + 2px),
+            calc(100% - 13px) calc(50% + 2px);
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+        padding-right: 2rem;
+    }
+
+    /* ── Otomatik doldurma ──────────────────────────────────── */
+    /* Tarayıcının sarı zemini koyu temada okunmaz hâle geliyordu */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+        -webkit-text-fill-color: var(--ink);
+        -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+        caret-color: var(--ink);
+    }
+
+/**
+ * iOS, 16 pikselin altındaki bir alana dokunulduğunda sayfayı
+ * yakınlaştırır ve geri uzaklaştırmaz. Telefonda 16 piksel zorunlu.
+ */
+@media (max-width: 640px) {
+
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}

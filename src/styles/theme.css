@@ -33,6 +33,18 @@
     --surface-3: #EAF0F8;   /* hover, seçili satır */
     --surface-inv: #0F172A; /* ters yüzey (koyu şerit, tooltip) */
 
+    /* Yükseltilmiş yüzey — sayfadan KOPUK duran katmanlar (modal,
+       açılır liste, tooltip). Açık temada karttan farkı renk değil
+       gölgedir; yine de ayrı bir belirteç, koyu temada gerçekten
+       açılması gerektiği için. */
+    --surface-e: #FFFFFF;
+
+    /* Devre dışı öğe — zemin ve üstündeki yazı.
+       Kod genelinde `opacity-50` ile taklit ediliyordu; saydamlık
+       arkadaki her şeyi göstererek okunaksızlaştırıyor. */
+    --disabled: #EEF2F7;
+    --disabled-ink: #98A2B3;
+
     /* ── Kenarlar ─────────────────────────────────────────── */
     --line: #E2E8F0;        /* varsayılan kenar */
     --line-2: #CBD5E1;      /* belirgin kenar, ayraç */
@@ -110,6 +122,13 @@
     --surface-2: #1C2030;
     --surface-3: #252A3C;
     --surface-inv: #F1F5F9;
+
+    /* Koyu temada yükseltilmiş yüzey gerçekten AÇILIR — ışık yukarıdan
+       geldiği için üstteki katman daha aydınlık okunur. */
+    --surface-e: #1E2231;
+
+    --disabled: #1B1F2C;
+    --disabled-ink: #5C6579;
 
     --line: #262B3B;
     --line-2: #343A4E;
@@ -243,7 +262,7 @@ body {
        sabitti ve değiştirilemiyordu. */
     font-family: var(--font-body);
     font-size: var(--font-size);
-    transition: background-color .25s ease, color .25s ease;
+    transition: background-color var(--sure-normal) ease, color var(--sure-normal) ease;
 }
 
 /* Başlıklar ayrı bir aile kullanabilir (ör. gövde Inter, başlık Syne) */
@@ -291,7 +310,7 @@ select option {
     border: 1px solid var(--line);
     border-radius: 18px;
     box-shadow: var(--sh-1);
-    transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+    transition: box-shadow var(--sure-normal) ease, border-color var(--sure-normal) ease, transform var(--sure-normal) ease;
 }
 
 .card-hover:hover {
@@ -331,8 +350,8 @@ select option {
     line-height: 1.2;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background-color .16s ease, border-color .16s ease,
-                color .16s ease, box-shadow .16s ease, transform .1s ease;
+    transition: background-color var(--sure-hizli) ease, border-color var(--sure-hizli) ease,
+                color var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease, transform var(--sure-hizli) ease;
 }
 
 .btn:active:not(:disabled) { transform: translateY(1px); }
@@ -394,7 +413,7 @@ select option {
     font-size: .82rem;
     font-weight: 500;
     color: var(--ink);
-    transition: border-color .16s ease, box-shadow .16s ease;
+    transition: border-color var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease;
 }
 
 .field::placeholder { color: var(--ink-3); }
@@ -461,7 +480,7 @@ select option {
     background: transparent;
     border: 1px solid transparent;
     white-space: nowrap;
-    transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+    transition: background-color var(--sure-hizli) ease, color var(--sure-hizli) ease, border-color var(--sure-hizli) ease;
 }
 
 .tab:hover { color: var(--ink); background: var(--surface-3); }

@@ -182,7 +182,7 @@ const SociometryNetworkMap = ({ results = [], className = '' }) => {
                                     strokeDasharray={e.rank === 1 ? '' : '3,3'}
                                     markerEnd={`url(#${ARROW_ID})`}
                                     opacity={isDeemphasized ? 0.15 : 0.7}
-                                    className="transition-opacity duration-200"
+                                    className="transition-opacity duration-normal"
                                 />
                             );
                         })}
@@ -200,7 +200,7 @@ const SociometryNetworkMap = ({ results = [], className = '' }) => {
                                     strokeWidth={isHighlighted ? 3 : 2}
                                     opacity={isDeemphasized ? 0.1 : 0.6}
                                     strokeDasharray=""
-                                    className="transition-opacity duration-200"
+                                    className="transition-opacity duration-normal"
                                 />
                             );
                         })}
@@ -222,7 +222,7 @@ const SociometryNetworkMap = ({ results = [], className = '' }) => {
                                     onClick={() => handleNodeClick(node.name)}
                                     style={{ cursor: 'pointer' }}
                                     opacity={isDim ? 0.2 : 1}
-                                    className="transition-opacity duration-200"
+                                    className="transition-opacity duration-normal"
                                 >
                                     <circle r={r + 3} fill={isSelected ? '#c7d2fe' : 'transparent'} />
                                     <circle
@@ -230,7 +230,7 @@ const SociometryNetworkMap = ({ results = [], className = '' }) => {
                                         fill={cfg.fill}
                                         stroke={isSelected ? 'var(--brand)' : cfg.stroke}
                                         strokeWidth={isSelected ? 3 : 2}
-                                        className="transition-all duration-200"
+                                        className="transition-all duration-normal"
                                     />
                                     <text
                                         textAnchor="middle"

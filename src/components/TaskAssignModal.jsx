@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Target, CheckSquare, Users, BookOpen, FileText, ClipboardList, HelpCircle, ChevronDown } from 'lucide-react';
+import { bildir } from '../services/uiGeriBildirim';
 
 const CATEGORY_OPTIONS = [
     {
@@ -107,8 +108,8 @@ const TaskAssignModal = ({ isOpen, onClose, students = [], onAssign, preSelected
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!title.trim()) { alert('Görev başlığı gereklidir.'); return; }
-        if (selectedStudents.length === 0) { alert('En az bir öğrenci seçin.'); return; }
+        if (!title.trim()) { bildir('Görev başlığı gereklidir.'); return; }
+        if (selectedStudents.length === 0) { bildir('En az bir öğrenci seçin.'); return; }
 
         // Build enriched description
         let fullDesc = description;
@@ -362,7 +363,7 @@ const TaskAssignModal = ({ isOpen, onClose, students = [], onAssign, preSelected
                     </div>
 
                     {/* Submit */}
-                    <div className="flex gap-3 pt-2 border-t border-line">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2 border-t border-line">
                         <button
                             type="button"
                             onClick={onClose}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Brain, User, Users, ArrowRight, Phone, Hash, School } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MARKA from '../data/marka';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -64,7 +65,7 @@ const RegisterPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-surface-2 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 glass-card p-10 animate-fade-in">
                 <div className="text-center">
-                    <img
+                    <img loading="lazy" decoding="async"
                         src={MARKA.logo}
                         alt={MARKA.ad}
                         className="w-40 h-auto mx-auto mb-3 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-2xl dark:p-2"
@@ -78,7 +79,7 @@ const RegisterPage = () => {
                 <div className="flex bg-surface-3 p-1 rounded-xl">
                     <button
                         onClick={() => setRole('student')}
-                        className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-medium transition duration-200 ${role === 'student' ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink-2'
+                        className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-medium transition duration-normal ${role === 'student' ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink-2'
                             }`}
                     >
                         <User size={18} />
@@ -86,7 +87,7 @@ const RegisterPage = () => {
                     </button>
                     <button
                         onClick={() => setRole('coach')}
-                        className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-medium transition duration-200 ${role === 'coach' ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink-2'
+                        className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg text-sm font-medium transition duration-normal ${role === 'coach' ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink-2'
                             }`}
                     >
                         <Users size={18} />

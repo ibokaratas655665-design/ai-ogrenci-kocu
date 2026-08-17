@@ -9,7 +9,7 @@
   padding: 24px;
   color: white;
   box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform var(--sure-yavas) ease, box-shadow var(--sure-yavas) ease;
 }
 
 .streak-tracker:hover {
@@ -133,7 +133,7 @@
   align-items: center;
   gap: 8px;
   opacity: 0.5;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity var(--sure-yavas) ease, transform var(--sure-yavas) ease;
 }
 
 .milestone.achieved {
@@ -164,7 +164,7 @@
   padding: 24px;
   color: white;
   box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
-  transition: transform 0.3s ease;
+  transition: transform var(--sure-yavas) ease;
 }
 
 .level-system:hover {
@@ -232,7 +232,7 @@
   background: linear-gradient(90deg, #FFD700, #FFA500);
   border-radius: 12px;
   position: relative;
-  transition: width 0.5s ease;
+  transition: width var(--sure-yavas) ease;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
 }
 
@@ -331,7 +331,7 @@
   height: 100%;
   background: linear-gradient(90deg, #4ECDC4, #45B7D1);
   border-radius: 6px;
-  transition: width 0.5s ease;
+  transition: width var(--sure-yavas) ease;
 }
 
 .progress-percent {
@@ -356,7 +356,7 @@
   color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
 }
 
 .achievement-tabs .tab:hover {
@@ -382,7 +382,7 @@
   border: 3px solid;
   border-radius: 12px;
   padding: 20px;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
 }
 
 .achievement-card.earned {
@@ -575,7 +575,7 @@
   font-size: 1.1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
@@ -644,7 +644,7 @@
   color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
 }
 
 .timeframe-selector button.active {
@@ -671,7 +671,7 @@
   color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
 }
 
 .category-selector button:hover {
@@ -698,7 +698,7 @@
   padding: 24px;
   text-align: center;
   color: white;
-  transition: transform 0.3s ease;
+  transition: transform var(--sure-yavas) ease;
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
 }
 
@@ -780,7 +780,7 @@
   background: var(--card-bg);
   border: 2px solid var(--border-color);
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all var(--sure-yavas) ease;
 }
 
 .leaderboard-row:hover {

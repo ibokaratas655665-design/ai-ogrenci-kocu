@@ -598,7 +598,7 @@ const WhatsAppComposer = ({
                 </div>
 
                 {/* ── Alt bar ────────────────────────────── */}
-                <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-line bg-black/20">
+                <div className="pencere-alt-cubuk flex items-center justify-between gap-3 px-5 py-4 border-t border-line bg-black/20">
                     <button
                         onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
                         className="px-4 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:text-ink hover:bg-surface/5 transition"

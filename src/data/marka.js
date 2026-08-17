@@ -25,7 +25,10 @@ export const MARKA = {
         + 'deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.',
 
     /** Amblem + yazı. Karşılama ve giriş ekranında kullanılır. */
-    logo: '/logo-basari-kampi.jpeg',
+    /* 640 piksel: giriş ekranında en fazla 288 piksel genişlikte
+       gösteriliyor, 2x ekran için fazlasıyla yeter. Önceki 1254 piksellik
+       dosya beş kat fazla veri indiriyordu. */
+    logo: '/logo-640.jpg',
 
     /** Yalnızca amblem (yazısız) — dar alanlar ve PDF başlıkları. */
     amblem: '/amblem-256.png',

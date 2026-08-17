@@ -1,23 +1,39 @@
-import * as pdfjsLib from 'pdfjs-dist';
+/**
+ * ⚡ pdfjs-dist ARTIK İSTEĞE BAĞLI YÜKLENİYOR
+ *
+ * Bu modül `pdfjs-dist`i en üstte içe aktarıyordu; kütüphane 551 KB ve
+ * PDF okuma yalnızca kullanıcı deneme sonucu yüklediğinde gerekiyor.
+ * Statik import yüzünden bu ağırlık, PDF'e hiç dokunmayan kullanıcılara
+ * da ilk açılışta iniyordu.
+ *
+ * Artık ilk çağrıda yükleniyor ve sonuç saklanıyor (ikinci çağrıda
+ * yeniden indirilmez).
+ */
+let pdfjsSozu = null;
 
-// Vite/Webpack environment specific: Configure worker
-// We use the worker from the installed package. 
-// Note: In some vite setups, you might need to copy the worker file to public or use a CDN.
-// For now, we'll try importing the worker entry point directly if possible, or verify if pdfjs-dist sorts it out.
-// A common pattern in Vite is:
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+const pdfjsYukle = () => {
+    if (pdfjsSozu) return pdfjsSozu;
+    pdfjsSozu = (async () => {
+        const [pdfjsLib, worker] = await Promise.all([
+            import('pdfjs-dist'),
+            import('pdfjs-dist/build/pdf.worker.mjs?url'),
+        ]);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
+        return pdfjsLib;
+    })();
+    return pdfjsSozu;
+};
 
 /**
  * Parses a PDF file for Student Data.
  * Extracts text and attempts to find patterns: "Name", "TYT", "Grade", etc.
- * 
+ *
  * @param {File} file - The uploaded PDF file.
  * @returns {Promise<Object>} - Standardized result object { results: [], debugInfo: {} }
  */
 export const parsePdfExamData = async (file) => {
     try {
+        const pdfjsLib = await pdfjsYukle();
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;

@@ -16,6 +16,7 @@ import { buildClassReport } from '../../services/reportService';
 import wa from '../../services/whatsappService';
 import { TEMPLATE_CATEGORIES } from '../../data/whatsappTemplates';
 import WhatsAppComposer from './WhatsAppComposer';
+import { onayla } from '../../services/uiGeriBildirim';
 
 const SECTIONS = [
     { id: 'quick', label: 'Hızlı Aksiyon', icon: Zap },
@@ -469,8 +470,8 @@ const MessageHistory = ({ students }) => {
         );
     }, [log, search, studentNames]);
 
-    const clear = () => {
-        if (!window.confirm('Tüm gönderim geçmişi silinecek. Emin misiniz?')) return;
+    const clear = async () => {
+        if (!(await onayla({ mesaj: 'Tüm gönderim geçmişi silinecek. Emin misiniz?', tehlikeli: true }))) return;
         wa.clearMessageLog();
         setLog([]);
     };

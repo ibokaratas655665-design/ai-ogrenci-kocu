@@ -1,0 +1,216 @@
+/**
+ * 📐 TASARIM DİZGESİ — ÖLÇEKLER
+ *
+ * Renkler `styles/theme.css`te (açık/koyu tema); ölçekler burada.
+ * İkisi birlikte uygulamanın tek görsel dilidir.
+ *
+ * Denetimde ölçülen dağınıklık:
+ *   · 14 farklı metin boyutu, 6'sı keyfi piksel (`text-[8px]`, `text-[9px]`)
+ *   · 8 farklı köşe yarıçapı (rounded-xl 766, 2xl 491, lg 421, 3xl 81…)
+ *   · Gölge belirteçleri 11 kez, ham Tailwind gölgeleri 594 kez
+ *   · 75 farklı düğme sınıf kalıbı
+ *
+ * Kural: yeni kod bu ölçeklerin DIŞINA çıkmaz. Ara değer gerekiyorsa
+ * ölçeğe basamak eklenir, tek seferlik keyfi değer yazılmaz.
+ *
+ * ⚠️ Bu dosya Tailwind'in mevcut `text-sm` / `rounded-lg` gibi
+ * sınıflarını EZMEZ — onlar binlerce yerde kullanılıyor. Yeni,
+ * anlam taşıyan adlar ekler; ekranlar dokunuldukça bunlara geçer.
+ */
+
+:root {
+    /* ══════════════════════════════════════════════════════════
+       TİPOGRAFİ
+
+       Tek bir ölçek: 11 · 12 · 13 · 14 · 16 · 20 · 26 · 34 · 44.
+       Her rol bu ölçekten bir basamak seçer; kendi punto değerini
+       uydurmaz. Satır yüksekliği başlıkta sıkı, gövdede rahat.
+
+       En küçük basamak 11px: eskiden 8 ve 9 piksellik yazılar vardı
+       (toplam 95 yerde) ve okunabilir değildi.
+       ══════════════════════════════════════════════════════════ */
+
+    /* Display — yalnızca giriş/pazarlama ekranlarının ana başlığı */
+    --tip-display-boyut: 2.75rem;   /* 44 */
+    --tip-display-satir: 1.08;
+    --tip-display-agirlik: 800;
+    --tip-display-aralik: -0.025em;
+
+    --tip-h1-boyut: 2.125rem;       /* 34 */
+    --tip-h1-satir: 1.15;
+    --tip-h1-agirlik: 800;
+    --tip-h1-aralik: -0.02em;
+
+    --tip-h2-boyut: 1.625rem;       /* 26 */
+    --tip-h2-satir: 1.22;
+    --tip-h2-agirlik: 700;
+    --tip-h2-aralik: -0.015em;
+
+    --tip-h3-boyut: 1.25rem;        /* 20 */
+    --tip-h3-satir: 1.3;
+    --tip-h3-agirlik: 700;
+    --tip-h3-aralik: -0.01em;
+
+    --tip-h4-boyut: 1rem;           /* 16 */
+    --tip-h4-satir: 1.4;
+    --tip-h4-agirlik: 700;
+    --tip-h4-aralik: -0.005em;
+
+    /* Gövde — okunabilirlik için satır yüksekliği geniş */
+    --tip-body-boyut: 1rem;         /* 16 */
+    --tip-body-satir: 1.6;
+    --tip-body-agirlik: 400;
+
+    --tip-small-boyut: 0.875rem;    /* 14 */
+    --tip-small-satir: 1.55;
+    --tip-small-agirlik: 400;
+
+    --tip-caption-boyut: 0.8125rem; /* 13 — yardım metni, alt açıklama */
+    --tip-caption-satir: 1.45;
+    --tip-caption-agirlik: 400;
+
+    /* Etiket — form etiketi ve bölüm başlığı; harf aralığı açık */
+    --tip-label-boyut: 0.75rem;     /* 12 */
+    --tip-label-satir: 1.35;
+    --tip-label-agirlik: 700;
+    --tip-label-aralik: 0.04em;
+
+    --tip-button-boyut: 0.875rem;   /* 14 */
+    --tip-button-satir: 1;
+    --tip-button-agirlik: 700;
+    --tip-button-aralik: 0.005em;
+
+    --tip-nav-boyut: 0.875rem;      /* 14 */
+    --tip-nav-satir: 1.2;
+    --tip-nav-agirlik: 600;
+
+    --tip-tab-boyut: 0.8125rem;     /* 13 */
+    --tip-tab-satir: 1.2;
+    --tip-tab-agirlik: 700;
+    --tip-tab-aralik: 0.01em;
+
+    /* En küçük basamak — rozet içi, tablo üst etiketi */
+    --tip-mini-boyut: 0.6875rem;    /* 11 */
+    --tip-mini-satir: 1.3;
+    --tip-mini-agirlik: 700;
+    --tip-mini-aralik: 0.06em;
+
+    /* ══════════════════════════════════════════════════════════
+       BOŞLUK — 4 piksel taban ızgarası
+
+       Tailwind'in kendi ölçeği zaten 4px tabanlı; buradaki adlar
+       ANLAM taşır: hangi boşluğun nerede kullanılacağını söyler.
+       ══════════════════════════════════════════════════════════ */
+    --bosluk-1: 0.25rem;    /*  4 — simge ile yazı arası          */
+    --bosluk-2: 0.5rem;     /*  8 — sıkı öğeler, rozet iç dolgusu */
+    --bosluk-3: 0.75rem;    /* 12 — form alanları arası           */
+    --bosluk-4: 1rem;       /* 16 — kart iç dolgusu (sıkışık)     */
+    --bosluk-5: 1.25rem;    /* 20 — kart iç dolgusu (varsayılan)  */
+    --bosluk-6: 1.5rem;     /* 24 — bölüm içi ayrım               */
+    --bosluk-8: 2rem;       /* 32 — bölümler arası                */
+    --bosluk-12: 3rem;      /* 48 — sayfa bölümleri arası         */
+    --bosluk-16: 4rem;      /* 64 — sayfa üst/alt payı            */
+
+    /* ══════════════════════════════════════════════════════════
+       KÖŞE YARIÇAPI — dört basamak, fazlası yok
+       ══════════════════════════════════════════════════════════ */
+    --yaricap-sm: 6px;      /* rozet, küçük etiket, giriş alanı içi */
+    --yaricap-md: 10px;     /* düğme, giriş alanı, açılır liste öğesi */
+    --yaricap-lg: 16px;     /* kart, panel, modal */
+    --yaricap-pill: 999px;  /* sekme hapı, avatar, sayaç rozeti */
+
+    /* ══════════════════════════════════════════════════════════
+       YÜKSEKLİK (elevation)
+
+       Katman ne kadar yukarıdaysa gölge o kadar yayvan ve yumuşak.
+       Renk yerine gölge ile ayrışır; --sh-1..3 zaten temada tanımlı.
+       ══════════════════════════════════════════════════════════ */
+    --yukseklik-kart: var(--sh-1);       /* sayfadaki kart      */
+    --yukseklik-acilir: var(--sh-2);     /* dropdown, popover   */
+    --yukseklik-yuzen: var(--sh-2);      /* yüzen düğme, toast  */
+    --yukseklik-modal: var(--sh-3);      /* pencere             */
+
+    /* Odak halkası — tek yerden, her bileşende aynı */
+    --odak-halka: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand);
+
+    /* Geçiş süreleri — üç basamak, başka süre kullanılmaz */
+    --sure-hizli: 120ms;    /* renk/hover değişimi        */
+    --sure-normal: 200ms;   /* giriş-çıkış, açılıp kapanma */
+    --sure-yavas: 320ms;    /* sayfa geçişi               */
+    --egri: cubic-bezier(.2, .8, .2, 1);
+}
+
+/**
+ * Kullanıcı "hareketi azalt" dediyse süreler sıfırlanır.
+ * Bileşenler süreyi hep bu değişkenlerden okuduğu için tek yerden biter.
+ */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --sure-hizli: 0.001ms;
+        --sure-normal: 0.001ms;
+        --sure-yavas: 0.001ms;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TİPOGRAFİ SINIFLARI
+
+   Bileşenler bunları kullanır; punto/ağırlık/satır üçlüsünü elle
+   yazmak yerine rolü söyler: `<h2 className="tip-h2">`.
+   ══════════════════════════════════════════════════════════════ */
+
+.tip-display,
+.tip-h1,
+.tip-h2,
+.tip-h3,
+.tip-h4 {
+    font-family: var(--font-display);
+    color: var(--ink);
+    text-wrap: balance;
+}
+
+.tip-display { font-size: var(--tip-display-boyut); line-height: var(--tip-display-satir); font-weight: var(--tip-display-agirlik); letter-spacing: var(--tip-display-aralik); }
+.tip-h1      { font-size: var(--tip-h1-boyut);      line-height: var(--tip-h1-satir);      font-weight: var(--tip-h1-agirlik);      letter-spacing: var(--tip-h1-aralik); }
+.tip-h2      { font-size: var(--tip-h2-boyut);      line-height: var(--tip-h2-satir);      font-weight: var(--tip-h2-agirlik);      letter-spacing: var(--tip-h2-aralik); }
+.tip-h3      { font-size: var(--tip-h3-boyut);      line-height: var(--tip-h3-satir);      font-weight: var(--tip-h3-agirlik);      letter-spacing: var(--tip-h3-aralik); }
+.tip-h4      { font-size: var(--tip-h4-boyut);      line-height: var(--tip-h4-satir);      font-weight: var(--tip-h4-agirlik);      letter-spacing: var(--tip-h4-aralik); }
+
+.tip-body    { font-size: var(--tip-body-boyut);    line-height: var(--tip-body-satir);    font-weight: var(--tip-body-agirlik);    color: var(--ink-2); }
+.tip-small   { font-size: var(--tip-small-boyut);   line-height: var(--tip-small-satir);   font-weight: var(--tip-small-agirlik);   color: var(--ink-2); }
+.tip-caption { font-size: var(--tip-caption-boyut); line-height: var(--tip-caption-satir); font-weight: var(--tip-caption-agirlik); color: var(--ink-3); }
+
+/**
+ * ⚠️ `tip-label` ve `tip-mini` RENK TANIMLAMAZ.
+ *
+ * Bu iki sınıf rozet, sekme ve gezinme gibi rengi duruma göre değişen
+ * yerlerde kullanılıyor. Buraya renk yazıldığında —dizge.css Tailwind
+ * yardımcı sınıflarından SONRA yüklendiği için— yanındaki `text-warn`
+ * gibi sınıfı eziyordu: "gecikmiş" rozeti amber zemin üzerinde soluk
+ * gri yazıyla çıkıyordu.
+ *
+ * Rengi kullanan bileşen verir; bu sınıflar yalnızca punto, ağırlık ve
+ * harf aralığı taşır.
+ */
+.tip-label {
+    font-size: var(--tip-label-boyut);
+    line-height: var(--tip-label-satir);
+    font-weight: var(--tip-label-agirlik);
+    letter-spacing: var(--tip-label-aralik);
+}
+
+.tip-mini {
+    font-size: var(--tip-mini-boyut);
+    line-height: var(--tip-mini-satir);
+    font-weight: var(--tip-mini-agirlik);
+    letter-spacing: var(--tip-mini-aralik);
+    text-transform: uppercase;
+}
+
+.tip-nav  { font-size: var(--tip-nav-boyut);  line-height: var(--tip-nav-satir);  font-weight: var(--tip-nav-agirlik); }
+.tip-tab  { font-size: var(--tip-tab-boyut);  line-height: var(--tip-tab-satir);  font-weight: var(--tip-tab-agirlik);  letter-spacing: var(--tip-tab-aralik); }
+
+/* Sayısal sütunlar hizalansın — KPI, tablo, grafik etiketi */
+.rakam {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+}

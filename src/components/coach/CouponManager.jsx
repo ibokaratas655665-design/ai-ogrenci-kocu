@@ -334,7 +334,7 @@ const KuponFormu = ({ onKapat, onUret }) => {
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 p-4 border-t border-line">
+                <div className="pencere-alt-cubuk bg-surface flex items-center gap-2 p-4 border-t border-line">
                     <button onClick={onKapat} className="b b-line flex-1">İptal</button>
                     <button
                         onClick={() => onUret({

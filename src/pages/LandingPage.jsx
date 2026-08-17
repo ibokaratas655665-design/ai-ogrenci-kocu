@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
 import MARKA from '../data/marka';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 /**
  * 🏠 KARŞILAMA SAYFASI
@@ -82,10 +83,10 @@ const LandingPage = () => {
                     {/* Üst çubukta yalnızca amblem — logonun yazı kısmı bu
                         boyutta okunmuyor, ad zaten yanında metin olarak var. */}
                     <div className="flex items-center gap-2 min-w-0">
-                        <img src={MARKA.amblem} alt="" width="36" height="36"
+                        <MarkaGorsel src={MARKA.amblem} alt="" width="36" height="36"
                             className="w-9 h-9 shrink-0 object-contain" />
                         {/* Ad, logodaki el yazısı stiliyle */}
-                        <img src={MARKA.adYazisi} alt={MARKA.ad} height="28"
+                        <MarkaGorsel src={MARKA.adYazisi} alt={MARKA.ad} width="66" height="28"
                             className="h-7 w-auto object-contain shrink-0" />
                     </div>
 
@@ -342,9 +343,9 @@ const LandingPage = () => {
             <footer className="bg-surface-2 border-t border-line py-8 px-4">
                 <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <img src={MARKA.amblem} alt="" width="24" height="24"
+                        <MarkaGorsel src={MARKA.amblem} alt="" width="24" height="24"
                             className="w-6 h-6 object-contain" />
-                        <img src={MARKA.adYazisi} alt={MARKA.ad} height="20"
+                        <MarkaGorsel src={MARKA.adYazisi} alt={MARKA.ad} width="47" height="20"
                             className="h-5 w-auto object-contain" />
                     </div>
                     <p className="text-[11px] text-ink-3 text-center">

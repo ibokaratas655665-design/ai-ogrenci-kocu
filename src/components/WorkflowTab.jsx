@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Briefcase, Plus, X, Calendar, Clock, User, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { onayla } from '../services/uiGeriBildirim';
 
 const WorkflowTab = ({ students, setToast }) => {
     const [cases, setCases] = useState(() => {
@@ -69,8 +70,8 @@ const WorkflowTab = ({ students, setToast }) => {
         setShowModal(true);
     };
 
-    const handleDelete = (caseId) => {
-        if (window.confirm('Bu vakayı silmek istediğinize emin misiniz?')) {
+    const handleDelete = async (caseId) => {
+        if (await onayla({ mesaj: 'Bu vakayı silmek istediğinize emin misiniz?', tehlikeli: true })) {
             setCases(cases.filter(c => c.id !== caseId));
             setToast('Vaka silindi!');
         }
@@ -316,7 +317,7 @@ const WorkflowTab = ({ students, setToast }) => {
                                 />
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
                                 <button
                                     onClick={resetForm}
                                     className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"

@@ -304,13 +304,12 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                         {mergedTrendData.length > 0 ? (
                             <ResponsiveContainer width="100%" height={280}>
                                 <LineChart data={mergedTrendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"  vertical={false} />
                                     <XAxis dataKey="exam" tick={{ fontSize: 11 }} />
                                     <YAxis tick={{ fontSize: 11 }} />
                                     <Tooltip
                                         contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }}
                                     />
-                                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                                     {studentData.map(sd => (
                                         <Line
                                             key={sd.student.id}
@@ -320,7 +319,7 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                                             strokeWidth={2.5}
                                             dot={{ r: 4, strokeWidth: 2, fill: 'white', stroke: sd.color }}
                                             activeDot={{ r: 6 }}
-                                        />
+                                         animationDuration={300} />
                                     ))}
                                 </LineChart>
                             </ResponsiveContainer>
@@ -354,9 +353,8 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                                             fill={sd.color}
                                             fillOpacity={0.1}
                                             strokeWidth={2}
-                                        />
+                                         animationDuration={300} />
                                     ))}
-                                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                                     <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 12 }} />
                                 </RadarChart>
                             </ResponsiveContainer>
@@ -401,7 +399,7 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                                             </div>
                                             <div className="h-2 bg-surface-3 rounded-full overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full transition-all duration-700"
+                                                    className="h-full rounded-full transition-all duration-yavas"
                                                     style={{ width: `${pct}%`, backgroundColor: sd.color }}
                                                 />
                                             </div>
@@ -417,7 +415,7 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                 {viewMode === 'table' && (
                     <>
                         <h3 className="font-bold text-ink-2 text-sm mb-4 flex items-center gap-2">
-                            <BarChart2 size={16} className="text-info" />
+                            <BarChart2 size={16} className="text-info"  animationDuration={300} />
                             Detay Karşılaştırma Tablosu
                         </h3>
                         <div className="overflow-x-auto">

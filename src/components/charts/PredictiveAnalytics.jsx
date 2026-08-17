@@ -112,7 +112,7 @@ const PredictiveAnalytics = ({ historicalData, targetScore = 450, examDate }) =>
                                 <stop offset="95%" stopColor="var(--c4)" stopOpacity={0.05} />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                         <XAxis
                             dataKey="week"
                             tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 600 }}
@@ -144,7 +144,7 @@ const PredictiveAnalytics = ({ historicalData, targetScore = 450, examDate }) =>
                             fill="url(#colorActual)"
                             name="Gerçek Performans"
                             connectNulls={false}
-                        />
+                         animationDuration={300} />
 
                         {/* Predicted Performance */}
                         <Line
@@ -155,7 +155,7 @@ const PredictiveAnalytics = ({ historicalData, targetScore = 450, examDate }) =>
                             strokeDasharray="5 5"
                             dot={{ fill: 'var(--c4)', r: 4 }}
                             name="Tahmin"
-                        />
+                         animationDuration={300} />
 
                         {/* Target Line */}
                         <Line
@@ -166,7 +166,7 @@ const PredictiveAnalytics = ({ historicalData, targetScore = 450, examDate }) =>
                             strokeDasharray="3 3"
                             dot={false}
                             name="Hedef"
-                        />
+                         animationDuration={300} />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

@@ -165,7 +165,7 @@ const DailyGoalCard = ({ userId, onAction }) => {
                     <div className="flex-1">
                         <div className="bg-surface/20 rounded-full h-2.5 overflow-hidden">
                             <div
-                                className="h-full bg-surface rounded-full transition-all duration-700"
+                                className="h-full bg-surface rounded-full transition-all duration-yavas"
                                 style={{ width: `${pct}%` }}
                             />
                         </div>

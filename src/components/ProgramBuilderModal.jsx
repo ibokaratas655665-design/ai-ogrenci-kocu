@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import {
     Calendar, Clock, Settings, Download, Save, CheckCircle, X,
     Layers, Minus, Plus, Shuffle, Book, Trash2, Share2, RefreshCw,
-    CheckSquare, Square, PlusCircle, Globe, ChevronDown
+    CheckSquare, Square, PlusCircle, Globe, ChevronDown,
+    Unlock, CalendarDays, CalendarRange,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -13,6 +14,7 @@ import { ACTIVITY_TYPES, STANDALONE_ACTIVITIES, getCellColor, getSubjectColor, g
 import { distributeToSlots, DEFAULT_PLAN_OPTIONS } from '../utils/scheduleDistributor';
 import programProgress from '../services/programProgressService';
 import firebaseSync from '../services/firebaseSync';
+import { bildir, onayla } from '../services/uiGeriBildirim';
 
 /** Hazır aktivite fırçalarına tıklanınca hücreye yazılacak varsayılan açıklama. */
 const DEFAULT_ACTIVITY_TOPIC = {
@@ -173,6 +175,22 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     const [sidebarTab, setSidebarTab] = useState('icerik');
     const [lastStats, setLastStats] = useState(null);
 
+    /**
+     * 📱 MOBİL DÜZEN
+     *
+     * Bu pencere masaüstü için yazılmıştı: 384 piksellik sabit kenar
+     * çubuğu + yanında takvim. 375 piksellik telefonda kenar çubuğu tek
+     * başına ekrandan geniş kaldığı için takvime 0 piksel kalıyor ve
+     * ızgara hiç çizilmiyordu; başlıktaki altı düğme de tek sıraya
+     * dizildiği için "Kaydet" ekranın 500 piksel sağında kalıyordu.
+     *
+     * Telefonda artık iki bölme aynı anda değil, sırayla gösteriliyor;
+     * ikincil araçlar başlıkta gizlenip "Araçlar" düğmesine alınıyor.
+     * Masaüstü düzeni (lg ve üzeri) hiç değişmiyor.
+     */
+    const [mobilBolme, setMobilBolme] = useState('icerik'); // 'icerik' | 'takvim'
+    const [araclarAcik, setAraclarAcik] = useState(false);
+
     // Data Stores
     const [distributionQueue, setDistributionQueue] = useState([]); // Array of topics waiting to be placed
     const [schedule, setSchedule] = useState({}); // Key: "mX-wY-Day-Slot", Value: { subject, topic, color }
@@ -265,7 +283,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
 
     const handleSave = () => {
         if (!studentId) {
-            alert('Kaydetmek için bir öğrenci seçilmeli. Lütfen "Ders Programları" sekmesinden öğrenciye tıklayarak açın.');
+            bildir('Kaydetmek için bir öğrenci seçilmeli. Lütfen "Ders Programları" sekmesinden öğrenciye tıklayarak açın.', 'uyari');
             return;
         }
         localStorage.setItem(`program_schedule_${studentId}`, JSON.stringify(schedule));
@@ -284,11 +302,11 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         firebaseSync.sync().catch(() => { });
     };
 
-    const handleCellClick = (day, slotIndex) => {
+    const handleCellClick = async (day, slotIndex) => {
         // KAPALI SLOT KONTROLÜ - İsteğe bağlı açma seçeneği
         const dayClosedSlots = closedSlots[day] || [];
         if (dayClosedSlots.includes(slotIndex)) {
-            if (window.confirm('Bu etüt kapalı! Açmak ister misiniz?')) {
+            if (await onayla({ mesaj: 'Bu etüt kapalı! Açmak ister misiniz?', tehlikeli: false })) {
                 // Slot'u aç
                 const newClosedSlots = { ...closedSlots };
                 newClosedSlots[day] = dayClosedSlots.filter(i => i !== slotIndex);
@@ -381,7 +399,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
      */
     const handleAutoDistribute = () => {
         if (!distributionQueue.length) {
-            alert('Önce dağıtılacak ders/konu ekleyin! Soldaki "Tüm Müfredatı Ekle" veya "+" butonlarını kullanın.');
+            bildir('Önce dağıtılacak ders/konu ekleyin! Soldaki "Tüm Müfredatı Ekle" veya "+" butonlarını kullanın.');
             return;
         }
 
@@ -402,7 +420,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         });
 
         if (!generated || Object.keys(generated).length === 0) {
-            alert('Tüm etütler dolu! Önce "Temizle" butonu ile programı sıfırlayın.');
+            bildir('Tüm etütler dolu! Önce "Temizle" butonu ile programı sıfırlayın.');
             return;
         }
 
@@ -427,7 +445,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     const handleDownloadPDF = async (mode = 'week') => {
         const weekDivs = [...document.querySelectorAll('[data-pdf-week]')];
         if (weekDivs.length === 0) {
-            alert('Önce program oluşturun / kaydedin.');
+            bildir('Önce program oluşturun / kaydedin.');
             return;
         }
 
@@ -478,7 +496,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
             const key = `${activeMonth}-${activeWeek}`;
             const div = weekDivs.find(d => d.dataset.pdfWeek === key);
             if (!div) {
-                alert('Bu hafta için içerik bulunamadı.');
+                bildir('Bu hafta için içerik bulunamadı.', 'hata');
                 return;
             }
             const doc = newDoc();
@@ -544,14 +562,14 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         setDistributionQueue((prev) => [...items, ...prev]);
     };
 
-    const handleAddEntireCurriculum = () => {
-        if (!selectedExam) return alert('Lütfen önce bir sınav türü seçin!');
+    const handleAddEntireCurriculum = async () => {
+        if (!selectedExam) return bildir('Lütfen önce bir sınav türü seçin!');
 
         const examData = (selectedExam === 'AYT' || selectedExam === 'YDT')
             ? CURRICULUM[selectedExam]?.[gradeLevel]
             : CURRICULUM[selectedExam];
 
-        if (!examData) return alert('Veri bulunamadı. Lütfen sayfayı yenileyin.');
+        if (!examData) return bildir('Veri bulunamadı. Lütfen sayfayı yenileyin.');
 
         const allTopics = [];
         Object.keys(examData).forEach(subj => {
@@ -571,9 +589,9 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
             }
         });
 
-        if (allTopics.length === 0) return alert('Seçili sınav tipi için konu bulunamadı!');
+        if (allTopics.length === 0) return bildir('Seçili sınav tipi için konu bulunamadı!');
 
-        if (window.confirm(`${allTopics.length} adet konu dağıtım listesine eklenecek. Onaylıyor musunuz?`)) {
+        if (await onayla({ mesaj: `${allTopics.length} adet konu dağıtım listesine eklenecek. Onaylıyor musunuz?`, tehlikeli: false })) {
             setDistributionQueue(prev => [...prev, ...allTopics]);
         }
     };
@@ -603,9 +621,102 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     // Metrics for Queue
     const totalWeights = distributionQueue.reduce((acc, i) => acc + i.weight, 0);
 
+    /**
+     * İkincil araçlar (paylaş / temizle / etütleri aç / PDF).
+     *
+     * Masaüstünde başlık satırının içinde durur. Telefonda o satıra
+     * sığmadığı ve "Kaydet"i ekran dışına ittiği için başlığın altında
+     * ayrı bir satırda, "Araçlar" düğmesiyle açılıp kapanır.
+     * İki yerde de aynı JSX kullanılır; aynı anda yalnızca biri görünür.
+     */
+    const ikincilAraclar = (
+        <>
+            <button onClick={() => {
+                let url = window.location.href;
+                if (url.includes('localhost') || url.includes('127.0.0.1') || url.startsWith('file://')) {
+                    const newUrl = prompt(
+                        "Yerel moddasınız. Paylaşılacak Web Linkini giriniz (Örn: https://google.com):",
+                        "https://"
+                    );
+                    if (newUrl && newUrl !== "https://") url = newUrl;
+                    else { bildir("Link girilmedi."); return; }
+                }
+                navigator.clipboard.writeText(url).then(() => {
+                    bildir("Link kopyalandı! \n\n" + url);
+                });
+            }} className="px-3 py-2 bg-info hover:bg-blue-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-blue-500/30">
+                <Share2 size={16} className="mr-2" /> Sistemi Paylaş
+            </button>
+            <button onClick={ async () => {
+                if (await onayla({ mesaj: 'Tüm program silinecek. Emin misiniz?', tehlikeli: true })) {
+                    setSchedule({});
+                    setDistributionQueue([]);
+                }
+            }} className="px-3 py-2 bg-danger/20 hover:bg-danger text-white rounded-lg text-sm font-bold transition">
+                Temizle
+            </button>
+            <button
+                onClick={ async () => {
+                    const closedCount = Object.values(closedSlots).reduce((acc, arr) => acc + arr.length, 0);
+                    if (closedCount === 0) {
+                        bildir('Kapalı etüt yok!', 'uyari');
+                        return;
+                    }
+                    if (await onayla({ mesaj: `${closedCount} kapalı etüt açılacak. Devam?`, tehlikeli: false })) {
+                        setClosedSlots({}); // Tüm kapalı etütleri aç
+                        bildir('✅ Tüm kapalı etütler açıldı!\n\nŞimdi yeni konular seçip ikinci dağıtım yapabilirsiniz.', 'basari');
+                    }
+                }}
+                className="px-3 py-2 bg-warn hover:bg-orange-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-orange-500/30"
+            >
+                <Unlock size={16} className="mr-2" /> Etütleri Aç
+            </button>
+            {/* PDF: tek hafta modunda tek dosya, ay modunda seçenekli.
+                Açılır menü fareyle üzerine gelmeye bağlı olduğu için
+                dokunmatikte açılmaz; oradaki asıl düğme yine çalışır. */}
+            <div className="relative group/pdf">
+                <button
+                    onClick={() => handleDownloadPDF('week')}
+                    className="px-3 py-2 bg-brand hover:bg-indigo-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-indigo-500/30"
+                >
+                    <Download size={16} className="mr-2" />
+                    {weeklyMode ? 'PDF İndir' : `${activeWeek}. Hafta PDF`}
+                    {!weeklyMode && <ChevronDown size={14} className="ml-1.5 opacity-70" />}
+                </button>
+
+                {!weeklyMode && (
+                    <div className="absolute right-0 top-full pt-1 hidden group-hover/pdf:block z-50">
+                        <div className="bg-surface rounded-xl shadow-2xl border border-line overflow-hidden w-60">
+                            <button
+                                onClick={() => handleDownloadPDF('each')}
+                                className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition"
+                            >
+                                <span className="block text-xs font-black text-ink">Her Hafta Ayrı PDF</span>
+                                <span className="block text-[10px] text-ink-3 leading-tight">
+                                    Her hafta kendi dosyası olarak iner
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => handleDownloadPDF('all')}
+                                className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition border-t border-line"
+                            >
+                                <span className="block text-xs font-black text-ink">Tümü Tek PDF</span>
+                                <span className="block text-[10px] text-ink-3 leading-tight">
+                                    Her hafta bir sayfa, tek dosya
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </>
+    );
+
     return (
         <div
-            className="fixed bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-hidden"
+            /* `pencere-tam-ekran`: yükseklik dvh ile ölçülür, yoksa
+               adres çubuğu pencerenin altını kesiyor (bkz. styles/mobil.css) */
+            className="pencere-tam-ekran fixed bg-black/80 backdrop-blur-sm flex items-center justify-center p-0 lg:p-4 overflow-hidden"
             style={{
                 position: 'fixed',
                 top: 0,
@@ -613,26 +724,28 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 right: 0,
                 bottom: 0,
                 width: '100vw',
-                height: '100vh',
                 zIndex: 1300, // katman merdiveni: program-builder (bkz. tailwind.config.js)
                 pointerEvents: 'auto'
             }}
         >
-            <div className="bg-surface w-full h-full max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            {/* `pencere-kendi-duzeni`: bu pencere başlığı sabit tutup yalnızca
+                gövdesini kaydırır; mobil.css'teki genel dıştan-kaydırma kuralı
+                burada devre dışı bırakılır (bkz. styles/mobil.css). */}
+            <div className="pencere-kendi-duzeni bg-surface w-full h-full max-w-full lg:max-w-[95vw] max-h-full lg:max-h-[95vh] rounded-none lg:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 {/* 1. Header & Toolbar */}
                 <div className="on-color bg-gradient-to-r from-indigo-900 to-indigo-800 text-ink p-4 shrink-0 shadow-md">
-                    <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center space-x-4">
-                            <Calendar size={28} className="text-brand" />
-                            <div>
+                    <div className="flex justify-between items-center mb-2 gap-2">
+                        <div className="flex items-center gap-2 lg:space-x-4 min-w-0 flex-1">
+                            <Calendar size={28} className="text-brand hidden sm:block shrink-0" />
+                            <div className="min-w-0 flex-1">
                                 <input
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="bg-transparent text-xl font-bold focus:outline-none focus:border-b border-indigo-400 placeholder-indigo-300 w-96"
+                                    className="bg-transparent text-base lg:text-xl font-bold focus:outline-none focus:border-b border-indigo-400 placeholder-indigo-300 w-full lg:w-96"
                                 />
                                 {/* Ölçü ayarları Ayarlar sekmesine taşındı; burada
                                     yalnızca mevcut durumun özeti gösterilir. */}
-                                <div className="flex items-center mt-1.5 gap-2 text-[11px] text-brand">
+                                <div className="flex flex-wrap items-center mt-1.5 gap-1.5 lg:gap-2 text-[11px] text-brand">
                                     <span className="px-2 py-0.5 rounded-md bg-surface/10 font-bold">
                                         {studentName || 'Öğrenci'}
                                     </span>
@@ -651,95 +764,67 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex space-x-3">
-                            <button onClick={() => {
-                                let url = window.location.href;
-                                if (url.includes('localhost') || url.includes('127.0.0.1') || url.startsWith('file://')) {
-                                    const newUrl = prompt(
-                                        "Yerel moddasınız. Paylaşılacak Web Linkini giriniz (Örn: https://google.com):",
-                                        "https://"
-                                    );
-                                    if (newUrl && newUrl !== "https://") url = newUrl;
-                                    else { alert("Link girilmedi."); return; }
-                                }
-                                navigator.clipboard.writeText(url).then(() => {
-                                    alert("Link kopyalandı! \n\n" + url);
-                                });
-                            }} className="px-3 py-2 bg-info hover:bg-blue-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-blue-500/30">
-                                <Share2 size={16} className="mr-2" /> Sistemi Paylaş
-                            </button>
-                            <button onClick={() => {
-                                if (window.confirm('Tüm program silinecek. Emin misiniz?')) {
-                                    setSchedule({});
-                                    setDistributionQueue([]);
-                                }
-                            }} className="px-3 py-2 bg-danger/20 hover:bg-danger text-white rounded-lg text-sm font-bold transition">
-                                Temizle
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const closedCount = Object.values(closedSlots).reduce((acc, arr) => acc + arr.length, 0);
-                                    if (closedCount === 0) {
-                                        alert('Kapalı etüt yok!');
-                                        return;
-                                    }
-                                    if (window.confirm(`${closedCount} kapalı etüt açılacak. Devam?`)) {
-                                        setClosedSlots({}); // Tüm kapalı etütleri aç
-                                        alert('✅ Tüm kapalı etütler açıldı!\n\nŞimdi yeni konular seçip ikinci dağıtım yapabilirsiniz.');
-                                    }
-                                }}
-                                className="px-3 py-2 bg-warn hover:bg-orange-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-orange-500/30"
-                            >
-                                🔓 Etütleri Aç
-                            </button>
-                            {/* PDF: tek hafta modunda tek dosya, ay modunda seçenekli */}
-                            <div className="relative group/pdf">
-                                <button
-                                    onClick={() => handleDownloadPDF('week')}
-                                    className="px-3 py-2 bg-brand hover:bg-indigo-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-indigo-500/30"
-                                >
-                                    <Download size={16} className="mr-2" />
-                                    {weeklyMode ? 'PDF İndir' : `${activeWeek}. Hafta PDF`}
-                                    {!weeklyMode && <ChevronDown size={14} className="ml-1.5 opacity-70" />}
-                                </button>
-
-                                {!weeklyMode && (
-                                    <div className="absolute right-0 top-full pt-1 hidden group-hover/pdf:block z-50">
-                                        <div className="bg-surface rounded-xl shadow-2xl border border-line overflow-hidden w-60">
-                                            <button
-                                                onClick={() => handleDownloadPDF('each')}
-                                                className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition"
-                                            >
-                                                <span className="block text-xs font-black text-ink">Her Hafta Ayrı PDF</span>
-                                                <span className="block text-[10px] text-ink-3 leading-tight">
-                                                    Her hafta kendi dosyası olarak iner
-                                                </span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDownloadPDF('all')}
-                                                className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition border-t border-line"
-                                            >
-                                                <span className="block text-xs font-black text-ink">Tümü Tek PDF</span>
-                                                <span className="block text-[10px] text-ink-3 leading-tight">
-                                                    Her hafta bir sayfa, tek dosya
-                                                </span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                        <div className="flex items-center gap-2 lg:space-x-3 shrink-0">
+                            {/* Masaüstünde araçlar satır içinde durur */}
+                            <div className="hidden lg:flex lg:space-x-3 lg:items-center">
+                                {ikincilAraclar}
                             </div>
-                            <button onClick={handleSave} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center shadow-lg ${saveSuccess ? 'bg-green-400 text-white' : 'bg-ok hover:bg-ok text-white hover:shadow-green-500/30'}`}>
-                                <CheckCircle size={16} className="mr-2" /> {saveSuccess ? '✓ Kaydedildi!' : 'Kaydet'}
+
+                            {/* Telefonda araçlar alttaki satıra iner */}
+                            <button
+                                onClick={() => setAraclarAcik((v) => !v)}
+                                aria-expanded={araclarAcik}
+                                className="lg:hidden px-3 py-2 rounded-lg text-sm font-bold bg-surface/10 hover:bg-surface/20 transition flex items-center gap-1"
+                            >
+                                <Settings size={16} /> Araçlar
                             </button>
-                            <button onClick={onClose} className="p-2 hover:bg-surface/10 rounded-full"><X size={24} /></button>
+
+                            {/* Kaydet ve Kapat HER ZAMAN görünür kalır */}
+                            <button onClick={handleSave} className={`px-3 lg:px-4 py-2 rounded-lg text-sm font-bold transition flex items-center shadow-lg shrink-0 ${saveSuccess ? 'bg-green-400 text-white' : 'bg-ok hover:bg-ok text-white hover:shadow-green-500/30'}`}>
+                                <CheckCircle size={16} className="lg:mr-2" />
+                                <span className="hidden sm:inline">{saveSuccess ? '✓ Kaydedildi!' : 'Kaydet'}</span>
+                            </button>
+                            <button onClick={onClose} aria-label="Kapat" className="p-2 hover:bg-surface/10 rounded-full shrink-0"><X size={24} /></button>
                         </div>
+                    </div>
+
+                    {/* Telefonda açılan ikincil araç satırı */}
+                    {araclarAcik && (
+                        <div className="lg:hidden flex flex-wrap gap-2 mt-2 pt-2 border-t border-white/10">
+                            {ikincilAraclar}
+                        </div>
+                    )}
+
+                    {/* Telefonda iki bölme yan yana sığmadığı için sırayla gösterilir */}
+                    <div className="lg:hidden flex gap-1 mt-3 p-1 rounded-xl bg-black/25">
+                        {[
+                            { id: 'icerik', label: 'Konu Seçimi' },
+                            { id: 'takvim', label: 'Program' },
+                        ].map((b) => (
+                            <button
+                                key={b.id}
+                                onClick={() => setMobilBolme(b.id)}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black transition ${
+                                    mobilBolme === b.id
+                                        ? 'bg-surface text-brand shadow'
+                                        : 'text-white/70 hover:text-white'
+                                }`}
+                            >
+                                {b.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden min-h-0">
                     {/* 2. Sidebar (Subject/Topic Selector) */}
-                    {/* 2. Kenar Çubuğu — sekmeli */}
-                    <div className="w-96 bg-surface border-r border-line flex flex-col shrink-0">
+                    {/* 2. Kenar Çubuğu — sekmeli.
+                        Telefonda tam genişlik kaplar ve yalnızca "Konu Seçimi"
+                        bölmesi seçiliyken görünür; masaüstünde eskisi gibi
+                        384 piksellik sabit sütun. */}
+                    <div className={`w-full lg:w-96 bg-surface border-r border-line flex-col shrink-0 min-h-0 ${
+                        mobilBolme === 'icerik' ? 'flex' : 'hidden'
+                    } lg:flex`}>
                         {/* ── Kenar çubuğu sekmeleri ─────────────────── */}
                         <div className="grid grid-cols-3 shrink-0 bg-surface-3 border-b border-line">
                             {[
@@ -935,7 +1020,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 disabled={distributionQueue.length === 0}
                                 className="on-color w-full py-3 mt-3 bg-gradient-to-r from-brand to-indigo-700 text-white rounded-xl text-sm font-bold hover:from-indigo-700 hover:to-indigo-800 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center border-2 border-indigo-400"
                             >
-                                <Shuffle size={16} className="mr-2" /> 🚀 AKILLI DAĞIT
+                                <Shuffle size={16} className="mr-2" /> AKILLI DAĞIT
                             </button>
 
                             {lastStats && (
@@ -1047,7 +1132,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     </select>
                                     <button
                                         onClick={() => {
-                                            if (!manualSubject) return alert("Ders adı girmelisiniz.");
+                                            if (!manualSubject) return bildir("Ders adı girmelisiniz.");
                                             setActiveTool({
                                                 subject: manualSubject,
                                                 topic: manualTopic || '', // Boş bırakılabilsin
@@ -1135,13 +1220,13 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     onClick={() => { setWeeklyMode(true); setActiveMonth(1); setActiveWeek(1); }}
                                     className={`flex-1 py-2.5 rounded-lg text-xs font-black transition ${weeklyMode ? 'bg-ok text-ink shadow' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
                                 >
-                                    📅 Tek Hafta
+                                    <CalendarDays size={14} className="mr-1.5" /> Tek Hafta
                                 </button>
                                 <button
                                     onClick={() => setWeeklyMode(false)}
                                     className={`flex-1 py-2.5 rounded-lg text-xs font-black transition ${!weeklyMode ? 'bg-brand text-ink shadow' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
                                 >
-                                    🗓 Ay Bazlı
+                                    <CalendarRange size={14} className="mr-1.5" /> Ay Bazlı
                                 </button>
                             </div>
 
@@ -1355,13 +1440,16 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                         </div>
                     </div>
 
-                    {/* 3. Main Schedule Grid */}
-                    <div className="flex-1 flex flex-col bg-surface-2">
+                    {/* 3. Main Schedule Grid — telefonda yalnızca "Program"
+                        bölmesi seçiliyken görünür */}
+                    <div className={`flex-1 flex-col bg-surface-2 min-w-0 min-h-0 ${
+                        mobilBolme === 'takvim' ? 'flex' : 'hidden'
+                    } lg:flex`}>
                         {/* Month Tabs - Tek Hafta modunda gizlenir */}
                         {weeklyMode ? (
                             <div className="flex border-b border-line bg-surface px-2 pt-2 gap-1">
                                 <span className="px-4 py-2 font-bold text-xs rounded-t-lg bg-surface-inv text-white flex items-center gap-1">
-                                    📅 Tek Haftalık Program
+                                    <CalendarDays size={14} className="mr-1.5" /> Tek Haftalık Program
                                 </span>
                             </div>
                         ) : (
@@ -1378,19 +1466,19 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                             </div>
                         )}
                         {/* Week Tabs - Tek Hafta modunda sadece 1 hafta görünür */}
-                        <div className="flex border-b border-line bg-surface-2 px-8 pt-2 pb-2 justify-between items-end">
-                            <div className="flex">
+                        <div className="flex flex-wrap gap-2 border-b border-line bg-surface-2 px-3 lg:px-8 pt-2 pb-2 justify-between items-end">
+                            <div className="flex overflow-x-auto">
                                 {(weeklyMode ? [1] : [1, 2, 3, 4]).map(week => (
                                     <button
                                         key={week}
                                         onClick={() => setActiveWeek(week)}
-                                        className={`px-8 py-2 font-bold text-sm border-b-2 transition -mb-[10px] ${activeWeek === week ? 'border-indigo-600 text-brand bg-surface rounded-t-lg shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10' : 'border-transparent text-ink-3 hover:text-ink-2'}`}
+                                        className={`px-4 lg:px-8 py-2 font-bold text-sm border-b-2 transition -mb-[10px] shrink-0 ${activeWeek === week ? 'border-indigo-600 text-brand bg-surface rounded-t-lg shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10' : 'border-transparent text-ink-3 hover:text-ink-2'}`}
                                     >
                                         {week}. Hafta
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <button
                                     onClick={() => {
                                         setSelectionMode(!selectionMode);
@@ -1405,8 +1493,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     <>
                                         <button
                                             onClick={() => {
-                                                if (selectedCells.length === 0) return alert('Hücre seçilmedi!');
-                                                if (!activeTool) return alert('Lütfen soldan bir ders aracı/silgi seçin!');
+                                                if (selectedCells.length === 0) return bildir('Hücre seçilmedi!');
+                                                if (!activeTool) return bildir('Lütfen soldan bir ders aracı/silgi seçin!');
                                                 const newSchedule = { ...schedule };
                                                 selectedCells.forEach(key => {
                                                     if (activeTool === 'eraser') {
@@ -1431,8 +1519,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                if (selectedCells.length === 0) return alert('Hücre seçilmedi!');
-                                                if (!activeTool) return alert('Lütfen soldan bir ders aracı/silgi seçin!');
+                                                if (selectedCells.length === 0) return bildir('Hücre seçilmedi!');
+                                                if (!activeTool) return bildir('Lütfen soldan bir ders aracı/silgi seçin!');
                                                 const newSchedule = { ...schedule };
                                                 selectedCells.forEach(key => {
                                                     const parts = key.split('-');
@@ -1799,7 +1887,7 @@ const ProgramBuilderModal = ({ studentId, studentName, onClose }) => {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-program-builder flex items-center justify-center bg-black/80 backdrop-blur-sm notranslate"
+            className="pencere-tam-ekran fixed inset-0 z-program-builder flex items-center justify-center bg-black/80 backdrop-blur-sm notranslate"
             translate="no"
             style={{
                 position: 'fixed',
@@ -1808,12 +1896,11 @@ const ProgramBuilderModal = ({ studentId, studentName, onClose }) => {
                 right: 0,
                 bottom: 0,
                 width: '100vw',
-                height: '100vh',
                 zIndex: 1300, // katman merdiveni: program-builder (bkz. tailwind.config.js)
                 pointerEvents: 'auto'
             }}
         >
-            <div className="bg-surface w-full h-full flex flex-col overflow-hidden relative notranslate" translate="no">
+            <div className="pencere-kendi-duzeni bg-surface w-full h-full flex flex-col overflow-hidden relative notranslate" translate="no">
                 <ErrorBoundary onClose={onClose}>
                     <ProgramBuilderContent studentId={studentId} studentName={studentName} onClose={onClose} />
                 </ErrorBoundary>

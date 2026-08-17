@@ -131,7 +131,7 @@ const TaskTemplates = ({ students = [], setToast }) => {
                             <Plus size={14} /> Görev Ekle
                         </button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-2">
                         <button onClick={() => setShowCreate(false)} className="flex-1 py-2 border border-line rounded-xl text-sm text-ink-2">İptal</button>
                         <button onClick={handleSaveTemplate} className="flex-1 py-2 bg-info text-white rounded-xl text-sm font-black hover:bg-info flex items-center justify-center gap-2"><Save size={14} /> Kaydet</button>
                     </div>
@@ -183,7 +183,7 @@ const TaskTemplates = ({ students = [], setToast }) => {
                                             </label>
                                         ))}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="pencere-alt-cubuk bg-surface flex gap-2">
                                         <button onClick={() => { setAssigningId(null); setSelectedStudents([]); }} className="flex-1 text-xs py-2 border border-line rounded-xl text-ink-2">İptal</button>
                                         <button onClick={() => handleAssign(tpl.id)} className="flex-1 text-xs py-2 bg-ok text-white rounded-xl font-bold flex items-center justify-center gap-1">
                                             <Send size={12} /> {selectedStudents.length > 0 ? `${selectedStudents.length} Öğrenciye At` : 'Ata'}

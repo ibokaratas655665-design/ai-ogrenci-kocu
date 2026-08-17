@@ -1,3 +1,4 @@
+import { bildir } from '../services/uiGeriBildirim';
 /**
  * pdfSave.js — Garantili PDF İndirme
  *
@@ -79,6 +80,6 @@ export function savePDF(pdfDoc, filename) {
     try {
         pdfDoc.save(fname);
     } catch (e3) {
-        alert('PDF kaydedilemedi. Tarayıcınızı güncelleyin ve tekrar deneyin.');
+        bildir('PDF kaydedilemedi. Tarayıcınızı güncelleyin ve tekrar deneyin.');
     }
 }

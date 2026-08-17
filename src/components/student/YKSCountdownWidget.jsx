@@ -141,7 +141,7 @@ const GoalEditor = ({ userId, goals, onSave, onClose }) => {
                     </div>
                 </div>
 
-                <div className="flex gap-2 mt-5">
+                <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-5">
                     <button onClick={onClose} className="flex-1 py-2.5 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
                     <button
                         onClick={() => { onSave(local); onClose(); }}
@@ -175,7 +175,7 @@ const SubjectBar = ({ subject, current, goal }) => {
             </div>
             <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
                 <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-all duration-yavas"
                     style={{ width: `${Math.max(goal > 0 ? 2 : 0, pct)}%`, background: subject.color }}
                 />
             </div>
@@ -312,7 +312,7 @@ const YKSCountdownWidget = ({ userId, examData = [], userGrade }) => {
                             )}
                             <div className="bg-surface/20 rounded-full h-2 overflow-hidden">
                                 <div
-                                    className="h-full bg-surface rounded-full transition-all duration-700"
+                                    className="h-full bg-surface rounded-full transition-all duration-yavas"
                                     style={{ width: `${Math.max(2, tytPct)}%` }}
                                 />
                             </div>

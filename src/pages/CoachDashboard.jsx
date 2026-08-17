@@ -40,6 +40,9 @@ import StudentProgressComparison from '../components/coach/StudentProgressCompar
 import { AICoachButton } from '../components/AICoachChat';
 import BulkMessageModal from '../components/coach/BulkMessageModal';
 import { CoachBottomNav } from '../components/shared/MobileBottomNav';
+import KullaniciMenusu from '../components/shared/KullaniciMenusu';
+import KocBugun from '../components/coach/KocBugun';
+import { BolumHataSiniri } from '../components/ui';
 import ClassInstantAnalysis from '../components/coach/ClassInstantAnalysis';
 // 🆕 Yeni Koç Özellikleri
 import GoalComparisonPanel from '../components/coach/GoalComparisonPanel';
@@ -73,6 +76,9 @@ import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
 import MARKA from '../data/marka';
+import { bildir, onayla } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 // 🛡️ Safe JSON Parser
 const safeParse = (key, defaultValue = []) => {
@@ -147,6 +153,12 @@ const NAV_BY_SECTION = {
             label: 'Analiz Merkezi',
             accent: 'var(--brand)',
             items: [
+                /* Açılış ekranı. Eskiden koç panele girdiğinde "Analiz"
+                   açılıyordu: grafikler ve ortalamalar. Bunlar ay sonunda
+                   anlamlı ama koçun sabah sorduğu soru "kim beni bekliyor";
+                   o soruyu bu sekme cevaplıyor. Yetki koşulu YOK — her koçun
+                   kendi iş listesi olmalı. */
+                { id: 'bugun', icon: MODULE_ICONS.analysis, label: 'Bugün' },
                 { id: 'analysis', icon: MODULE_ICONS.analysis, label: 'Analiz', perm: 'analysis' },
                 { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
             ],
@@ -244,7 +256,7 @@ const GOREV_SEKMELERI = gorevSekmeleriniTuret(NAV_BY_SECTION);
 
 // Toast Component
 const Toast = ({ message, onClose, type = 'success' }) => (
-    <div className={`on-color fixed top-8 left-1/2 transform -translate-x-1/2 z-notify px-6 py-3 rounded-full shadow-e3 flex items-center animate-fade-in ${type === 'success' ? 'bg-surface-inv' : 'bg-danger'}`}>
+    <div className={`on-color fixed top-8 left-1/2 transform -translate-x-1/2 z-notify px-6 py-3 rounded-full shadow-e3 flex items-center icerik-gecis ${type === 'success' ? 'bg-surface-inv' : 'bg-danger'}`}>
         {type === 'success'
             ? <CheckCircle size={18} className="mr-2" style={{ color: 'var(--ok)' }} />
             : <AlertCircle size={18} className="mr-2" />}
@@ -271,8 +283,8 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
         } catch { return []; }
     };
 
-    const handleDeleteResult = (studentId, resultId) => {
-        if (window.confirm('Bu test sonucunu silmek istediğinize emin misiniz?')) {
+    const handleDeleteResult = async (studentId, resultId) => {
+        if (await onayla({ mesaj: 'Bu test sonucunu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             const results = safeParse(`test_results_${studentId}`, []);
             const filtered = results.filter(r => r.id !== resultId);
             localStorage.setItem(`test_results_${studentId}`, JSON.stringify(filtered));
@@ -280,8 +292,8 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
         }
     };
 
-    const handleUnassign = (studentId, testId) => {
-        if (window.confirm('Bu test atamasını kaldırmak istediğinize emin misiniz?')) {
+    const handleUnassign = async (studentId, testId) => {
+        if (await onayla({ mesaj: 'Bu test atamasını kaldırmak istediğinize emin misiniz?', tehlikeli: true })) {
             const assigned = JSON.parse(localStorage.getItem(`assigned_tests_${studentId}`) || '[]');
             const filtered = assigned.filter(a => a.testId !== testId);
             localStorage.setItem(`assigned_tests_${studentId}`, JSON.stringify(filtered));
@@ -571,7 +583,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
     const handleDownloadPDF = async () => {
         const weekDivs = document.querySelectorAll('[data-pdf-week]');
         if (!weekDivs || weekDivs.length === 0 || !previewStudent) {
-            alert('Önce program oluşturun veya bir öğrenci seçin.');
+            bildir('Önce program oluşturun veya bir öğrenci seçin.');
             return;
         }
 
@@ -614,12 +626,12 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
             setToast('PDF başarıyla indirildi.');
         } catch (error) {
             console.error('PDF Error:', error);
-            alert('PDF oluşturulurken bir hata oluştu.');
+            bildir('PDF oluşturulurken bir hata oluştu.', 'hata');
         }
     };
 
-    const handleDeleteProgram = (studentId, studentName) => {
-        if (window.confirm(`${studentName} adlı öğrencinin ders programını silmek istediğinize emin misiniz?`)) {
+    const handleDeleteProgram = async (studentId, studentName) => {
+        if (await onayla({ mesaj: `${studentName} adlı öğrencinin ders programını silmek istediğinize emin misiniz?`, tehlikeli: true })) {
             localStorage.removeItem(`program_schedule_${studentId}`);
             localStorage.removeItem(`program_closed_slots_${studentId}`);
             localStorage.removeItem(`program_meta_${studentId}`);
@@ -682,7 +694,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                         <div
                             key={s.id}
                             onClick={() => setPreviewStudentId(prev => String(prev) === String(s.id) ? null : String(s.id))}
-                            className={`relative rounded-2xl border-2 p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5
+                            className={`relative rounded-2xl border-2 p-4 cursor-pointer transition-all duration-normal hover:shadow-md hover:-translate-y-0.5
                                 ${String(previewStudentId) === String(s.id)
                                     ? 'border-info bg-info-soft shadow-md'
                                     : 'border-line bg-surface hover:border-info'}`}
@@ -707,7 +719,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                                         <span className="font-bold text-info">%{s.fillRate}</span>
                                     </div>
                                     <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
-                                        <div className="on-color h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" style={{ width: `${s.fillRate}%` }} />
+                                        <div className="on-color h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-yavas" style={{ width: `${s.fillRate}%` }} />
                                     </div>
                                 </div>
                             )}
@@ -740,7 +752,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
 
             {/* Önizleme Paneli */}
             {previewStudentId && previewStudent && (
-                <div ref={previewScheduleRef} className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden animate-fade-in mb-8">
+                <div ref={previewScheduleRef} className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden icerik-gecis mb-8">
                     <div className="p-4 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-info-soft/50">
                         <div className="flex items-center gap-3">
                             <div className="on-color w-10 h-10 bg-gradient-to-br from-blue-500 to-brand rounded-xl flex items-center justify-center text-white font-black">
@@ -1052,7 +1064,7 @@ const ExamsTab = ({ students, setToast }) => {
         e.target.value = '';
 
         if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.pdf')) {
-            alert("Lütfen sadece Excel (.xlsx, .xls) veya PDF (.pdf) dosyası yükleyin.");
+            bildir("Lütfen sadece Excel (.xlsx, .xls) veya PDF (.pdf) dosyası yükleyin.", 'uyari');
             return;
         }
 
@@ -1081,8 +1093,8 @@ const ExamsTab = ({ students, setToast }) => {
             setToast(`✅ ${results.length} öğrenci okundu — tarih ve ismi onaylayın`);
         } catch (error) {
             console.error("Upload Error:", error);
-            setToast(`Hata: ${error.message || 'Bilinmeyen hata'}`);
-            alert(`Detaylı Hata:\n${error.message}`);
+            setToast(hataAnlat(error, 'yukle'));
+            bildir(hataAnlat(error, 'yukle'), 'hata');
         }
     };
 
@@ -1099,7 +1111,7 @@ const ExamsTab = ({ students, setToast }) => {
         const allZero = results.length > 0 && results.every(r => !r.tyt && !r.totalNet && !r.turkce && !r.mat);
         if (allZero && debugInfo) {
             const headerList = debugInfo.headers?.join(', ') || 'Okunamadı';
-            alert(`UYARI: Veriler 0 görünüyor.\nOkunan başlıklar:\n${headerList}`);
+            bildir(`UYARI: Veriler 0 görünüyor.\nOkunan başlıklar:\n${headerList}`);
         }
 
         const newTrial = {
@@ -1141,10 +1153,10 @@ const ExamsTab = ({ students, setToast }) => {
 
 
     return (
-        <div className="space-y-8 animate-fade-in pb-20">
+        <div className="space-y-8 icerik-gecis pb-20">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-ink flex items-center">
-                    <BarChart2 className="mr-2 text-c4" size={24} />
+                    <BarChart2 className="mr-2 text-c4" size={24}  animationDuration={300} />
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-brand">
                         Gelişmiş Deneme Analiz Merkezi
                     </span>
@@ -1228,7 +1240,7 @@ const ExamsTab = ({ students, setToast }) => {
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={tytData} margin={{ left: -10, right: 10 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
                                             <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
                                             <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                             <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
@@ -1237,7 +1249,7 @@ const ExamsTab = ({ students, setToast }) => {
                                                 <Line key={key} type="monotone" dataKey={key}
                                                     stroke={LINE_COLORS[key]} strokeWidth={key === 'Ortalama Net' ? 3 : 1.5}
                                                     dot={{ r: key === 'Ortalama Net' ? 5 : 3 }} activeDot={{ r: 7 }}
-                                                    strokeDasharray={key === 'Ortalama Net' ? undefined : '4 3'} />
+                                                    strokeDasharray={key === 'Ortalama Net' ? undefined : '4 3'}  animationDuration={300} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
@@ -1248,12 +1260,12 @@ const ExamsTab = ({ students, setToast }) => {
                                         <div className="h-48">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={aytData} margin={{ left: -10, right: 10 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
                                                     <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
                                                     <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                                     <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
                                                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                                                    <Line type="monotone" dataKey="Ortalama Net" stroke="var(--c4)" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 7 }} />
+                                                    <Line type="monotone" dataKey="Ortalama Net" stroke="var(--c4)" strokeWidth={3} dot={{ r: 5 }} activeDot={{ r: 7 }}  animationDuration={300} />
                                                 </LineChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -1270,14 +1282,14 @@ const ExamsTab = ({ students, setToast }) => {
                                         <div className="h-64">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={withDelta(tytData).slice(1)} margin={{ left: -10, right: 10 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                                     <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
                                                     <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                                     <RechartsTooltip
                                                         formatter={(val) => [val > 0 ? `+${val}` : val, 'Δ Net']}
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                                     />
-                                                    <ReferenceLine y={0} stroke="#e5e7eb" strokeWidth={2} />
+                                                    <ReferenceLine y={0} stroke="var(--line)" strokeWidth={2} />
                                                     <Bar dataKey="delta" name="Değişim" radius={[6, 6, 0, 0]}
                                                         fill="var(--c4)"
                                                         label={{
@@ -1333,7 +1345,7 @@ const ExamsTab = ({ students, setToast }) => {
                                         <PolarGrid />
                                         <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12 }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 40]} tick={false} axisLine={false} />
-                                        <Radar name="Sınıf Ortalaması" dataKey="A" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.5} />
+                                        <Radar name="Sınıf Ortalaması" dataKey="A" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.5}  animationDuration={300} />
                                         <RechartsTooltip />
                                     </RadarChart>
                                 </ResponsiveContainer>
@@ -1370,7 +1382,7 @@ const ExamsTab = ({ students, setToast }) => {
                                     ]}>
                                         <PolarGrid stroke="rgba(255,255,255,0.1)" />
                                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#818cf8', fontSize: 10, fontWeight: 'bold' }} />
-                                        <Radar name="Sınıf" dataKey="A" stroke="#818cf8" fill="#818cf8" fillOpacity={0.6} />
+                                        <Radar name="Sınıf" dataKey="A" stroke="#818cf8" fill="#818cf8" fillOpacity={0.6}  animationDuration={300} />
                                     </RadarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1457,7 +1469,7 @@ const ExamsTab = ({ students, setToast }) => {
 
             {/* ─── UPLOAD FORMU ─── */}
             {showUpload && (
-                <div className="bg-surface rounded-2xl p-6 border-2 border-[color-mix(in_srgb,var(--c4)_35%,transparent)] shadow-sm animate-fade-in">
+                <div className="bg-surface rounded-2xl p-6 border-2 border-[color-mix(in_srgb,var(--c4)_35%,transparent)] shadow-sm icerik-gecis">
                     <h3 className="font-bold text-ink mb-4 flex items-center gap-2">
                         <Upload size={18} className="text-c4" /> Yeni Deneme Yüklendi
                     </h3>
@@ -1502,7 +1514,7 @@ const ExamsTab = ({ students, setToast }) => {
                                     />
                                 </div>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3">
                                 <button
                                     onClick={handleConfirmUpload}
                                     className="flex-1 bg-c4 text-white py-2.5 rounded-xl font-bold hover:bg-c4 transition"
@@ -1555,7 +1567,7 @@ const ExamsTab = ({ students, setToast }) => {
                             onClick={() => setExpandedTrialId(expandedTrialId === trial.id ? null : trial.id)}
                         >
                             <div className="flex items-center">
-                                <div className={`mr-3 transition-transform duration-300 ${expandedTrialId === trial.id ? 'rotate-180' : ''}`}>
+                                <div className={`mr-3 transition-transform duration-yavas ${expandedTrialId === trial.id ? 'rotate-180' : ''}`}>
                                     <ChevronDown size={20} className="text-ink-3" />
                                 </div>
                                 <div>
@@ -1591,7 +1603,7 @@ const ExamsTab = ({ students, setToast }) => {
 
                         {/* Collapsible Content */}
                         {expandedTrialId === trial.id && (
-                            <div className="overflow-x-auto border-t border-line animate-fade-in">
+                            <div className="overflow-x-auto border-t border-line icerik-gecis">
                                 <table className="min-w-full divide-y divide-line">
                                     <thead className="bg-surface">
                                         <tr>
@@ -1648,7 +1660,7 @@ const ExamsTab = ({ students, setToast }) => {
             {/* Student Detail Modal */}
             {selectedStudent && (
                 <div className="fixed inset-0 bg-black/50 z-modal-base flex items-center justify-center p-4" onClick={() => setSelectedStudent(null)}>
-                    <div className="bg-surface rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fade-in" onClick={e => e.stopPropagation()}>
+                    <div className="bg-surface rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto icerik-gecis" onClick={e => e.stopPropagation()}>
                         <div className="p-6 border-b border-line flex justify-between items-center sticky top-0 bg-surface z-10">
                             <div>
                                 <h3 className="text-xl font-bold text-ink">{selectedStudent.student}</h3>
@@ -1661,7 +1673,7 @@ const ExamsTab = ({ students, setToast }) => {
                         <div className="p-6 space-y-8">
                             {/* Metadata Section (Personal Info) */}
                             {selectedStudent.metadata && Object.keys(selectedStudent.metadata).length > 0 && (
-                                <div className="bg-surface-2 p-4 rounded-xl border border-line animate-fade-in">
+                                <div className="bg-surface-2 p-4 rounded-xl border border-line icerik-gecis">
                                     <h4 className="font-bold text-ink-2 mb-3 flex items-center text-sm uppercase tracking-wide">
                                         <Users size={16} className="mr-2 text-brand" />
                                         Öğrenci Bilgileri
@@ -1756,7 +1768,7 @@ const ExamsTab = ({ students, setToast }) => {
                                                 <PolarGrid />
                                                 <PolarAngleAxis dataKey="subject" />
                                                 <PolarRadiusAxis angle={30} domain={[0, 40]} />
-                                                <Radar name={selectedStudent.student} dataKey="A" stroke="var(--brand)" fill="var(--brand)" fillOpacity={0.5} />
+                                                <Radar name={selectedStudent.student} dataKey="A" stroke="var(--brand)" fill="var(--brand)" fillOpacity={0.5}  animationDuration={300} />
                                                 <RechartsTooltip />
                                             </RadarChart>
                                         </ResponsiveContainer>
@@ -1773,7 +1785,7 @@ const ExamsTab = ({ students, setToast }) => {
                                 <div className="h-64 w-full bg-surface border border-line rounded-xl p-4">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={studentHistoryData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                                             <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} />
                                             <RechartsTooltip
@@ -1786,7 +1798,7 @@ const ExamsTab = ({ students, setToast }) => {
                                                 strokeWidth={3}
                                                 dot={{ r: 4, fill: 'var(--brand)', strokeWidth: 2, stroke: '#fff' }}
                                                 activeDot={{ r: 6 }}
-                                            />
+                                             animationDuration={300} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -1862,7 +1874,7 @@ const PermissionEditModal = ({ coach, onClose, onSave }) => {
                             <span>Yönetici koç tüm sekmelere otomatik olarak erişebilir.</span>
                         </div>
                     )}
-                    <div className="flex gap-3 pt-2">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
                         <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
                         <button
                             onClick={() => onSave(coach.id, role === 'masterCoach' ? PERM_ALL_TABS.map(t => t.id) : perms, role)}
@@ -1937,9 +1949,9 @@ const ManageCoachesTab = ({ setToast }) => {
         } catch { /* ignore */ }
     };
 
-    const handleDeleteCoach = (id) => {
+    const handleDeleteCoach = async (id) => {
         const coach = coaches.find(c => c.id === id);
-        if (window.confirm(`${coach?.name || 'Bu koç'} silinecek ve sisteme girişi kapanacak. Emin misiniz?`)) {
+        if (await onayla({ mesaj: `${coach?.name || 'Bu koç'} silinecek ve sisteme girişi kapanacak. Emin misiniz?`, tehlikeli: true })) {
             saveCoaches(coaches.filter(c => c.id !== id));
             if (coach?.phone) syncCoachToUsers(coach.phone, null);
             setToast('Koç kaydı ve giriş yetkisi kaldırıldı.');
@@ -1976,15 +1988,15 @@ const ManageCoachesTab = ({ setToast }) => {
     };
 
     const handleAddCoach = () => {
-        if (!addForm.name.trim() || !addForm.email.trim()) { alert('Ad ve e-posta zorunludur.'); return; }
-        if (!addForm.phone.trim()) { alert('Telefon zorunludur — koç sisteme telefonuyla giriş yapar.'); return; }
+        if (!addForm.name.trim() || !addForm.email.trim()) { bildir('Ad ve e-posta zorunludur.'); return; }
+        if (!addForm.phone.trim()) { bildir('Telefon zorunludur — koç sisteme telefonuyla giriş yapar.'); return; }
 
         const phone = addForm.phone.trim();
 
         // Aynı telefonla ikinci kayıt olmasın
         const existingUsers = safeParse('users_db', []);
         if (existingUsers.some(u => u.phone === phone)) {
-            alert('Bu telefon numarası zaten kayıtlı.');
+            bildir('Bu telefon numarası zaten kayıtlı.');
             return;
         }
 
@@ -2045,7 +2057,7 @@ const ManageCoachesTab = ({ setToast }) => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 icerik-gecis">
             {/* Header */}
             <div className="on-color bg-gradient-to-r from-slate-800 to-indigo-900 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -2244,7 +2256,7 @@ const ManageCoachesTab = ({ setToast }) => {
                                     </div>
                                 </div>
                             )}
-                            <div className="flex gap-3 pt-2">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
                                 <button onClick={() => setIsAddModalOpen(false)} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
                                 <button onClick={handleAddCoach} className="on-color flex-1 bg-gradient-to-r from-brand to-violet-600 text-white py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition shadow-lg text-sm">Koç Ekle</button>
                             </div>
@@ -2291,7 +2303,7 @@ const CoachDetailModal = ({ coach, onClose, onSave, onOpenPermissions }) => {
 
     const handleSubmit = () => {
         if (!form.name.trim() || !form.email.trim()) {
-            alert('Ad ve e-posta zorunludur.');
+            bildir('Ad ve e-posta zorunludur.', 'uyari');
             return;
         }
         onSave(coach.id, { name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() });
@@ -2397,7 +2409,7 @@ const CoachDetailModal = ({ coach, onClose, onSave, onOpenPermissions }) => {
                     )}
 
                     {/* Butonlar */}
-                    <div className="flex gap-3 pt-1">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
                         <button
                             onClick={onClose}
                             className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm"
@@ -2459,7 +2471,7 @@ const StudentModal = ({ student, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4 icerik-gecis">
             <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
                 <div className="bg-brand px-6 py-4 flex justify-between items-center">
                     <h3 className="text-ink font-bold text-lg">{student ? 'Öğrenci Düzenle' : 'Yeni Öğrenci Ekle'}</h3>
@@ -2665,7 +2677,9 @@ const StudentModal = ({ student, onClose, onSave }) => {
                             </div>
                         </div>
                     </div>
-                    <div className="pt-4 flex space-x-3">
+                    {/* Kaydet/İptal pencerenin altına yapışır; uzun formda
+                        ekran dışında kalıp görünmez oluyordu (styles/mobil.css) */}
+                    <div className="pencere-alt-cubuk pt-4 flex space-x-3 bg-surface -mx-6 px-6 border-t border-line mt-2">
                         <button onClick={onClose} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-lg font-bold hover:bg-surface-3 transition">İptal</button>
                         <button onClick={() => onSave(formData)} className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition">Kaydet</button>
                     </div>
@@ -2708,8 +2722,9 @@ const CoachDashboard = () => {
         try { localStorage.setItem('coach_active_section', bolum); } catch { /* ignore */ }
     }, [bolum]);
 
+    // Koçluk bölümünde açılış artık "Bugün" — grafik değil iş listesi
     const [activeTab, setActiveTab] = useState(() => (
-        (localStorage.getItem('coach_active_section') === 'pdr') ? 'pdr-archive' : 'analysis'
+        (localStorage.getItem('coach_active_section') === 'pdr') ? 'pdr-archive' : 'bugun'
     ));
 
     // Bölüm değişince o bölümde olmayan sekmede kalınmaz
@@ -2805,6 +2820,41 @@ const CoachDashboard = () => {
         ? [...PERM_ALL_TABS.map(t => t.id), 'coaches']
         : (user?.permissions?.length ? user.permissions : ['analysis', 'exams']);
     const hasPermission = (tab) => coachPermissions.includes(tab);
+
+    /**
+     * 📱 Mobil gezinme listeleri — kenar çubuğuyla AYNI kaynaktan.
+     *
+     * Yetki süzgeci burada bir kez uygulanır; alt çubuk ve "Tüm Bölümler"
+     * sayfası bunu kullanır. Böylece bir koçun göremediği sekme telefonda
+     * da görünmez ve iki liste birbirinden ayrı düşemez.
+     */
+    const mobilSekmeGruplari = useMemo(() => (
+        (NAV_BY_SECTION[bolum] || NAV_BY_SECTION.kocluk)
+            .map((g) => ({
+                label: g.label,
+                items: g.items.filter(
+                    (t) => (!t.perm || coachPermissions.includes(t.perm)) && (!t.boss || isMasterCoach)
+                ),
+            }))
+            .filter((g) => g.items.length)
+    ), [bolum, coachPermissions, isMasterCoach]);
+
+    /**
+     * Alt çubuğa çıkan dört hedef: koçun günlük işi.
+     * Yetkisi yoksa listeden düşer, yerine sıradaki gelir.
+     */
+    const mobilBirincilSekmeler = useMemo(() => {
+        const tumu = mobilSekmeGruplari.flatMap((g) => g.items);
+        const tercih = ['bugun', 'analysis', 'exams', 'programs', 'coach-tasks', 'groups'];
+        const secilen = tercih
+            .map((id) => tumu.find((t) => t.id === id))
+            .filter(Boolean)
+            .slice(0, 4);
+        // Tercih listesi yetkiler yüzünden dolmadıysa baştan tamamla
+        return secilen.length === 4
+            ? secilen
+            : [...secilen, ...tumu.filter((t) => !secilen.includes(t))].slice(0, 4);
+    }, [mobilSekmeGruplari]);
 
     // Students State
     // `tumOgrenciler` deponun tamamıdır — yazma işlemleri hep bunun
@@ -3067,7 +3117,7 @@ const CoachDashboard = () => {
             }
 
             setToast(`❌ Hata: ${detailedMsg}`);
-            alert(`Liste Yükleme Hatası:\n\n${detailedMsg}\n\nDesteklenen formatlar:\n• MEB okul listesi ("Sınıf Listesi" başlıklı)\n• Mevcut Format: "Öğrenci No", "Adı", "Soyadı", "Sınıf/Şube" sütunları`);
+            bildir(`Liste Yükleme Hatası:\n\n${detailedMsg}\n\nDesteklenen formatlar:\n• MEB okul listesi ("Sınıf Listesi" başlıklı)\n• Mevcut Format: "Öğrenci No", "Adı", "Soyadı", "Sınıf/Şube" sütunları`, 'hata');
         }
     };
 
@@ -3282,14 +3332,14 @@ const CoachDashboard = () => {
                     ve alt başlıkla aynı genişlikte duruyor; bu logo "Kampı"yı
                     alt satıra aldığı için doğası gereği yüksek, eski çubuğa
                     sığmıyordu. */}
-                <div className="max-w-[1920px] mx-auto px-6 h-[96px] flex items-center justify-between">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-16 lg:h-[88px] flex items-center justify-between gap-3">
                     {/* Left: Branding & Status */}
                     <div className="flex items-center gap-4">
                         {/* Marka amblemi. Önceden jenerik bir roket ikonu ve
                             altında kurucunun kişi adı yazılıydı; uygulama
                             birçok koçun kullandığı bir ürün olduğu için ikisi
                             de kaldırıldı. */}
-                        <img
+                        <MarkaGorsel
                             src={MARKA.amblem}
                             alt=""
                             width="44"
@@ -3307,7 +3357,7 @@ const CoachDashboard = () => {
                                 /* Yükseklik değil GENİŞLİK veriliyor: ad yazısı
                                    altındaki "KOÇLUK PLATFORMU" satırıyla aynı
                                    genişlikte dursun diye. */
-                                <img src={MARKA.adYazisi} alt={MARKA.ad}
+                                <MarkaGorsel src={MARKA.adYazisi} alt={MARKA.ad} width="605" height="256"
                                     className="w-[168px] h-auto object-contain" />
                             )}
                             <p className="text-[10px] font-black text-accent tracking-[0.075em] mt-0.5 flex items-center gap-1.5">
@@ -3317,13 +3367,35 @@ const CoachDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Right: Modern Actions */}
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="flex items-center gap-2 bg-surface border border-line p-2 rounded-2xl shadow-2xl backdrop-blur-3xl ring-1 ring-white/5">
-                            <button
-                                onClick={async (e) => {
-                                    e.preventDefault(); e.stopPropagation();
-                                    if (window.confirm('Buluttaki verileriniz bu cihaza zorunlu olarak indirilecek. Yerel değişiklikler silinebilir. Emin misiniz?')) {
+                    {/* Sağ: yalnızca sık kullanılan iş şeritte kalır.
+                        Eskiden beş simge yan yana duruyordu (bulut kurtarma,
+                        bildirim, ayarlar, çıkış, tema) ve hepsi eşit ağırlıktaydı.
+                        Oysa "bulut kurtarma" yerel değişiklikleri silen, yılda
+                        birkaç kez kullanılan bir işlem — üst şeritte, çıkışın
+                        yanında durmamalı. */}
+                    <div className="flex items-center gap-2 relative z-10">
+                        {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
+                            düşsün, panel ayakta kalsın */}
+                        <BolumHataSiniri bolumAdi="Bildirimler">
+                            <RealtimeNotificationBell role="coach" userId={user?.id} />
+                        </BolumHataSiniri>
+
+                        <KullaniciMenusu
+                            kullanici={user}
+                            rolEtiketi={isMasterCoach ? 'Ana Koç' : 'Koç'}
+                            onAyarlar={() => setShowSettings(true)}
+                            onCikis={handleLogout}
+                            ekOgeler={[{
+                                id: 'bulut',
+                                etiket: 'Buluttan geri yükle',
+                                simge: RefreshCw,
+                                onSec: async () => {
+                                    if (await onayla({
+                                        baslik: 'Buluttan geri yükle',
+                                        mesaj: 'Buluttaki verileriniz bu cihaza indirilecek. Bu cihazdaki kaydedilmemiş değişiklikler silinebilir.',
+                                        onayMetni: 'Geri yükle',
+                                        tehlikeli: true,
+                                    })) {
                                         setToast('Senkronizasyon başlatıldı...');
                                         const res = await firebaseSync.forceCloudRecovery();
                                         if (res.success) {
@@ -3333,42 +3405,17 @@ const CoachDashboard = () => {
                                             setToast('Hata: ' + res.error);
                                         }
                                     }
-                                }}
-                                className="p-3 text-ok hover:bg-ok/10 rounded-xl transition-all cursor-pointer"
-                                title="Bulut Kurtarma"
-                            >
-                                <RefreshCw size={18} />
-                            </button>
-                            
-                            <div className="relative">
-                                <RealtimeNotificationBell role="coach" userId={user?.id} />
-                            </div>
-                            
-                            <button 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSettings(true); }}
-                                className="p-3 text-ink-2 hover:text-ink hover:bg-surface/10 rounded-xl transition-all cursor-pointer"
-                                title="Ayarlar"
-                            >
-                                <Settings size={18} />
-                            </button>
-
-                            <button 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }}
-                                className="p-3 text-danger hover:bg-danger/10 rounded-xl transition-all cursor-pointer"
-                                title="Güvenli Çıkış"
-                            >
-                                <LogOut size={18} />
-                            </button>
-                            <DarkModeToggle />
-                        </div>
+                                },
+                            }]}
+                        />
                     </div>
                 </div>
                 <OfflineBanner offlineManager={window.offlineManager} />
             </header>
 
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
-            <div className="pt-28 pb-8 relative overflow-hidden atmos">
-                <div className="max-w-[1920px] mx-auto px-6">
+            <div className="pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-wrap items-center justify-between gap-6 bg-surface/40 backdrop-blur-xl border border-line p-4 rounded-3xl">
                         <div className="flex flex-wrap gap-3">
                             <button 
@@ -3448,7 +3495,11 @@ const CoachDashboard = () => {
                         </div>
                     )}
 
-                    <nav className="mt-5 -mb-px overflow-x-auto no-scrollbar">
+                    {/* TELEFONDA GİZLİ — orada alt çubuk ve "Tüm Bölümler"
+                        sayfası var. Otuz sekmeyi yatay kaydırmalı bir şeritte
+                        göstermek mobil için masaüstü düzenini küçültmekten
+                        ibaretti; kullanıcı sekmelerin çoğunu hiç görmüyordu. */}
+                    <nav className="hidden lg:block mt-5 -mb-px overflow-x-auto no-scrollbar">
                         <div className="flex items-end gap-5 min-w-max pb-0.5">
                             {bolumGruplari.map((group) => {
                                 const tabs = group.items.filter(
@@ -3501,13 +3552,42 @@ const CoachDashboard = () => {
                 </div>
             </div>
             {/* ── Tab Content ────────────────────────────────────────────── */}
-            <div className="max-w-[1920px] mx-auto px-6 py-6 transition-all duration-500">
+            {/* İçerik genişliği 1920 → 1400. Geniş monitörde satırlar ekranın
+                iki ucuna yayılıp okunmaz hâle geliyordu; boşluk artık her
+                kırılma noktasında birlikte büyüyor (16 → 24 → 32 piksel). */}
+            {/* `<main>` ve `<h1>` YOKTU: ekran okuyucu kullanıcısı içeriğe
+                atlayamıyor, sayfanın hangi bölüm olduğunu duyamıyordu.
+                Başlık görsel olarak gizli — arayüzde marka görseli ve sekme
+                adı zaten yazılı, ikinci kez yazmak görsel kirlilik olurdu. */}
+            <main id="ana-icerik" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-all duration-yavas">
+                <h1 className="sr-only">
+                    {(BOLUMLER[bolum]?.ad || 'Koçluk Paneli')}
+                    {' — '}
+                    {bolumGruplari.flatMap((g) => g.items).find((t) => t.id === activeTab)?.label || 'Genel'}
+                </h1>
                 {/* Not: bu sarmalayıcıda opacity animasyonu VARDI ve bir
                     "stacking context" yaratıyordu; sekme içinden açılan modaller
                     (BEP plan motoru gibi) o bağlama hapsolup arkadaki içeriğin
                     altında kalıyor, kapatma butonuna tıklanamıyordu. */}
                 {!isProgramBuilderOpen && (
                     <div>
+                        {/* Bir sekme çökerse yalnızca o bölüm düşer; üst şerit,
+                            gezinme ve diğer sekmeler ayakta kalır. Eskiden tek
+                            bileşen hatası tüm uygulamayı beyaz ekrana düşürüyordu. */}
+                        <BolumHataSiniri bolumAdi="Bu bölüm" key={activeTab}>
+                        {/* 📋 BUGÜN — koçun günlük iş listesi (açılış ekranı) */}
+                        {activeTab === 'bugun' && (
+                            <KocBugun
+                                kullanici={user}
+                                ogrenciler={students}
+                                mesajlar={safeParse('messages', [])}
+                                randevular={safeParse('appointments', [])}
+                                onaylar={students.filter((s) => s.approvalStatus === 'bekliyor' || s.approved === false)}
+                                onOgrenciAc={(s) => navigate(`/coach/student/${s.id}`)}
+                                onGit={(id) => { setActiveTab(id); okundu(id); }}
+                            />
+                        )}
+
                         {/* 📊 ANALİZ MERKEZİ — özet, risk, sıralama, hedefler, grafikler tek yerde */}
                         {activeTab === 'analysis' && (
                             <AnalysisCenter
@@ -3621,9 +3701,10 @@ const CoachDashboard = () => {
                         {activeTab === 'task-templates' && (
                             <TaskTemplates students={students} setToast={setToast} />
                         )}
+                    </BolumHataSiniri>
                     </div>
                 )}
-            </div>
+            </main>
 
             {/* Modals */}
             {isStudentModalOpen && (
@@ -3672,9 +3753,16 @@ const CoachDashboard = () => {
             )}
 
             {/* 📱 Koç Mobil Alt Navigasyon */}
+            {/* Alt çubuk, kenar çubuğuyla AYNI kaynaktan beslenir
+                (`bolumGruplari` — yetkiye göre süzülmüş). Eskiden buraya
+                elle yazılmış `overview`/`students` kimlikleri gönderiliyordu;
+                koç panelinde böyle sekmeler olmadığı için dokunmak hiçbir
+                şey yapmıyordu. */}
             <CoachBottomNav
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
+                ogeler={mobilBirincilSekmeler}
+                gruplar={mobilSekmeGruplari}
+                aktif={activeTab}
+                onDegis={(id) => { setActiveTab(id); okundu(id); }}
             />
 
             {/* 🆕 HIDDEN INPUTS FOR FUNCTIONALITY */}

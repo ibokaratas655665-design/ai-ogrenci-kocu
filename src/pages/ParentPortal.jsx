@@ -458,7 +458,7 @@ const NetTrendCard = ({ report }) => {
             <div className="h-44 -ml-4 chart-soft">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4 }}>
-                        <CartesianGrid {...lightGrid} />
+                        <CartesianGrid {...lightGrid}  vertical={false} />
                         <XAxis dataKey="short" {...lightAxis} />
                         <YAxis {...lightAxis} width={34} />
                         <Tooltip
@@ -473,7 +473,7 @@ const NetTrendCard = ({ report }) => {
                             strokeWidth={2.5}
                             dot={{ r: 4, fill: 'var(--brand)' }}
                             activeDot={{ r: 6 }}
-                        />
+                         animationDuration={300} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>

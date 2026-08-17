@@ -40,6 +40,31 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
+    /**
+     * 🔒 SEKMELER ARASI OTURUM SENKRONU
+     *
+     * Oturum yalnızca React durumunda tutuluyordu. Kullanıcı başka bir
+     * sekmede çıkış yaptığında (ya da oturum süresi dolup kayıt
+     * silindiğinde) bu sekme korumalı içeriği GÖSTERMEYE DEVAM ediyordu;
+     * koruma ancak sayfa yenilenince devreye giriyordu. Ortak kullanılan
+     * bir bilgisayarda bu, kapatıldığı sanılan oturumun açık kalması demek.
+     *
+     * `storage` olayı yalnızca DİĞER sekmelerde tetiklenir; bu yüzden
+     * kendi çıkış akışımızı bozmaz.
+     */
+    useEffect(() => {
+        const oturumDegisti = (e) => {
+            if (e.key !== 'user_session') return;
+            if (!e.newValue) {
+                setUser(null);          // başka sekmede çıkış yapıldı
+            } else {
+                try { setUser(JSON.parse(e.newValue)); } catch { /* bozuk kayıt: dokunma */ }
+            }
+        };
+        window.addEventListener('storage', oturumDegisti);
+        return () => window.removeEventListener('storage', oturumDegisti);
+    }, []);
+
     const login = async (identifier, password, role) => {
         try {
             let response;

@@ -1,0 +1,213 @@
+/**
+ * ✨ ETKİLEŞİM KATMANI — tek hareket dili
+ *
+ * Amaç süsleme değil GERİ BİLDİRİM: kullanıcı yaptığı işin sonucunu
+ * hissetsin. Bu yüzden hareketin tamamı üç kurala bağlı:
+ *
+ *   1. Kısa   — 120 / 200 / 320 ms. Başka süre yok.
+ *   2. Doğal  — tek yumuşama eğrisi (--egri), her yerde aynı.
+ *   3. Ucuz   — yalnızca `transform` ve `opacity` canlandırılır; bunlar
+ *               düzen hesabı gerektirmez, telefonda da 60 kare akar.
+ *
+ * Denetimde CSS'te 13 farklı süre değeri ve JSX'te 6 farklı sınıf
+ * bulundu (700 ms ve 1000 ms geçişler dahil): ilerleme çubukları
+ * kullanıcı değeri değiştirdikten çok sonra hâlâ yürüyordu.
+ *
+ * ⚠️ Hareketi azaltma tercihi `dizge.css`te süre değişkenlerini
+ * sıfırlar, `index.css` de anahtar kare animasyonlarını durdurur.
+ * Buradaki her şey o iki kurala bağlıdır — ayrıca istisna yazılmaz.
+ */
+
+/* ══════════════════════════════════════════════════════════════
+   GİRİŞ — tek kalıp: hafif yüksel + belir
+   Kartlar, satırlar, paneller aynı şekilde girer. Farklı ekranda
+   farklı giriş animasyonu "aynı ürün" hissini bozuyordu.
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes girisYukari {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.giris {
+    animation: girisYukari var(--sure-normal) var(--egri) both;
+}
+
+/**
+ * Sıralı giriş — liste öğeleri arka arkaya değil, 40 ms arayla.
+ * Altıncı öğeden sonra gecikme artmaz; uzun listede kullanıcı
+ * son satırı beklemek zorunda kalmasın.
+ */
+.giris-sirali > * {
+    animation: girisYukari var(--sure-normal) var(--egri) both;
+}
+
+.giris-sirali > *:nth-child(1) { animation-delay: 0ms; }
+.giris-sirali > *:nth-child(2) { animation-delay: 40ms; }
+.giris-sirali > *:nth-child(3) { animation-delay: 80ms; }
+.giris-sirali > *:nth-child(4) { animation-delay: 120ms; }
+.giris-sirali > *:nth-child(5) { animation-delay: 160ms; }
+.giris-sirali > *:nth-child(n+6) { animation-delay: 200ms; }
+
+/* ══════════════════════════════════════════════════════════════
+   BASMA — dokunmatikte "bastım mı?" belirsizliğini keser
+   ══════════════════════════════════════════════════════════════ */
+
+.basilabilir {
+    transition: transform var(--sure-hizli) var(--egri);
+}
+
+.basilabilir:active {
+    transform: scale(0.98);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KART — yükselme yalnızca fareyle; dokunmatikte hover "takılı"
+   kalıp kartı sürekli havada bırakıyordu.
+   ══════════════════════════════════════════════════════════════ */
+
+@media (hover: hover) and (pointer: fine) {
+    .kart-etkilesim {
+        transition:
+            transform var(--sure-hizli) var(--egri),
+            box-shadow var(--sure-hizli) var(--egri),
+            border-color var(--sure-hizli) var(--egri);
+    }
+
+    .kart-etkilesim:hover {
+        transform: translate3d(0, -2px, 0);
+        box-shadow: var(--yukseklik-acilir);
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GÖREV TAMAMLAMA — öğrencinin en sık yaptığı iş
+
+   Onay işareti ÇİZİLİR (yol uzunluğu boyunca), kutu bir kez nefes
+   alır ve halka dışa doğru sönerek kaybolur. Toplam 320 ms.
+   Kutlama değil onay: her etütte konfeti patlatmak kısa sürede
+   rahatsız edici olur, ama hiçbir şey olmaması da "kaydoldu mu?"
+   sorusu bırakır.
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes onayCiz {
+    from { stroke-dashoffset: 26; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes onayNefes {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.14); }
+    100% { transform: scale(1); }
+}
+
+@keyframes onayHalka {
+    from {
+        opacity: .55;
+        transform: scale(.7);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.9);
+    }
+}
+
+.onay-ciz {
+    stroke-dasharray: 26;
+    animation: onayCiz var(--sure-normal) var(--egri) both;
+}
+
+.onay-nefes {
+    animation: onayNefes var(--sure-yavas) var(--egri);
+}
+
+.onay-halka {
+    animation: onayHalka var(--sure-yavas) var(--egri) forwards;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   YÜKLENİYOR — iskelet parıltısı
+   `animate-pulse` opaklığı kırpıyordu; kayan parıltı daha sakin
+   ve içeriğin şeklini gösterdiği için bekleme kısa hissettiriyor.
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes parilti {
+    from { transform: translate3d(-100%, 0, 0); }
+    to { transform: translate3d(100%, 0, 0); }
+}
+
+.iskelet-parilti {
+    position: relative;
+    overflow: hidden;
+}
+
+.iskelet-parilti::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translate3d(-100%, 0, 0);
+    background: linear-gradient(90deg,
+            transparent,
+            color-mix(in srgb, var(--surface) 65%, transparent),
+            transparent);
+    animation: parilti 1.1s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SEKME GÖSTERGESİ — konum değişimi kayarak, renk anında
+   ══════════════════════════════════════════════════════════════ */
+
+.sekme-gosterge {
+    transition:
+        transform var(--sure-normal) var(--egri),
+        width var(--sure-normal) var(--egri);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SAYFA / SEKME İÇERİĞİ — yalnızca belirme, kayma yok
+   İçerik her sekme değişiminde 8 piksel zıplayınca okuma bozuluyordu.
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes icerikBelir {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.icerik-gecis {
+    animation: icerikBelir var(--sure-hizli) var(--egri) both;
+}
+
+/**
+ * Hareketi azaltma tercihi: giriş ve parıltı tamamen susar.
+ * (Süre değişkenleri zaten sıfırlanıyor; sonsuz döngüler ayrıca
+ * durdurulmalı, yoksa 0 ms'lik animasyon sürekli yeniden başlar.)
+ */
+@media (prefers-reduced-motion: reduce) {
+
+    .giris,
+    .giris-sirali > *,
+    .icerik-gecis,
+    .onay-ciz,
+    .onay-nefes,
+    .onay-halka {
+        animation: none;
+    }
+
+    .iskelet-parilti::after {
+        animation: none;
+        display: none;
+    }
+
+    .basilabilir:active,
+    .kart-etkilesim:hover {
+        transform: none;
+    }
+}

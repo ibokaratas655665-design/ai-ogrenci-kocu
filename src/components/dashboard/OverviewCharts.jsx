@@ -4,6 +4,9 @@ import {
     PieChart, Pie, Cell, BarChart, Bar, LabelList,
 } from 'recharts';
 import { TrendingUp, PieChart as PieIcon, BarChart3, Info } from 'lucide-react';
+import Grafik from '../charts/Grafik';
+import OrtakTooltip from '../charts/OrtakTooltip';
+import { izgaraOzellikleri, eksenOzellikleri } from '../charts/grafikTemasi';
 
 /**
  * 📈 KOÇ ÖZET GRAFİKLERİ
@@ -138,32 +141,35 @@ const OverviewCharts = ({ students = [], results = [], statusById = new Map() })
                         ? `Son ${netTrend.length} deneme tarihinin sınıf ortalaması. Çizgi yükseliyorsa sınıf genel olarak ilerliyor demektir.`
                         : 'Trend çizgisi için en az iki farklı tarihte deneme sonucu gerekir.'}
                 >
-                    {netTrend.length > 1 ? (
-                        <ResponsiveContainer width="100%" height={190}>
-                            <AreaChart data={netTrend} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="netFill" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="var(--highlight)" stopOpacity={0.55} />
-                                        <stop offset="100%" stopColor="var(--highlight)" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={false} />
-                                <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
-                                <Tooltip
-                                    formatter={(v, n) => (n === 'net' ? [`${v} net`, 'Ortalama'] : [v, 'Deneme'])}
-                                    labelFormatter={(l) => `Tarih: ${l}`}
-                                />
-                                <Area
-                                    type="monotone" dataKey="net" stroke="var(--highlight)" strokeWidth={2.5}
-                                    fill="url(#netFill)" dot={{ r: 3, fill: 'var(--highlight)', strokeWidth: 0 }}
-                                    activeDot={{ r: 5 }}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <Empty text="Henüz yeterli deneme sonucu yok. Denemeler sekmesinden sonuç yükleyin." />
-                    )}
+                    {/* Ortak kabuk: yükseklik ekrana göre, özet satırı ölçümden
+                        gelir, veri yoksa eksen takımı yerine boş durum çizilir. */}
+                    <Grafik
+                        veriVar={netTrend.length > 1}
+                        ozetVerisi={netTrend.map((d) => d.net)}
+                        ozetBirimi=" net"
+                        artisIyi
+                        boy="kisa"
+                        bosBaslik="Henüz yeterli deneme yok"
+                        bosAciklama="En az iki deneme sonucu yüklendiğinde eğilim burada görünür."
+                    >
+                        <AreaChart data={netTrend} margin={{ top: 6, right: 8, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="netFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="var(--highlight)" stopOpacity={0.55} />
+                                    <stop offset="100%" stopColor="var(--highlight)" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid {...izgaraOzellikleri()} />
+                            <XAxis dataKey="label" {...eksenOzellikleri()} />
+                            <YAxis {...eksenOzellikleri()} width={44} />
+                            <Tooltip content={<OrtakTooltip birim=" net" />} cursor={{ stroke: 'var(--line-2)' }} />
+                            <Area
+                                type="monotone" dataKey="net" name="Ortalama" stroke="var(--highlight)" strokeWidth={2.5}
+                                fill="url(#netFill)" dot={{ r: 3, fill: 'var(--highlight)', strokeWidth: 0 }}
+                                activeDot={{ r: 5 }}
+                                animationDuration={300} />
+                        </AreaChart>
+                    </Grafik>
                 </Panel>
             </div>
 

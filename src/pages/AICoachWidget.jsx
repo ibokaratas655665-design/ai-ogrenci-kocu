@@ -41,7 +41,7 @@ const AICoachWidget = () => {
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-danger"></span>
                     </span>
                 </div>
-                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap group-hover:ml-2 font-bold">
+                <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-yavas ease-in-out whitespace-nowrap group-hover:ml-2 font-bold">
                     AI Koç
                 </span>
             </button>

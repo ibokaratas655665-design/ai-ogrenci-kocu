@@ -17,6 +17,7 @@ import bep from '../../../services/bepService';
 import bepPdf from '../../../utils/bepPdf';
 import { SCHOOL_TYPES, coursesForSchoolType, BEP_TEAM_ROLES, roleTeaches, DEVELOPMENT_AREAS, suggestedAreas, PERFORMANCE_LEVELS, TEACHING_METHODS, TEACHING_MATERIALS, EVALUATION_METHODS, SUPPORT_PROGRAMS } from '../../../data/bepCurriculum';
 import BEPGenerator from '../../BEPGenerator';
+import { onayla } from '../../../services/uiGeriBildirim';
 
 const STAGES = [
     { id: 'students', icon: Users, label: 'Öğrenciler' },
@@ -134,8 +135,8 @@ const StudentsStage = ({ overview, schoolStudents, onSelect, onChange, notify })
     const [showForm, setShowForm] = useState(false);
     const [showBulk, setShowBulk] = useState(false);
 
-    const del = (id, name) => {
-        if (!window.confirm(`${name} ve tüm BEP kayıtları silinecek. Emin misiniz?`)) return;
+    const del = async (id, name) => {
+        if (!(await onayla({ mesaj: `${name} ve tüm BEP kayıtları silinecek. Emin misiniz?`, tehlikeli: true }))) return;
         bep.remove('students', id);
         onChange();
         notify?.('BEP kaydı silindi');

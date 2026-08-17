@@ -16,6 +16,7 @@ import {
     ChevronDown, ChevronUp, Download
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import { bildir, onayla } from '../../services/uiGeriBildirim';
 
 const SUBJECTS = [
     { id: 'turkce', label: 'Türkçe', color: 'var(--c1)', bg: 'color-mix(in srgb, #eef2ff 55%, var(--surface))', emoji: '📖', exam: ['TYT', 'LGS'] },
@@ -158,8 +159,8 @@ const WeeklyScheduleBuilder = ({ user }) => {
         setTimeout(() => setSaved(false), 2000);
     };
 
-    const clearAll = () => {
-        if (window.confirm('Tüm programı silmek istediğinden emin misin?')) {
+    const clearAll = async () => {
+        if (await onayla({ mesaj: 'Tüm programı silmek istediğinden emin misin?', tehlikeli: true })) {
             setSchedule({});
             setSelectedCells(new Set());
         }
@@ -211,7 +212,7 @@ const WeeklyScheduleBuilder = ({ user }) => {
     // Seçili hafta/ay aralığına otomatik dağıt
     const handleAutoDistribute = () => {
         if (distQueue.length === 0) {
-            alert('Önce dağıtım listesine ders ekleyin!');
+            bildir('Önce dağıtım listesine ders ekleyin!');
             return;
         }
 
@@ -231,7 +232,7 @@ const WeeklyScheduleBuilder = ({ user }) => {
         }
 
         if (allSlots.length === 0) {
-            alert('Tüm etütler dolu! Önce programı temizleyin.');
+            bildir('Tüm etütler dolu! Önce programı temizleyin.');
             return;
         }
 
@@ -252,7 +253,7 @@ const WeeklyScheduleBuilder = ({ user }) => {
         setSchedule(prev => ({ ...prev, ...updates }));
         setDistQueue([]);
         setShowDistributePanel(false);
-        alert(`✅ ${Object.keys(updates).length} etüt dolduruldu! Kaydetmeyi unutmayın.`);
+        bildir(`✅ ${Object.keys(updates).length} etüt dolduruldu! Kaydetmeyi unutmayın.`, 'basari');
     };
 
     // İstatistikler
@@ -464,7 +465,7 @@ const WeeklyScheduleBuilder = ({ user }) => {
                         <Layers size={16} />
                         {selectedCells.size} hücre seçildi
                     </div>
-                    <div className="flex gap-2">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-2">
                         {filteredSubjects.slice(0, 6).map(s => (
                             <button
                                 key={s.id}
@@ -632,7 +633,7 @@ const WeeklyScheduleBuilder = ({ user }) => {
                                 <span className="text-base w-6">{s.emoji}</span>
                                 <span className="text-xs font-bold text-ink-2 w-24 truncate">{s.label}</span>
                                 <div className="flex-1 h-3 bg-surface-3 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all duration-500"
+                                    <div className="h-full rounded-full transition-all duration-yavas"
                                         style={{ width: `${(s.count / Math.max(...stats.map(x => x.count), 1)) * 100}%`, backgroundColor: s.color }} />
                                 </div>
                                 <span className="text-xs font-black w-12 text-right" style={{ color: s.color }}>~{s.count * 2}s</span>

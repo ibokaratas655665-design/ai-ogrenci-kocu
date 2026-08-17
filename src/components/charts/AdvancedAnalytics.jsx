@@ -41,7 +41,7 @@ const NetTrendChart = ({ examData }) => {
 
     if (!data.length) return (
         <div className="flex items-center justify-center h-48 text-ink-3">
-            <div className="text-center"><BarChart2 size={32} className="mx-auto mb-2 opacity-30" /><p className="text-sm">Deneme verisi yok</p></div>
+            <div className="text-center"><BarChart2 size={32} className="mx-auto mb-2 opacity-30"  animationDuration={300} /><p className="text-sm">Deneme verisi yok</p></div>
         </div>
     );
 
@@ -78,12 +78,12 @@ const NetTrendChart = ({ examData }) => {
                             <stop offset="95%" stopColor="var(--c1)" stopOpacity={0} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--line)"  vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine y={avg} stroke="var(--warn)" strokeDasharray="4 4" label={{ value: 'Ort', fontSize: 10, fill: 'var(--warn)' }} />
-                    <Area type="monotone" dataKey="net" name="Net" stroke="var(--c1)" strokeWidth={2.5} fill="url(#netGrad)" dot={{ fill: 'var(--c1)', r: 4 }} activeDot={{ r: 6 }} />
+                    <Area type="monotone" dataKey="net" name="Net" stroke="var(--c1)" strokeWidth={2.5} fill="url(#netGrad)" dot={{ fill: 'var(--c1)', r: 4 }} activeDot={{ r: 6 }}  animationDuration={300} />
                 </AreaChart>
             </ResponsiveContainer>
         </div>
@@ -123,12 +123,12 @@ const SubjectBarChart = ({ examData }) => {
             ) : (
                 <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={data} barSize={36}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
                         <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                         <Tooltip content={<CustomTooltip />} />
                         {data.map((d, i) => (
-                            <Bar key={d.name} dataKey="ortalama" name="Ortalama Net" fill={COLORS[i % COLORS.length]} radius={[6, 6, 0, 0]} />
+                            <Bar key={d.name} dataKey="ortalama" name="Ortalama Net" fill={COLORS[i % COLORS.length]} radius={[6, 6, 0, 0]}  animationDuration={300} />
                         ))}
                     </BarChart>
                 </ResponsiveContainer>
@@ -168,10 +168,10 @@ const SubjectRadar = ({ examData }) => {
             ) : (
                 <ResponsiveContainer width="100%" height={200}>
                     <RadarChart data={data}>
-                        <PolarGrid stroke="#e5e7eb" />
+                        <PolarGrid stroke="var(--line)" />
                         <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }} />
                         <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#9ca3af' }} />
-                        <Radar name="Başarı %" dataKey="current" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.4} strokeWidth={2} />
+                        <Radar name="Başarı %" dataKey="current" stroke="var(--c4)" fill="var(--c4)" fillOpacity={0.4} strokeWidth={2}  animationDuration={300} />
                         <Tooltip content={<CustomTooltip />} />
                     </RadarChart>
                 </ResponsiveContainer>
@@ -251,7 +251,7 @@ const AdvancedAnalytics = ({ examData = [] }) => {
 
             {examData.length === 0 && (
                 <div className="bg-surface rounded-2xl p-16 text-center shadow-sm border border-line">
-                    <BarChart2 size={48} className="mx-auto mb-4 text-ink-3" />
+                    <BarChart2 size={48} className="mx-auto mb-4 text-ink-3"  animationDuration={300} />
                     <h3 className="font-bold text-ink-2 text-lg mb-2">Henüz analiz verisi yok</h3>
                     <p className="text-ink-3 text-sm">Koçun deneme sonuçlarını yüklediğinde burada görünecek.</p>
                 </div>

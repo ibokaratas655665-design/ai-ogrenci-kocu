@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { Star, TrendingUp, ClipboardList, Award, Download, Share2, Brain, Target, Zap, BookOpen, Medal } from 'lucide-react';
 import { AMBLEM_BASE64 } from '../../data/amblemBase64';
+import { bildir } from '../../services/uiGeriBildirim';
 
 const BADGE_EMOJI_MAP = {
     'fire': '🔥', 'star': '⭐', 'brain': '🧠', 'trophy': '🏆', 'rocket': '🚀',
@@ -109,7 +110,7 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
             doc.save(`${student?.name || 'portfolyo'}-portfolyo.pdf`);
         } catch (e) {
             console.error('PDF hatası:', e);
-            alert('PDF oluşturulamadı. jsPDF yüklü olduğundan emin olun.');
+            bildir('PDF oluşturulamadı. jsPDF yüklü olduğundan emin olun.');
         }
         setSharing(false);
     };
@@ -168,7 +169,7 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
                     onClick={() => {
                         const url = window.location.href;
                         navigator.clipboard?.writeText(url);
-                        alert('Portfolyo linki kopyalandı!');
+                        bildir('Portfolyo linki kopyalandı!');
                     }}
                     className="flex-1 flex items-center justify-center gap-2 py-3 bg-surface border-2 border-brand-line text-brand rounded-2xl font-bold text-sm hover:bg-brand-soft transition"
                 >

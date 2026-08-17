@@ -34,6 +34,7 @@ import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
 import coupons from '../services/couponService';
 import { girisDemo, demoyuTemizle, DEMO_KULLANICI } from '../services/demoService';
 import credential from '../services/credentialService';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 const SEZON = sezonBilgisi();
 
@@ -465,7 +466,7 @@ const LoginPage = () => {
                         </div>
                     )}
 
-                    <div className="flex gap-2 pt-1">
+                    <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-1">
                         <button
                             onClick={() => { setCoachStep('login_form'); setSifre(''); setSchoolName2(''); }}
                             className="b b-line flex-1"
@@ -529,11 +530,12 @@ const LoginPage = () => {
                         zaten yazılı; iki kez yazmak görsel kirlilik olur.
                         Ekran okuyucular için `alt` metni adı taşıyor. */}
                     <div className="text-center mb-12 animate-fade-in">
-                        <img
+                        <MarkaGorsel
+                            tembel={false}
                             src={MARKA.logo}
                             alt={MARKA.ad}
-                            width="1254"
-                            height="1254"
+                            width="640"
+                            height="640"
                             className="w-56 md:w-72 h-auto mx-auto mb-5 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
                         />
                         <p className="text-lg text-ink-2 max-w-2xl mx-auto font-medium leading-relaxed">
@@ -549,7 +551,7 @@ const LoginPage = () => {
                                 <button
                                     key={s.id}
                                     onClick={() => { setActiveScreen(i); setAutoSlide(false); }}
-                                    className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-black transition-all duration-300 syne uppercase tracking-wider ${
+                                    className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-black transition-all duration-yavas syne uppercase tracking-wider ${
                                         activeScreen === i
                                             ? `bg-brand text-ink-on shadow-[0_4px_16px_rgba(201,168,76,0.3)]`
                                             : 'text-ink-3 hover:text-ink hover:bg-surface-2'
@@ -675,13 +677,13 @@ const LoginPage = () => {
                             <div className="bg-surface p-1.5 rounded-[20px] flex gap-1.5 mb-8 border border-line">
                                 <button
                                     onClick={() => setRole('student')}
-                                    className={`flex-1 py-3.5 rounded-[14px] text-xs font-black transition-all duration-300 syne uppercase tracking-wider ${role === 'student' ? 'bg-surface-2 text-ink shadow-lg' : 'text-ink-3 hover:text-ink-3'}`}
+                                    className={`flex-1 py-3.5 rounded-[14px] text-xs font-black transition-all duration-yavas syne uppercase tracking-wider ${role === 'student' ? 'bg-surface-2 text-ink shadow-lg' : 'text-ink-3 hover:text-ink-3'}`}
                                 >
                                     Öğrenci
                                 </button>
                                 <button
                                     onClick={() => setRole('coach')}
-                                    className={`flex-1 py-3.5 rounded-[14px] text-xs font-black transition-all duration-300 syne uppercase tracking-wider ${role === 'coach' ? 'bg-surface-2 text-ink shadow-lg' : 'text-ink-3 hover:text-ink-3'}`}
+                                    className={`flex-1 py-3.5 rounded-[14px] text-xs font-black transition-all duration-yavas syne uppercase tracking-wider ${role === 'coach' ? 'bg-surface-2 text-ink shadow-lg' : 'text-ink-3 hover:text-ink-3'}`}
                                 >
                                     Eğitim Koçu
                                 </button>
@@ -749,7 +751,7 @@ const LoginPage = () => {
                                             onClick={() => setRememberDevice(!rememberDevice)}
                                             className={`w-12 h-6 px-1 rounded-full transition-all flex items-center cursor-pointer ${rememberDevice ? 'bg-accent' : 'bg-surface-2'}`}
                                         >
-                                            <div className={`w-4 h-4 bg-surface rounded-full shadow-lg transition-transform duration-300 ${rememberDevice ? 'translate-x-6' : 'translate-x-0'}`} />
+                                            <div className={`w-4 h-4 bg-surface rounded-full shadow-lg transition-transform duration-yavas ${rememberDevice ? 'translate-x-6' : 'translate-x-0'}`} />
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-ink-2">Cihazı Hatırla</p>

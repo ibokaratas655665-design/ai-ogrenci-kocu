@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import MARKA from '../data/marka';
 import { useTheme } from '../context/ThemeContext';
 import { NotificationBell } from '../components/NotificationPanel';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
@@ -20,12 +21,12 @@ const DashboardLayout = () => {
     }, []);
 
     return (
-        <div className="min-h-screen transition-colors duration-300"
+        <div className="min-h-screen transition-colors duration-yavas"
             style={{ backgroundColor: 'var(--bg-primary)' }}>
 
             {/* ── Modern Topbar ─────────────────────────────────────── */}
             <header
-                className={`sticky top-0 z-30 transition-all duration-300 ${scrolled
+                className={`sticky top-0 z-30 transition-all duration-yavas ${scrolled
                     ? 'shadow-md border-b'
                     : 'border-b border-transparent'
                     }`}
@@ -41,11 +42,11 @@ const DashboardLayout = () => {
                     {/* Logo */}
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {/* Jenerik beyin ikonu yerine marka amblemi */}
-                        <img src={MARKA.amblem} alt="" width="36" height="36"
+                        <MarkaGorsel src={MARKA.amblem} alt="" width="36" height="36"
                             className="w-9 h-9 object-contain flex-none" />
                         <div className="hidden sm:block">
                             {/* Ad, logodaki el yazısı stiliyle */}
-                            <img src={MARKA.adYazisi} alt={MARKA.ad}
+                            <MarkaGorsel src={MARKA.adYazisi} alt={MARKA.ad} width="605" height="256"
                                 className="w-[124px] h-auto object-contain" />
                             <span className="text-[10px] leading-tight block mt-0.5" style={{ color: 'var(--text-muted)' }}>
                                 {MARKA.altBaslik}
@@ -78,7 +79,7 @@ const DashboardLayout = () => {
                         {/* 🌙 Dark Mode Toggle */}
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-xl transition-all duration-300 hover:scale-110"
+                            className="p-2 rounded-xl transition-all duration-yavas hover:scale-110"
                             style={{ color: 'var(--text-muted)' }}
                             title={isDark ? 'Aydınlık Moda Geç' : 'Karanlık Moda Geç'}
                         >
@@ -91,7 +92,7 @@ const DashboardLayout = () => {
                         {/* Çıkış */}
                         <button
                             onClick={logout}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all duration-200 border border-transparent hover:border-danger hover:text-danger hover:bg-danger-soft"
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all duration-normal border border-transparent hover:border-danger hover:text-danger hover:bg-danger-soft"
                             style={{ color: 'var(--text-muted)' }}
                         >
                             <LogOut size={16} />

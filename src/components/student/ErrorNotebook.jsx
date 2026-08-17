@@ -9,6 +9,7 @@
  * tutulur ve kayıtlar studentId ile ayrılır.
  */
 import React, { useState, useMemo, useCallback } from 'react';
+import { onayla } from '../../services/uiGeriBildirim';
 import {
     BookX, Plus, X, Search, Trash2, RotateCcw, CheckCircle2, Clock,
     AlertTriangle, Brain, Target, Zap, TrendingUp, Filter, ChevronDown,
@@ -167,8 +168,8 @@ const ErrorNotebook = ({ studentId, readOnly = false }) => {
         );
     };
 
-    const removeEntry = (id) => {
-        if (!window.confirm('Bu hata kaydı silinecek. Emin misiniz?')) return;
+    const removeEntry = async (id) => {
+        if (!(await onayla({ mesaj: 'Bu hata kaydı silinecek. Emin misiniz?', tehlikeli: true }))) return;
         update((prev) => prev.filter((e) => e.id !== id));
     };
 

@@ -16,6 +16,8 @@ import {
 import guidanceService from '../services/guidanceService';
 import { jsPDF } from 'jspdf';
 import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
+import { bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
 
 /* ── Yardımcı: options'u normalize et ────────────────────────── */
 function normalizeOptions(test, question) {
@@ -140,7 +142,7 @@ const StudentTestsTab = ({ user }) => {
         const isText = activeTest.inputType === 'text';
         const isClassList = activeTest.inputType === 'class_list';
         if (!isText && !isClassList && Object.keys(answers).length < activeTest.questions.length) {
-            alert(`Lütfen tüm ${activeTest.questions.length} soruyu cevaplayın. (${Object.keys(answers).length}/${activeTest.questions.length})`);
+            bildir(`Lütfen tüm ${activeTest.questions.length} soruyu cevaplayın. (${Object.keys(answers).length}/${activeTest.questions.length})`, 'uyari');
             return;
         }
         setSubmitting(true);
@@ -175,7 +177,7 @@ const StudentTestsTab = ({ user }) => {
             setTestResult(entry);
             loadContent(); // listede 'tamamlandı' badge'ini güncelle
         } catch (err) {
-            alert('Sonuç hesaplanırken hata oluştu: ' + err.message);
+            bildir(hataAnlat(err, 'sonuc'), 'hata');
         }
         setSubmitting(false);
     };
@@ -280,7 +282,7 @@ const StudentTestsTab = ({ user }) => {
             savePDF(pdf, `${studentName.replace(/\s+/g, '_')}_${testName}_Analiz`);
         } catch (e) {
             console.error('PDF hatasi:', e);
-            alert('PDF oluşturulurken bir hata oluştu.');
+            bildir('PDF oluşturulurken bir hata oluştu.', 'hata');
         }
     };
 
@@ -320,7 +322,7 @@ const StudentTestsTab = ({ user }) => {
                 return { ...prev, [key]: current.filter(n => n !== studentName) };
             }
             if (current.length >= maxSelect) {
-                alert(`En fazla ${maxSelect} kişi seçebilirsiniz.`);
+                bildir(`En fazla ${maxSelect} kişi seçebilirsiniz.`);
                 return prev;
             }
             return { ...prev, [key]: [...current, studentName] };
@@ -503,7 +505,7 @@ const StudentTestsTab = ({ user }) => {
                             </div>
                             {!testResult && !isText && !isClassList && (
                                 <div className="w-full bg-surface/20 rounded-full h-1.5 mt-2">
-                                    <div className="h-full bg-surface rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                    <div className="h-full bg-surface rounded-full transition-all duration-yavas" style={{ width: `${progress}%` }} />
                                 </div>
                             )}
                         </div>
@@ -615,7 +617,7 @@ const StudentTestsTab = ({ user }) => {
 
                                                 {/* Açılan Sınıf Listesi */}
                                                 {showList && (
-                                                    <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-yavas">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             {classmates.length === 0 ? (
                                                                 <div className="col-span-1 sm:col-span-2 text-center text-ink-2 text-sm py-8 bg-surface rounded-2xl border-2 border-dashed border-line">
@@ -632,7 +634,7 @@ const StudentTestsTab = ({ user }) => {
                                                                     >
                                                                         <span className="truncate">{c.name}</span>
                                                                         {isSelected && (
-                                                                            <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-200">
+                                                                            <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-normal">
                                                                                 {selectedIndex + 1}
                                                                             </div>
                                                                         )}

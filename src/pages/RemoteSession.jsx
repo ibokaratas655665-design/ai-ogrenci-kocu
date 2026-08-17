@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Video, Link, User, CheckCircle, XCircle, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { onayla } from '../services/uiGeriBildirim';
 
 const RemoteSession = () => {
     const { user } = useAuth();
@@ -44,8 +45,8 @@ const RemoteSession = () => {
         setNewSession({ studentName: '', date: '', time: '', topic: '', link: '' });
     };
 
-    const handleDeleteSession = (id) => {
-        if (window.confirm('Bu randevuyu silmek istediğinize emin misiniz?')) {
+    const handleDeleteSession = async (id) => {
+        if (await onayla({ mesaj: 'Bu randevuyu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             const updatedSessions = sessions.filter(s => s.id !== id);
             setSessions(updatedSessions);
             localStorage.setItem('remote_sessions', JSON.stringify(updatedSessions));

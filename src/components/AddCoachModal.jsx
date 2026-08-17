@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Users, Mail, Phone, Building2, Upload } from 'lucide-react';
 import hybridAuth from '../services/hybridAuth';
+import { hataAnlat } from '../services/hataMesaji';
 
 const AddCoachModal = ({ onClose, onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -83,7 +84,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
 
         } catch (err) {
             console.error('Bulk upload error:', err);
-            setError(err.message || 'Dosya işlenirken hata oluştu');
+            setError(hataAnlat(err, 'excel'));
         } finally {
             setLoading(false);
             e.target.value = ''; // Reset input
@@ -227,7 +228,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
                     )}
 
                     {!bulkMode && (
-                        <div className="pt-4 flex space-x-3">
+                        <div className="pencere-alt-cubuk bg-surface pt-4 flex space-x-3">
                             <button
                                 type="button"
                                 onClick={onClose}

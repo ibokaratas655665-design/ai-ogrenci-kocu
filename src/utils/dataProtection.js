@@ -1,3 +1,4 @@
+import { bildir } from '../services/uiGeriBildirim';
 // ═══════════════════════════════════════════════════════════════
 //  Veri Koruma Yardımcısı
 //  Geri alınamaz işlemler için yazılı onay ister
@@ -33,7 +34,7 @@ export const requireOwnerConfirmation = (actionDescription, onConfirm) => {
         onConfirm();
         return true;
     } else {
-        window.alert(`❌ Onay başarısız!\nGirilen: "${entered}"\nBeklenen: "${ONAY_SOZU}"\n\nİşlem iptal edildi.`);
+        bildir(`❌ Onay başarısız!\nGirilen: "${entered}"\nBeklenen: "${ONAY_SOZU}"\n\nİşlem iptal edildi.`, 'basari');
         return false;
     }
 };

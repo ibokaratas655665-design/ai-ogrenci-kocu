@@ -7,6 +7,8 @@ import SubjectAnalysis from '../components/charts/SubjectAnalysis';
 import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
 import ReportCard from '../components/reports/ReportCard';
 import html2pdf from 'html2pdf.js';
+import { bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
 
 const TrialsPage = () => {
     const { user } = useAuth();
@@ -89,7 +91,7 @@ const TrialsPage = () => {
     const submitTest = async () => {
         if (!activeTest) return;
         if (Object.keys(answers).length < activeTest.questions.length) {
-            alert("Lütfen tüm soruları cevaplayın.");
+            bildir("Lütfen tüm soruları cevaplayın.", 'uyari');
             return;
         }
 
@@ -143,18 +145,18 @@ const TrialsPage = () => {
                 const resultsToSave = myResults.length > 0 ? myResults : data.results; // Fallback to all if no name match (demo mode)
 
                 if (resultsToSave.length === 0) {
-                    alert("Dosyada isminizle eşleşen sonuç bulunamadı.");
+                    bildir("Dosyada isminizle eşleşen sonuç bulunamadı.", 'hata');
                     return;
                 }
 
                 guidanceService.addBulkResults(user.id, resultsToSave);
                 loadContent();
-                alert(`${resultsToSave.length} adet sınav sonucu başarıyla yüklendi.`);
+                bildir(`${resultsToSave.length} adet sınav sonucu başarıyla yüklendi.`, 'basari');
                 setActiveTab('results');
             }
         } catch (error) {
             console.error("Upload error:", error);
-            alert("Dosya yüklenirken hata oluştu: " + error.message);
+            bildir(hataAnlat(error, 'excel'), 'hata');
         }
     };
 

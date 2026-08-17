@@ -3,10 +3,16 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 // Renk sistemi index.css'ten SONRA yuklenir ki eski sabit renkleri ezebilsin
 import './styles/theme.css'
+// Olcekler: tipografi, bosluk, yaricap, yukseklik, gecis sureleri
+import './styles/dizge.css'
 // Derinlik ve yuzey sistemi — tema degiskenlerini kullanir
 import './styles/surface.css'
 import './styles/depth.css'
 import './styles/vivid.css'
+// Form alanlari: yerel input/select/textarea dizgeye baglanir
+import './styles/form.css'
+// Etkilesim katmani: tek hareket dili (giris, basma, onay, iskelet)
+import './styles/etkilesim.css'
 // Mobil uyum en sonda: pencere ve dokunma hedefi kurallarını ezmesin diye
 import './styles/mobil.css'
 import App from './App.jsx'

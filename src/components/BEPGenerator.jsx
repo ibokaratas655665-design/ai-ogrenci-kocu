@@ -137,7 +137,7 @@ const BEPGenerator = ({ students, closeModal }) => {
                 <div className="p-8 overflow-y-auto flex-1 bg-surface-2">
                     {/* Progress Bar */}
                     <div className="w-full bg-surface-3 rounded-full h-2.5 mb-8">
-                        <div className="bg-info h-2.5 rounded-full transition-all duration-500" style={{ width: `${(step / 5) * 100}%` }}></div>
+                        <div className="bg-info h-2.5 rounded-full transition-all duration-yavas" style={{ width: `${(step / 5) * 100}%` }}></div>
                     </div>
 
                     {step === 1 && (

@@ -242,7 +242,7 @@ const ExamCalendar = ({ userId }) => {
                                     </div>
                                     <input value={newEvent.note} onChange={e => setNewEvent(p => ({ ...p, note: e.target.value }))}
                                         placeholder="Not (isteğe bağlı)" className="w-full text-xs border border-line rounded-lg px-3 py-2 outline-none" />
-                                    <div className="flex gap-2">
+                                    <div className="pencere-alt-cubuk bg-surface flex gap-2">
                                         <button onClick={() => setShowAddForm(false)} className="flex-1 text-xs py-2 border border-line rounded-lg text-ink-2 hover:bg-surface-2">İptal</button>
                                         <button onClick={handleAddEvent} className="flex-1 text-xs py-2 bg-brand text-white rounded-lg font-bold flex items-center justify-center gap-1">
                                             <Check size={12} /> Ekle

@@ -122,7 +122,7 @@ const BadgeCollection = ({ userStats = {}, earnedBadgeIds = [] }) => {
             {/* İlerleme çubuğu */}
             <div className="bg-surface-3 rounded-full h-2.5 overflow-hidden">
                 <div
-                    className="on-color h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-700"
+                    className="on-color h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all duration-yavas"
                     style={{ width: `${(earnedCount / BADGES.length) * 100}%` }}
                 />
             </div>
@@ -151,7 +151,7 @@ const BadgeCollection = ({ userStats = {}, earnedBadgeIds = [] }) => {
                     return (
                         <div
                             key={badge.id}
-                            className={`relative rounded-2xl p-3 text-center transition-all duration-200 cursor-pointer group
+                            className={`relative rounded-2xl p-3 text-center transition-all duration-normal cursor-pointer group
                                 ${isEarned
                                     ? `bg-gradient-to-br ${tier.bg} ring-2 ${tier.ring} shadow-lg hover:scale-105`
                                     : 'bg-surface-3 opacity-40 hover:opacity-60'
@@ -220,7 +220,7 @@ export const XPBar = ({ totalXP = 0 }) => {
             </div>
             <div className="bg-surface/20 rounded-full h-2.5 overflow-hidden">
                 <div
-                    className="on-color h-full bg-gradient-to-r from-yellow-300 to-amber-400 rounded-full transition-all duration-1000"
+                    className="on-color h-full bg-gradient-to-r from-yellow-300 to-amber-400 rounded-full transition-all duration-yavas"
                     style={{ width: `${progress}%` }}
                 />
             </div>

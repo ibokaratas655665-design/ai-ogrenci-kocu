@@ -34,7 +34,7 @@ export const NotificationBell = () => {
     return (
         <button
             onClick={() => setIsOpen(prev => !prev)}
-            className="relative p-2 rounded-xl text-ink-2 hover:text-brand hover:bg-brand-soft transition-all duration-200"
+            className="relative p-2 rounded-xl text-ink-2 hover:text-brand hover:bg-brand-soft transition-all duration-normal"
             title="Bildirimler"
         >
             <Bell size={20} className={isOpen ? 'text-brand' : ''} />
@@ -135,7 +135,7 @@ const NotificationPanel = () => {
                                 return (
                                     <div
                                         key={notif.id}
-                                        className={`flex gap-3 p-3 transition-all duration-200 hover:bg-surface-2 dark:hover:bg-surface-inv cursor-pointer group ${!notif.read ? 'bg-brand-soft/40 dark:bg-indigo-900/10' : ''}`}
+                                        className={`flex gap-3 p-3 transition-all duration-normal hover:bg-surface-2 dark:hover:bg-surface-inv cursor-pointer group ${!notif.read ? 'bg-brand-soft/40 dark:bg-indigo-900/10' : ''}`}
                                         onClick={() => markAsRead(notif.id)}
                                     >
                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.light} ${cfg.text}`}>

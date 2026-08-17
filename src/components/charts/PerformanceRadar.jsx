@@ -1,5 +1,7 @@
 import React from 'react';
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import OrtakTooltip from './OrtakTooltip';
+import { izgaraOzellikleri, eksenOzellikleri } from './grafikTemasi';
 
 const PerformanceRadar = ({ performanceData, showLegend = true }) => {
     // Example performanceData structure:
@@ -46,54 +48,68 @@ const PerformanceRadar = ({ performanceData, showLegend = true }) => {
                 </div>
             </div>
 
-            {/* Radar Chart */}
-            <div className="bg-surface rounded-2xl p-6 shadow-sm border border-line" style={{ minHeight: '400px' }}>
-                <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={0}>
-                    <RadarChart data={data}>
-                        <PolarGrid stroke="#e5e7eb" />
-                        <PolarAngleAxis
-                            dataKey="subject"
-                            tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 600 }}
-                        />
-                        <PolarRadiusAxis
-                            angle={90}
-                            domain={[0, 100]}
-                            tick={{ fill: '#9ca3af', fontSize: 10 }}
-                        />
-                        <Radar
-                            name="Mevcut Performans"
-                            dataKey="current"
-                            stroke="var(--c1)"
-                            fill="var(--c1)"
-                            fillOpacity={0.5}
-                            strokeWidth={2}
-                        />
-                        <Radar
-                            name="Hedef"
-                            dataKey="target"
-                            stroke="var(--ok)"
-                            fill="var(--ok)"
-                            fillOpacity={0.2}
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                        />
-                        {showLegend && (
-                            <Legend
-                                wrapperStyle={{ paddingTop: '20px' }}
-                                iconType="circle"
+            {/**
+              * TELEFONDA RADAR DEĞİL YATAY ÇUBUK.
+              *
+              * Radar, ders profilini bir bakışta göstermek için iyidir ama
+              * 375 piksellik ekranda köşe etiketleri ("Matematik", "Sosyal
+              * Bilimler") üst üste biniyor ve iki değeri karşılaştırmak
+              * imkânsız hâle geliyor. Aynı veri, aynı renklerle yatay
+              * çubuğa çevrildiğinde hem etiketler okunuyor hem de
+              * mevcut/hedef farkı doğrudan görülüyor.
+              */}
+            <div className="bg-surface rounded-dlg p-4 sm:p-6 shadow-kart border border-line">
+                {/* Telefon: yatay çubuk */}
+                <div className="sm:hidden">
+                    <ResponsiveContainer width="100%" height={Math.max(180, data.length * 44)}>
+                        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
+                            <CartesianGrid {...izgaraOzellikleri()} horizontal={false} />
+                            <XAxis type="number" domain={[0, 100]} {...eksenOzellikleri()} />
+                            <YAxis type="category" dataKey="subject" width={88} {...eksenOzellikleri()} />
+                            <Tooltip content={<OrtakTooltip birim="%" basamak={0} />} cursor={{ fill: 'var(--surface-3)' }} />
+                            <Bar dataKey="current" name="Mevcut" fill="var(--c1)" radius={[0, 4, 4, 0]} barSize={10} animationDuration={300} />
+                            <Bar dataKey="target" name="Hedef" fill="var(--ok)" fillOpacity={0.35} radius={[0, 4, 4, 0]} barSize={10} animationDuration={300} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Tablet ve masaüstü: radar */}
+                <div className="hidden sm:block">
+                    <ResponsiveContainer width="100%" height={360} minWidth={0} minHeight={0}>
+                        <RadarChart data={data}>
+                            <PolarGrid stroke="var(--line)" />
+                            <PolarAngleAxis
+                                dataKey="subject"
+                                tick={{ fill: 'var(--ink-3)', fontSize: 12, fontWeight: 600 }}
                             />
-                        )}
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'white',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                padding: '8px 12px',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                        />
-                    </RadarChart>
-                </ResponsiveContainer>
+                            <PolarRadiusAxis
+                                angle={90}
+                                domain={[0, 100]}
+                                tick={{ fill: 'var(--ink-3)', fontSize: 10 }}
+                            />
+                            <Radar
+                                name="Mevcut Performans"
+                                dataKey="current"
+                                stroke="var(--c1)"
+                                fill="var(--c1)"
+                                fillOpacity={0.5}
+                                strokeWidth={2}
+                                animationDuration={300} />
+                            <Radar
+                                name="Hedef"
+                                dataKey="target"
+                                stroke="var(--ok)"
+                                fill="var(--ok)"
+                                fillOpacity={0.2}
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                animationDuration={300} />
+                            {/* İki seri var — efsane burada gerçekten gerekli */}
+                            {showLegend && <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />}
+                            <Tooltip content={<OrtakTooltip birim="%" basamak={0} />} />
+                        </RadarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
 
             {/* Strengths and Weaknesses */}

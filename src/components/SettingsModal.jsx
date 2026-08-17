@@ -361,7 +361,7 @@ const SettingsModal = ({ onClose }) => {
                     <p className="text-xs text-ink-2">
                         💡 Ayarlar tüm kullanıcılar için geçerlidir
                     </p>
-                    <div className="flex space-x-3">
+                    <div className="pencere-alt-cubuk bg-surface flex space-x-3">
                         <button onClick={iptalEt} className="b b-line">İptal</button>
                         <button
                             onClick={handleSave}

@@ -101,7 +101,7 @@ const SearchProgress = ({ topic, onComplete }) => {
                 {/* Footer Progress */}
                 <div className="h-1 bg-surface-inv w-full">
                     <div
-                        className="h-full bg-brand transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        className="h-full bg-brand transition-all duration-yavas ease-linear shadow-[0_0_10px_rgba(99,102,241,0.5)]"
                         style={{ width: `${((step + 1) / steps.length) * 100}%` }}
                     />
                 </div>

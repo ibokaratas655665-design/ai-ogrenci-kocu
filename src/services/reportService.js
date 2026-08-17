@@ -43,9 +43,29 @@ const toTime = (value) => {
     return Number.isNaN(t) ? 0 : t;
 };
 
-/** Bir kaydın tarihini olası alanlardan çıkarır. */
+/**
+ * Bir kaydın tarihini olası alanlardan çıkarır.
+ *
+ * ⚠️ `examDate` BU LİSTEDE YOKTU ve sessiz ama ciddi bir hataya yol
+ * açıyordu: deneme kayıtlarının asıl tarih alanı `examDate`
+ * (bkz. OverviewCharts, AdvancedExamsTab). Alan okunmayınca
+ * `recordTime` her kayıt için 0 dönüyor, sıralama hiçbir şey yapmıyor
+ * ve netler DİZİDEKİ SIRAYLA işleniyordu.
+ *
+ * Sonuç: `netTrend = son - önceki` hesabı ters çıkabiliyordu. Testte
+ * netleri 52'den 61'e YÜKSELEN öğrenci "net 9.0 düştü" diyerek yüksek
+ * riskli işaretlendi. Koçun "ilgi bekleyen öğrenciler" listesi ve risk
+ * skoru bu yüzden yanlış öğrencileri öne çıkarıyordu.
+ *
+ * Sıra önemli: sınav TARİHİ yükleme zamanından önce gelir — geçen ayki
+ * deneme bugün yüklenmiş olabilir.
+ */
 const recordTime = (rec) =>
-    toTime(rec?.date || rec?.uploadedAt || rec?.createdAt || rec?.startedAt || rec?.completedAt || rec?.assignedAt);
+    toTime(
+        rec?.examDate || rec?.date || rec?.tarih
+        || rec?.uploadedAt || rec?.createdAt || rec?.startedAt
+        || rec?.completedAt || rec?.assignedAt
+    );
 
 const round = (n, d = 1) => {
     const f = Math.pow(10, d);

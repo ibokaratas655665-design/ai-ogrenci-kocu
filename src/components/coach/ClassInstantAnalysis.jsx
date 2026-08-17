@@ -136,7 +136,7 @@ const ClassInstantAnalysis = ({ students = [], trials = [], results: propsResult
 
     if (trials.length === 0) return (
         <div className="bg-surface rounded-2xl p-8 text-center border border-line">
-            <BarChart2 size={32} className="text-ink-3 mx-auto mb-3" />
+            <BarChart2 size={32} className="text-ink-3 mx-auto mb-3"  animationDuration={300} />
             <p className="text-ink-3 text-sm">Henüz deneme eklenmemiş</p>
             <p className="text-ink-3 text-xs">Sınav sekmesinden deneme ekleyin</p>
         </div>
@@ -204,11 +204,11 @@ const ClassInstantAnalysis = ({ students = [], trials = [], results: propsResult
                         {/* Net Dağılım Grafiği */}
                         <div className="bg-surface rounded-2xl border border-line shadow-sm p-4">
                             <h3 className="font-bold text-ink-2 text-sm mb-3 flex items-center gap-2">
-                                <BarChart2 size={15} className="text-brand" /> Net Dağılımı
+                                <BarChart2 size={15} className="text-brand"  animationDuration={300} /> Net Dağılımı
                             </h3>
                             <ResponsiveContainer width="100%" height={180}>
                                 <BarChart data={distributionData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"  vertical={false} />
                                     <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                                     <YAxis tick={{ fontSize: 11 }} />
                                     <Tooltip contentStyle={{ borderRadius: 12, border: 'none', fontSize: 12 }} formatter={(v) => [`${v} öğrenci`, 'Adet']} />

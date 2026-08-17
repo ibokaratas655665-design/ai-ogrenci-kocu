@@ -151,7 +151,7 @@ const AndroidCard = ({ isDetected }) => {
     };
 
     return (
-        <div className={`relative rounded-3xl p-7 border transition-all duration-300 ${isDetected
+        <div className={`relative rounded-3xl p-7 border transition-all duration-yavas ${isDetected
             ? 'bg-gradient-to-b from-green-500/15 to-green-500/5 border-green-400/40 ring-2 ring-green-400/20'
             : 'bg-surface/5 border-line'
             }`}>
@@ -196,7 +196,7 @@ const AndroidCard = ({ isDetected }) => {
                     ) : pwa.kurulabilir ? (
                         <button
                             onClick={kurulumTikla}
-                            className="w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-lg text-ink bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02]"
+                            className="w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-normal shadow-lg text-ink bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-green-500/30 hover:shadow-green-500/50 hover:scale-[1.02]"
                         >
                             <Plus size={20} />
                             <span>Uygulama Olarak Yükle</span>
@@ -215,7 +215,7 @@ const AndroidCard = ({ isDetected }) => {
                 <button
                     onClick={handleDownload}
                     disabled={status === 'downloading'}
-                    className={`w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-lg text-ink ${status === 'done'
+                    className={`w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-normal shadow-lg text-ink ${status === 'done'
                         ? 'bg-ok shadow-green-500/30'
                         : status === 'error'
                             ? 'bg-danger shadow-red-500/30'
@@ -252,7 +252,7 @@ const AndroidCard = ({ isDetected }) => {
 // ──────────────────────────────────────────
 const IOSCard = ({ isDetected, isSafari, isStandalone }) => {
     return (
-        <div className={`relative rounded-3xl p-7 border transition-all duration-300 ${isDetected
+        <div className={`relative rounded-3xl p-7 border transition-all duration-yavas ${isDetected
             ? 'bg-gradient-to-b from-slate-400/15 to-slate-400/5 border-line-2/40 ring-2 ring-gray-400/20'
             : 'bg-surface/5 border-line'
             }`}>
@@ -309,7 +309,7 @@ const IOSCard = ({ isDetected, isSafari, isStandalone }) => {
                                     });
                                 }
                             }}
-                            className="on-color w-full flex items-center justify-center gap-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-lg hover:scale-[1.02]"
+                            className="on-color w-full flex items-center justify-center gap-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-normal shadow-lg hover:scale-[1.02]"
                         >
                             <Share2 size={20} />
                             Paylaş & Ana Ekrana Ekle
@@ -344,7 +344,7 @@ const WindowsCard = ({ isDetected }) => {
     };
 
     return (
-        <div className={`relative rounded-3xl p-7 border transition-all duration-300 ${isDetected
+        <div className={`relative rounded-3xl p-7 border transition-all duration-yavas ${isDetected
             ? 'bg-gradient-to-b from-blue-500/15 to-blue-500/5 border-blue-400/40 ring-2 ring-blue-400/20'
             : 'bg-surface/5 border-line'
             }`}>
@@ -387,7 +387,7 @@ const WindowsCard = ({ isDetected }) => {
                     ) : pwa.kurulabilir ? (
                         <button
                             onClick={kurulumTikla}
-                            className="w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-lg text-ink bg-gradient-to-r from-blue-500 to-brand hover:from-blue-400 hover:to-indigo-500 shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02]"
+                            className="w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-normal shadow-lg text-ink bg-gradient-to-r from-blue-500 to-brand hover:from-blue-400 hover:to-indigo-500 shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02]"
                         >
                             <Plus size={20} />
                             <span>Uygulama Olarak Yükle</span>
@@ -405,7 +405,7 @@ const WindowsCard = ({ isDetected }) => {
                 ) : (
                 <button
                     onClick={handleDownload}
-                    className={`w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-lg text-ink ${status === 'done'
+                    className={`w-full flex items-center justify-center gap-3 font-bold py-4 px-6 rounded-2xl transition-all duration-normal shadow-lg text-ink ${status === 'done'
                         ? 'bg-ok shadow-green-500/30'
                         : 'bg-gradient-to-r from-blue-500 to-brand hover:from-blue-400 hover:to-indigo-500 shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02]'
                         }`}

@@ -108,7 +108,7 @@ const ActivityFeed = ({ activities = [], maxItems = 10 }) => {
                     return (
                         <div
                             key={activity.id}
-                            className={`activity-card ${colors.bg} ${colors.border} border-2 rounded-xl p-4 hover:shadow-md transition-all duration-300 analytics-fade-in`}
+                            className={`activity-card ${colors.bg} ${colors.border} border-2 rounded-xl p-4 hover:shadow-md transition-all duration-yavas analytics-fade-in`}
                         >
                             <div className="flex items-start space-x-3">
                                 <div className={`p-2 ${colors.bg} rounded-lg ${colors.icon}`}>

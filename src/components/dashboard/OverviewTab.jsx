@@ -544,7 +544,68 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                     ))}
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* ══ MOBİL: kart listesi ═══════════════════════════════
+                    Telefonda bu tablo 8 sütunla yatay kaydırılıyordu ve
+                    kaydırınca BAŞLIK SATIRI kayboluyordu — koç hangi sayıya
+                    baktığını bilemiyordu. Aynı veri, aynı sırayla, kart
+                    olarak sunuluyor; tüm kart tek dokunuşla öğrenciye gider. */}
+                <ul className="lg:hidden divide-y divide-line border-t border-line">
+                    {filteredStudents.map((s) => {
+                        const st = statusFor(s);
+                        const konu = konuOzetById.get(String(s.id));
+                        return (
+                            <li key={s.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate(`/coach/student/${s.id}`)}
+                                    className="w-full text-left px-4 py-4 min-h-[64px] transition-colors hover:bg-surface-3 active:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="tip-small font-bold text-ink truncate">{s.name}</p>
+                                            <p className="tip-caption truncate">
+                                                #{s.schoolNumber || '---'}
+                                                {[s.grade, s.section].filter(Boolean).length
+                                                    ? ` · ${[s.grade, s.section].filter(Boolean).join('-')}`
+                                                    : ''}
+                                            </p>
+                                        </div>
+                                        <div className="shrink-0"><RiskBadge status={st} /></div>
+                                    </div>
+
+                                    {/* Program uyumu — koçun ilk baktığı gösterge */}
+                                    <div className="mt-2.5"><ComplianceBar status={st} /></div>
+
+                                    {/* Sayılar tek satırda; tabloda ayrı sütun olanlar */}
+                                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
+                                        <span className="tip-caption">
+                                            <span className="rakam font-bold text-ink">{st?.questions || 0}</span> soru
+                                        </span>
+                                        <span className="tip-caption">
+                                            <span className="rakam font-bold text-ink">{st?.pages || 0}</span> sayfa
+                                        </span>
+                                        {konu?.tamamlanan != null && (
+                                            <span className="tip-caption">
+                                                <span className="rakam font-bold text-ink">{konu.tamamlanan}</span> konu
+                                            </span>
+                                        )}
+                                        {st?.lastNet != null && (
+                                            <span className="tip-caption">
+                                                son net <span className="rakam font-bold text-ink">{st.lastNet}</span>
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            </li>
+                        );
+                    })}
+                    {filteredStudents.length === 0 && (
+                        <li className="py-12 text-center tip-caption">Bu süzgeçle eşleşen öğrenci yok.</li>
+                    )}
+                </ul>
+
+                {/* ══ MASAÜSTÜ: tam tablo ══════════════════════════════ */}
+                <div className="hidden lg:block overflow-x-auto">
                     <table className="min-w-full">
                         <thead>
                             <tr className="bg-surface-2 border-b border-line">

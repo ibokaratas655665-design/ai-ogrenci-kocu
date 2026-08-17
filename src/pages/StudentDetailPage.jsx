@@ -17,14 +17,49 @@ import ProgramBuilderModal from '../components/ProgramBuilderModal';
 import SubjectAnalysis from '../components/charts/SubjectAnalysis';
 import StudentReportCard from '../components/coach/StudentReportCard';
 import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
+import { onayla, bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
+import { useAuth } from '../context/AuthContext';
+import { gorebilir } from '../services/accessControl';
 
 const StudentDetailPage = () => {
     const { id } = useParams();
+    const { user } = useAuth();
     const navigate = useNavigate();
 
     // State
     const [student, setStudent] = useState(null);
     const [activeTab, setActiveTab] = useState('karne');
+
+    /**
+     * Koç notu. Öğrenci başına ayrı anahtarda saklanır; sayfa açılınca
+     * geri yüklenir. `notKaydedildi` düğmeyi geçici olarak kilitler —
+     * koç arka arkaya basıp aynı notu iki kez yazamaz.
+     */
+    const [kocNotu, setKocNotu] = useState('');
+    const [notKaydedildi, setNotKaydedildi] = useState(false);
+
+    useEffect(() => {
+        if (!id) return;
+        try { setKocNotu(localStorage.getItem(`koc_notu_${id}`) || ''); }
+        catch { setKocNotu(''); }
+    }, [id]);
+
+    const notuKaydet = () => {
+        const metin = kocNotu.trim();
+        // Hızlı arka arkaya tıklamada React henüz yeniden çizmeden üç
+        // çağrı birden geliyor ve aynı bildirim üst üste görünüyordu.
+        // Kayıt zaten aynı sonucu veriyor; tekrar eden çağrı susturulur.
+        if (!metin || notKaydedildi) return;
+        try {
+            localStorage.setItem(`koc_notu_${id}`, metin);
+            window.firebaseSync?.syncKey?.(`koc_notu_${id}`);
+            setNotKaydedildi(true);
+            bildir('Not kaydedildi.', 'basari');
+        } catch (e) {
+            bildir(hataAnlat(e, 'kaydet'), 'hata');
+        }
+    };
     const [guidanceResults, setGuidanceResults] = useState(null);
     const [homeworks, setHomeworks] = useState([]);
     const [showHomeworkModal, setShowHomeworkModal] = useState(false);
@@ -63,13 +98,31 @@ const StudentDetailPage = () => {
     // Tüm verileri yükleyen merkezi fonksiyon
     const loadAllData = useCallback(() => {
         try {
-            // 🔒 GÜVENLI: Öğrenciyi id'ye göre bul (null/undefined korumalı)
+            /**
+             * 🔒 SAHİPLİK KONTROLÜ
+             *
+             * ⚠️ BURADA YETKİ KONTROLÜ YOKTU. Sayfa `coach_students`
+             * listesinin TAMAMINI okuyup kimliğe göre eşleştiriyordu;
+             * yani bir koç adres çubuğuna başka bir koçun öğrencisinin
+             * kimliğini yazarak (`#/coach/student/<id>`) o öğrencinin
+             * adına, denemelerine, programına, görevlerine ve koç
+             * notlarına erişebiliyordu.
+             *
+             * Artık kayıt önce `gorebilir` süzgecinden geçer. Yetkisiz
+             * erişimde "bulunamadı" denir — "yetkin yok" demek, o kimlikte
+             * bir öğrencinin VAR olduğunu doğrulamak olurdu.
+             */
             const allStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
-            const found = allStudents.find(s => s && s.id != null && String(s.id) === String(id));
+            const aday = allStudents.find(s => s && s.id != null && String(s.id) === String(id));
+            const found = aday && gorebilir(user, aday) ? aday : null;
 
             if (found) {
                 setStudent(found);
                 setTarget(found.target || 'Hedef Belirlenmedi');
+            } else if (aday) {
+                // Kayıt var ama bu koça ait değil — varlığını ele verme
+                console.warn('Yetkisiz öğrenci erişimi engellendi.');
+                setNotFound(true);
             } else {
                 console.warn(`Student with id ${id} not found in coach_students.`);
                 setNotFound(true);
@@ -162,7 +215,7 @@ const StudentDetailPage = () => {
             console.error("Error loading student details:", error);
             setNotFound(true);
         }
-    }, [id]);
+    }, [id, user]);   // user: sahiplik kontrolü buna bağlı
 
     useEffect(() => {
         if (!id) return;
@@ -422,12 +475,28 @@ const StudentDetailPage = () => {
                     </div>
 
                     <div className="glass-card p-6">
+                        {/* ⚠️ BU ALAN TAMAMEN ÖLÜYDÜ: textarea'da `value`/`onChange`,
+                            düğmede `onClick` YOKTU. Koç not yazıp "Kaydet"e
+                            basıyor, hiçbir şey olmuyordu — ne kayıt, ne hata,
+                            ne geri bildirim; yazılan not sayfadan çıkınca
+                            kayboluyordu. */}
                         <h3 className="font-bold text-ink mb-4">Koç Notları</h3>
+                        <label htmlFor="koc-notu" className="sr-only">Öğrenci hakkında koç notu</label>
                         <textarea
+                            id="koc-notu"
+                            value={kocNotu}
+                            onChange={(e) => { setKocNotu(e.target.value); setNotKaydedildi(false); }}
                             className="w-full h-32 p-3 bg-surface-2 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none text-sm resize-none"
                             placeholder="Öğrenci ile ilgili özel notlarınızı buraya alın..."
                         ></textarea>
-                        <button className="mt-2 w-full py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover transition">Notu Kaydet</button>
+                        <button
+                            type="button"
+                            onClick={notuKaydet}
+                            disabled={!kocNotu.trim() || notKaydedildi}
+                            className="mt-2 w-full py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand-hover transition disabled:bg-disabled disabled:text-disabled-ink disabled:cursor-not-allowed"
+                        >
+                            {notKaydedildi ? '✓ Kaydedildi' : 'Notu Kaydet'}
+                        </button>
                     </div>
 
                     {/* Program Oluşturma Araçları */}
@@ -609,14 +678,14 @@ const StudentDetailPage = () => {
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={GRAPH_DATA}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                                         <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                                         <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
-                                        <Line type="monotone" dataKey="tyt" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5' }} activeDot={{ r: 6 }} name="TYT Net" />
-                                        <Line type="monotone" dataKey="ayt" stroke="var(--c5)" strokeWidth={3} dot={{ r: 4, fill: 'var(--c5)' }} activeDot={{ r: 6 }} name="AYT Net" />
+                                        <Line type="monotone" dataKey="tyt" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5' }} activeDot={{ r: 6 }} name="TYT Net"  animationDuration={300} />
+                                        <Line type="monotone" dataKey="ayt" stroke="var(--c5)" strokeWidth={3} dot={{ r: 4, fill: 'var(--c5)' }} activeDot={{ r: 6 }} name="AYT Net"  animationDuration={300} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -625,7 +694,7 @@ const StudentDetailPage = () => {
                         {/* Gelişmiş Deneme Analizleri */}
                         <div className="space-y-8">
                             <h3 className="text-xl font-black text-ink flex items-center gap-2 border-b border-line pb-4">
-                                <BarChart2 size={24} className="text-brand" />
+                                <BarChart2 size={24} className="text-brand"  animationDuration={300} />
                                 Detaylı Deneme Analizi
                             </h3>
                             
@@ -726,8 +795,8 @@ const StudentDetailPage = () => {
                                             </button>
 
                                             <button
-                                                onClick={() => {
-                                                    if (window.confirm('Bu ödevi silmek istediğinize emin misiniz?')) {
+                                                onClick={ async () => {
+                                                    if (await onayla({ mesaj: 'Bu ödevi silmek istediğinize emin misiniz?', tehlikeli: true })) {
                                                         setHomeworks(homeworks.filter(h => h.id !== hw.id));
                                                     }
                                                 }}
@@ -771,7 +840,7 @@ const StudentDetailPage = () => {
                                                         <PolarGrid />
                                                         <PolarAngleAxis dataKey="name" tick={{ fontSize: 10 }} />
                                                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} />
-                                                        <Radar name="Skor" dataKey="score" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.4} />
+                                                        <Radar name="Skor" dataKey="score" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.4}  animationDuration={300} />
                                                     </RadarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -790,11 +859,11 @@ const StudentDetailPage = () => {
                                             <div className="h-[250px] w-full">
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <BarChart data={guidanceResults.multiple_intelligence.chartData} layout="vertical" margin={{ left: 40 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                        <CartesianGrid strokeDasharray="3 3" horizontal={false}  vertical={false} />
                                                         <XAxis type="number" hide />
                                                         <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
                                                         <Tooltip cursor={{ fill: '#f4f4f5' }} contentStyle={{ borderRadius: '8px' }} />
-                                                        <Bar dataKey="score" fill="var(--c5)" radius={[0, 4, 4, 0]} barSize={20} />
+                                                        <Bar dataKey="score" fill="var(--c5)" radius={[0, 4, 4, 0]} barSize={20}  animationDuration={300} />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -812,8 +881,8 @@ const StudentDetailPage = () => {
                                         return (
                                             <div key={key} className="glass-card p-6 border-l-4 border-l-indigo-500 relative group">
                                                 <button
-                                                    onClick={() => {
-                                                        if (window.confirm('Bu raporu silmek istediğinize emin misiniz?')) {
+                                                    onClick={ async () => {
+                                                        if (await onayla({ mesaj: 'Bu raporu silmek istediğinize emin misiniz?', tehlikeli: true })) {
                                                             const newResults = { ...guidanceResults };
                                                             delete newResults[key];
                                                             setGuidanceResults(newResults);
@@ -947,7 +1016,7 @@ const StudentDetailPage = () => {
                                         <label className="block text-sm font-medium text-ink-2 mb-1">Son Tarih</label>
                                         <input required name="dueDate" type="date" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
                                     </div>
-                                    <div className="flex space-x-3 pt-4">
+                                    <div className="pencere-alt-cubuk bg-surface flex space-x-3 pt-4">
                                         <button type="button" onClick={() => setShowHomeworkModal(false)} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-xl font-medium hover:bg-surface-3 transition">
                                             İptal
                                         </button>

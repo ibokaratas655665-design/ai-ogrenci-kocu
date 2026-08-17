@@ -107,7 +107,7 @@ const TestRunner = ({ test, onClose }) => {
                 {/* Progress Bar */}
                 <div className="h-2 bg-surface-3 w-full">
                     <div
-                        className="on-color h-full bg-gradient-to-r from-blue-500 to-brand transition-all duration-500 ease-out"
+                        className="on-color h-full bg-gradient-to-r from-blue-500 to-brand transition-all duration-yavas ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -148,7 +148,7 @@ const TestRunner = ({ test, onClose }) => {
                                 <button
                                     key={idx}
                                     onClick={() => handleAnswer(opt.value)}
-                                    className="group relative flex items-center justify-center p-6 border-2 border-line rounded-2xl hover:border-brand hover:bg-brand-soft transition-all duration-200"
+                                    className="group relative flex items-center justify-center p-6 border-2 border-line rounded-2xl hover:border-brand hover:bg-brand-soft transition-all duration-normal"
                                 >
                                     <span className="font-semibold text-ink-2 group-hover:text-brand text-lg">
                                         {opt.label}

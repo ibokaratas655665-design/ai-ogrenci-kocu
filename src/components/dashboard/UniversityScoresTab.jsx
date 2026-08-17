@@ -3,6 +3,7 @@ import { Search, Download, Plus, Trash2, Edit2, X, GraduationCap, Building2, Awa
 import jsPDF from 'jspdf';
 import { AYT_PROGRAMS, TYT_PROGRAMS, YDT_PROGRAMS, GELECEK_PROGRAMS } from '../../data/universityScoresData';
 import { AMBLEM_BASE64 } from '../../data/amblemBase64';
+import { bildir, onayla } from '../../services/uiGeriBildirim';
 
 const STORAGE_KEY = 'university_scores_v2';
 const YEAR_KEY = 'university_scores_year';
@@ -34,7 +35,7 @@ const ProgramCard = ({ item, onEdit, onDelete, idx }) => {
   const [open, setOpen] = useState(false);
   const c = gc(item.puan);
   return (
-    <div className={`bg-gradient-to-br ${c.card} border ${c.border} rounded-3xl overflow-hidden transition-all duration-300 hover:border-line-2 group`}>
+    <div className={`bg-gradient-to-br ${c.card} border ${c.border} rounded-3xl overflow-hidden transition-all duration-yavas hover:border-line-2 group`}>
       <div className="flex items-center gap-4 p-5 cursor-pointer" onClick={() => setOpen(!open)}>
         <div className="w-11 h-11 bg-surface/5 rounded-2xl flex items-center justify-center flex-shrink-0"><span className="text-lg font-black text-ink-2">{idx+1}</span></div>
         <div className="flex-1 min-w-0">
@@ -265,8 +266,8 @@ const UniversityScoresTab = () => {
 
   const stats = useMemo(() => ({ ayt: allData.ayt.length, tyt: allData.tyt.length, ydt: allData.ydt.length, gelecek: allData.gelecek.length, total: allData.ayt.length + allData.tyt.length + allData.ydt.length + allData.gelecek.length }), [allData]);
 
-  const handleDelete = (id) => {
-    if (!window.confirm('Silmek istediğinize emin misiniz?')) return;
+  const handleDelete = async (id) => {
+    if (!(await onayla({ mesaj: 'Silmek istediğinize emin misiniz?', tehlikeli: true }))) return;
     setAllData(p => ({ ayt: p.ayt.filter(d=>d.id!==id), tyt: p.tyt.filter(d=>d.id!==id), ydt: p.ydt.filter(d=>d.id!==id), gelecek: p.gelecek.filter(d=>d.id!==id) }));
     setToast('Silindi.');
   };
@@ -319,7 +320,7 @@ const UniversityScoresTab = () => {
       <Section title="AYT — 4 Yıllık Bölümler" subtitle={`En çok tercih edilen ${allData.ayt.length} lisans programı`} color="bg-info" data={allData.ayt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
       <Section title="TYT — 2 Yıllık Bölümler" subtitle={`En çok tercih edilen ${allData.tyt.length} ön lisans programı`} color="bg-ok" data={allData.tyt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
       <Section title="YDT — Yabancı Dil Bölümleri" subtitle={`En çok tercih edilen ${allData.ydt.length} dil programı`} color="bg-danger" data={allData.ydt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
-      <Section title="🚀 Geleceğin Bölümleri" subtitle={`Yükselen trendler — ${allData.gelecek.length} yeni nesil program`} color="bg-c4" data={allData.gelecek} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
+      <Section title="Geleceğin Bölümleri" subtitle={`Yükselen trendler — ${allData.gelecek.length} yeni nesil program`} color="bg-c4" data={allData.gelecek} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
 
       {showModal && <EditModal item={editItem} section={editSection} onSave={handleSave} onClose={()=>{setShowModal(false);setEditItem(null)}} onSectionChange={setEditSection}/>}
     </div>
@@ -340,7 +341,7 @@ const EditModal = ({ item, section, onSave, onClose, onSectionChange }) => {
   const lc = "text-[9px] font-black text-ink-3 uppercase tracking-wider mb-1 block";
 
   const submit = () => {
-    if (!f.bolum||!f.uni) { alert('Bölüm ve üniversite adı zorunludur!'); return; }
+    if (!f.bolum||!f.uni) { bildir('Bölüm ve üniversite adı zorunludur!'); return; }
     const d = { ...f, taban:parseFloat(f.taban)||0, siralama:parseInt(f.siralama)||0, kontenjan:parseInt(f.kontenjan)||0,
       tytTurkce:f.tytTurkce!==''?parseFloat(f.tytTurkce):null, tytMat:f.tytMat!==''?parseFloat(f.tytMat):null,
       tytFen:f.tytFen!==''?parseFloat(f.tytFen):null, tytSosyal:f.tytSosyal!==''?parseFloat(f.tytSosyal):null,
@@ -381,7 +382,7 @@ const EditModal = ({ item, section, onSave, onClose, onSectionChange }) => {
             <div key={k}><label className={lc}>{l}</label><input type="number" step="0.5" value={f[k]} onChange={e=>set(k,e.target.value)} placeholder="-" className={ic}/></div>
           ))}
         </div>
-        <div className="flex justify-end gap-3 pt-3 border-t border-line">
+        <div className="pencere-alt-cubuk bg-surface flex justify-end gap-3 pt-3 border-t border-line">
           <button onClick={onClose} className="px-5 py-2.5 bg-surface/5 border border-line text-ink-2 rounded-2xl font-bold text-sm hover:text-ink transition">İptal</button>
           <button onClick={submit} className="px-6 py-2.5 bg-brand text-ink-on rounded-2xl font-black text-sm hover:scale-105 transition flex items-center gap-2 shadow-lg shadow-e2"><Save size={14}/>{item?'GÜNCELLE':'KAYDET'}</button>
         </div>

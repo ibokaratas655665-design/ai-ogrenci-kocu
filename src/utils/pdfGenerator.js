@@ -4,6 +4,7 @@ import { savePDF } from './pdfSave';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
 import { MARKA } from '../data/marka';
 import { calculateEstimatedScore, getAYTAreaNets, getOBPScore, getAYTMaxScoreArea } from './scoreCalculator';
+import { bildir } from '../services/uiGeriBildirim';
 
 // ─── Uygulama Renk Paleti ─────────────────────────────────────────
 const COLORS = {
@@ -166,7 +167,7 @@ const statBox = (doc, x, y, w, h, topLabel, mainValue, subLabel, bgColor) => {
 export const generateBulkExamReport = (trial, exams, students) => {
     try {
         if (!trial || !exams || exams.length === 0) {
-            alert('Rapor olusturmak icin veri bulunamadi.'); return;
+            bildir('Rapor olusturmak icin veri bulunamadi.'); return;
         }
         const doc = new jsPDF({ compress: true });
         const examType = trial.examType || 'TYT';

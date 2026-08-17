@@ -121,9 +121,9 @@
 
 /* Etkileşimli yüzey: üzerine gelince yükselir */
 .srf-hover {
-    transition: box-shadow .22s cubic-bezier(.2, .8, .2, 1),
-                transform .22s cubic-bezier(.2, .8, .2, 1),
-                border-color .22s ease;
+    transition: box-shadow var(--sure-normal) cubic-bezier(.2, .8, .2, 1),
+                transform var(--sure-normal) cubic-bezier(.2, .8, .2, 1),
+                border-color var(--sure-normal) ease;
 }
 
 .srf-hover:hover {
@@ -166,9 +166,9 @@
     cursor: pointer;
     user-select: none;
     border: 1px solid transparent;
-    transition: transform .12s cubic-bezier(.2, .8, .2, 1),
-                box-shadow .18s ease, background-color .18s ease,
-                border-color .18s ease, color .18s ease;
+    transition: transform var(--sure-hizli) cubic-bezier(.2, .8, .2, 1),
+                box-shadow var(--sure-normal) ease, background-color var(--sure-normal) ease,
+                border-color var(--sure-normal) ease, color var(--sure-normal) ease;
 }
 
 .b:focus-visible {
@@ -358,8 +358,8 @@
     border: 1px solid transparent;
     white-space: nowrap;
     cursor: pointer;
-    transition: color .18s ease, background-color .18s ease,
-                box-shadow .2s ease, transform .18s ease;
+    transition: color var(--sure-normal) ease, background-color var(--sure-normal) ease,
+                box-shadow var(--sure-normal) ease, transform var(--sure-normal) ease;
 }
 
 .tabbar .tb:hover { color: var(--ink); }
@@ -402,7 +402,7 @@
     border: 1px solid var(--line-2);
     border-radius: var(--r-md);
     box-shadow: var(--e0);
-    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+    transition: border-color var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease, background-color var(--sure-hizli) ease;
 }
 
 .fld::placeholder { color: var(--ink-3); }
@@ -503,7 +503,7 @@
         color-mix(in srgb, var(--acc, var(--brand)) 78%, white),
         var(--acc, var(--brand)));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
-    transition: width .5s cubic-bezier(.2, .8, .2, 1);
+    transition: width var(--sure-yavas) cubic-bezier(.2, .8, .2, 1);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -705,11 +705,11 @@
    rozetler ve etiketler etkilenmez.
    ══════════════════════════════════════════════════════════════════════ */
 
-button, [role="button"] { transition: transform .12s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, filter .18s ease; }
+button, [role="button"] { transition: transform var(--sure-hizli) cubic-bezier(.2,.8,.2,1), box-shadow var(--sure-normal) ease, filter var(--sure-normal) ease; }
 
 /* ── Dolu renkli butonlar ─────────────────────────────── */
 button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
-          .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight, .bg-surface-inv):not(.b):not(.btn-v) {
+          .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight, .bg-surface-inv):not(.b):not(.btn-v):not(.fixed):not(.absolute):not(.sticky) {
     position: relative;
     border-width: 1px;
     border-style: solid;
@@ -726,7 +726,7 @@ button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
 
 button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
           .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight,
-          .bg-surface-inv):not(.b):not(.btn-v):hover:not(:disabled) {
+          .bg-surface-inv):not(.b):not(.btn-v):not(.fixed):not(.absolute):not(.sticky):hover:not(:disabled) {
     transform: translateY(-1px);
     filter: brightness(1.06);
     box-shadow:
@@ -738,23 +738,23 @@ button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
 
 button:is(.bg-brand, .bg-brand-hover, .bg-accent, .bg-ok, .bg-warn,
           .bg-danger, .bg-info, .bg-c4, .bg-c5, .bg-highlight,
-          .bg-surface-inv):not(.b):not(.btn-v):active:not(:disabled) {
+          .bg-surface-inv):not(.b):not(.btn-v):not(.fixed):not(.absolute):not(.sticky):active:not(:disabled) {
     transform: translateY(1px);
     filter: brightness(.94);
     box-shadow: inset 0 2px 5px rgba(0, 0, 0, .3);
 }
 
 /* ── Yüzey zeminli (ikincil) butonlar ──────────────────── */
-button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb) {
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):not(.fixed):not(.absolute):not(.sticky) {
     box-shadow: inset 0 1px 0 var(--lit), 0 1px 2px rgba(var(--cast), .07);
 }
 
-button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):hover:not(:disabled) {
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):not(.fixed):not(.absolute):not(.sticky):hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: inset 0 1px 0 var(--lit), 0 4px 10px -3px rgba(var(--cast), .14);
 }
 
-button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):active:not(:disabled) {
+button:is(.bg-surface, .bg-surface-2, .bg-surface-3):not(.b):not(.btn-v):not(.tb):not(.fixed):not(.absolute):not(.sticky):active:not(:disabled) {
     transform: translateY(1px);
     box-shadow: inset 0 2px 4px rgba(var(--cast), .12);
 }
@@ -815,7 +815,7 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 select,
 textarea {
     box-shadow: var(--e0);
-    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+    transition: border-color var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease, background-color var(--sure-hizli) ease;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
@@ -846,5 +846,5 @@ table thead th {
     box-shadow: inset 0 -1px 0 var(--line), inset 0 1px 0 var(--lit-soft);
 }
 
-table tbody tr { transition: background-color .14s ease; }
+table tbody tr { transition: background-color var(--sure-hizli) ease; }
 table tbody tr:hover { background: var(--surface-3); }

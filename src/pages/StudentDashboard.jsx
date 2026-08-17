@@ -4,6 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 // 📱 Mobil Navigasyon
 import { StudentBottomNav } from '../components/shared/MobileBottomNav';
+import KullaniciMenusu from '../components/shared/KullaniciMenusu';
+import BugunEkrani from '../components/student/BugunEkrani';
+import { cn } from '../lib/cn';
+import { Sayac } from '../components/ui/Badge';
+import { BolumHataSiniri } from '../components/ui';
+import { bildir } from '../services/uiGeriBildirim';
 import SmartNotificationBell from '../components/shared/SmartNotifications';
 import PWAInstallBanner from '../components/shared/PWAInstallBanner';
 import { StudentDashboardSkeleton } from '../components/shared/SkeletonLoaders';
@@ -71,6 +77,7 @@ import RealtimeNotificationBell from '../components/shared/RealtimeNotifications
 import VividKpi from '../components/shared/VividKpi';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 
 // ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
@@ -182,7 +189,7 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
 
     if (examData.length === 0) {
         return (
-            <div className="animate-fade-in space-y-8">
+            <div className="icerik-gecis space-y-8">
                 <h1 className="text-3xl font-black text-ink syne tracking-tight">DENEME SONUÇLARIM</h1>
                 <div className="premium-card p-20 text-center border-dashed border-line">
                     <div className="w-20 h-20 bg-surface/5 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-line">
@@ -198,9 +205,9 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
     }
 
     return (
-        <div className="animate-fade-in space-y-8">
+        <div className="icerik-gecis space-y-8">
             {toastMsg && (
-                <div className="fixed bottom-24 right-8 z-[100] premium-glass border-brand/30 text-ink px-6 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-3 animate-fade-in-up">
+                <div className="fixed bottom-24 right-8 z-[100] premium-glass border-brand/30 text-ink px-6 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-3 icerik-gecis-up">
                     <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                     {toastMsg}
                 </div>
@@ -275,12 +282,12 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
                         return (
                             <div
                                 key={exam.id || i}
-                                className="p-6 hover:bg-surface/5 transition-all duration-300 cursor-pointer group"
+                                className="p-6 hover:bg-surface/5 transition-all duration-yavas cursor-pointer group"
                                 onClick={() => setSelectedExam(exam)}
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-5">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border transition-all duration-500 group-hover:scale-110 ${
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border transition-all duration-yavas group-hover:scale-110 ${
                                             exam.examType === 'AYT' 
                                             ? 'bg-c4/10 text-c4 border-c4/20' 
                                             : 'bg-accent/10 text-accent border-accent/20'
@@ -304,7 +311,7 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handlePDF(exam); }}
-                                                className="w-10 h-10 bg-surface/5 hover:bg-brand/20 text-ink-3 hover:text-brand border border-line rounded-xl transition-all duration-300 flex items-center justify-center"
+                                                className="w-10 h-10 bg-surface/5 hover:bg-brand/20 text-ink-3 hover:text-brand border border-line rounded-xl transition-all duration-yavas flex items-center justify-center"
                                                 title="PDF Karne İndir"
                                             >
                                                 <Download size={18} />
@@ -803,21 +810,67 @@ const StudentDashboard = () => {
         firebaseSync.debouncedSync();
     };
 
+    /**
+     * Görevi tamamlandı işaretler.
+     *
+     * ⚠️ ÖNCEKİ HÂLİ SESSİZCE VERİ KAYBETTİRİYORDU.
+     *
+     * Yalnızca `allTasks[user.id]` durumunu ele alıyordu. Oysa `loadTasks`
+     * görevi ÜÇ ayrı yoldan bulabiliyor: kendi kimliğiyle, okul numarası
+     * anahtarıyla ve tüm anahtarları tarayıp `studentId` eşleştirerek.
+     * Görev bu yollardan biriyle ekrana gelmişse `allTasks[user.id]`
+     * tanımsız kalıyor, koşul hiç çalışmıyor ve YALNIZCA React durumu
+     * güncelleniyordu: öğrenci görevi tamamlıyor, sayfayı yeniliyor ve
+     * görev geri geliyordu. Testte birebir bu görüldü.
+     *
+     * Artık görev NEREDE duruyorsa orada güncellenir; kayıt biçimi
+     * (nesne ya da düz dizi) korunur.
+     */
     const handleCompleteTask = (taskId) => {
-        const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
-        const userIdStr = String(user.id);
-        if (allTasks[userIdStr]) {
-            allTasks[userIdStr] = allTasks[userIdStr].map(t =>
-                t.id === taskId ? { ...t, status: 'Tamamlandı', completed: true } : t
-            );
-            localStorage.setItem('student_tasks', JSON.stringify(allTasks));
+        let ham;
+        try { ham = JSON.parse(localStorage.getItem('student_tasks') || '{}'); }
+        catch { ham = {}; }
+
+        const isaretle = (t) => (
+            String(t?.id) === String(taskId)
+                ? { ...t, status: 'Tamamlandı', completed: true, completedAt: new Date().toISOString() }
+                : t
+        );
+
+        let bulundu = false;
+        let yeni;
+
+        if (Array.isArray(ham)) {
+            // Düz dizi biçimi
+            yeni = ham.map((t) => {
+                if (String(t?.id) === String(taskId)) bulundu = true;
+                return isaretle(t);
+            });
+        } else {
+            // Öğrenci kimliğine göre gruplanmış biçim — hangi anahtarda
+            // olursa olsun bulunur
+            yeni = { ...ham };
+            Object.keys(yeni).forEach((anahtar) => {
+                const liste = yeni[anahtar];
+                if (!Array.isArray(liste)) return;
+                if (liste.some((t) => String(t?.id) === String(taskId))) bulundu = true;
+                yeni[anahtar] = liste.map(isaretle);
+            });
+        }
+
+        if (bulundu) {
+            localStorage.setItem('student_tasks', JSON.stringify(yeni));
             // 🌟 FAZE 5: Gamification + Firebase sync
             gamCompleteTask();
             firebaseSync.syncKey('student_tasks');
             loadTasks();
+        } else {
+            // Kayıtta bulunamadıysa sessiz kalma — kullanıcı ne olduğunu bilsin
+            bildir('Görev kaydedilemedi. Sayfayı yenileyip tekrar dene.', 'hata');
         }
-        // State güncelle
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Tamamlandı', completed: true } : t));
+
+        // Ekran her hâlükârda güncellenir (bulunduysa kalıcı da olur)
+        setTasks(prev => prev.map(isaretle));
     };
 
     /**
@@ -839,29 +892,71 @@ const StudentDashboard = () => {
 
     // ── SEKMELER
     // Simgeler konuya özgü, çok renkli illüstrasyonlar (components/icons/ModuleIcons)
-    const TABS = [
-        { id: 'home', icon: MODULE_ICONS.home, label: 'Giriş' },
-        { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
-        { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
-        { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
-        { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
-        { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
-        { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
-        { id: 'program', icon: MODULE_ICONS.program, label: 'Program' },
-        { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
-        { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
-        { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
-        { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
-        { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
-        { id: 'tests', icon: MODULE_ICONS.tests, label: 'Envanter', badge: assignedTests.filter(t => t.status === 'pending').length },
-        { id: 'messages', icon: MODULE_ICONS.messages, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'coach').length },
+    /**
+     * 🧭 ÖĞRENCİ GEZİNMESİ
+     *
+     * Eskiden 15 sekme tek sırada, hepsi eşit ağırlıkta duruyordu.
+     * Telefonda şerit ölçüldüğünde 375 piksellik ekranda 2107 piksel
+     * genişliğe ulaşıyordu: öğrenci 14 sekmeyi hiç görmüyordu.
+     *
+     * Artık dört grup var ve sıralama öğrencinin sorusuna göre:
+     *   Bugün ne yapmalıyım? → Bugün, Görevler, Program
+     *   Nasıl gidiyorum?     → Denemeler, Konu Takibi, Trend
+     *   Çalışma araçlarım    → Odaklan, Günlük Kayıt, Hata Defteri…
+     *
+     * Sekme listeleri TEK yerde; mobil alt çubuk da bunu okur, böylece
+     * eskisi gibi uyuşmayan kimlikler oluşamaz.
+     */
+    const SEKME_GRUPLARI = [
+        {
+            label: 'Bugün',
+            items: [
+                { id: 'home', icon: MODULE_ICONS.home, label: 'Bugün' },
+                { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
+                { id: 'program', icon: MODULE_ICONS.program, label: 'Program' },
+                { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
+            ],
+        },
+        {
+            label: 'Gelişimim',
+            items: [
+                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
+                { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
+                { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
+                { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
+            ],
+        },
+        {
+            label: 'Çalışma Araçlarım',
+            items: [
+                { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
+                { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
+                { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
+                { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
+            ],
+        },
+        {
+            label: 'Koçumla',
+            items: [
+                { id: 'messages', icon: MODULE_ICONS.messages, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'coach').length },
+                { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
+                { id: 'tests', icon: MODULE_ICONS.tests, label: 'Envanter', badge: assignedTests.filter(t => t.status === 'pending').length },
+            ],
+        },
     ];
+
+    const TABS = SEKME_GRUPLARI.flatMap((g) => g.items);
+
+    /** Telefonda alt çubuğa çıkan dört hedef — en sık kullanılanlar. */
+    const MOBIL_BIRINCIL = ['home', 'tasks', 'program', 'messages']
+        .map((id) => TABS.find((t) => t.id === id))
+        .filter(Boolean);
 
     return (
         <div className="min-h-screen bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden flex flex-col">
 
             {/* ── HEADER ───────────────────────────────────────────── */}
-            <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-line transition-all duration-300">
+            <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-line transition-all duration-yavas">
                 <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
                     {/* Sol: Marka + Avatar
                         Öğrenci panelinde marka hiç görünmüyordu; uygulamanın
@@ -875,7 +970,7 @@ const StudentDashboard = () => {
                             telefondan çıkış yapamıyordu. Uygulama adı zaten
                             sekme başlığında ve ana ekran kısayolunda yazılı. */}
                         <div className="hidden sm:flex items-center gap-2 pr-3 md:pr-4 border-r border-line">
-                            <img
+                            <MarkaGorsel
                                 src={MARKA.amblem}
                                 alt=""
                                 width="36"
@@ -885,7 +980,7 @@ const StudentDashboard = () => {
                             <div className="hidden md:block leading-tight">
                                 {/* Ad, logodaki el yazısı stiliyle — düz metin değil.
                                     Genişlik alt başlıkla eşit. */}
-                                <img src={MARKA.adYazisi} alt={MARKA.ad}
+                                <MarkaGorsel src={MARKA.adYazisi} alt={MARKA.ad} width="605" height="256"
                                     className="w-[124px] h-auto object-contain" />
                                 <p className="text-[9px] font-bold text-ink-3 tracking-[0.083em] uppercase mt-0.5">
                                     {MARKA.altBaslik}
@@ -893,7 +988,7 @@ const StudentDashboard = () => {
                             </div>
                         </div>
                         <div className="relative group">
-                            <div className="on-color absolute -inset-1 bg-gradient-to-tr from-brand to-accent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
+                            <div className="on-color absolute -inset-1 bg-gradient-to-tr from-brand to-accent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-yavas" />
                             <div className="relative w-12 h-12 bg-surface border border-line rounded-2xl flex items-center justify-center text-brand font-bold shadow-xl overflow-hidden">
                                 <span className="text-lg syne">{user?.name?.charAt(0) || 'Ö'}</span>
                                 <div className="on-color absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-brand to-accent" />
@@ -936,242 +1031,113 @@ const StudentDashboard = () => {
                             />
                         </div>
 
-                        {/* Kontrol Paneli */}
-                        <div className="flex items-center gap-1.5 p-1 bg-surface/5 border border-line rounded-2xl">
-                            <ThemeToggle className="mr-1" />
+                        {/* Üst şeritte yalnızca SIK kullanılan iş kalır: bildirim.
+                            Tema, ayarlar ve çıkış kullanıcı menüsüne indi —
+                            dördü yan yana dururken dar ekranda çıkış düğmesi
+                            dışarı taşıyordu. */}
+                        {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
+                            düşsün, panel ayakta kalsın */}
+                        <BolumHataSiniri bolumAdi="Bildirimler">
                             <RealtimeNotificationBell role="student" userId={user?.id} />
-                            
-                            <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 text-ink-3 hover:text-brand hover:bg-surface/5 rounded-xl transition-all duration-300">
-                                <Settings size={18} />
-                            </button>
+                        </BolumHataSiniri>
 
-                            <button 
-                                onClick={() => { logout(); navigate('/login'); }} 
-                                className="p-2.5 text-ink-3 hover:text-danger hover:bg-danger/10 rounded-xl transition-all duration-300"
-                                title="Çıkış Yap"
-                            >
-                                <LogOut size={18} />
-                            </button>
-                        </div>
+                        <KullaniciMenusu
+                            kullanici={user}
+                            rolEtiketi="Öğrenci"
+                            onAyarlar={() => setIsSettingsOpen(true)}
+                            onCikis={() => { logout(); navigate('/login'); }}
+                        />
                     </div>
                 </div>
 
-                {/* Sekmeler */}
-                <div className="border-t border-line bg-page/50 backdrop-blur-md">
-                    <div className="max-w-7xl mx-auto px-4 flex items-center overflow-x-auto no-scrollbar gap-1 py-1.5 h-14">
-                        {TABS.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
-                                className={`relative flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold tracking-wider whitespace-nowrap transition-all duration-500 rounded-xl group ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-brand/20 to-accent/20 text-brand border border-brand/30'
-                                    : 'text-ink-3 hover:text-ink hover:bg-surface/5'
-                                    }`}
-                            >
-                                <tab.icon size={17} className={`transition-transform duration-300 ${activeTab === tab.id ? 'scale-110' : 'group-hover:scale-110'}`} />
-                                <span className={activeTab === tab.id ? 'syne' : 'plus-jakarta'}>
-                                    {tab.label.toUpperCase()}
-                                </span>
-                                {/* Koçtan gelen yeni çalışma sayacı — sekmeye
-                                    girilince sıfırlanır */}
-                                <TabBadge sayi={rozetler[tab.id] || 0} />
-                                {tab.badge > 0 && (
-                                    <span className={`flex items-center justify-center min-w-[18px] h-[18px] text-[9px] font-black rounded-full px-1.5 ${activeTab === tab.id ? 'bg-brand text-ink' : 'bg-accent text-white'}`}>
-                                        {tab.badge}
-                                    </span>
+                {/* ── Sekme şeridi ────────────────────────────────────
+                    TELEFONDA GİZLİ: orada alt çubuk var, iki gezinme birden
+                    göstermek hem 56 piksel yer yiyor hem de kafa karıştırıyor.
+                    Masaüstünde gruplar ince ayraçla ayrılır; 15 sekme düz bir
+                    sıra yerine anlamlı öbekler hâlinde okunur. */}
+                <div className="hidden lg:block border-t border-line bg-page/50 backdrop-blur-md">
+                    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center overflow-x-auto no-scrollbar gap-1 py-1.5 h-14">
+                        {SEKME_GRUPLARI.map((grup, gi) => (
+                            <React.Fragment key={grup.label}>
+                                {gi > 0 && (
+                                    <span className="shrink-0 w-px h-6 bg-line mx-2" aria-hidden="true" />
                                 )}
-                            </button>
+                                {grup.items.map(tab => {
+                                    const secili = activeTab === tab.id;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
+                                            aria-current={secili ? 'page' : undefined}
+                                            title={`${grup.label} · ${tab.label}`}
+                                            className={cn(
+                                                'relative shrink-0 flex items-center gap-2 px-3.5 min-h-[44px] rounded-dmd tip-tab whitespace-nowrap',
+                                                'transition-colors duration-hizli',
+                                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                                secili
+                                                    ? 'bg-brand-soft text-brand font-bold'
+                                                    : 'text-ink-3 hover:text-ink hover:bg-surface-3'
+                                            )}
+                                        >
+                                            <tab.icon size={16} strokeWidth={secili ? 2.2 : 1.75} />
+                                            <span>{tab.label}</span>
+                                            {/* Koçtan gelen yeni çalışma sayacı — sekmeye
+                                                girilince sıfırlanır */}
+                                            <TabBadge sayi={rozetler[tab.id] || 0} />
+                                            {tab.badge > 0 && <Sayac deger={tab.badge} ton={secili ? 'marka' : 'hata'} />}
+                                        </button>
+                                    );
+                                })}
+                            </React.Fragment>
                         ))}
                     </div>
                 </div>
             </header>
 
             {/* 📡 Çevrimdışı Mod Banner */}
-            <div className="sticky top-[134px] z-20">
+            {/* Sabit değer (134px) sekme şeridi mobilde gizlenince yanlış
+                kalıyordu; şerit yalnızca lg'de var, banner de ona göre iner */}
+            <div className="sticky top-[76px] lg:top-[134px] z-20">
                 <OfflineBanner offlineManager={window.offlineManager} />
             </div>
 
-            {/* ── İÇERİK ───────────────────────────────────────────── */}
-            <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in pb-32">
+            {/* ── İÇERİK ─────────────────────────────────────────────
+                Genişlik ve iç boşluk koç paneliyle AYNI ölçüde: iki panel
+                aynı ürünün parçası gibi dursun. Boşluk kırılma noktasıyla
+                birlikte büyür (16 → 24 → 32 piksel). */}
+            <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8 icerik-gecis pb-24">
+                {/* Sekme çökerse yalnızca içerik alanı düşer; başlık ve
+                    alt gezinme çalışmaya devam eder. key={activeTab}: sekme
+                    değişince sınır sıfırlanır, hatalı sekmede takılı kalmaz. */}
+                <BolumHataSiniri bolumAdi="Bu bölüm" key={activeTab}>
 
                 {/* ═══════════════ ANA SAYFA ═══════════════ */}
+                {/* ═══════════════ BUGÜN ═══════════════
+                    Eski ana sayfa: dört sayaç kartı + ekranın en büyük
+                    öğesi olarak Pomodoro sayacı, ardından oyunlaştırma,
+                    günlük hedef ve bekleyen görev özeti. Yani öğrenciye
+                    "ne kadar çalıştın" gösteriliyor ama "şimdi ne
+                    yapmalısın" söylenmiyordu; program ve görevler ayrı
+                    sekmelerdeydi. BugunEkrani ikisini tek akışta birleştirir. */}
                 {activeTab === 'home' && (
-                    <div className="space-y-8 animate-fade-in">
-                        {/* Hızlı Özet Kartları */}
-                        {/* Canlı sayaçlı, renk kimlikli özet kartları */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
-                            {[
-                                { label: 'Bekleyen Görev', value: pendingTasks.length, sub: `${tasks.length} görevden`, icon: ClipboardList, color: 'var(--highlight)', onClick: () => setActiveTab('tasks') },
-                                { label: 'Deneme Sonucu', value: examData.length, sub: 'Yüklenen deneme', icon: BarChart2, color: 'var(--accent)', onClick: () => setActiveTab('exams') },
-                                { label: 'Bugün Pomodoro', value: dailyPomodoros, sub: 'Odak seansı', icon: Flame, color: 'var(--warn)', onClick: null },
-                                { label: 'Toplam XP', value: userStats.totalXP || 0, sub: 'Kazanılan puan', icon: Star, color: 'var(--highlight)', onClick: () => setActiveTab('stats') },
-                            ].map((card) => (
-                                <VividKpi
-                                    key={card.label}
-                                    label={card.label}
-                                    value={card.value}
-                                    sub={card.sub}
-                                    icon={card.icon}
-                                    color={card.color}
-                                    onClick={card.onClick}
-                                />
-                            ))}
-                        </div>
-
-                        {/* Madde 11: Akıllı Motivasyon Bildirimleri */}
-                        <MotivationNotifications
-                            user={user}
-                            examData={examData}
-                            tasks={tasks}
-                        />
-
-                        {/* Pomodoro & Motivasyon */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Odaklanma Modu */}
-                            <div className="lg:col-span-2 premium-card p-8 relative overflow-hidden group">
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <h2 className="text-xl font-black text-ink syne flex items-center gap-3">
-                                            <div className="p-2 bg-brand/10 rounded-lg">
-                                                <PlayCircle size={24} className="text-brand" />
-                                            </div>
-                                            ODAKLANMA MODU
-                                        </h2>
-                                        <div className="flex items-center gap-2 bg-surface border border-line px-4 py-2 rounded-xl">
-                                            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                                            <span className="text-xs font-bold text-accent">CANLI TAKİP</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 mb-8">
-                                        <div className="bg-surface border border-line rounded-2xl p-6 relative group/stat overflow-hidden">
-                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 relative z-10">BUGÜNKÜ TUR</div>
-                                            <div className="text-3xl font-black text-brand syne relative z-10">{dailyPomodoros} <span className="text-sm font-medium text-ink-2">SEANS</span></div>
-                                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover/stat:opacity-10 transition-opacity pointer-events-none">
-                                                <Clock size={80} />
-                                            </div>
-                                        </div>
-                                        <div className="bg-surface border border-line rounded-2xl p-6 relative group/stat overflow-hidden">
-                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 relative z-10">TOPLAM SÜRE</div>
-                                            <div className="text-3xl font-black text-accent syne relative z-10">{totalStudyTime} <span className="text-sm font-medium text-ink-2">DAKİKA</span></div>
-                                            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover/stat:opacity-10 transition-opacity pointer-events-none">
-                                                <Target size={80} />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <button
-                                            onClick={() => window.dispatchEvent(new CustomEvent('openFocusTimer', { detail: { mode: 0 } }))}
-                                            className="flex-1 premium-button py-4 text-sm flex items-center justify-center gap-3"
-                                        >
-                                            <div className="w-6 h-6 rounded-full bg-surface/20 flex items-center justify-center text-[10px]">25</div>
-                                            KLASİK POMODORO
-                                        </button>
-                                        <button
-                                            onClick={() => window.dispatchEvent(new CustomEvent('openFocusTimer', { detail: { mode: 1 } }))}
-                                            className="flex-1 bg-surface/5 hover:bg-surface/10 border border-line text-ink py-4 rounded-2xl font-black text-sm transition-all duration-300 flex items-center justify-center gap-3"
-                                        >
-                                            <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-[10px]">50</div>
-                                            DERİN ODAKLANMA
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-brand/5 to-transparent blur-3xl pointer-events-none" />
-                            </div>
-
-                            {/* Motivasyon Kartı */}
-                            <div className="premium-card p-8 bg-gradient-to-br from-surface to-page border-brand/20 flex flex-col justify-between relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                                    <Zap size={120} className="text-brand" />
-                                </div>
-                                <div className="relative z-10">
-                                    <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-6">
-                                        <Zap size={20} className="text-brand" />
-                                    </div>
-                                    <h3 className="text-xs font-black text-brand uppercase tracking-[0.2em] mb-4">GÜNLÜK MOTİVASYON</h3>
-                                    <p className="text-2xl font-bold text-ink syne leading-snug italic">
-                                        "Başarı bir yolculuktur, bir varış noktası değil."
-                                    </p>
-                                </div>
-                                <div className="relative z-10 mt-8 p-4 bg-surface/5 rounded-2xl border border-line backdrop-blur-sm">
-                                    <p className="text-xs font-medium text-ink-3 leading-relaxed">
-                                        {dailyPomodoros > 0 
-                                            ? `Harika gidiyorsun! Bugün ${dailyPomodoros} odaklanma seansı tamamladın. Disiplin her şeydir.` 
-                                            : 'Hadi bir seans başlatarak güne ivme kazandır! İlk adım her zaman en zoru ama en önemlisidir.'}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Gamification */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <StreakCard currentStreak={gamStats.currentStreak} maxStreak={gamStats.maxStreak} />
-                            <XPBar totalXP={gamStats.totalXP} />
-                        </div>
-
-                        {/* 🎯 Günlük Hedef Kartı & Sınıf Karşılaştırma */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2">
-                                <DailyGoalCard userId={user?.id} onAction={(tab) => setActiveTab(tab)} />
-                            </div>
-                            <div>
-                                <ClassComparisonWidget userId={user?.id} currentStudent={user} />
-                            </div>
-                        </div>
-
-                        {/* Günlük Özet */}
-                        <DailyOverview userStats={userStats} todayTasks={todayTasks} todayGoals={todayGoals} />
-
-                        {/* Bekleyen görevler özeti - Premium Styling */}
-                        {pendingTasks.length > 0 && (
-                            <div className="premium-card p-8 border-brand/20">
-                                <div className="flex items-center justify-between mb-8">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-danger/10 flex items-center justify-center">
-                                            <AlertCircle size={24} className="text-danger" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-black text-ink syne">BEKLEYEN GÖREVLER</h2>
-                                            <p className="text-xs font-bold text-danger/60 uppercase tracking-widest">{pendingTasks.length} ADET KRİTİK GÖREV</p>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={() => setActiveTab('tasks')} 
-                                        className="text-brand text-xs font-black hover:text-[#f1d279] transition-colors flex items-center gap-2 group"
-                                    >
-                                        TÜMÜNE GİT <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    {pendingTasks.slice(0, 3).map(task => (
-                                        <div key={task.id} className="bg-surface border border-line rounded-2xl p-5 hover:border-brand/30 transition-all duration-300 group/task">
-                                            <div className="flex items-start gap-4 mb-4">
-                                                <div className="p-2 bg-surface/5 rounded-lg group-hover/task:bg-brand/10 transition-colors">
-                                                    <CategoryIcon category={task.category} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-ink text-sm truncate uppercase tracking-tight">{task.title}</p>
-                                                    <p className="text-[10px] font-bold text-ink-2 mt-1 uppercase">SON: {task.dueDate ? new Date(task.dueDate).toLocaleDateString('tr-TR') : 'YOK'}</p>
-                                                </div>
-                                            </div>
-                                            <button 
-                                                onClick={() => handleCompleteTask(task.id)}
-                                                className="w-full py-2 bg-surface/5 hover:bg-accent/20 text-ink-3 hover:text-accent rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 border border-line hover:border-accent/30"
-                                            >
-                                                TAMAMLA
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <BugunEkrani
+                        kullanici={user}
+                        schedule={schedule}
+                        activeMonth={activeMonth}
+                        activeWeek={activeWeek}
+                        tasks={tasks}
+                        onGorevTamamla={handleCompleteTask}
+                        messages={messages}
+                        examData={examData}
+                        dailyPomodoros={dailyPomodoros}
+                        seri={userStats.currentStreak || 0}
+                        onGit={(id) => { setActiveTab(id); okundu(id); }}
+                    />
                 )}
 
                 {/* ═══════════════ GÖREVLERİM ═══════════════ */}
                 {activeTab === 'tasks' && (
-                    <div className="space-y-8 animate-fade-in">
+                    <div className="space-y-8 icerik-gecis">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <h1 className="text-3xl font-black text-ink syne tracking-tight">GÖREVLERİM</h1>
@@ -1211,7 +1177,7 @@ const StudentDashboard = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {pendingTasks.map(task => (
-                                                <div key={task.id} className="premium-card p-6 flex flex-col justify-between group hover:border-brand/30 transition-all duration-500">
+                                                <div key={task.id} className="premium-card p-6 flex flex-col justify-between group hover:border-brand/30 transition-all duration-yavas">
                                                     <div>
                                                         <div className="flex items-start justify-between gap-4 mb-4">
                                                             <div className="p-3 bg-surface/5 rounded-2xl group-hover:bg-brand/10 transition-colors">
@@ -1237,7 +1203,7 @@ const StudentDashboard = () => {
                                                         </div>
                                                         <button
                                                             onClick={() => handleCompleteTask(task.id)}
-                                                            className="h-10 px-5 bg-surface/5 hover:bg-accent/20 text-ink-3 hover:text-accent border border-line hover:border-accent/30 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-2"
+                                                            className="h-10 px-5 bg-surface/5 hover:bg-accent/20 text-ink-3 hover:text-accent border border-line hover:border-accent/30 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-yavas flex items-center gap-2"
                                                         >
                                                             TAMAMLA
                                                         </button>
@@ -1258,7 +1224,7 @@ const StudentDashboard = () => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {completedTasks.map(task => (
-                                                <div key={task.id} className="premium-card p-5 opacity-40 hover:opacity-100 transition-all duration-500 border-line bg-surface/5">
+                                                <div key={task.id} className="premium-card p-5 opacity-40 hover:opacity-100 transition-all duration-yavas border-line bg-surface/5">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
                                                             <Check size={20} className="text-accent" />
@@ -1291,7 +1257,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ TESTLERİM + REHBERLİK ═══════════════ */}
                 {activeTab === 'tests' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">TESTLER & REHBERLİK</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİM ANALİZİ VE ENVANTERLER</p>
@@ -1331,7 +1297,7 @@ const StudentDashboard = () => {
                     const unreadCount = bulkMessages.filter(m => !m.read).length;
 
                     return (
-                        <div className="animate-fade-in space-y-10 pb-10">
+                        <div className="icerik-gecis space-y-10 pb-10">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div>
                                     <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">MESAJLARIM</h1>
@@ -1340,7 +1306,7 @@ const StudentDashboard = () => {
                                 {unreadCount > 0 && (
                                     <button
                                         onClick={markAllRead}
-                                        className="h-12 px-6 bg-gradient-to-r from-brand/20 to-brand/10 hover:from-brand/30 hover:to-brand/20 border border-brand/30 text-brand rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 flex items-center gap-3"
+                                        className="h-12 px-6 bg-gradient-to-r from-brand/20 to-brand/10 hover:from-brand/30 hover:to-brand/20 border border-brand/30 text-brand rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-yavas flex items-center gap-3"
                                     >
                                         <CheckCircle size={16} /> TÜMÜNÜ OKUNDU İŞARETLE ({unreadCount})
                                     </button>
@@ -1372,7 +1338,7 @@ const StudentDashboard = () => {
                                             }[msg.type] || '📨';
 
                                             return (
-                                                <div key={msg.id || i} className={`premium-card p-5 border-l-4 transition-all duration-300 group ${cfg.border} ${cfg.bg} ${!msg.read ? 'ring-2 ring-white/5' : ''}`}>
+                                                <div key={msg.id || i} className={`premium-card p-5 border-l-4 transition-all duration-yavas group ${cfg.border} ${cfg.bg} ${!msg.read ? 'ring-2 ring-white/5' : ''}`}>
                                                     <div className="flex items-start gap-4">
                                                         <div className="text-3xl flex-shrink-0 group-hover:scale-110 transition-transform">{typeEmoji}</div>
                                                         <div className="flex-1 min-w-0">
@@ -1435,7 +1401,7 @@ const StudentDashboard = () => {
                                                     </p>
                                                 </div>
                                             ) : messages.map((msg, idx) => (
-                                                <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                                                <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'} icerik-gecis`}>
                                                     <div className={`max-w-[80%] space-y-1 ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
                                                         {msg.sender !== 'student' && (
                                                             <p className="text-[9px] font-black text-brand uppercase tracking-widest ml-1 mb-1">{msg.senderName || 'KOÇ'}</p>
@@ -1487,7 +1453,7 @@ const StudentDashboard = () => {
                     Sınav konu listesi; durumlar ders programı ve günlük
                     soru kaydından otomatik hesaplanır. */}
                 {activeTab === 'topics' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KONU TAKİBİ</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
@@ -1500,7 +1466,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ MATRIX (Trend Analizi) ═══════════════ */}
                 {activeTab === 'matrix' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">SINAV ANALİZ MATRİXİ</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">VERİ TABANLI BAŞARI VE TREND ANALİZİ</p>
@@ -1513,7 +1479,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ AKILLI PLAN (AI Program) ═══════════════ */}
                 {activeTab === 'smart-plan' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI DERS PLANI</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SİZE ÖZEL ÇALIŞMA ÇİZELGESİ</p>
@@ -1531,7 +1497,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ POMODORO (Ders Bazlı) ═══════════════ */}
                 {activeTab === 'pomodoro' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ODAKLANMA MERKEZİ</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">DERS BAZLI POMODORO VE ZAMAN YÖNETİMİ</p>
@@ -1544,7 +1510,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ DEĞERLENDİRME (Öz-değerlendirme) ═══════════════ */}
                 {activeTab === 'assessment' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ÖZ-DEĞERLENDİRME</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HAFTALIK GELİŞİM VE DURUM ANALİZİ</p>
@@ -1557,7 +1523,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ RANDEVU (Randevu Sistemi) ═══════════════ */}
                 {activeTab === 'appointments' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KOÇ RANDEVUSU</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİREBİR REHBERLİK VE PLANLAMA SEANSI</p>
@@ -1577,7 +1543,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ PORTFOLYO ═══════════════ */}
                 {activeTab === 'portfolio' && (
-                    <div className="animate-fade-in space-y-8">
+                    <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">BAŞARI PORTFOLYOSU</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELECEĞİN İÇİN BİRİKTİRDİĞİİ TÜM BAŞARILAR</p>
@@ -1595,7 +1561,7 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ PROGRAMIM ═══════════════ */}
                 {activeTab === 'program' && (
-                    <div className="animate-fade-in space-y-10 pb-10">
+                    <div className="icerik-gecis space-y-10 pb-10">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">DERS PROGRAMIM</h1>
@@ -1660,7 +1626,7 @@ const StudentDashboard = () => {
             </dialog>
             {/* ── Mesaj Modalı (Premium) ── */}
             {isMessageModalOpen && (
-                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 icerik-gecis">
                     <div className="premium-card w-full max-w-md h-[650px] flex flex-col overflow-hidden border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                         <div className="p-6 bg-surface border-b border-line flex justify-between items-center">
                             <div className="flex items-center gap-4">
@@ -1722,7 +1688,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ ROZETLERİM ═══════════════ */}
             {activeTab === 'badges' && (
-                <div className="animate-fade-in space-y-10">
+                <div className="icerik-gecis space-y-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ROZETLER VE BAŞARILAR</h1>
@@ -1761,7 +1727,7 @@ const StudentDashboard = () => {
                                             </div>
                                             <div className="bg-surface/5 rounded-full h-2 overflow-hidden border border-line p-[1px]">
                                                 <div
-                                                    className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                                                    className="h-full rounded-full transition-all duration-yavas shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                                                     style={{ 
                                                         width: `${Math.min((s.v / s.max) * 100, 100)}%`,
                                                         backgroundColor: s.color 
@@ -1803,7 +1769,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ ANALİTİK ═══════════════ */}
             {activeTab === 'analytics' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-10">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ANALİTİK MERKEZİ</h1>
@@ -1854,7 +1820,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ İSTATİSTİKLER ═══════════════ */}
             {activeTab === 'stats' && (
-                <div className="animate-fade-in space-y-10">
+                <div className="icerik-gecis space-y-10">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">İSTATİSTİKLER</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİREYSEL BAŞARI VE HEDEF TAKİBİ</p>
@@ -1967,7 +1933,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ TAKVİM ═══════════════ */}
             {activeTab === 'calendar' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-8">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-8">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ETKİNLİK TAKVİMİ</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SINAVLAR VE ÖNEMLİ TARİHLER</p>
@@ -1980,7 +1946,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ AI KONU ÖNERİLERİ ═══════════════ */}
             {activeTab === 'suggestions' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-10">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-10">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI ÖNERİLER</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">YAPAY ZEKA DESTEKLİ ÇALIŞMA RASYONELİ</p>
@@ -2001,7 +1967,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ GÜNLÜK ÇALIŞMA KAYDI ═══════════════ */}
             {activeTab === 'daily-log' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-6">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-6">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">GÜNLÜK KAYIT</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
@@ -2014,7 +1980,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ E-HATA DEFTERİ ═══════════════ */}
             {activeTab === 'error-notebook' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-6">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-6">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">HATA DEFTERİ</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
@@ -2027,7 +1993,7 @@ const StudentDashboard = () => {
 
             {/* ═══════════════ NOT DEFTERİ ═══════════════ */}
             {activeTab === 'notebook' && (
-                <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in space-y-8">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-8">
                     <div>
                         <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KİŞİSEL NOTLAR</h1>
                         <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ÇALIŞMA NOTLARI VE HATIRLATICILAR</p>
@@ -2041,7 +2007,7 @@ const StudentDashboard = () => {
 
             {/* ── Ayarlar Modalı (Premium) ── */}
             {isSettingsOpen && (
-                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 icerik-gecis">
                     <div className="premium-card w-full max-w-md p-8 border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                         <div className="flex justify-between items-center mb-8">
                             <div className="flex items-center gap-4">
@@ -2091,6 +2057,7 @@ const StudentDashboard = () => {
                     </div>
                 </div>
             )}
+                </BolumHataSiniri>
             </main>
 
             {/* 📱 Madde 12: Veli QR Modal */}
@@ -2102,10 +2069,13 @@ const StudentDashboard = () => {
             )}
 
             {/* 📱 Mobil Alt Navigasyon */}
+            {/* Alt çubuk ve "Daha Fazla" sayfası, yukarıdaki SEKME_GRUPLARI'nı
+                okur — liste ikinci kez yazılmadığı için uyuşmazlık olamaz */}
             <StudentBottomNav
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                messageBadge={messages.filter(m => !m.read && m.receiverId === user?.id).length}
+                ogeler={MOBIL_BIRINCIL}
+                gruplar={SEKME_GRUPLARI}
+                aktif={activeTab}
+                onDegis={(id) => { setActiveTab(id); okundu(id); }}
             />
 
             {/* 📲 PWA Yükleme Önerisi */}

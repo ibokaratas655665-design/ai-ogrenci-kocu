@@ -239,7 +239,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                                 ))}
                             </div>
                         </div>
-                        <div className="flex gap-2 pt-2">
+                        <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-2">
                             <button onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-surface-3 text-ink-2 rounded-xl font-bold text-sm hover:bg-surface-3 transition">İptal</button>
                             <button onClick={addSlot} className="flex-1 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-hover transition">Ekle</button>
                         </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Plus, X, Edit2, Trash2, UserPlus } from 'lucide-react';
+import { onayla } from '../services/uiGeriBildirim';
 
 const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
     const [groups, setGroups] = useState(() => {
@@ -64,8 +65,8 @@ const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
         setShowModal(true);
     };
 
-    const handleDelete = (groupId) => {
-        if (window.confirm('Bu grubu silmek istediğinize emin misiniz?')) {
+    const handleDelete = async (groupId) => {
+        if (await onayla({ mesaj: 'Bu grubu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             setGroups(groups.filter(g => g.id !== groupId));
             setToast('Grup silindi!');
         }
@@ -220,7 +221,7 @@ const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
                                 <button
                                     onClick={resetForm}
                                     className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"

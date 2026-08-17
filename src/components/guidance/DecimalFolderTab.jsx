@@ -477,7 +477,7 @@ const KayitFormu = ({ klasor, yil, hazirBaslik = '', onKapat, onKaydet }) => {
                     <input type="date" value={f.tarih} onChange={set('tarih')} className="fld" />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-1">
+                <div className="pencere-alt-cubuk bg-surface flex justify-end gap-2 pt-1">
                     <button onClick={onKapat} className="b b-line">İptal</button>
                     <button
                         onClick={() => f.baslik.trim() && onKaydet(f)}

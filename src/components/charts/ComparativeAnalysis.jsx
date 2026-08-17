@@ -111,14 +111,14 @@ const ComparativeAnalysis = ({ studentResults }) => {
                                     stroke="#4F46E5"
                                     fill="#4F46E5"
                                     fillOpacity={0.5}
-                                />
+                                 animationDuration={300} />
                                 <Radar
                                     name="Sınıf Ort."
                                     dataKey="B"
                                     stroke="var(--ok)"
                                     fill="var(--ok)"
                                     fillOpacity={0.3}
-                                />
+                                 animationDuration={300} />
                                 <Legend />
                                 <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}} />
                             </RadarChart>
@@ -140,7 +140,7 @@ const ComparativeAnalysis = ({ studentResults }) => {
                 <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={progressData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
                             <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                             <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                             <Tooltip
@@ -155,16 +155,16 @@ const ComparativeAnalysis = ({ studentResults }) => {
                                 strokeWidth={3}
                                 activeDot={{ r: 8 }}
                                 dot={{ r: 4, strokeWidth: 2 }}
-                            />
+                             animationDuration={300} />
                             <Line
                                 type="monotone"
                                 dataKey="classAverage"
                                 name="Sınıf Ort."
-                                stroke="#d1d5db"
+                                stroke="var(--line)"
                                 strokeWidth={2}
                                 strokeDasharray="5 5"
                                 dot={false}
-                            />
+                             animationDuration={300} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

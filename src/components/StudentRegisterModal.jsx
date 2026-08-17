@@ -115,7 +115,7 @@ export default function StudentRegisterModal({ isOpen, onClose }) {
                             <p>Kaydınız koç tarafından onaylandıktan sonra giriş yapabileceksiniz.</p>
                         </div>
 
-                        <div className="flex gap-3 pt-2">
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
                             <button
                                 type="button"
                                 onClick={onClose}

@@ -24,7 +24,7 @@ const ThemeToggle = ({ className = '' }) => {
             }}
         >
             <span
-                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300"
+                className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-yavas"
                 style={{
                     left: isDark ? 'calc(100% - 1.75rem)' : '0.25rem',
                     backgroundColor: isDark ? 'var(--surface)' : 'var(--brand)',

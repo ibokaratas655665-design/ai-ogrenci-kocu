@@ -161,7 +161,7 @@ const SubjectAnalysis = ({ results, selectedExamId, onAddToProgram }) => {
                 {/* Visual Chart */}
                 <div className="lg:col-span-2 bg-surface p-6 rounded-2xl border border-line shadow-sm">
                     <h3 className="font-bold text-ink mb-6 flex items-center">
-                        <BarChart2 className="mr-2 text-brand" />
+                        <BarChart2 className="mr-2 text-brand"  animationDuration={300} />
                         {activeSubject} Konu Başarı Analizi
                     </h3>
                     <div className="h-80 w-full">
@@ -175,7 +175,6 @@ const SubjectAnalysis = ({ results, selectedExamId, onAddToProgram }) => {
                                 <XAxis type="number" domain={[0, 100]} hide />
                                 <YAxis dataKey="topic" type="category" width={120} tick={{ fontSize: 11 }} />
                                 <Tooltip cursor={{ fill: 'transparent' }} />
-                                <Legend />
                                 <Bar dataKey="successRate" name="Başarı %" fill="#8884d8" radius={[0, 4, 4, 0]} barSize={20}>
                                     {
                                         topicData.slice(0, 10).map((entry, index) => (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Settings, Save, Users, CheckSquare, BookOpen, Calendar, FileText, Brain, ClipboardList } from 'lucide-react';
+import { bildir } from '../services/uiGeriBildirim';
 
 export default function AppSettingsPanel() {
     const [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ export default function AppSettingsPanel() {
 
     const saveSettings = async () => {
         await api.admin.saveAppSettings(settings);
-        alert('Ayarlar kaydedildi!');
+        bildir('Ayarlar kaydedildi!', 'basari');
     };
 
     if (loading) {

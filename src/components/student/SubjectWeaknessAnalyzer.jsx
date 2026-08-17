@@ -172,7 +172,7 @@ const SubjectCard = ({ subject, rank }) => {
                 </div>
                 <div className="h-2 bg-surface/60 rounded-full overflow-hidden">
                     <div
-                        className="h-full rounded-full transition-all duration-700"
+                        className="h-full rounded-full transition-all duration-yavas"
                         style={{ width: `${subject.pct}%`, background: subject.color }}
                     />
                 </div>
@@ -205,7 +205,7 @@ const SubjectWeaknessAnalyzer = ({ examData = [], studentName = '' }) => {
     if (examData.length === 0) {
         return (
             <div className="bg-surface rounded-2xl border border-line shadow-sm p-10 text-center">
-                <BarChart2 size={40} className="mx-auto mb-3 text-ink-3" />
+                <BarChart2 size={40} className="mx-auto mb-3 text-ink-3"  animationDuration={300} />
                 <h3 className="text-base font-bold text-ink-2 mb-1">Henüz Analiz Yok</h3>
                 <p className="text-sm text-ink-3">Deneme sonuçların yüklendikçe zayıf noktalar otomatik hesaplanır.</p>
             </div>
@@ -266,11 +266,11 @@ const SubjectWeaknessAnalyzer = ({ examData = [], studentName = '' }) => {
                     <h4 className="text-sm font-black text-ink-2 mb-4 text-center">Performans Radar Grafiği</h4>
                     <ResponsiveContainer width="100%" height={280}>
                         <RadarChart data={radarData}>
-                            <PolarGrid stroke="#e5e7eb" />
+                            <PolarGrid stroke="var(--line)" />
                             <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fontWeight: 700, fill: '#6b7280' }} />
                             <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9 }} />
-                            <Radar dataKey="Mevcut" stroke="var(--c1)" fill="var(--c1)" fillOpacity={0.3} strokeWidth={2} />
-                            <Radar dataKey="Hedeflenen" stroke="var(--ok)" fill="var(--ok)" fillOpacity={0.1} strokeWidth={1} strokeDasharray="4 4" />
+                            <Radar dataKey="Mevcut" stroke="var(--c1)" fill="var(--c1)" fillOpacity={0.3} strokeWidth={2}  animationDuration={300} />
+                            <Radar dataKey="Hedeflenen" stroke="var(--ok)" fill="var(--ok)" fillOpacity={0.1} strokeWidth={1} strokeDasharray="4 4"  animationDuration={300} />
                             <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 11, borderRadius: 10 }} />
                         </RadarChart>
                     </ResponsiveContainer>

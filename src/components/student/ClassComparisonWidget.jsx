@@ -81,7 +81,7 @@ const ClassComparisonWidget = ({ userId, currentStudent }) => {
                     </div>
                     <div className="h-3 bg-surface-3 rounded-full overflow-hidden">
                         <div
-                            className="on-color h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700"
+                            className="on-color h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-yavas"
                             style={{ width: `${Math.min((studentNet / 120) * 100, 100)}%` }}
                         />
                     </div>
@@ -95,7 +95,7 @@ const ClassComparisonWidget = ({ userId, currentStudent }) => {
                     </div>
                     <div className="h-3 bg-surface-3 rounded-full overflow-hidden">
                         <div
-                            className="on-color h-full bg-gradient-to-r from-gray-300 to-gray-400 rounded-full transition-all duration-700"
+                            className="on-color h-full bg-gradient-to-r from-gray-300 to-gray-400 rounded-full transition-all duration-yavas"
                             style={{ width: `${Math.min((classAvg / 120) * 100, 100)}%` }}
                         />
                     </div>

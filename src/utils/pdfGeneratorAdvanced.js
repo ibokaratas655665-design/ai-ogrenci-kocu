@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { savePDF } from './pdfSave';
+import { bildir } from '../services/uiGeriBildirim';
+import { hataAnlat } from '../services/hataMesaji';
 
 // Türkçe karakter desteği
 const turkishToEnglish = (text) => {
@@ -158,7 +160,7 @@ export const generateStudentProgressReport = (studentId, trials, allExams, stude
         console.log('Öğrenci gelişim raporu oluşturuluyor...', { studentId, trialsCount: trials?.length });
 
         if (!trials || trials.length < 2) {
-            alert('Gelişim raporu için en az 2 deneme gereklidir.');
+            bildir('Gelişim raporu için en az 2 deneme gereklidir.', 'uyari');
             return;
         }
 
@@ -168,7 +170,7 @@ export const generateStudentProgressReport = (studentId, trials, allExams, stude
         );
 
         if (studentExams.length < 2) {
-            alert('Bu öğrenci için yeterli deneme verisi bulunamadı.');
+            bildir('Bu öğrenci için yeterli deneme verisi bulunamadı.', 'hata');
             return;
         }
 
@@ -338,7 +340,7 @@ export const generateStudentProgressReport = (studentId, trials, allExams, stude
         console.log('Öğrenci gelişim raporu oluşturuldu:', fileName);
     } catch (error) {
         console.error('PDF oluşturma hatası:', error);
-        alert(`PDF oluşturulurken hata: ${error.message}`);
+        bildir(hataAnlat(error, 'pdf'), 'hata');
     }
 };
 
@@ -350,7 +352,7 @@ export const generateClassProgressReport = (trials, allExams) => {
         console.log('Sınıf gelişim raporu oluşturuluyor...', { trialsCount: trials?.length });
 
         if (!trials || trials.length < 2) {
-            alert('Sınıf gelişim raporu için en az 2 deneme gereklidir.');
+            bildir('Sınıf gelişim raporu için en az 2 deneme gereklidir.', 'uyari');
             return;
         }
 
@@ -536,7 +538,7 @@ export const generateClassProgressReport = (trials, allExams) => {
         console.log('Sınıf gelişim raporu oluşturuldu:', fileName);
     } catch (error) {
         console.error('PDF oluşturma hatası:', error);
-        alert(`PDF oluşturulurken hata: ${error.message}`);
+        bildir(hataAnlat(error, 'pdf'), 'hata');
     }
 };
 
@@ -548,7 +550,7 @@ export const generateSchoolReport = (trials, allExams, students) => {
         console.log('Okul geneli rapor oluşturuluyor...', { trialsCount: trials?.length });
 
         if (!trials || trials.length === 0) {
-            alert('Okul raporu için deneme verisi bulunamadı.');
+            bildir('Okul raporu için deneme verisi bulunamadı.', 'hata');
             return;
         }
 
@@ -813,6 +815,6 @@ export const generateSchoolReport = (trials, allExams, students) => {
         console.log('Okul geneli rapor oluşturuldu:', fileName);
     } catch (error) {
         console.error('PDF oluşturma hatası:', error);
-        alert(`PDF oluşturulurken hata: ${error.message}`);
+        bildir(hataAnlat(error, 'pdf'), 'hata');
     }
 };

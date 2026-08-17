@@ -1,178 +1,232 @@
 /**
- * 📱 MOBİL BOTTOM NAVİGASYON
- * Küçük ekranlarda tab bar yerine alt navigasyon çubuğu gösterir
+ * 📱 MOBİL GEZİNME
+ *
+ * ⚠️ ESKİ HÂLİ ÇALIŞMIYORDU. Sekme listeleri bu dosyaya ELLE yazılmıştı
+ * ve panellerin gerçek sekme kimlikleriyle uyuşmuyordu:
+ *
+ *   · Koç çubuğu `overview` ve `students` gönderiyordu — koç panelinde
+ *     böyle sekmeler YOK (gerçekleri: analysis, exams, programs…).
+ *   · Koçun "Daha Fazla" düğmesi bir durum değiştiriyor ama açılacak
+ *     panel HİÇ ÇİZİLMİYORDU; düğmeye basmak görünürde hiçbir şey yapmıyordu.
+ *   · Öğrenci "Daha Fazla" listesindeki `badges`, `analytics`, `stats`
+ *     kimlikleri de panelde mevcut değildi.
+ *
+ * Artık liste dışarıdan, panelin KENDİ sekme tanımından gelir; tek
+ * doğruluk kaynağı vardır ve kimlikler uyuşmazlığa düşemez.
+ *
+ * Mobil, masaüstü kenar çubuğunun küçültülmüşü değildir: altta en çok
+ * 5 hedef durur, kalanı tam ekran bir sayfada gruplanır.
  */
 import React, { useState, useEffect } from 'react';
-import {
-    Home, ClipboardList, BarChart2, BookOpen, MessageSquare,
-    Award, Calendar, TrendingUp, Star, MoreHorizontal, X
-} from 'lucide-react';
+import { MoreHorizontal, X } from 'lucide-react';
+import { cn } from '../../lib/cn';
+import { Sayac } from '../ui/Badge';
 
-// Öğrenci Tabları
-const STUDENT_TABS = [
-    { id: 'home', icon: Home, label: 'Ana Sayfa' },
-    { id: 'tasks', icon: ClipboardList, label: 'Görevler' },
-    { id: 'exams', icon: BarChart2, label: 'Denemeler' },
-    { id: 'messages', icon: MessageSquare, label: 'Mesajlar' },
-    { id: 'more', icon: MoreHorizontal, label: 'Daha Fazla' },
-];
+/** Alt çubuk en çok 5 hedef taşır — 4 birincil + "Daha Fazla". */
+const BIRINCIL_SAYISI = 4;
 
-// "Daha Fazla" menüsündeki extra tablar
-const STUDENT_MORE = [
-    { id: 'program', icon: Calendar, label: 'Programım' },
-    { id: 'tests', icon: BookOpen, label: 'Testlerim' },
-    { id: 'badges', icon: Award, label: 'Rozetlerim' },
-    { id: 'analytics', icon: TrendingUp, label: 'Analitik' },
-    { id: 'stats', icon: Star, label: 'İstatistikler' },
-];
+function CubukDugmesi({ oge, aktif, onSec, etiketGoster = true }) {
+    const Simge = oge.icon;
+    return (
+        <button
+            type="button"
+            onClick={() => onSec(oge.id)}
+            aria-current={aktif ? 'page' : undefined}
+            className={cn(
+                'relative flex flex-col items-center justify-center gap-1 flex-1 min-w-0',
+                'min-h-[52px] px-1 rounded-dmd transition-colors duration-hizli',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset',
+                aktif ? 'text-brand' : 'text-ink-3 active:bg-surface-3'
+            )}
+        >
+            {/* Aktif sekmenin üstünde ince çizgi — renkten bağımsız,
+                renk körlüğünde de "buradayım" okunur kalsın diye */}
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'absolute -top-px left-1/2 -translate-x-1/2 h-0.5 rounded-pill transition-all duration-normal',
+                    aktif ? 'w-8 bg-brand' : 'w-0 bg-transparent'
+                )}
+            />
+            <span className="relative">
+                <Simge size={21} strokeWidth={aktif ? 2.2 : 1.75} aria-hidden="true" />
+                {oge.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2">
+                        <Sayac deger={oge.badge} enFazla={9} />
+                    </span>
+                )}
+            </span>
+            {etiketGoster && (
+                /* 320 piksellik ekranda çubuk beşe bölününce her hedefe 64
+                   piksel düşüyor; harf aralığı sıfırlanıp kırpma açık
+                   bırakıldı ki uzun etiket komşusunu itmesin. */
+                <span className={cn(
+                    'tip-mini tracking-normal normal-case truncate max-w-full leading-none',
+                    aktif && 'font-bold'
+                )}>
+                    {oge.kisaLabel || oge.label}
+                </span>
+            )}
+        </button>
+    );
+}
 
-// Koç tabları
-const COACH_TABS = [
-    { id: 'overview', icon: Home, label: 'Genel' },
-    { id: 'students', icon: ClipboardList, label: 'Öğrenciler' },
-    { id: 'exams', icon: BarChart2, label: 'Sınavlar' },
-    { id: 'messages', icon: MessageSquare, label: 'Mesajlar' },
-    { id: 'more', icon: MoreHorizontal, label: 'Daha Fazla' },
-];
+/**
+ * Alt gezinme çubuğu.
+ *
+ * @param {Array}  ogeler   { id, label, icon, badge } — panelin gerçek sekmeleri
+ * @param {Array}  gruplar  [{ label, items:[…] }] — "Daha Fazla" sayfasının içeriği
+ * @param {string} aktif    seçili sekme kimliği
+ */
+export default function MobilGezinme({ ogeler = [], gruplar = [], aktif, onDegis }) {
+    const [dahaFazla, setDahaFazla] = useState(false);
 
-// ─── Öğrenci Bottom Nav ───────────────────────────────────────────────
-export const StudentBottomNav = ({ activeTab, onTabChange, messageBadge = 0 }) => {
-    const [showMore, setShowMore] = useState(false);
+    const birincil = ogeler.slice(0, BIRINCIL_SAYISI);
+    // Birincil listede olmayan her şey "Daha Fazla" sayfasına düşer
+    const birincilKimlikler = new Set(birincil.map((o) => o.id));
+    const kalanGruplar = gruplar
+        .map((g) => ({ ...g, items: g.items.filter((i) => !birincilKimlikler.has(i.id)) }))
+        .filter((g) => g.items.length);
 
-    const handleTab = (tabId) => {
-        if (tabId === 'more') {
-            setShowMore(!showMore);
-            return;
-        }
-        setShowMore(false);
-        onTabChange(tabId);
-    };
+    // Aktif sekme "Daha Fazla" içindeyse düğme de aktif görünsün
+    const aktifIcerde = !birincilKimlikler.has(aktif);
+
+    // Sayfa açıkken arkadaki içerik kaymasın; Escape kapatsın
+    useEffect(() => {
+        if (!dahaFazla) return;
+        const onceki = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const tusa = (e) => e.key === 'Escape' && setDahaFazla(false);
+        document.addEventListener('keydown', tusa);
+        return () => {
+            document.body.style.overflow = onceki;
+            document.removeEventListener('keydown', tusa);
+        };
+    }, [dahaFazla]);
+
+    const sec = (id) => { setDahaFazla(false); onDegis?.(id); };
 
     return (
         <>
-            {/* More Sheet */}
-            {showMore && (
-                <>
-                    <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setShowMore(false)} />
-                    <div className="fixed bottom-20 left-4 right-4 bg-surface rounded-2xl shadow-2xl z-50 p-4 md:hidden">
-                        <div className="grid grid-cols-3 gap-3">
-                            {STUDENT_MORE.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => { onTabChange(tab.id); setShowMore(false); }}
-                                    className={`flex flex-col items-center p-3 rounded-xl transition
-                                        ${activeTab === tab.id ? 'bg-brand text-ink' : 'bg-surface-2 text-ink-2 hover:bg-brand-soft hover:text-brand'}`}
-                                >
-                                    <tab.icon size={22} />
-                                    <span className="text-[10px] font-bold mt-1.5 leading-tight text-center">{tab.label}</span>
-                                </button>
-                            ))}
-                        </div>
+            {/* ── "Daha Fazla" — açılır kutu değil, TAM SAYFA ──────────
+                Küçük bir açılır kutuda 11 hedef okunmuyordu; dokunma
+                hedefleri de birbirine giriyordu. */}
+            {dahaFazla && (
+                <div
+                    className="pencere-tam-ekran fixed inset-0 z-modal-base bg-page lg:hidden flex flex-col"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Tüm bölümler"
+                >
+                    <div className="shrink-0 flex items-center justify-between px-4 h-14 border-b border-line">
+                        <h2 className="tip-h4">Tüm Bölümler</h2>
                         <button
-                            onClick={() => setShowMore(false)}
-                            className="mt-3 w-full flex items-center justify-center gap-1.5 text-ink-3 text-xs font-semibold py-2 hover:text-ink-2 transition"
+                            type="button"
+                            onClick={() => setDahaFazla(false)}
+                            aria-label="Kapat"
+                            className="p-2 -mr-2 rounded-dmd text-ink-3 hover:text-ink hover:bg-surface-3 transition-colors duration-hizli"
                         >
-                            <X size={14} /> Kapat
+                            <X size={22} />
                         </button>
                     </div>
-                </>
+
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-24 space-y-6">
+                        {kalanGruplar.map((grup) => (
+                            <section key={grup.label}>
+                                <h3 className="tip-label text-ink-3 mb-2">{grup.label}</h3>
+                                <div className="grid grid-cols-1 gap-1">
+                                    {grup.items.map((oge) => {
+                                        const Simge = oge.icon;
+                                        const secili = oge.id === aktif;
+                                        return (
+                                            <button
+                                                key={oge.id}
+                                                type="button"
+                                                onClick={() => sec(oge.id)}
+                                                aria-current={secili ? 'page' : undefined}
+                                                className={cn(
+                                                    'w-full min-h-[52px] px-3 rounded-dmd flex items-center gap-3 text-left',
+                                                    'transition-colors duration-hizli',
+                                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                                    secili
+                                                        ? 'bg-brand-soft text-brand font-bold'
+                                                        : 'text-ink-2 hover:bg-surface-3 active:bg-surface-3'
+                                                )}
+                                            >
+                                                {Simge && <Simge size={19} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />}
+                                                <span className="tip-small flex-1 min-w-0 truncate">{oge.label}</span>
+                                                {oge.badge > 0 && <Sayac deger={oge.badge} />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </div>
             )}
 
-            {/* Bottom Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line z-40 md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-                {/* Safe area for iOS */}
-                <div className="flex items-center justify-around px-2 pt-2 pb-safe">
-                    {STUDENT_TABS.map(tab => {
-                        const isActive = tab.id === 'more' ? showMore : activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => handleTab(tab.id)}
-                                className="flex flex-col items-center gap-0.5 flex-1 py-1.5 relative group"
-                            >
-                                {/* Badge */}
-                                {tab.id === 'messages' && messageBadge > 0 && (
-                                    <span className="absolute top-1 right-3 min-w-[16px] h-4 bg-danger text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 leading-none">
-                                        {messageBadge > 9 ? '9+' : messageBadge}
-                                    </span>
+            {/* ── Alt çubuk ───────────────────────────────────────────── */}
+            <nav
+                aria-label="Ana gezinme"
+                className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-surface border-t border-line shadow-yuzen"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            >
+                <div className="flex items-stretch gap-0.5 px-1 pt-1 pb-1">
+                    {birincil.map((oge) => (
+                        <CubukDugmesi key={oge.id} oge={oge} aktif={oge.id === aktif} onSec={sec} />
+                    ))}
+                    {kalanGruplar.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setDahaFazla((a) => !a)}
+                            aria-expanded={dahaFazla}
+                            className={cn(
+                                'relative flex flex-col items-center justify-center gap-1 flex-1 min-w-0',
+                                'min-h-[52px] px-1 rounded-dmd transition-colors duration-hizli',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset',
+                                dahaFazla || aktifIcerde ? 'text-brand' : 'text-ink-3 active:bg-surface-3'
+                            )}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={cn(
+                                    'absolute -top-px left-1/2 -translate-x-1/2 h-0.5 rounded-pill transition-all duration-normal',
+                                    aktifIcerde ? 'w-8 bg-brand' : 'w-0'
                                 )}
-
-                                {/* Icon container */}
-                                <div className={`relative w-10 h-7 flex items-center justify-center rounded-xl transition-all duration-200
-                                    ${isActive ? 'bg-brand scale-110 shadow-md shadow-indigo-200' : 'group-hover:bg-surface-3'}`}>
-                                    <tab.icon
-                                        size={isActive ? 18 : 20}
-                                        className={`transition-all duration-200 ${isActive ? 'text-ink' : 'text-ink-2'}`}
-                                    />
-                                </div>
-
-                                <span className={`text-[10px] font-bold transition-colors duration-200
-                                    ${isActive ? 'text-brand' : 'text-ink-3 group-hover:text-ink-2'}`}>
-                                    {tab.label}
-                                </span>
-                            </button>
-                        );
-                    })}
+                            />
+                            <MoreHorizontal size={21} strokeWidth={aktifIcerde ? 2.2 : 1.75} aria-hidden="true" />
+                            {/* "Daha Fazla" 320 piksellik ekranda beşe bölünen
+                                çubuğa sığmayıp kırpılıyordu — "Menü" sığıyor. */}
+                            <span className={cn('tip-mini tracking-normal normal-case', aktifIcerde && 'font-bold')}>
+                                Menü
+                            </span>
+                            <span className="sr-only">Tüm bölümler</span>
+                        </button>
+                    )}
                 </div>
-                {/* iOS safe area padding */}
-                <div className="pb-safe-offset" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
-            </div>
+            </nav>
 
-            {/* Bottom padding for content above nav */}
-            <div className="h-20 md:hidden" />
+            {/* İçerik alt çubuğun altında kalmasın */}
+            <div className="h-[68px] lg:hidden" aria-hidden="true" />
         </>
     );
-};
+}
 
-// ─── Koç Bottom Nav ───────────────────────────────────────────────────
-export const CoachBottomNav = ({ activeTab, onTabChange }) => {
-    const [showMore, setShowMore] = useState(false);
-
-    const handleTab = (tabId) => {
-        if (tabId === 'more') { setShowMore(!showMore); return; }
-        setShowMore(false);
-        onTabChange(tabId);
-    };
-
-    return (
-        <>
-            <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line z-40 md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-                <div className="flex items-center justify-around px-2 pt-2 pb-2">
-                    {COACH_TABS.map(tab => {
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => handleTab(tab.id)}
-                                className="flex flex-col items-center gap-0.5 flex-1 py-1.5"
-                            >
-                                <div className={`w-10 h-7 flex items-center justify-center rounded-xl transition-all
-                                    ${isActive ? 'bg-c4 scale-110 shadow-md shadow-purple-200' : ''}`}>
-                                    <tab.icon size={isActive ? 18 : 20} className={isActive ? 'text-ink' : 'text-ink-2'} />
-                                </div>
-                                <span className={`text-[10px] font-bold ${isActive ? 'text-c4' : 'text-ink-3'}`}>
-                                    {tab.label}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-                <div style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
-            </div>
-            <div className="h-20 md:hidden" />
-        </>
-    );
-};
-
-// ─── Hook: ekran boyutuna göre mobile tespiti ─────────────────────────
+/** Ekran boyutuna göre mobil tespiti (1024px = lg kırılma noktası). */
 export const useIsMobile = () => {
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [mobil, setMobil] = useState(
+        typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+    );
     useEffect(() => {
-        const handler = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handler);
-        return () => window.removeEventListener('resize', handler);
+        const olcu = () => setMobil(window.innerWidth < 1024);
+        window.addEventListener('resize', olcu);
+        return () => window.removeEventListener('resize', olcu);
     }, []);
-    return isMobile;
+    return mobil;
 };
 
-export default StudentBottomNav;
+/* Eski adlarla içe aktaran dosyalar kırılmasın diye köprü.
+   İkisi de aynı bileşen; liste artık dışarıdan geliyor. */
+export const StudentBottomNav = MobilGezinme;
+export const CoachBottomNav = MobilGezinme;

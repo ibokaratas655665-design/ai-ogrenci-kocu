@@ -22,10 +22,10 @@ const ContentPreview = ({ content, onClose }) => {
                         <div className="w-full h-48 mb-4 rounded-lg overflow-hidden border border-line shadow-sm relative group">
                             {panel.image.url ? (
                                 <>
-                                    <img
+                                    <img loading="lazy" decoding="async"
                                         src={panel.image.url}
                                         alt={panel.image.alt}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        className="w-full h-full object-cover transition-transform duration-yavas group-hover:scale-110"
                                         onError={(e) => {
                                             e.target.style.display = 'none';
                                             e.target.nextSibling.style.display = 'flex';
@@ -185,7 +185,7 @@ const ContentPreview = ({ content, onClose }) => {
                             </div>
 
                             {/* The Brochure Paper */}
-                            <div className="bg-surface aspect-[297/210] w-full shadow-2xl rotate-0 transition-all duration-500 origin-center border border-line flex">
+                            <div className="bg-surface aspect-[297/210] w-full shadow-2xl rotate-0 transition-all duration-yavas origin-center border border-line flex">
                                 {brochureSide === 'outside' ? (
                                     // OUTSIDE: [Flap, Back, Front]
                                     content.sides.outside.map((panel, idx) => renderBrochurePanel(panel, idx))
@@ -225,10 +225,10 @@ const ContentPreview = ({ content, onClose }) => {
                                             <div className="mt-8 h-64 bg-brand-soft rounded-lg overflow-hidden border border-brand-line flex items-center justify-center relative group">
                                                 {slide.imagePlaceholder.url ? (
                                                     <>
-                                                        <img
+                                                        <img loading="lazy" decoding="async"
                                                             src={slide.imagePlaceholder.url}
                                                             alt={slide.imagePlaceholder.alt}
-                                                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                                                            className="w-full h-full object-cover transition-transform duration-yavas hover:scale-105"
                                                             onError={(e) => {
                                                                 e.target.style.display = 'none';
                                                                 e.target.nextSibling.style.display = 'flex';

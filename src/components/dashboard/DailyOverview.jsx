@@ -83,7 +83,7 @@ const DailyOverview = ({ userStats, todayTasks = [], todayGoals = [] }) => {
                             <div className="text-sm font-bold mb-2">{stat.label}</div>
                             <div className="w-full bg-surface/50 rounded-full h-2 overflow-hidden">
                                 <div
-                                    className="h-full bg-current transition-all duration-500"
+                                    className="h-full bg-current transition-all duration-yavas"
                                     style={{ width: `${Math.min(progress, 100)}%` }}
                                 />
                             </div>

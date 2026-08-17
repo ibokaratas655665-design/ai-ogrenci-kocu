@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Video, Plus, X, Calendar, Clock, User, Link as LinkIcon, CheckCircle } from 'lucide-react';
+import { onayla } from '../services/uiGeriBildirim';
 
 const RemoteCoachingTab = ({ students, setToast }) => {
     const [sessions, setSessions] = useState(() => {
@@ -69,8 +70,8 @@ const RemoteCoachingTab = ({ students, setToast }) => {
         setShowModal(true);
     };
 
-    const handleDelete = (sessionId) => {
-        if (window.confirm('Bu oturumu silmek istediğinize emin misiniz?')) {
+    const handleDelete = async (sessionId) => {
+        if (await onayla({ mesaj: 'Bu oturumu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             setSessions(sessions.filter(s => s.id !== sessionId));
             setToast('Oturum silindi!');
         }
@@ -351,7 +352,7 @@ const RemoteCoachingTab = ({ students, setToast }) => {
                                 </select>
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
                                 <button
                                     onClick={resetForm}
                                     className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"

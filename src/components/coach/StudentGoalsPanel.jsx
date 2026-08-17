@@ -56,7 +56,7 @@ const StudentGoalCard = ({ student, goals }) => {
             <div className="px-4 pb-3">
                 <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
                     <div
-                        className={`h-full rounded-full transition-all duration-500 ${overdue > 0 ? 'bg-red-400' : 'bg-brand'}`}
+                        className={`h-full rounded-full transition-all duration-yavas ${overdue > 0 ? 'bg-red-400' : 'bg-brand'}`}
                         style={{ width: `${completion}%` }}
                     />
                 </div>

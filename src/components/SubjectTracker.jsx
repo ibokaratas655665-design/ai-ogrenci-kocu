@@ -140,7 +140,7 @@ const SubjectTracker = ({ user }) => {
 
                                 {/* Progress Bar */}
                                 <div
-                                    className="absolute bottom-0 left-0 h-1 bg-ok transition-all duration-1000"
+                                    className="absolute bottom-0 left-0 h-1 bg-ok transition-all duration-yavas"
                                     style={{ width: `${progress}%`, opacity: 0.3 }}
                                 ></div>
                             </button>

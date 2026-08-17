@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Rocket, Plus, X, Edit2, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { onayla } from '../services/uiGeriBildirim';
 
 const ProjectsTab = ({ students, setToast }) => {
     const [projects, setProjects] = useState(() => {
@@ -57,8 +58,8 @@ const ProjectsTab = ({ students, setToast }) => {
         setShowModal(true);
     };
 
-    const handleDelete = (projectId) => {
-        if (window.confirm('Bu projeyi silmek istediğinize emin misiniz?')) {
+    const handleDelete = async (projectId) => {
+        if (await onayla({ mesaj: 'Bu projeyi silmek istediğinize emin misiniz?', tehlikeli: true })) {
             setProjects(projects.filter(p => p.id !== projectId));
             setToast('Proje silindi!');
         }
@@ -249,7 +250,7 @@ const ProjectsTab = ({ students, setToast }) => {
                                 </select>
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t">
+                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
                                 <button
                                     onClick={resetForm}
                                     className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
