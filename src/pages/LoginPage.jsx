@@ -28,7 +28,7 @@ import {
     logSuspiciousActivity,
     isUnusualLoginTime,
 } from '../services/securityService';
-import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, tl } from '../data/pricingPlans';
+import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
 import coupons from '../services/couponService';
 import { girisDemo, demoyuTemizle, DEMO_KULLANICI } from '../services/demoService';
 import credential from '../services/credentialService';
@@ -589,8 +589,12 @@ const LoginPage = () => {
                                 ücretsizdir. Fiyat öğrenci sayısına göre değişir, özellikler aynıdır.
                             </p>
                         </div>
+                        {/* Deneme süresi burada da yazılı olmalı: karşılama
+                            sayfasında vaat edilip giriş sayfasında hiç
+                            geçmiyordu. İkisi tek kaynaktan (DENEME_GUN) okur. */}
                         <p className="text-center text-[11px] text-ink-3 mb-6">
-                            Sezon {SEZON.etiket} · Otomatik yenileme yok
+                            Sezon {SEZON.etiket} · Otomatik yenileme yok ·
+                            Ücretli paketler {DENEME_GUN} gün ücretsiz denenebilir
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 max-w-6xl mx-auto">
@@ -918,7 +922,16 @@ const LoginPage = () => {
                                         <RefreshCw className="animate-spin" size={20} />
                                     ) : (
                                         <>
-                                            <span>{isRegistering ? 'Ücretsiz Başla' : 'Devam Et'}</span>
+                                            {/* Ücretli paket seçiliyken "Ücretsiz Başla" yazmak
+                                                yanıltıcıydı: 5.900 TL'lik paketi seçen koç da aynı
+                                                düğmeyi görüyordu. Metin seçilen pakete göre değişir. */}
+                                            <span>
+                                                {!isRegistering
+                                                    ? 'Devam Et'
+                                                    : planId === 'ucretsiz'
+                                                        ? 'Ücretsiz Başla'
+                                                        : `${DENEME_GUN} Gün Ücretsiz Dene`}
+                                            </span>
                                             <ArrowRight size={20} />
                                         </>
                                     )}

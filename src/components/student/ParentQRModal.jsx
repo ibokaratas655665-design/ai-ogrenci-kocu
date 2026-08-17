@@ -1,23 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { QrCode, Download, X, Share2, MessageCircle, Check, AlertCircle } from 'lucide-react';
+import { QrCode, Download, X, Share2, MessageCircle, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import wa from '../../services/whatsappService';
+import parentLinks from '../../services/parentLinkService';
 
 /**
  * 👨‍👩‍👧 Veli QR Kodu
  *
- * Veli portalına (#/veli/:studentId) götüren QR kodu ve paylaşım
- * bağlantısını üretir. Veli telefonu kayıtlıysa doğrudan WhatsApp'tan
- * gönderilebilir.
+ * Veli portalına götüren QR kodu ve paylaşım bağlantısını üretir.
+ * Veli telefonu kayıtlıysa doğrudan WhatsApp'tan gönderilebilir.
+ *
+ * Bağlantı bir "yetki taşıyan adres"tir: veliye şifre sorulmaz, bağlantıyı
+ * bilen raporu görür. Bu yüzden yanlış kişiye gitmesi ihtimaline karşı
+ * koçun bağlantıyı yenileyebilmesi gerekir — yenilenince eskisi ölür.
  */
 const ParentQRModal = ({ student, onClose }) => {
     const canvasRef = useRef(null);
     const [qrReady, setQrReady] = useState(false);
     const [qrError, setQrError] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [surum, setSurum] = useState(0);      // yenilemede QR'ı yeniden çizdirir
+    const [yenilendi, setYenilendi] = useState(false);
 
-    const shareUrl = wa.buildParentPortalLink(student?.id);
+    const shareUrl = React.useMemo(
+        () => wa.buildParentPortalLink(student?.id),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [student?.id, surum]
+    );
     const parentPhone = student?.parentPhone;
     const canWhatsApp = wa.isValidPhone(parentPhone);
+
+    const baglantiyiYenile = () => {
+        if (!student?.id) return;
+        parentLinks.yenile(student.id);
+        setSurum((v) => v + 1);
+        setYenilendi(true);
+        setTimeout(() => setYenilendi(false), 4000);
+    };
 
     useEffect(() => {
         if (!student) return;
@@ -122,9 +140,26 @@ const ParentQRModal = ({ student, onClose }) => {
                 </p>
 
                 {/* Link */}
-                <div className="bg-surface-2 rounded-xl p-3 mb-4">
+                <div className="bg-surface-2 rounded-xl p-3 mb-2">
                     <p className="text-[10px] text-ink-2 font-bold uppercase mb-1">Paylaşım Bağlantısı</p>
                     <p className="text-xs text-brand font-mono break-all">{shareUrl}</p>
+                </div>
+
+                {/* Bağlantı gizli tutulmalı — veliye şifre sorulmadığı için
+                    tek koruma bu adresin bilinmemesi. Yanlış kişiye giderse
+                    koç buradan yenileyip eskisini geçersiz kılar. */}
+                <div className="mb-4">
+                    <button
+                        onClick={baglantiyiYenile}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-line text-ink-2 font-bold text-xs hover:bg-surface-3 transition"
+                    >
+                        <RefreshCw size={13} /> Bağlantıyı Yenile
+                    </button>
+                    <p className="text-[10px] text-ink-3 leading-snug mt-1.5 text-center">
+                        {yenilendi
+                            ? '✅ Yeni bağlantı üretildi. Eski bağlantı artık açılmıyor — veliye yenisini gönderin.'
+                            : 'Bağlantı yanlış kişiye gittiyse yenileyin. Bu bağlantıyı bilen herkes raporu görebilir.'}
+                    </p>
                 </div>
 
                 {/* WhatsApp */}

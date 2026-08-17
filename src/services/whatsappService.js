@@ -12,6 +12,7 @@
  */
 
 import { DEFAULT_TEMPLATES } from '../data/whatsappTemplates';
+import parentLinks from './parentLinkService';
 
 const LOG_KEY = 'whatsapp_message_log';
 const CUSTOM_TEMPLATES_KEY = 'whatsapp_custom_templates';
@@ -130,11 +131,23 @@ const MOTIVATION_LINES = {
     noData: 'Henüz yeterli veri yok. Bu hafta düzenli giriş yaparsan ilerlemeni birlikte takip edebiliriz.',
 };
 
-/** Veli portalı için paylaşılabilir bağlantı üretir. */
+/**
+ * Veli portalı için paylaşılabilir bağlantı üretir.
+ *
+ * Adres eskiden `#/veli/{öğrenci-no}` idi. Öğrenci numaraları sıralı
+ * olduğu için bu, "sayıyı artır, başka öğrencinin raporunu oku" demekti.
+ * Artık tahmin edilemez bir belirteç kullanılıyor (parentLinkService).
+ */
 export const buildParentPortalLink = (studentId) => {
     if (typeof window === 'undefined' || !studentId) return '';
-    const base = window.location.origin + window.location.pathname;
-    return `${base}#/veli/${encodeURIComponent(studentId)}`;
+    try {
+        const belirtec = parentLinks.baglantiAl(studentId);
+        return parentLinks.baglantiAdresi(belirtec) || '';
+    } catch {
+        // Belirteç üretilemezse (WebCrypto yok) tahmin edilebilir bir
+        // bağlantı üretmektense hiç üretmeyiz.
+        return '';
+    }
 };
 
 /**

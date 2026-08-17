@@ -10,7 +10,7 @@ import firebaseService from './firebaseService';
 import credential from './credentialService';
 import coupons from './couponService';
 import subscription from './subscriptionService';
-import { planBul } from '../data/pricingPlans';
+import { planBul, DENEME_GUN } from '../data/pricingPlans';
 
 /**
  * Doğru şifreyle giriş yapan eski (düz metin) kaydı özete çevirir.
@@ -497,6 +497,22 @@ export const registerCoach = async (data) => {
             return { success: false, error: `Şifre yeterince güçlü değil: ${guc.sorunlar[0]}` };
         }
 
+        /**
+         * Rehberlik paketi öğrenci sayısı sınırsız olduğu hâlde Koç 20'den
+         * ucuzdur; kurum kısıtı olmasa 20+ öğrencisi olan bireysel koç için
+         * Koç 20 almanın anlamı kalmazdı. Paket okul rehberlik servisleri
+         * için tanımlı, o yüzden kurum adı zorunlu.
+         *
+         * Bu tek başına yeterli bir kapı değil — talep zaten ana koç onayına
+         * düşüyor, kurum bilgisi orada görünsün diye isteniyor.
+         */
+        if (planBul(planId)?.kurumsal && !schoolName?.trim()) {
+            return {
+                success: false,
+                error: 'Rehberlik Servisi paketi okul rehberlik servisleri içindir. Kurum adını yazmanız gerekiyor.',
+            };
+        }
+
         const localUsers = safeParse('users_db');
         if (localUsers.some(u => samePhone(u.phone, phone))) {
             return {
@@ -559,6 +575,7 @@ export const registerCoach = async (data) => {
 
         // Paket talebi ve kupon kullanımı — kayıt başarılı olduktan SONRA
         let odemeBilgisi = null;
+        let denemeSonu = null;
         if (planId && planId !== 'ucretsiz') {
             const plan = planBul(planId);
             const hesap = coupons.indirimHesapla(plan.fiyat, kuponKodu, {
@@ -570,6 +587,21 @@ export const registerCoach = async (data) => {
                 indirim: hesap.indirim,
                 odenecek: hesap.odenecek,
             });
+
+            /**
+             * Deneme süresi BURADA başlar.
+             *
+             * Karşılama sayfası "ücretli paketleri N gün ücretsiz
+             * deneyebilirsiniz" diyordu ama `denemeBaslat` hiçbir yerden
+             * çağrılmıyordu; vaadin karşılığı yoktu. Talep ana koç onayına
+             * düşerken koç beklemesin diye seçtiği paket deneme süresi
+             * boyunca açılıyor. Süre dolar ve onay gelmezse
+             * `yururluktekiPlan` ücretsiz kademeye düşürür — veri kaybolmaz,
+             * yalnızca yeni öğrenci eklenemez.
+             */
+            const deneme = subscription.denemeBaslat(coachId, planId);
+            if (deneme.basarili) denemeSonu = subscription.abonelik(coachId).bitis;
+
             if (kupon) {
                 coupons.kullan(kupon.kod, { kullanici: phone, planId, indirim: hesap.indirim });
             }
@@ -581,9 +613,13 @@ export const registerCoach = async (data) => {
             requireApproval: true,
             coachId,
             odeme: odemeBilgisi,
+            denemeSonu,
             message: planId === 'ucretsiz'
                 ? 'Kayıt başarılı! Ana koç onayı bekleniyor.'
-                : 'Kayıt başarılı! Paket talebiniz onay ve ödeme için iletildi.'
+                : denemeSonu
+                    ? `Kayıt başarılı! ${DENEME_GUN} günlük ücretsiz denemeniz başladı `
+                      + `(${denemeSonu} tarihine kadar). Paket talebiniz onay ve ödeme için iletildi.`
+                    : 'Kayıt başarılı! Paket talebiniz onay ve ödeme için iletildi.'
         };
 
     } catch (error) {

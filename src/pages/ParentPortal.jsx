@@ -21,6 +21,7 @@ import { buildStudentReport } from '../services/reportService';
 import { lightAxis, lightGrid, lightTooltip } from '../components/charts/chartTheme';
 import wa from '../services/whatsappService';
 import ParentBadgeStrip from '../components/parent/ParentBadgeStrip';
+import parentLinks from '../services/parentLinkService';
 
 const safeParse = (key, fallback = []) => {
     try {
@@ -40,10 +41,27 @@ const PERIODS = [
 
 // ════════════════════════════════════════════════════════════
 const ParentPortal = () => {
-    const { studentId } = useParams();
+    /**
+     * Adresteki değer artık ÖĞRENCİ NUMARASI DEĞİL, rastgele belirteç.
+     * Eski biçim (`#/veli/5`) sırayla sayı deneyerek bütün öğrencilerin
+     * raporuna ulaşmayı mümkün kılıyordu; o yüzden sayısal parametre
+     * bilerek reddediliyor.
+     */
+    const { studentId: adresParametresi } = useParams();
     const [periodDays, setPeriodDays] = useState(7);
 
+    const cozum = useMemo(() => {
+        if (!adresParametresi) return { durum: 'gecersiz' };
+        // Yalnızca rakamdan oluşuyorsa bu eski (güvensiz) bir bağlantıdır
+        if (/^\d+$/.test(adresParametresi)) return { durum: 'eski' };
+        const c = parentLinks.cozumle(adresParametresi);
+        return c ? { durum: 'gecerli', ogrenciId: c.ogrenciId } : { durum: 'gecersiz' };
+    }, [adresParametresi]);
+
+    const studentId = cozum.ogrenciId ?? null;
+
     const student = useMemo(() => {
+        if (!studentId) return null;
         const list = safeParse('coach_students');
         return list.find((s) => String(s.id) === String(studentId)) || null;
     }, [studentId]);
@@ -59,6 +77,7 @@ const ParentPortal = () => {
         return visible.length ? visible[visible.length - 1] : null;
     }, [studentId]);
 
+    if (cozum.durum === 'eski') return <EskiBaglanti />;
     if (!student) return <NotFound />;
 
     return (
@@ -708,6 +727,29 @@ const Card = ({ icon, title, subtitle, children }) => {
 
 const EmptyState = ({ text }) => (
     <p className="text-xs text-ink-3 text-center py-6">{text}</p>
+);
+
+/**
+ * Eski `#/veli/5` biçimindeki bağlantılar artık çalışmıyor. Veli boş
+ * ekranla karşılaşmasın diye ne olduğu ve ne yapması gerektiği yazılı.
+ */
+const EskiBaglanti = () => (
+    <div className="min-h-screen flex items-center justify-center bg-surface-2 p-6">
+        <div className="bg-surface rounded-3xl p-8 max-w-sm w-full text-center shadow-lg border border-line">
+            <div className="w-14 h-14 bg-warn-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={26} className="text-warn" />
+            </div>
+            <h2 className="text-lg font-black text-ink mb-2">Bu Bağlantı Yenilendi</h2>
+            <p className="text-sm text-ink-2 leading-relaxed">
+                Güvenlik nedeniyle veli bağlantıları yenilendi; elinizdeki eski
+                bağlantı artık çalışmıyor.
+            </p>
+            <p className="text-sm text-ink-2 leading-relaxed mt-3">
+                Koçunuzdan yeni bağlantıyı istemeniz yeterli — WhatsApp'tan
+                gönderebilir.
+            </p>
+        </div>
+    </div>
 );
 
 const NotFound = () => (

@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QrCode, Download, X, Share2, BarChart2, ClipboardList, Brain, TrendingUp, Trophy, Calendar, ExternalLink } from 'lucide-react';
 import { tasksFor } from '../../services/taskStore';
+import wa from '../../services/whatsappService';
 
 // ─── Veli Portal İçerik Sayfası (QR ile açılan) ────────────────
 export const ParentPortalPage = ({ studentId }) => {
@@ -149,9 +150,17 @@ const EnhancedParentQRModal = ({ student, onClose }) => {
     const [copied, setCopied] = useState(false);
     const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'summary'
 
-    const shareToken = btoa(`student:${student?.id}:${Date.now()}`).replace(/=/g, '');
-    const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}#/parent-report/${student?.id}?token=${shareToken}`;
+    /**
+     * Bağlantı eskiden `#/parent-report/{öğrenci-no}?token=…` idi ve
+     * `token` değeri `btoa("student:5:zaman")` — yani öğrenci numarasının
+     * base64'ü. Ne tahmin edilemezdi ne de rota onu okuyordu; adresteki
+     * numarayı değiştiren başka öğrencinin raporunu açabiliyordu.
+     * Artık gerçek rastgele belirteç kullanılıyor.
+     */
+    const shareUrl = React.useMemo(
+        () => wa.buildParentPortalLink(student?.id),
+        [student?.id]
+    );
 
     // 7 günlük özet verileri
     const results = (() => {
@@ -191,7 +200,7 @@ const EnhancedParentQRModal = ({ student, onClose }) => {
                 }
             } catch { setQrReady(false); }
         })();
-    }, [student, activeTab]);
+    }, [student, activeTab, shareUrl]);
 
     const downloadQR = () => {
         if (!canvasRef.current) return;

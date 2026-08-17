@@ -37,7 +37,7 @@ export const sezonKalanGun = (d = new Date()) => {
     return Math.max(0, Math.ceil((bitis - d) / 86400000));
 };
 
-export const DENEME_GUN = 15;   // ücretsiz deneme süresi
+export const DENEME_GUN = 7;    // ücretsiz deneme süresi
 
 export const PLANLAR = [
     {
@@ -112,9 +112,18 @@ export const PLANLAR = [
         id: 'rehberlik',
         ad: 'Rehberlik Servisi',
         rozet: 'Okullara özel',
-        fiyat: 7500,
+        fiyat: 3000,
         ogrenciLimiti: null,          // okul geneli
         sure: 'Sezonluk',
+        /**
+         * Yalnızca kurumsal (okul rehberlik servisi) hesaplara açıktır.
+         *
+         * Bu paket öğrenci sayısı sınırsız olduğu hâlde Koç 20'den ucuz;
+         * kurum kısıtı olmasaydı 20+ öğrencisi olan bireysel koç için
+         * Koç 20 almanın hiçbir anlamı kalmazdı. Ayrım fiyatta değil,
+         * kimin alabildiğinde: okul rehberlik servisi ile bireysel koç
+         * farklı pazarlar.
+         */
         kurumsal: true,
         aciklama:
             'Okul psikolojik danışmanları için. Koçluk modüllerine ek olarak '
