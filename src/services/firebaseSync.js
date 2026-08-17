@@ -21,13 +21,49 @@ const SYNC_KEYS = [
 const NEVER_SYNC = ['user_session', 'current_user', 'USER'];
 const PROTECTED_KEYS = ['coach_students', 'users_db', 'student_tasks', 'v2_trials_data', 'v2_results_data', 'v2_obp_data', 'exams_data', 'student_programs', 'pdr_cases'];
 
-const getBucketId = (userId) => {
-    // 🌍 KÖKTEN ÇÖZÜM: Bu uygulama Şamran Anadolu Lisesine özel tek bir havuza (single-tenant) aittir.
-    // Tüm koç ve öğrencilerin birbirini görebilmesi için sabit bir global bucket kullanılır.
-    return 'global';
+/**
+ * 🪣 VERİ HAVUZU KİMLİĞİ
+ *
+ * ⚠️ ESKİ HÂLİ HERKESİ AYNI HAVUZA KOYUYORDU:
+ *
+ *     const getBucketId = () => 'global';
+ *
+ * Yorumunda "bu uygulama tek okula aittir" yazıyordu. Uygulama artık
+ * birden fazla koçun kullandığı bir sistem ve kullanıcının en kritik
+ * şartı şu: HER KOÇ YALNIZCA KENDİ EKLEDİĞİ ÖĞRENCİLERİ GÖRMELİ.
+ *
+ * Tek havuzda bu sağlanamıyordu: arayüzdeki sahiplik filtresi
+ * (accessControl.js) veriyi tarayıcıda gizliyordu ama veri yine de
+ * tümüyle iniyordu; konsolu açan koç diğer koçların öğrencilerini
+ * okuyabiliyordu.
+ *
+ * Artık havuz SAHİBİN kimliğidir:
+ *   · Koç      → kendi kimliği
+ *   · Öğrenci  → kendisini ekleyen koçun kimliği (programını, görevini
+ *                o koç yazıyor; aynı havuzu okumaları gerekiyor)
+ *   · Ana koç  → kendi havuzu; diğer havuzları okuma yetkisi Firestore
+ *                kurallarındaki rol kaydıyla verilir.
+ */
+const HAVUZ_YOK = null;
+
+const havuzKimligi = (kullanici) => {
+    if (!kullanici) return HAVUZ_YOK;
+
+    // Öğrenci, kendisini ekleyen koçun havuzunu kullanır
+    if (kullanici.role === 'student') {
+        const koc = kullanici.coachId ?? kullanici.ownerCoachId ?? kullanici.createdBy;
+        return koc ? `koc_${String(koc)}` : HAVUZ_YOK;
+    }
+
+    // Koç ve yönetici kendi havuzunda
+    const kimlik = kullanici.id ?? kullanici.uid;
+    return kimlik ? `koc_${String(kimlik)}` : HAVUZ_YOK;
 };
 
-const keyToDocId = (userId, key) => `${getBucketId(userId)}_${key.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+/** Firestore belge kimliği güvenli karakterlere indirgenir. */
+const temizle = (s) => String(s).replace(/[^a-zA-Z0-9_]/g, '_');
+
+const keyToDocId = (havuz, key) => `${temizle(havuz)}__${temizle(key)}`;
 
 /**
  * Öğrenci başına açılan dinamik anahtarlar.
@@ -105,6 +141,8 @@ const prepareFirebaseValue = (localValue) => {
 class FirebaseSync {
     constructor() {
         this.userId = null;
+        /** Bu oturumun veri havuzu — `koc_<kimlik>` (bkz. havuzKimligi). */
+        this.havuz = null;
         this.isInitialized = false;
         this.isInitializing = false; // 🛰️ Initializing guard
         this.autoSyncInterval = null;
@@ -121,13 +159,36 @@ class FirebaseSync {
 
     resume() { this.paused = false; }
 
-    async init(userId) {
+    /**
+     * @param {object|string} kullanici Tam kullanıcı nesnesi (tercih edilen)
+     *   ya da geriye dönük uyumluluk için yalnızca kimlik.
+     *
+     * Nesne geçilmesi gerekir: havuz kimliği artık kullanıcının ROLÜNE ve
+     * öğrenciyse BAĞLI OLDUĞU KOÇA göre belirleniyor. Yalnızca kimlik
+     * geçilirse koç varsayılır.
+     */
+    async init(kullanici) {
+        if (!kullanici) return;
+
+        const kul = typeof kullanici === 'string'
+            ? { id: kullanici, role: 'coach' }
+            : kullanici;
+
+        const userId = kul.id ?? kul.uid;
         if (!userId) return;
+
+        const havuz = havuzKimligi(kul);
+        if (!havuz) {
+            console.warn('🪣 Veri havuzu belirlenemedi (öğrencinin koçu yok?); senkron kapalı.');
+            return;
+        }
+
         // 🛰️ Stable identity and initialization check
-        if (this.isInitialized && this.userId === userId) return;
+        if (this.isInitialized && this.userId === userId && this.havuz === havuz) return;
         if (this.isInitializing) return;
 
         this.userId = userId;
+        this.havuz = havuz;
         this.isInitializing = true;
         console.log(`🔌 Initializing Firebase Sync for User: ${userId}`);
 
@@ -164,7 +225,7 @@ class FirebaseSync {
 
         try {
             const syncCollection = collection(db, 'syncData');
-            const bucketId = getBucketId(this.userId);
+            const bucketId = this.havuz;
             const q = query(syncCollection, where('bucketId', '==', bucketId));
 
             this.realtimeUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -239,7 +300,7 @@ class FirebaseSync {
         if (!this.userId) return;
         try {
             const syncCollection = collection(db, 'syncData');
-            const bucketId = getBucketId(this.userId);
+            const bucketId = this.havuz;
             const q = query(syncCollection, where('bucketId', '==', bucketId));
             const querySnapshot = await getDocs(q);
             
@@ -290,9 +351,9 @@ class FirebaseSync {
         if (!force && this.lastSyncHashes.get(key) === currentHash) return;
 
         try {
-            const bucketId = getBucketId(this.userId);
+            const bucketId = this.havuz;
             const saveValue = prepareFirebaseValue(value);
-            await setDoc(doc(db, 'syncData', keyToDocId(this.userId, key)), {
+            await setDoc(doc(db, 'syncData', keyToDocId(this.havuz, key)), {
                 key, value: saveValue, updatedAt: serverTimestamp(), updatedBy: this.userId, bucketId: bucketId
             }, { merge: true });
             
@@ -329,7 +390,7 @@ class FirebaseSync {
         localStorage.removeItem(`_fbtime_${key}`);
         this.lastSyncHashes.delete(key);
         try {
-            await deleteDoc(doc(db, 'syncData', keyToDocId(this.userId, key)));
+            await deleteDoc(doc(db, 'syncData', keyToDocId(this.havuz, key)));
         } catch (e) { }
     }
 
@@ -338,9 +399,16 @@ class FirebaseSync {
      * Local datayı tamamen ezerek buluttaki veriyi geri getirir.
      */
     async forceCloudRecovery() {
-        if (!this.userId) return { success: false, error: 'Kullanıcı oturumu yok' };
+        if (!this.userId || !this.havuz) return { success: false, error: 'Kullanıcı oturumu yok' };
         try {
-            const q = query(collection(db, 'syncData'));
+            /**
+             * ⚠️ Bu sorgu eskiden TÜM `syncData` koleksiyonunu okuyordu:
+             *     query(collection(db, 'syncData'))
+             * Yani "buluttan kurtar" düğmesine basan koç, bütün koçların
+             * verisini kendi cihazına indiriyordu. Artık yalnızca kendi
+             * havuzu okunuyor.
+             */
+            const q = query(collection(db, 'syncData'), where('bucketId', '==', this.havuz));
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();

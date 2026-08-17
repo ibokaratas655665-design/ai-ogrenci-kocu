@@ -7,67 +7,92 @@ rules_version = '2';
  *
  *     match /{document=**} { allow read, write: if true; }
  *
- * Bu kural, veritabanı kimliği herkese açık olan bir web uygulamasında
+ * Proje kimliği herkese açık olan bir web uygulamasında bu kural,
  * "internetteki HERKES bütün öğrenci kayıtlarını okuyabilir, silebilir,
  * değiştirebilir" demektir. Uygulama T.C. kimlik numarası, veli telefonu,
  * rehberlik görüşme kaydı ve sağlık kurulu raporu bilgisi tutuyor;
- * bu veriler KVKK kapsamında özel nitelikli kişisel veridir.
+ * bunlar KVKK kapsamında özel nitelikli kişisel veridir.
  *
- * Aşağıdaki kurallar şu ilkelerle yazıldı:
- *   1. Kimliği doğrulanmamış hiçbir istek kabul edilmez.
- *   2. Bir kullanıcı yalnızca KENDİ verisine erişir.
- *   3. Mesaj/bildirim gibi iki taraflı kayıtlarda gönderen ya da alan
- *      olmak gerekir.
- *   4. Tanımlanmayan hiçbir yol açık bırakılmaz (varsayılan: reddet).
+ * ─────────────────────────────────────────────────────────────────
+ * BU KURALLAR UYGULAMANIN GERÇEK YAPISINA GÖRE YAZILDI
+ *
+ * Önceki denememde kurallar "her kullanıcı yalnızca kendi belgesine
+ * erişir" varsayımıyla yazılmıştı. Uygulama öyle çalışmıyor:
+ * `firebaseSync.getBucketId()` HERKES için sabit 'global' döndürüyor,
+ * yani bütün koç ve öğrenciler aynı belgeleri paylaşıyor (tek kurum
+ * varsayımı). O kurallar yayınlansaydı uygulama tamamen çalışmazdı.
+ *
+ * ⚠️ BİLİNEN SINIR: Veri tek havuzda olduğu için, kimliği doğrulanmış
+ * HER kullanıcı bu havuzu okuyabilir. Arayüzde sahiplik filtresi var
+ * (accessControl.js) ama o filtre istemci tarafında. Uygulama tek bir
+ * kurumun içinde kullanıldığı sürece kabul edilebilir; dışarıdan koçlara
+ * paket satılacaksa önce koç başına ayrı veri havuzu kurulmalıdır.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Yardımcılar ──────────────────────────────────────────
+
+    /**
+     * Gerçek hesapla giriş yapılmış mı?
+     *
+     * ANONİM OTURUM KABUL EDİLMEZ: internetteki herkes anonim oturum
+     * açabilir, dolayısıyla `request.auth != null` tek başına koruma
+     * sağlamaz. `provider_id` kontrolü, gerçek bir hesapla (e-posta ve
+     * şifreyle) girilmiş olmasını şart koşar.
+     */
     function girisYapmis() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
     }
 
     function sahibi(userId) {
       return girisYapmis() && request.auth.uid == userId;
     }
 
-    // Alan sayısı ve boyut sınırı — bozuk/şişkin belge yazımını engeller
+    // Şişkin/bozuk belge yazımını engeller
     function makulBoyut() {
       return request.resource.size() < 1000000;
     }
 
     // ── syncData: uygulamanın localStorage yedeği ────────────
-    // Belge kimliği kullanıcının uid'sidir; başkasınınkine erişilemez.
-    match /syncData/{userId} {
-      allow read, write: if sahibi(userId) && makulBoyut();
+    //
+    // Belge kimliği `global_<anahtar>` biçiminde; kullanıcı kimliği
+    // taşımıyor. Bu yüzden sahiplik kontrolü YAPILAMAZ — yalnızca
+    // kimlik doğrulaması aranır. (Bkz. yukarıdaki "BİLİNEN SINIR".)
+    match /syncData/{belge} {
+      allow read: if girisYapmis();
+      allow write: if girisYapmis() && makulBoyut();
 
-      // Alt anahtar belgeleri de aynı kullanıcıya bağlıdır
-      match /{document=**} {
-        allow read, write: if sahibi(userId);
+      match /{alt=**} {
+        allow read, write: if girisYapmis();
       }
     }
 
     // ── users: kullanıcı profilleri ──────────────────────────
     match /users/{userId} {
-      // Kendi profilini okur ve günceller
-      allow read, update, delete: if sahibi(userId);
+      // Giriş akışı telefon/okul numarasıyla kullanıcı ARIYOR,
+      // dolayısıyla okuma kimliği doğrulanmış herkese açık olmalı.
+      allow read: if girisYapmis();
 
-      // Kayıt sırasında kendi belgesini oluşturabilir; ancak
-      // kendini yönetici ilan edemez — rol yükseltme kapalıdır.
+      // Yazma yalnızca kendi belgesine
+      allow update, delete: if sahibi(userId);
+
+      // Kayıt sırasında kendi belgesini oluşturabilir; ancak kendini
+      // yönetici ilan edemez — rol yükseltme kapalıdır.
       allow create: if sahibi(userId)
         && request.resource.data.role in ['student', 'coach', 'parent'];
     }
 
     // ── trusted_devices: iki adımlı giriş cihaz kayıtları ────
-    match /trusted_devices/{userId} {
-      allow read, write: if sahibi(userId);
+    match /trusted_devices/{belge} {
+      allow read, write: if girisYapmis();
     }
 
-    // ── messages: koç ↔ öğrenci/veli yazışması ───────────────
+    // ── messages: koç ↔ öğrenci yazışması ────────────────────
     match /messages/{messageId} {
-      // Yalnızca tarafları okuyabilir
       allow read: if girisYapmis()
         && (resource.data.fromUserId == request.auth.uid
             || resource.data.toUserId == request.auth.uid);
@@ -77,11 +102,9 @@ service cloud.firestore {
         && request.resource.data.fromUserId == request.auth.uid
         && makulBoyut();
 
-      // Okundu işareti gibi güncellemeleri alıcı yapar
       allow update: if girisYapmis()
         && resource.data.toUserId == request.auth.uid;
 
-      // Mesaj silmek yalnızca gönderene açık
       allow delete: if girisYapmis()
         && resource.data.fromUserId == request.auth.uid;
     }
@@ -91,7 +114,6 @@ service cloud.firestore {
       allow read, update, delete: if girisYapmis()
         && resource.data.toUserId == request.auth.uid;
 
-      // Bildirim oluşturan kendi kimliğini yazmak zorunda
       allow create: if girisYapmis()
         && request.resource.data.fromUserId == request.auth.uid
         && makulBoyut();

@@ -2896,7 +2896,7 @@ const CoachDashboard = () => {
 
         const initSync = async () => {
             try {
-                await firebaseSync.init(user.id);
+                await firebaseSync.init(user);
             } catch (e) {
                 console.warn('Coach sync başlatılamadı:', e);
             }

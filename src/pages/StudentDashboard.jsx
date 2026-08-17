@@ -520,7 +520,7 @@ const StudentDashboard = () => {
             // 12 saniyelik zaman aşımı - Firebase'in tam yülenmesini bekle
             try {
                 await Promise.race([
-                    firebaseSync.init(user.id),
+                    firebaseSync.init(user),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('Firebase timeout')), 12000))
                 ]);
                 console.log('✅ Firebase sync tamamlandı, veriler yükleniyor...');

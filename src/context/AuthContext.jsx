@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
                     // Böylece component'ler boş state ile render olup verileri ezmez!
                     try {
                         const { default: firebaseSync } = await import('../services/firebaseSync');
-                        await firebaseSync.init(savedUser.id || savedUser.uid);
+                        await firebaseSync.init(savedUser);
                     } catch (syncErr) {
                         console.warn('Firebase sync başlatılamadı, offline mod aktif:', syncErr);
                     }
@@ -60,10 +60,32 @@ export const AuthProvider = ({ children }) => {
                 setUser(response.user);
                 localStorage.setItem('user_session', JSON.stringify(response.user));
 
+                /**
+                 * Firebase oturumu BURADA açılır.
+                 *
+                 * Uygulama girişi doğrulandı ama Firebase'in bundan haberi
+                 * yok; haberi olmadan Firestore kuralları kapatılamıyordu.
+                 * Düz metin şifre yalnızca bu anda elimizde, o yüzden
+                 * Firebase oturumu da burada açılıyor. Şifre saklanmıyor.
+                 *
+                 * Başarısız olursa uygulama çalışmaya devam eder, yalnızca
+                 * bulut senkronu devre dışı kalır — kullanıcı verisini
+                 * kaybetmez, cihazda çalışır.
+                 */
+                try {
+                    const { oturumAc } = await import('../services/firebaseOturum');
+                    const fb = await oturumAc(identifier, password, role);
+                    if (!fb.basarili) {
+                        console.warn('Firebase oturumu açılamadı, çevrimdışı mod:', fb.hata);
+                    }
+                } catch (e) {
+                    console.warn('Firebase oturum modülü yüklenemedi:', e);
+                }
+
                 // Await Firebase sync during login too to ensure safety
                 try {
                     const { default: firebaseSync } = await import('../services/firebaseSync');
-                    await firebaseSync.init(response.user.id || response.user.uid);
+                    await firebaseSync.init(response.user);
                 } catch (e) {
                     console.warn('Login during offline sync:', e);
                 }
@@ -125,6 +147,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user_session');
         api.auth.logout();
         setUser(null);
+
+        /* Firebase oturumu da kapatılmalı; yoksa çıkış yapan kullanıcının
+           kimliğiyle Firestore erişimi açık kalır. */
+        try {
+            import('../services/firebaseOturum').then(({ oturumKapat }) => oturumKapat());
+        } catch { /* modül yoksa yapacak bir şey yok */ }
 
         // Firebase sync'i güvenli şekilde durdur (asenkron - React render'ı etkilemesin)
         setTimeout(() => {
