@@ -4,6 +4,7 @@ import {
     ArrowRight, Check, X as XIcon, Target, TrendingUp, Users, FolderOpen,
     ClipboardList, MessageSquare, ShieldCheck, Sparkles, PlayCircle,
     GraduationCap, UserCog, Home, Download, Smartphone, Monitor, Apple,
+    MessageCircle,
 } from 'lucide-react';
 import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
 
@@ -47,8 +48,20 @@ const ROLLER = [
         not: 'Programını, görevlerini ve deneme analizini gör. Her zaman ücretsiz.',
     },
     {
+        /**
+         * Velinin GİRİŞİ YOKTUR — bilinçli bir tercih.
+         *
+         * Veli, koçun WhatsApp'tan gönderdiği bağlantıyla raporu açar;
+         * kullanıcı adı ve şifre istenmez. Pratikte veliye şifre vermek,
+         * kimsenin kullanmadığı bir adım oluyor.
+         *
+         * Kart eskiden "Giriş yap" diyordu; karşılığı olmayan bir yönlendirme
+         * idi. Artık gerçekte ne olduğunu anlatıyor.
+         */
         id: 'parent', icon: Home, ad: 'Veli',
-        not: 'Çocuğunuzun gelişimini tek sayfada izleyin. Her zaman ücretsiz.',
+        not: 'Koçun gönderdiği bağlantıyla çocuğunuzun gelişimini görün. Şifre gerekmez, ücretsizdir.',
+        girisYok: true,
+        eylemNotu: 'Bağlantı koçtan gelir',
     },
 ];
 
@@ -172,26 +185,37 @@ const LandingPage = () => {
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-8">
                         <h2 className="text-2xl md:text-3xl font-black mb-2">Kimler Kullanır?</h2>
-                        <p className="text-ink-2 text-sm">Üç ayrı panel, üç ayrı giriş.</p>
+                        <p className="text-ink-2 text-sm">Üç ayrı panel; koç ve öğrenci girişiyle, veli bağlantıyla.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {ROLLER.map((r) => (
-                            <button
-                                key={r.id}
-                                onClick={() => girisAc(r.id)}
-                                className="srf srf-hover p-5 text-left"
-                            >
-                                <span className="sec-icon mb-3" style={{ '--acc': 'var(--brand)' }}>
-                                    <r.icon size={17} />
-                                </span>
-                                <p className="t-title text-sm">{r.ad}</p>
-                                <p className="text-[11px] text-ink-3 mt-1 leading-snug">{r.not}</p>
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand mt-3">
-                                    Giriş yap <ArrowRight size={12} />
-                                </span>
-                            </button>
-                        ))}
+                        {ROLLER.map((r) => {
+                            /* Velinin girişi yok: kart tıklanabilir olmamalı,
+                               yoksa kullanıcı olmayan bir giriş ekranı arar. */
+                            const Etiket = r.girisYok ? 'div' : 'button';
+                            return (
+                                <Etiket
+                                    key={r.id}
+                                    {...(r.girisYok ? {} : { onClick: () => girisAc(r.id) })}
+                                    className={`srf p-5 text-left ${r.girisYok ? '' : 'srf-hover'}`}
+                                >
+                                    <span className="sec-icon mb-3" style={{ '--acc': 'var(--brand)' }}>
+                                        <r.icon size={17} />
+                                    </span>
+                                    <p className="t-title text-sm">{r.ad}</p>
+                                    <p className="text-[11px] text-ink-3 mt-1 leading-snug">{r.not}</p>
+                                    {r.girisYok ? (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-ink-3 mt-3">
+                                            <MessageCircle size={12} /> {r.eylemNotu}
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand mt-3">
+                                            Giriş yap <ArrowRight size={12} />
+                                        </span>
+                                    )}
+                                </Etiket>
+                            );
+                        })}
                     </div>
                 </div>
             </section>

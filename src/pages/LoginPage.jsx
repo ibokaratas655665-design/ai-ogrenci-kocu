@@ -187,16 +187,21 @@ const LoginPage = () => {
 
     /**
      * Karşılama sayfasından gelen yönlendirmeler:
-     *   ?rol=coach|student|parent  → ilgili sekme açılır
-     *   ?kayit=1                   → kayıt formu açılır
-     *   ?plan=koc10                → o paket seçili gelir
-     *   ?demo=1                    → demo bölümüne odaklanılır
+     *   ?rol=coach|student  → ilgili sekme açılır
+     *   ?kayit=1            → kayıt formu açılır
+     *   ?plan=koc10         → o paket seçili gelir
+     *   ?demo=1             → demo bölümüne odaklanılır
+     *
+     * `?rol=parent` KASITLI OLARAK DESTEKLENMİYOR: velinin girişi yoktur,
+     * koçun WhatsApp'tan gönderdiği bağlantıyla portalı açar. Eskiden bu
+     * parametre veliyi öğrenci giriş sekmesine düşürüyordu; veli orada
+     * kendisinde olmayan bir okul numarası ve şifre aramak zorunda
+     * kalıyordu.
      */
     useEffect(() => {
         const q = new URLSearchParams(window.location.hash.split('?')[1] || location.search || '');
         const rol = q.get('rol');
         if (rol === 'coach' || rol === 'student') setRole(rol);
-        if (rol === 'parent') setRole('student');   // veli girişi öğrenci portalı üzerinden
         if (q.get('kayit') === '1') { setRole('coach'); setIsRegistering(true); }
         const plan = q.get('plan');
         if (plan && PLANLAR.some((p) => p.id === plan)) {

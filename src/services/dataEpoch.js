@@ -19,7 +19,7 @@
  */
 
 /** Artırılırsa tüm tarayıcılarda bir kez temizlik yapılır. */
-export const VERI_DONEMI = '2026-08-17-yayin-oncesi-sifirlama';
+export const VERI_DONEMI = '2026-08-17-yayin-oncesi-sifirlama-2';
 
 const DAMGA_ANAHTARI = 'veri_donemi';
 
@@ -39,10 +39,26 @@ const SILINECEK_ONEKLER = [
     'approval_', 'invite_', 'coupon_', 'notification_', 'whatsapp_',
     'tab_seen_', 'topic_', 'xp_', 'badge_', 'pomodoro_', 'leaderboard_',
     'admin_master_password', 'currentUser', 'coach_subscriptions',
+
+    // Oturum ve bildirim artıkları. İlk temizlikte atlanmışlardı; gerçek
+    // tarayıcıda `user_session` hâlâ duruyordu, yani sıfırlanan sistemde
+    // eski oturum açık kalıyordu.
+    'user_session', 'sec_last_activity', 'session_',
+    'app_notifications', 'user_notifications',
+    'gamification_', 'section_tab_',
 ];
 
+/**
+ * Silinmeyecek anahtarlar. Ön ek listesine takılsalar bile korunurlar.
+ *
+ * `university_scores_*` üniversite taban puanları — kullanıcı verisi değil,
+ * uygulamanın referans verisi. Silmek gereksiz yere yeniden indirtir.
+ */
+const KORUNACAK = ['theme_mode', 'app_settings', 'gemini_api_key'];
+
 const silinmeli = (anahtar) =>
-    SILINECEK_ONEKLER.some((o) => anahtar === o || anahtar.startsWith(o));
+    !KORUNACAK.includes(anahtar)
+    && SILINECEK_ONEKLER.some((o) => anahtar === o || anahtar.startsWith(o));
 
 /**
  * Gerekiyorsa yerel veriyi temizler.
