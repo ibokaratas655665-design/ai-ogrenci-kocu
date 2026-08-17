@@ -303,22 +303,40 @@ export const loginStudent = async (schoolNumber, name) => {
         const schoolNoStr = String(schoolNumber || '').trim();
         const nameStr = String(name || '').trim().toLowerCase();
 
-        // Yardımcı: isim eşleştirme fonksiyonu
+        /**
+         * Şifre kurmamış öğrenci için ad-soyad doğrulaması.
+         *
+         * ⚠️ ÖNCEKİ HÂLİ GİRİŞİ FİİLEN AÇIK BIRAKIYORDU. Şu satırların
+         * hepsi ayrı birer bypass'tı:
+         *
+         *   if (!inp) return true;              → BOŞ bırakan giriyordu
+         *   if (inp === '123') return true;     → evrensel şifre
+         *   if (regName.includes(inp)) ...      → "a" yazmak yetiyordu
+         *   rp.startsWith(ip) ...               → adın ilk harfi yetiyordu
+         *
+         * Yani okul numarasını bilen biri —numaralar sıralı ve tahmin
+         * edilebilir— hiçbir şey yazmadan o öğrencinin hesabına giriyordu.
+         *
+         * Artık TAM ad eşleşmesi aranıyor. Büyük/küçük harf ve fazla
+         * boşluk göz ardı edilir, Türkçe karakterler sadeleştirilir
+         * ("İbrahim" ~ "ibrahim"), ama kısmi eşleşme KABUL EDİLMEZ.
+         *
+         * Bu yine de şifre kadar güçlü değildir; kalıcı çözüm öğrencinin
+         * ilk girişte kendi şifresini kurmasıdır.
+         */
+        const adSadelestir = (s) => String(s || '')
+            .replace(/[İIı]/g, 'i')
+            .toLowerCase()
+            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+            .replace(/ö/g, 'o').replace(/ç/g, 'c')
+            .replace(/\s+/g, ' ')
+            .trim();
+
         const isNameMatch = (registeredName, inputName) => {
-            if (!registeredName) return false;
-            const regName = (registeredName || '').toLowerCase().trim();
-            const inp = (inputName || '').toLowerCase().trim();
-            if (!inp || inp.length === 0) return true;   // boş bırakıldı, geç
-            if (inp === '123') return true;               // evrensel bypass
-            if (regName === inp) return true;             // tam eşleşme
-            if (regName.includes(inp)) return true;       // kayıtlı isim, girişi içeriyor
-            if (inp.includes(regName)) return true;       // giriş, kayıtlı ismi içeriyor
-            // Kelime bazlı: ad veya soyad tek başına yeterli
-            const regParts = regName.split(/\s+/);
-            const inpParts = inp.split(/\s+/);
-            return regParts.some(rp => rp.length > 1 &&
-                inpParts.some(ip => ip.length > 1 && (rp === ip || rp.startsWith(ip) || ip.startsWith(rp)))
-            );
+            const kayitli = adSadelestir(registeredName);
+            const girilen = adSadelestir(inputName);
+            if (!kayitli || !girilen) return false;   // boş giriş ASLA geçerli değil
+            return kayitli === girilen;               // yalnızca tam eşleşme
         };
 
         // ── 1. Koçun öğrenci listesinden kontrol et (birincil) ────
@@ -384,11 +402,20 @@ export const loginStudent = async (schoolNumber, name) => {
 
             // Okul no ile bulunamadıysa → isimle ara
             // (okul numarası girilmemişse veya okul no alanı boş olan öğrenciler için)
-            if (nameStr && nameStr !== '123' && coachStudents.length > 0) {
-                // schoolNumber alanını isim kombinasyonuyla dene
+            /**
+             * Okul numarası girilmemişse isimle aranır.
+             *
+             * ⚠️ Bu dal ŞİFREYİ HİÇ SORMUYORDU: şifresini kurmuş bir
+             * öğrenci bile yalnızca adı yazılarak taklit edilebiliyordu.
+             * Artık yalnızca ŞİFRESİ OLMAYAN öğrenciler bu yoldan
+             * girebilir; şifresi olan, şifresiyle girmek zorundadır.
+             */
+            if (nameStr && coachStudents.length > 0) {
                 const combined = (schoolNoStr + ' ' + nameStr).trim();
                 const foundByName = coachStudents.find(s =>
-                    isNameMatch(s.name, combined) || isNameMatch(s.name, nameStr) || isNameMatch(s.name, schoolNoStr)
+                    !s.password && (
+                        isNameMatch(s.name, combined) || isNameMatch(s.name, nameStr) || isNameMatch(s.name, schoolNoStr)
+                    )
                 );
                 if (foundByName) {
                     return {
