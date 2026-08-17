@@ -168,7 +168,7 @@ const GuidancePage = () => {
             pdf.text('REHBERLIK ANALIZ RAPORU', 15, 28);
 
             pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(191, 219, 254);
-            pdf.text('AI OGRENCI KOCU | BIREYSEL GELISIM BELGESI', 15, 38);
+            pdf.text('BASARI KAMPI | BIREYSEL GELISIM BELGESI', 15, 38);
 
             // Score Panel
             pdf.setFillColor(255, 255, 255); pdf.setDrawColor(226, 232, 240);
@@ -189,7 +189,7 @@ const GuidancePage = () => {
             // Footer
             pdf.setFillColor(30, 58, 138); pdf.rect(0, H - 15, W, 15, 'F');
             pdf.setFontSize(8); pdf.setTextColor(255, 255, 255);
-            pdf.text('BU BELGE AI OGRENCI KOCU TARAFINDAN URETILMISTIR.', W / 2, H - 6, { align: 'center' });
+            pdf.text('BU BELGE BASARI KAMPI TARAFINDAN URETILMISTIR.', W / 2, H - 6, { align: 'center' });
 
             savePDF(pdf, `${user.name.replace(/\s+/g, '_')}_Analiz_Raporu`);
         } catch (e) {

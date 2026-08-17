@@ -84,7 +84,9 @@ const LandingPage = () => {
                     <div className="flex items-center gap-2 min-w-0">
                         <img src={MARKA.amblem} alt="" width="36" height="36"
                             className="w-9 h-9 shrink-0 object-contain" />
-                        <span className="font-black text-sm sm:text-base truncate">{MARKA.ad}</span>
+                        {/* Ad, logodaki el yazısı stiliyle */}
+                        <img src={MARKA.adYazisi} alt={MARKA.ad} height="28"
+                            className="h-7 w-auto object-contain shrink-0" />
                     </div>
 
                     <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-ink-2">
@@ -340,8 +342,10 @@ const LandingPage = () => {
             <footer className="bg-surface-2 border-t border-line py-8 px-4">
                 <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <GraduationCap size={18} className="text-brand" />
-                        <span className="font-black text-sm">Başarı Kampı</span>
+                        <img src={MARKA.amblem} alt="" width="24" height="24"
+                            className="w-6 h-6 object-contain" />
+                        <img src={MARKA.adYazisi} alt={MARKA.ad} height="20"
+                            className="h-5 w-auto object-contain" />
                     </div>
                     <p className="text-[11px] text-ink-3 text-center">
                         Öğrenci ve veli verileri KVKK kapsamındadır; rehberlik kayıtları

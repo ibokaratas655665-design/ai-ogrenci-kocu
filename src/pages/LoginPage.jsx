@@ -30,6 +30,7 @@ import {
 } from '../services/securityService';
 import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
 import MARKA from '../data/marka';
+import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
 import coupons from '../services/couponService';
 import { girisDemo, demoyuTemizle, DEMO_KULLANICI } from '../services/demoService';
 import credential from '../services/credentialService';
@@ -135,7 +136,10 @@ const LoginPage = () => {
     const [name, setName] = useState('');
     const [schoolNumber, setSchoolNumber] = useState('');
     const [phone, setPhone] = useState('');
-    const [schoolName, setSchoolName] = useState('Şamran Anadolu Lisesi');
+    /* Bu alan koç girişinde ŞİFRE, kayıtta okul adı olarak kullanılıyor.
+       Tek bir okulun adıyla dolu geliyordu; hem kişiye özel bir kalıntıydı
+       hem de şifre alanının hazır dolu gelmesi yanlıştı. */
+    const [schoolName, setSchoolName] = useState('');
     const [email, setEmail] = useState('');
     const [rememberDevice, setRememberDevice] = useState(true);
     const [error, setError] = useState('');
@@ -268,7 +272,7 @@ const LoginPage = () => {
 
     const handleCoachLoginStep1 = async () => {
         const rawPhone = phone.trim();
-        const isAdminLogin = rawPhone === 'admin@admin.com' || rawPhone === 'ibokaratas655665@gmail.com';
+        const isAdminLogin = yoneticiHesabiMi(rawPhone);
         const cleanPhone = isAdminLogin ? rawPhone : sanitizePhone(rawPhone);
         if (!cleanPhone || !schoolName) { setError('Lütfen tüm alanları doldurun.'); return; }
 

@@ -72,6 +72,7 @@ import SociometryNetworkMap from '../components/coach/SociometryNetworkMap';
 import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
+import MARKA from '../data/marka';
 
 // 🛡️ Safe JSON Parser
 const safeParse = (key, defaultValue = []) => {
@@ -2770,13 +2771,21 @@ const CoachDashboard = () => {
 
     // Ayarlar → Genel → Uygulama Adı. Kaydedilir ama hiçbir yerde
     // gösterilmiyordu; başlıkta ve sekme adında kullanılır.
-    const [appName, setAppName] = useState("KOÇLUK SİSTEMİ");
+    const [appName, setAppName] = useState(MARKA.ad.toLocaleUpperCase('tr-TR'));
+    /* Kurum Ayarlar'dan kendi adını yazdı mı? Yazdıysa başlıkta marka
+       görseli değil o metin gösterilir. */
+    const [kurumAdiOzel, setKurumAdiOzel] = useState(false);
     useEffect(() => {
         const oku = () => {
             try {
                 const s = JSON.parse(localStorage.getItem("app_settings") || "{}");
                 const ad = s?.general?.appName;
-                if (ad && String(ad).trim()) setAppName(String(ad).trim().toLocaleUpperCase("tr-TR"));
+                if (ad && String(ad).trim()) {
+                    setAppName(String(ad).trim().toLocaleUpperCase("tr-TR"));
+                    setKurumAdiOzel(
+                        String(ad).trim().toLocaleLowerCase('tr-TR') !== MARKA.ad.toLocaleLowerCase('tr-TR')
+                    );
+                }
             } catch { /* varsayilan kalsin */ }
         };
         oku();
@@ -3269,26 +3278,41 @@ const CoachDashboard = () => {
 
             {/* ── PREMIUM HEADER ───────────────────────────────────────────── */}
             <header className="topbar fixed top-0 left-0 right-0 z-40">
-                <div className="max-w-[1920px] mx-auto px-6 h-[72px] flex items-center justify-between">
+                {/* Yükseklik 72 → 96: ad yazısı logodaki el yazısı stiliyle
+                    ve alt başlıkla aynı genişlikte duruyor; bu logo "Kampı"yı
+                    alt satıra aldığı için doğası gereği yüksek, eski çubuğa
+                    sığmıyordu. */}
+                <div className="max-w-[1920px] mx-auto px-6 h-[96px] flex items-center justify-between">
                     {/* Left: Branding & Status */}
                     <div className="flex items-center gap-4">
-                        {/* Marka rozeti — dolu buton diliyle aynı hacim */}
-                        <div
-                            className="w-11 h-11 rounded-[14px] grid place-items-center flex-none"
-                            style={{
-                                color: 'var(--ink-on)',
-                                background: 'linear-gradient(180deg, color-mix(in srgb, var(--brand) 84%, white), var(--brand) 46%, color-mix(in srgb, var(--brand) 88%, black))',
-                                border: '1px solid color-mix(in srgb, var(--brand) 76%, black)',
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.34), 0 4px 12px -4px color-mix(in srgb, var(--brand) 60%, transparent)',
-                            }}
-                        >
-                            <Rocket size={21} />
-                        </div>
+                        {/* Marka amblemi. Önceden jenerik bir roket ikonu ve
+                            altında kurucunun kişi adı yazılıydı; uygulama
+                            birçok koçun kullandığı bir ürün olduğu için ikisi
+                            de kaldırıldı. */}
+                        <img
+                            src={MARKA.amblem}
+                            alt=""
+                            width="44"
+                            height="44"
+                            className="w-11 h-11 rounded-[14px] flex-none object-contain bg-white"
+                        />
                         <div className="hidden sm:block">
-                            <h1 className="text-sm font-black text-ink syne tracking-[0.2em] uppercase">{appName}</h1>
-                            <p className="text-[10px] font-black text-accent tracking-[0.1em] mt-1 flex items-center gap-2">
+                            {/* Ad, logodaki el yazısı stiliyle görünsün diye
+                                düz metin değil görsel. Kurum Ayarlar'dan kendi
+                                adını yazdıysa o metin gösterilir — kimsenin
+                                kendi markasını görselle ezmiyoruz. */}
+                            {kurumAdiOzel ? (
+                                <h1 className="text-sm font-black text-ink syne tracking-[0.2em] uppercase">{appName}</h1>
+                            ) : (
+                                /* Yükseklik değil GENİŞLİK veriliyor: ad yazısı
+                                   altındaki "KOÇLUK PLATFORMU" satırıyla aynı
+                                   genişlikte dursun diye. */
+                                <img src={MARKA.adYazisi} alt={MARKA.ad}
+                                    className="w-[168px] h-auto object-contain" />
+                            )}
+                            <p className="text-[10px] font-black text-accent tracking-[0.075em] mt-0.5 flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                                İBRAHİM KARATAŞ - YAPAY ZEKA DESTEKLİ
+                                {MARKA.altBaslik.toLocaleUpperCase('tr-TR')}
                             </p>
                         </div>
                     </div>
@@ -3343,7 +3367,7 @@ const CoachDashboard = () => {
             </header>
 
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
-            <div className="pt-24 pb-8 relative overflow-hidden atmos">
+            <div className="pt-28 pb-8 relative overflow-hidden atmos">
                 <div className="max-w-[1920px] mx-auto px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6 bg-surface/40 backdrop-blur-xl border border-line p-4 rounded-3xl">
                         <div className="flex flex-wrap gap-3">

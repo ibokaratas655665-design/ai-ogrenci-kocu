@@ -59,7 +59,7 @@ export const isAnaKoc = (user) => {
     if (user.role === 'admin') return true;
     if (user.coachRole === 'masterCoach' || user.coachRole === 'master') return true;
     // Kurucu hesap
-    return user.id === 'admin_master' || user.email === 'ibokaratas655665@gmail.com';
+    return user.id === 'admin_master' || yoneticiHesabiMi(user.email);
 };
 
 /**

@@ -214,7 +214,7 @@ const StudentTestsTab = ({ user }) => {
             pdf.setFontSize(26); pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold');
             pdf.text('PSIKOLOJIK ANALIZ RAPORU', 15, 25);
             pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(191, 219, 254);
-            pdf.text('AI OGRENCI KOCU | PROFESYONEL REHBERLIK SERVISI', 15, 34);
+            pdf.text('BASARI KAMPI | KOCLUK PLATFORMU', 15, 34);
 
             pdf.setFontSize(9); pdf.setTextColor(255, 255, 255);
             pdf.text(`Rapor No: #REF-${Math.floor(Math.random() * 90000 + 10000)}`, W - 15, 20, { align: 'right' });
@@ -275,7 +275,7 @@ const StudentTestsTab = ({ user }) => {
             // Footer
             pdf.setFillColor(30, 58, 138); pdf.rect(0, H - 15, W, 15, 'F');
             pdf.setFontSize(8); pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'normal');
-            pdf.text('BU RAPOR YAPAY ZEKA DESTEKLI AI OGRENCI KOCU TARAFINDAN URETILMISTIR. RESMI EVRAK DEGRADIR.', W / 2, H - 6, { align: 'center' });
+            pdf.text('BU RAPOR BASARI KAMPI TARAFINDAN URETILMISTIR. RESMI EVRAK NITELIGI TASIMAZ.', W / 2, H - 6, { align: 'center' });
 
             savePDF(pdf, `${studentName.replace(/\s+/g, '_')}_${testName}_Analiz`);
         } catch (e) {

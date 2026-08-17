@@ -11,6 +11,7 @@ import credential from './credentialService';
 import coupons from './couponService';
 import subscription from './subscriptionService';
 import { planBul, DENEME_GUN } from '../data/pricingPlans';
+import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
 
 /**
  * Doğru şifreyle giriş yapan eski (düz metin) kaydı özete çevirir.
@@ -91,8 +92,7 @@ const createVirtualEmail = (identifier, role) => {
 export const loginCoach = async (phone, schoolName) => {
     try {
         // ── 1. MASTER ADMIN kontrolü ──────────────────────────────
-        const isAdminEmail = phone === 'admin@admin.com' ||
-            phone === 'ibokaratas655665@gmail.com';
+        const isAdminEmail = yoneticiHesabiMi(phone);
 
         if (isAdminEmail) {
             /**
@@ -142,7 +142,8 @@ export const loginCoach = async (phone, schoolName) => {
                     phone: phone,
                     role: 'admin',
                     name: 'Sistem Yöneticisi',
-                    schoolName: 'Şamran Anadolu Lisesi',
+                    // Kurum adı Ayarlar'dan girilir; koda tek bir okul gömülmez
+                    schoolName: '',
                     approved: true
                 }
             };
@@ -237,15 +238,34 @@ export const loginCoach = async (phone, schoolName) => {
                         };
                     }
 
-                    const schoolMatch =
-                        (coachData.schoolName || '').toLowerCase() === (schoolName || '').toLowerCase() ||
-                        (schoolName || '').toLowerCase().includes('şamran');
-
-                    if (!schoolMatch) {
-                        return {
-                            success: false,
-                            error: 'Okul adı eşleşmiyor.'
-                        };
+                    /**
+                     * ⚠️ BURADA AÇIK VARDI:
+                     *
+                     *   (schoolName || '').toLowerCase().includes('şamran')
+                     *
+                     * Şifre alanına "şamran" yazan HERKES, telefon numarasını
+                     * bildiği her koçun hesabına girebiliyordu. Aynı açığı
+                     * localStorage dalında kapatmıştım ama Firebase yedek
+                     * dalındaki bu ikinci kopyayı atlamışım.
+                     *
+                     * Artık kontrol localStorage dalıyla aynı: şifre varsa
+                     * PBKDF2 özetiyle doğrulanır, yoksa (yönetici eklemiş,
+                     * koç henüz şifre kurmamış) okul adı TAM eşleşme ister.
+                     */
+                    if (coachData.password) {
+                        const gecerli = await credential.dogrula(schoolName, coachData.password);
+                        if (!gecerli) {
+                            return { success: false, error: 'Şifre hatalı.' };
+                        }
+                    } else {
+                        const kayitliOkul = (coachData.schoolName || '').toLocaleLowerCase('tr-TR').trim();
+                        const girilenOkul = (schoolName || '').toLocaleLowerCase('tr-TR').trim();
+                        if (!girilenOkul || kayitliOkul !== girilenOkul) {
+                            return {
+                                success: false,
+                                error: 'Okul adı eşleşmiyor. Lütfen kayıtlı okul adını girin.'
+                            };
+                        }
                     }
 
                     return {

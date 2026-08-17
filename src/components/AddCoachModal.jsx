@@ -187,7 +187,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
                                         value={formData.email}
                                         onChange={handleChange}
                                         className="pl-10 w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand focus:border-brand"
-                                        placeholder="ibrahim@ornek.com"
+                                        placeholder="ornek@eposta.com"
                                     />
                                 </div>
                             </div>

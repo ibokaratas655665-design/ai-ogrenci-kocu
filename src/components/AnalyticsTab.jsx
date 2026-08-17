@@ -52,7 +52,7 @@ const AnalyticsTab = ({ students = [] }) => {
                         STRATEJİK ANALİZ
                     </h2>
                     <p className="text-ink-2 font-bold uppercase text-[9px] tracking-widest mt-2 ml-1">
-                        Sistem Performans Raporu (Ibrahim Karataş v1.0)
+                        Sistem Performans Raporu
                     </p>
                 </div>
                 <div className="flex bg-surface-3 dark:bg-surface-inv p-1 rounded-2xl border border-line dark:border-line-2">

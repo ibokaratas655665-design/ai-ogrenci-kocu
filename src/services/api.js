@@ -29,106 +29,30 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const api = {
     auth: {
+        /**
+         * Giriş TEK BİR YERDE yapılır: hybridAuth.
+         *
+         * ⚠️ BURADA ÜÇ AYRI AÇIK VARDI ve hepsi kaldırıldı:
+         *
+         *   1. `password === '123'` — her öğrenci için geçerli evrensel şifre.
+         *      Okul numarasını bilen herkes o öğrencinin hesabına girebiliyordu.
+         *   2. İsim bazlı bulanık eşleşme: öğrencinin adının herhangi bir
+         *      parçasını yazmak yetiyordu ("Mehmet Öz" için "meh" yeterliydi).
+         *   3. `password.toLowerCase() === 'şamran anadolu lisesi'` — o cümleyi
+         *      yazan herkes, telefon numarasını bildiği koçun hesabına giriyordu.
+         *
+         * Bu blok "hybridAuth yüklenemezse devreye giren yedek" diye
+         * yazılmıştı. Kimlik doğrulamanın yedeği OLMAZ: doğrulayamıyorsak
+         * girişi reddetmek gerekir, gevşetmek değil.
+         */
         async login(identifier, password, role) {
             await delay(100);
-            
-            // Re-use hybridAuth if available to avoid duplication
-            try {
-                const { loginCoach, loginStudent } = await import('./hybridAuth');
-                if (role === 'coach') return await loginCoach(identifier, password);
-                if (role === 'student') return await loginStudent(identifier, password);
-            } catch (e) { console.warn("HybridAuth import failed in api.js, using fallback."); }
 
-            // Fallback mock logic (Simplified to avoid inconsistencies)
-            const isMasterAdmin = (identifier === 'admin@admin.com' || identifier === 'ibokaratas655665@gmail.com');
+            const { loginCoach, loginStudent } = await import('./hybridAuth');
+            if (role === 'coach') return await loginCoach(identifier, password);
+            if (role === 'student') return await loginStudent(identifier, password);
 
-            if (role === 'coach' && isMasterAdmin) {
-                const adminUser = { id: 'admin_master', name: 'Sistem Yöneticisi', email: identifier, role: 'admin', approved: true };
-                localStorage.setItem(DB_KEYS.USER, JSON.stringify(adminUser));
-                return { success: true, user: adminUser };
-            }
-
-
-            // STUDENT LOGIN
-            if (role === 'student') {
-                // Try coach's student list first (identifier = School Number)
-                const coachStudents = safeParse('coach_students');
-                const coachStudent = coachStudents.find(s => String(s.schoolNumber) === String(identifier));
-
-                if (coachStudent) {
-                    // Name-based verification (case-insensitive, flexible matching)
-                    const nameMatch = coachStudent.name.toLowerCase().includes(password.toLowerCase()) ||
-                        password.toLowerCase().includes(coachStudent.name.toLowerCase()) ||
-                        password === '123';
-
-                    if (nameMatch) {
-                        // Check feature approvals
-                        const approvals = safeParse(DB_KEYS.STUDENT_APPROVALS, {});
-                        const sessionUser = {
-                            ...coachStudent,
-                            role: 'student',
-                            token: 'mock-jwt-token-student-' + Date.now(),
-                            approvals: approvals[coachStudent.id] || {}
-                        };
-                        localStorage.setItem(DB_KEYS.USER, JSON.stringify(sessionUser));
-                        return { success: true, user: sessionUser };
-                    }
-                    return { success: false, error: 'İsim bilgisi eşleşmedi.' };
-                }
-
-                // Try registered students db (for students not in coach list)
-                const registeredStudents = safeParse(DB_KEYS.USERS);
-                const registeredStudent = registeredStudents.find(u =>
-                    u.role === 'student' && String(u.schoolNumber) === String(identifier)
-                );
-
-                if (registeredStudent) {
-                    if (!registeredStudent.approved) {
-                        return { success: false, error: 'Hesabınız henüz onaylanmamış. Koç onayı bekleniyor.' };
-                    }
-
-                    // Password check for registered students
-                    if (registeredStudent.password === password || password === '123') {
-                        const approvals = safeParse(DB_KEYS.STUDENT_APPROVALS, {});
-                        const sessionUser = {
-                            ...registeredStudent,
-                            token: 'mock-jwt-token-student-' + Date.now(),
-                            approvals: approvals[registeredStudent.id] || {}
-                        };
-                        localStorage.setItem(DB_KEYS.USER, JSON.stringify(sessionUser));
-                        return { success: true, user: sessionUser };
-                    }
-                    return { success: false, error: 'Şifre hatalı.' };
-                }
-
-                return { success: false, error: 'Bu numaraya ait öğrenci bulunamadı.' };
-            }
-
-            // COACH LOGIN
-            if (role === 'coach') {
-                // identifier = Phone, password = School Name (Verification)
-                const users = safeParse(DB_KEYS.USERS);
-                const user = users.find(u => u.phone === identifier && u.role === 'coach');
-
-                if (user) {
-                    if (!user.approved) {
-                        return { success: false, error: 'Hesabınız henüz onaylanmamış. Yönetici onayı bekleniyor.' };
-                    }
-
-                    if (password.toLowerCase() === 'şamran anadolu lisesi' || user.schoolName === password) {
-                        const sessionUser = {
-                            ...user,
-                            token: 'mock-jwt-token-coach-' + Date.now()
-                        };
-                        localStorage.setItem(DB_KEYS.USER, JSON.stringify(sessionUser));
-                        return { success: true, user: sessionUser };
-                    }
-                    return { success: false, error: 'Okul ismi hatalı.' };
-                }
-                return { success: false, error: 'Kayıtlı koç bulunamadı.' };
-            }
-
-            return { success: false, error: 'Giriş yapılamadı.' };
+            return { success: false, error: 'Geçersiz kullanıcı türü.' };
         },
 
 
@@ -142,10 +66,13 @@ const api = {
 
             // Coach Registration
             if (data.role === 'coach') {
-                if (data.schoolName.toLowerCase() !== 'şamran anadolu lisesi') {
-                    return { success: false, error: 'Sadece Şamran Anadolu Lisesi koçları kayıt olabilir.' };
-                }
-
+                /**
+                 * Kayıt eskiden tek bir okulun personeline kısıtlıydı:
+                 *   if (schoolName !== 'şamran anadolu lisesi') reddet
+                 * Uygulama artık paketli bir ürün; kayıt herkese açık.
+                 * Erişimi kısıtlayan şey okul adı değil, ana koç onayı
+                 * (`approved: false` ile kaydediliyor).
+                 */
                 if (users.find(u => u.phone === data.phone)) {
                     return { success: false, error: 'Bu telefon numarası ile kayıtlı kullanıcı var.' };
                 }

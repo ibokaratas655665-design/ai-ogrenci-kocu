@@ -229,7 +229,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             pdf.rect(10, 0, W - 10, 45, 'F');
 
             pdf.setFontSize(10); pdf.setTextColor(100, 116, 139); pdf.setFont('helvetica', 'bold');
-            pdf.text('AI OGRENCI KOCU - TURKIYE REHBERLIK VE PSIKOLOJIK DANISMANLIK PLATFORMU', 25, 12);
+            pdf.text('BASARI KAMPI - KOCLUK VE REHBERLIK PLATFORMU', 25, 12);
 
             pdf.setDrawColor(203, 213, 225); pdf.line(25, 15, W - 15, 15);
 
@@ -328,7 +328,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             pdf.setFontSize(22); pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold');
             pdf.text('SINIF SOSYOGRAM VE ETKI ANALIZI', 15, 20);
             pdf.setFontSize(10); pdf.setFont('helvetica', 'normal');
-            pdf.text(`AI OGRENCI KOCU | REHBERLIK SERVISI | TARIH: ${today}`, 15, 30);
+            pdf.text(`BASARI KAMPI | REHBERLIK SERVISI | TARIH: ${today}`, 15, 30);
 
             // 1. Özet İstatistikler
             pdf.setTextColor(30, 58, 138); pdf.setFontSize(14); pdf.setFont('helvetica', 'bold');

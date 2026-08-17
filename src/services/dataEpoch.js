@@ -87,4 +87,65 @@ export const donemKontrol = () => {
     }
 };
 
-export default { donemKontrol, VERI_DONEMI };
+// ══════════════════════════════════════════════════════════════
+//  MARKA GÖÇÜ
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Uygulama adı, kurumların kendi adlarını yazabilmesi için
+ * `app_settings.general.appName` altında saklanır ve arayüzde bunun
+ * değeri gösterilir.
+ *
+ * Sorun: veri temizliğinde `app_settings` KORUNUYOR (kullanıcının tema
+ * tercihi orada). Dolayısıyla marka "Başarı Kampı" olarak değiştikten
+ * sonra bile panel başlığında eski ad görünmeye devam ediyordu.
+ *
+ * Bu göç yalnızca BİLİNEN ESKİ ADLARI düzeltir. Kurum kendi adını
+ * yazdıysa ona dokunmaz — kimsenin kendi markasını ezmek istemiyoruz.
+ */
+const ESKI_ADLAR = [
+    'ai ogrenci kocu',
+    'yz ogrenci kocu',
+    'ai koc',
+    'ai kocu',
+    'kocluk sistemi',
+];
+
+/**
+ * Karşılaştırma için Türkçe karakterleri sadeleştirir.
+ *
+ * ⚠️ `toLocaleLowerCase('tr-TR')` KULLANILAMAZ: Türkçe yerelde 'I' harfi
+ * NOKTASIZ 'ı'ya dönüşür, yani "AI Öğrenci Koçu" → "aı öğrenci koçu".
+ * Listede noktalı 'i' aradığımız için eşleşme tutmuyordu ve eski ad
+ * ekranda kalmaya devam ediyordu.
+ */
+const sadelestir = (s) => String(s)
+    .replace(/[İIı]/g, 'i')
+    .toLowerCase()
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+export const markaGocu = (yeniAd) => {
+    try {
+        const ham = localStorage.getItem('app_settings');
+        if (!ham) return false;
+        const ayar = JSON.parse(ham);
+        const mevcut = ayar?.general?.appName;
+        if (!mevcut) return false;
+
+        if (!ESKI_ADLAR.includes(sadelestir(mevcut))) {
+            return false;   // kurumun kendi adı — dokunma
+        }
+
+        ayar.general.appName = yeniAd;
+        localStorage.setItem('app_settings', JSON.stringify(ayar));
+        try { window.dispatchEvent(new Event('settings-updated')); } catch { /* ignore */ }
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+export default { donemKontrol, markaGocu, VERI_DONEMI };

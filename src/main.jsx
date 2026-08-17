@@ -8,7 +8,8 @@ import './styles/surface.css'
 import './styles/depth.css'
 import './styles/vivid.css'
 import App from './App.jsx'
-import { donemKontrol } from './services/dataEpoch'
+import { donemKontrol, markaGocu } from './services/dataEpoch'
+import MARKA from './data/marka'
 
 /**
  * Yerel veri temizliği React kurulmadan ve senkronizasyon başlamadan
@@ -16,6 +17,9 @@ import { donemKontrol } from './services/dataEpoch'
  * çoktan yüklenmiş olurdu — Firestore'u temizlemenin anlamı kalmazdı.
  */
 donemKontrol()
+
+/** Ayarlarda kalmış eski uygulama adını yeni markaya çevirir. */
+markaGocu(MARKA.ad)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

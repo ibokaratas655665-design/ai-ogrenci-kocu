@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { BrainCircuit, LogOut, Moon, Sun } from 'lucide-react';
 import Chatbot from '../components/Chatbot';
 import { useAuth } from '../context/AuthContext';
+import MARKA from '../data/marka';
 import { useTheme } from '../context/ThemeContext';
 import { NotificationBell } from '../components/NotificationPanel';
 
@@ -34,19 +35,20 @@ const DashboardLayout = () => {
                     borderColor: scrolled ? 'var(--border-color)' : 'transparent',
                 }}
             >
-                <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+                {/* Yükseklik 64 → 80: ad yazısı ve alt başlık sığsın diye */}
+                <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
 
                     {/* Logo */}
                     <div className="flex items-center gap-3 flex-shrink-0">
-                        <div className="on-color w-9 h-9 bg-gradient-to-br from-brand to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                            <BrainCircuit className="text-ink" size={20} />
-                        </div>
+                        {/* Jenerik beyin ikonu yerine marka amblemi */}
+                        <img src={MARKA.amblem} alt="" width="36" height="36"
+                            className="w-9 h-9 object-contain flex-none" />
                         <div className="hidden sm:block">
-                            <span className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-brand to-violet-600 block leading-tight">
-                                Başarı Kampı
-                            </span>
-                            <span className="text-[10px] leading-tight block" style={{ color: 'var(--text-muted)' }}>
-                                {user?.name || 'Misafir'}
+                            {/* Ad, logodaki el yazısı stiliyle */}
+                            <img src={MARKA.adYazisi} alt={MARKA.ad}
+                                className="w-[124px] h-auto object-contain" />
+                            <span className="text-[10px] leading-tight block mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                {MARKA.altBaslik}
                             </span>
                         </div>
                     </div>

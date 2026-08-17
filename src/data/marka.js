@@ -17,6 +17,9 @@ export const MARKA = {
     /** Uzun ad — karşılama sayfası, uygulama mağazası, manifest. */
     tamAd: 'Başarı Kampı — Koçluk ve Rehberlik Sistemi',
 
+    /** Adın hemen altında görünen tanım satırı. */
+    altBaslik: 'Koçluk Platformu',
+
     /** Tek cümlelik tanım. */
     tanim: 'Özel öğrenci koçluğu ve okul rehberlik servisi için program, '
         + 'deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.',
@@ -26,6 +29,15 @@ export const MARKA = {
 
     /** Yalnızca amblem (yazısız) — dar alanlar ve PDF başlıkları. */
     amblem: '/amblem-256.png',
+
+    /**
+     * Adın YAZI hâli, logodaki el yazısı stiliyle (saydam zeminli).
+     *
+     * Ad, sistemde bulunmayan bir fırça yazı tipiyle çizilmiş; düz metinle
+     * taklit edilemez. Başlıklarda metin yerine bu görsel kullanılır ki
+     * arayüzdeki ad logoyla aynı görünsün.
+     */
+    adYazisi: '/ad-yazisi-256.png',
 
     renk: {
         lacivert: '#16294A',   // "Başarı" yazısı, siluetler

@@ -19,6 +19,7 @@ import {
 import { generateStudentReport } from '../utils/pdfGenerator';
 import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
 import { api } from '../services/api';
+import MARKA from '../data/marka';
 import guidanceService from '../services/guidanceService';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import PomodoroTimer from '../components/PomodoroTimer';
@@ -862,8 +863,29 @@ const StudentDashboard = () => {
             {/* ── HEADER ───────────────────────────────────────────── */}
             <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-line transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-                    {/* Sol: Logo & Avatar */}
+                    {/* Sol: Marka + Avatar
+                        Öğrenci panelinde marka hiç görünmüyordu; uygulamanın
+                        hangi sistem olduğu öğrencide de belli olmalı. Amblem
+                        ve ad, öğrencinin baş harf rozetinden önce geliyor. */}
                     <div className="flex items-center gap-3 md:gap-4">
+                        <div className="flex items-center gap-2 pr-3 md:pr-4 border-r border-line">
+                            <img
+                                src={MARKA.amblem}
+                                alt=""
+                                width="36"
+                                height="36"
+                                className="w-9 h-9 object-contain flex-none"
+                            />
+                            <div className="hidden md:block leading-tight">
+                                {/* Ad, logodaki el yazısı stiliyle — düz metin değil.
+                                    Genişlik alt başlıkla eşit. */}
+                                <img src={MARKA.adYazisi} alt={MARKA.ad}
+                                    className="w-[124px] h-auto object-contain" />
+                                <p className="text-[9px] font-bold text-ink-3 tracking-[0.083em] uppercase mt-0.5">
+                                    {MARKA.altBaslik}
+                                </p>
+                            </div>
+                        </div>
                         <div className="relative group">
                             <div className="on-color absolute -inset-1 bg-gradient-to-tr from-brand to-accent rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500" />
                             <div className="relative w-12 h-12 bg-surface border border-line rounded-2xl flex items-center justify-center text-brand font-bold shadow-xl overflow-hidden">

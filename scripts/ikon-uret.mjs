@@ -39,6 +39,20 @@ const amblemAlani = {
     height: Math.round(meta.height * 0.60),
 };
 
+/**
+ * "Başarı Kampı" yazısının bulunduğu alt bölge.
+ *
+ * Bu yazı el yazısı bir fırça yazı tipiyle çizilmiş; sistemde böyle bir
+ * yazı tipi yok ve metinle taklit edilemez. Arayüzde adın logodaki
+ * hâliyle görünmesi için yazı GÖRSEL olarak kırpılıp kullanılıyor.
+ */
+const yaziAlani = {
+    left: Math.round(meta.width * 0.18),
+    top: Math.round(meta.height * 0.685),
+    width: Math.round(meta.width * 0.65),
+    height: Math.round(meta.height * 0.255),
+};
+
 const BEYAZ = { r: 255, g: 255, b: 255, alpha: 1 };
 
 /** Logonun tamamı, kenar boşluklu. */
@@ -85,6 +99,81 @@ await sadeceAmblem(64, 'favicon-64.png');
 
 console.log('\nPDF başlığı için:');
 await sadeceAmblem(256, 'amblem-256.png');
+
+/**
+ * Ad yazısı (wordmark) — GERÇEKTEN saydam zeminli.
+ *
+ * Kaynak bir JPEG ve zemini saf beyaz değil, hafif gri bir degrade.
+ * Sadece kırpıp PNG'ye çevirmek yetmiyordu: yazı, koyu başlıklarda
+ * gri bir kutu içinde duruyor ve bulanık görünüyordu.
+ *
+ * Burada piksel piksel geçip beyaza yakın olanların saydamlığını
+ * açıyoruz. Eşik yumuşak tutuldu (235–250 arası kısmi saydam) ki
+ * harflerin kenarları tırtıklı çıkmasın.
+ */
+console.log('\nAd yazısı (logodaki el yazısı stili, saydam zemin):');
+{
+    const ham = await sharp(KAYNAK)
+        .extract(yaziAlani)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    /**
+     * Zemini parlaklığa göre ayıklamak YETMİYOR: logonun zemini düz beyaz
+     * değil, aşağı doğru koyulaşan gri bir degrade. Eşik ne konursa
+     * konsun ya köşelerde gri kutu kalıyor ya da yazının açık tonları
+     * siliniyor.
+     *
+     * Renk doygunluğuna bakmak ayrımı net yapıyor:
+     *   · zemin GRİ   → R≈G≈B (fark küçük)
+     *   · "Başarı"    → lacivert, koyu (parlaklık düşük)
+     *   · "Kampı"     → turuncu, çok doygun (R ile B arası ~210 fark)
+     *
+     * Yani "gri VE açık" olan her piksel zemindir.
+     */
+    const { data, info } = ham;
+    for (let i = 0; i < data.length; i += info.channels) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const enBuyuk = Math.max(r, g, b);
+        const enKucuk = Math.min(r, g, b);
+        const doygunluk = enBuyuk - enKucuk;      // gri ise ~0
+        const parlaklik = (r + g + b) / 3;
+
+        if (doygunluk < 22 && parlaklik > 205) {
+            data[i + 3] = 0;                      // gri ve açık → zemin
+        } else if (doygunluk < 22 && parlaklik > 170) {
+            // yazı kenarlarındaki yumuşak geçiş: kademeli saydamlık
+            data[i + 3] = Math.round(255 * (205 - parlaklik) / 35);
+        }
+    }
+
+    /**
+     * Saydam kenar payını kırp.
+     *
+     * Kırpma alanı yazının etrafında boşluk bırakıyor; bu boşluk görselin
+     * oranını gereksiz yere uzatıyordu. Arayüzde genişliği alt başlığa
+     * eşitleyince yükseklik 73 pikseli buluyor ve 72 piksellik başlık
+     * çubuğundan taşıyordu. Sıkı kırpma oranı yatığa çeviriyor.
+     */
+    const saydam = await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } })
+        .png()
+        .trim({ threshold: 1 })
+        .toBuffer();
+
+    const kirpilmis = await sharp(saydam).metadata();
+    const oran = kirpilmis.width / kirpilmis.height;
+    console.log(`  kırpıldı: ${info.width}×${info.height} → ${kirpilmis.width}×${kirpilmis.height} (oran ${oran.toFixed(2)})`);
+    // 256 ve 512: yüksek yoğunluklu ekranlarda (2x/3x) keskin dursun diye
+    for (const h of [128, 256, 512]) {
+        const w = Math.round(h * oran);
+        await sharp(saydam)
+            .resize(w, h, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' })
+            .png({ compressionLevel: 9 })
+            .toFile(join(CIKTI, `ad-yazisi-${h}.png`));
+        console.log(`  ad-yazisi-${h}.png  ${w}×${h}`);
+    }
+}
 
 /**
  * PDF'ler jsPDF ile üretiliyor ve `addImage` yüklenmiş bir görsel ister.

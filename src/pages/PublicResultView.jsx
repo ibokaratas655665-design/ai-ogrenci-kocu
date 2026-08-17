@@ -44,7 +44,7 @@ const PublicResultView = () => {
         pdf.text('REHBERLIK ANALIZ RAPORU', 15, 28);
 
         pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(191, 219, 254);
-        pdf.text('AI OGRENCI KOCU | DOĞRULANMIŞ PAYLAŞIM LİNKİ', 15, 38);
+        pdf.text('BASARI KAMPI | DOGRULANMIS PAYLASIM LINKI', 15, 38);
 
         // Score Panel
         pdf.setFillColor(255, 255, 255); pdf.setDrawColor(226, 232, 240);
