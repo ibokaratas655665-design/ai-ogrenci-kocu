@@ -7,6 +7,8 @@ import './styles/theme.css'
 import './styles/surface.css'
 import './styles/depth.css'
 import './styles/vivid.css'
+// Mobil uyum en sonda: pencere ve dokunma hedefi kurallarını ezmesin diye
+import './styles/mobil.css'
 import App from './App.jsx'
 import { donemKontrol, markaGocu } from './services/dataEpoch'
 import MARKA from './data/marka'

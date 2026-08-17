@@ -867,8 +867,14 @@ const StudentDashboard = () => {
                         Öğrenci panelinde marka hiç görünmüyordu; uygulamanın
                         hangi sistem olduğu öğrencide de belli olmalı. Amblem
                         ve ad, öğrencinin baş harf rozetinden önce geliyor. */}
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div className="flex items-center gap-2 pr-3 md:pr-4 border-r border-line">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                        {/* ⚠️ MOBİLDE GİZLİ.
+                            Görünür bırakıldığında (amblem + ayraç + boşluk)
+                            sağdaki bildirim, tema ve ÇIKIŞ düğmelerini 375
+                            piksellik ekranda dışarı itiyordu; öğrenci
+                            telefondan çıkış yapamıyordu. Uygulama adı zaten
+                            sekme başlığında ve ana ekran kısayolunda yazılı. */}
+                        <div className="hidden sm:flex items-center gap-2 pr-3 md:pr-4 border-r border-line">
                             <img
                                 src={MARKA.amblem}
                                 alt=""
@@ -893,11 +899,15 @@ const StudentDashboard = () => {
                                 <div className="on-color absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-brand to-accent" />
                             </div>
                         </div>
-                        <div className="flex flex-col">
-                            <h1 className="text-lg font-bold text-ink leading-tight syne">
+                        {/* min-w-0 + truncate: dar ekranda selamlama sıkışsın,
+                            sağdaki çıkış ve bildirim düğmelerini dışarı
+                            itmesin. Seri/seviye rozetleri mobilde gizli —
+                            aynı bilgiler panelin gövdesinde zaten var. */}
+                        <div className="flex flex-col min-w-0">
+                            <h1 className="text-base sm:text-lg font-bold text-ink leading-tight syne truncate">
                                 Selam, <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-[#f1d279]">{user?.name?.split(' ')[0] || 'Öğrenci'}</span> 👋
                             </h1>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="hidden sm:flex items-center gap-2 mt-0.5">
                                 <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
                                     <Flame size={12} className="text-brand" />
                                     <span className="text-[10px] font-bold text-brand tracking-wider uppercase">{userStats.currentStreak || 0} GÜN SERİ</span>

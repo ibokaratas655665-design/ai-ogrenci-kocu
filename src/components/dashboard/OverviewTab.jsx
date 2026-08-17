@@ -553,7 +553,7 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                                 <th className="px-6 py-5 text-center text-[10px] font-black text-ink-3 uppercase tracking-widest">
                                     <button
                                         onClick={() => toggleSort('program')}
-                                        className="inline-flex items-center gap-1 hover:text-ink-2 transition"
+                                        className="inline-flex items-center justify-center gap-1 hover:text-ink-2 transition min-h-[44px] min-w-[44px] -my-3 px-1"
                                         title="Program uyumuna göre sırala"
                                     >
                                         PROGRAM <ArrowUpDown size={11} />
@@ -566,7 +566,7 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                                 <th className="px-4 py-5 text-center text-[10px] font-black text-ink-3 uppercase tracking-widest">
                                     <button
                                         onClick={() => toggleSort('net')}
-                                        className="inline-flex items-center gap-1 hover:text-ink-2 transition"
+                                        className="inline-flex items-center justify-center gap-1 hover:text-ink-2 transition min-h-[44px] min-w-[44px] -my-3 px-1"
                                         title="Nete göre sırala"
                                     >
                                         SON DENEME NETİ <ArrowUpDown size={11} />
@@ -576,7 +576,7 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                                 <th className="px-6 py-5 text-center text-[10px] font-black text-ink-3 uppercase tracking-widest">
                                     <button
                                         onClick={() => toggleSort('risk')}
-                                        className="inline-flex items-center gap-1 hover:text-ink-2 transition"
+                                        className="inline-flex items-center justify-center gap-1 hover:text-ink-2 transition min-h-[44px] min-w-[44px] -my-3 px-1"
                                         title="Riske göre sırala"
                                     >
                                         DURUM <ArrowUpDown size={11} />

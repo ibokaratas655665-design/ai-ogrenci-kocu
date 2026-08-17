@@ -1,0 +1,69 @@
+/**
+ * 📱 MOBİL UYUM
+ *
+ * Uygulama masaüstü genişliğinde geliştirildi; telefonda açıldığında
+ * açılır pencerelerin bir kısmı ekrandan taşıyor, uzun içerikli olanlar
+ * kaydırılamıyordu (yükseklik sınırı ve kaydırma tanımlı değildi —
+ * 25 pencere dosyasında eksikti).
+ *
+ * Pencerelerin ortak bir sınıfı olmadığı için düzeltme yapısal desene
+ * göre yapılıyor: tam ekran kaplayan bir katmanın (`position: fixed` +
+ * dört kenarı 0) doğrudan çocuğu, pencere gövdesidir.
+ *
+ * Kural YALNIZCA telefon genişliğinde çalışır; masaüstü görünümü
+ * olduğu gibi kalır.
+ */
+
+@media (max-width: 640px) {
+
+    /**
+     * Pencere gövdesi ekrana sığsın ve içeriği kaydırılabilsin.
+     *
+     * `position: absolute` olan çocuklar hariç tutuldu: bunlar pencere
+     * gövdesi değil, kapatma düğmesi / dekoratif katman gibi öğeler.
+     */
+    .fixed.inset-0 > div:not(.absolute):not(.fixed) {
+        max-height: 92vh;
+        max-width: calc(100vw - 1.5rem);
+        overflow-y: auto;
+        overflow-x: hidden;
+        /* iOS'ta parmakla kaydırma akıcı olsun */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /**
+     * Pencere içindeki tablolar taşmasın; kendi içinde yatay kaysın.
+     * Tablonun tamamını daraltmak sütunları okunmaz hâle getiriyordu.
+     */
+    .fixed.inset-0 table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    /**
+     * Dokunma hedefleri.
+     *
+     * WCAG 2.5.8 en az 24×24 CSS pikseli, Apple ve Google 44×44 öneriyor.
+     * Simge düğmeleri 18–21 piksele kadar düşüyordu; parmakla isabet
+     * ettirmek zordu. Görsel boyut değişmeden dokunma alanı büyütülüyor.
+     */
+    button,
+    a[role='button'],
+    [role='tab'] {
+        min-height: 40px;
+    }
+
+    /* Yalnızca simge taşıyan kare düğmeler — genişlik de büyütülür */
+    button:not(:has(span)):not(:has(p)) {
+        min-width: 40px;
+    }
+
+    /**
+     * Sabit alt gezinme çubuğu varken sayfanın son öğesi altında kalıyordu;
+     * güvenli alan payı bırakılıyor (çentikli telefonlar dahil).
+     */
+    body {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+}
