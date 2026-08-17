@@ -577,7 +577,7 @@ const ReportCard = forwardRef(({ studentResults, userName }, ref) => {
                 </h3>
                 <p className="text-sm opacity-90 leading-relaxed">{aiTip}</p>
                 <div className="mt-4 pt-4 border-t border-line-2 flex justify-between items-center text-xs text-ink-3">
-                    <span>AI Öğrenci Koçu · {examType} Analizi</span>
+                    <span>Başarı Kampı · {examType} Analizi</span>
                     <span>{new Date().toLocaleDateString('tr-TR')}</span>
                 </div>
             </div>

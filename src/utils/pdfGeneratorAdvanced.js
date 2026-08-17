@@ -330,7 +330,7 @@ export const generateStudentProgressReport = (studentId, trials, allExams, stude
             doc.setFontSize(8);
             doc.setTextColor(150);
             doc.text(`Sayfa ${i} / ${pageCount}`, 105, 285, { align: 'center' });
-            doc.text('AI Ogrenci Kocu - Gelisim Takip Sistemi', 105, 290, { align: 'center' });
+            doc.text('Basari Kampi - Gelisim Takip Sistemi', 105, 290, { align: 'center' });
         }
 
         const fileName = `${turkishToEnglish(studentName)}_Gelisim_Raporu`;
@@ -528,7 +528,7 @@ export const generateClassProgressReport = (trials, allExams) => {
             doc.setFontSize(8);
             doc.setTextColor(150);
             doc.text(`Sayfa ${i} / ${pageCount}`, 105, 285, { align: 'center' });
-            doc.text('AI Ogrenci Kocu - Sinif Analiz Sistemi', 105, 290, { align: 'center' });
+            doc.text('Basari Kampi - Sinif Analiz Sistemi', 105, 290, { align: 'center' });
         }
 
         const fileName = 'Sinif_Gelisim_Raporu';
@@ -805,7 +805,7 @@ export const generateSchoolReport = (trials, allExams, students) => {
             doc.setFontSize(8);
             doc.setTextColor(150);
             doc.text(`Sayfa ${i} / ${pageCount}`, 105, 285, { align: 'center' });
-            doc.text('AI Ogrenci Kocu - Kurum Analiz ve Raporlama Sistemi', 105, 290, { align: 'center' });
+            doc.text('Basari Kampi - Kurum Analiz ve Raporlama Sistemi', 105, 290, { align: 'center' });
         }
 
         const fileName = 'Okul_Geneli_Raporu_Sinif_Bazli';

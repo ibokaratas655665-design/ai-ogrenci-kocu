@@ -43,7 +43,7 @@ const DashboardLayout = () => {
                         </div>
                         <div className="hidden sm:block">
                             <span className="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-brand to-violet-600 block leading-tight">
-                                AI Öğrenci Koçu
+                                Başarı Kampı
                             </span>
                             <span className="text-[10px] leading-tight block" style={{ color: 'var(--text-muted)' }}>
                                 {user?.name || 'Misafir'}

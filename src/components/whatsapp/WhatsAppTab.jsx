@@ -568,7 +568,7 @@ const WhatsAppSettings = () => {
                 <input
                     value={settings.coachName}
                     onChange={(e) => setSettings((p) => ({ ...p, coachName: e.target.value }))}
-                    placeholder="İbrahim Karataş"
+                    placeholder="Örn: Ayşe Yılmaz"
                     className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
                 />
                 <p className="text-ink-3 text-[11px] mt-1.5">

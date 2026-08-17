@@ -46,7 +46,7 @@ const SettingsModal = ({ onClose }) => {
 
         // Genel Ayarlar
         general: {
-            appName: 'AI Öğrenci Koçu',
+            appName: 'Başarı Kampı',
             defaultLanguage: 'tr',
             // Renk girdileri HEX olmak zorunda; CSS değişken adı yazılırsa
             // <input type="color"> değeri okuyamaz ve siyaha düşer.

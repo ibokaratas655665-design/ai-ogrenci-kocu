@@ -141,7 +141,7 @@ export const loginCoach = async (phone, schoolName) => {
                     email: phone,
                     phone: phone,
                     role: 'admin',
-                    name: 'İbrahim Karataş',
+                    name: 'Sistem Yöneticisi',
                     schoolName: 'Şamran Anadolu Lisesi',
                     approved: true
                 }

@@ -29,6 +29,7 @@ import {
     isUnusualLoginTime,
 } from '../services/securityService';
 import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
+import MARKA from '../data/marka';
 import coupons from '../services/couponService';
 import { girisDemo, demoyuTemizle, DEMO_KULLANICI } from '../services/demoService';
 import credential from '../services/credentialService';
@@ -519,16 +520,21 @@ const LoginPage = () => {
             <div className="relative z-10">
                 {/* ── HERO & SHOWCASE SECTION ── */}
                 <div className="max-w-6xl mx-auto px-6 pt-16 pb-12">
+                    {/* Marka görseli: amblem ve ad, logodaki hâliyle.
+                        Ada dair başlık ayrıca YAZILMIYOR — logonun içinde
+                        zaten yazılı; iki kez yazmak görsel kirlilik olur.
+                        Ekran okuyucular için `alt` metni adı taşıyor. */}
                     <div className="text-center mb-12 animate-fade-in">
-                        <div className="on-color inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-brand to-[#e8c96a] rounded-[28px] shadow-[0_0_40px_rgba(201,168,76,0.25)] mb-6 transform hover:rotate-6 transition-transform">
-                            <Brain size={44} className="text-ink-on" />
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-black syne tracking-tight mb-4">
-                            İbrahim Karataş <em className="not-italic text-brand">Yapay Zeka</em> Sistemi
-                        </h1>
+                        <img
+                            src={MARKA.logo}
+                            alt={MARKA.ad}
+                            width="1254"
+                            height="1254"
+                            className="w-56 md:w-72 h-auto mx-auto mb-5 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
+                        />
                         <p className="text-lg text-ink-2 max-w-2xl mx-auto font-medium leading-relaxed">
-                            Türkiye'nin en gelişmiş yapay zeka destekli eğitim ve sınav koçluk platformu. 
-                            Geleceğinizi veriyle inşa edin.
+                            Özel öğrenci koçluğu ve okul rehberlik servisi tek uygulamada.
+                            Program, deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.
                         </p>
                     </div>
 

@@ -217,7 +217,7 @@ export const generateAndDownloadPPT = (presentationId, title, category, totalSli
         align: 'center'
     });
 
-    titleSlide.addText('PDR Sunumları - AI Öğrenci Koçu', {
+    titleSlide.addText('PDR Sunumları - Başarı Kampı', {
         x: 0.5,
         y: 5.0,
         w: 9.0,

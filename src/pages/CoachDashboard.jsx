@@ -71,6 +71,7 @@ import { CoachPomodoroView } from '../components/student/SubjectPomodoro';
 import SociometryNetworkMap from '../components/coach/SociometryNetworkMap';
 import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
+import { AMBLEM_BASE64 } from '../data/amblemBase64';
 
 // 🛡️ Safe JSON Parser
 const safeParse = (key, defaultValue = []) => {
@@ -304,8 +305,22 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
 
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`AI Ogrenci Kocu | Kurumsal Rehberlik Modulu`, 15, 30);
-        pdf.text(`Rapor Tarihi: ${today}`, W - 15, 30, { align: 'right' });
+        pdf.text(`Kurumsal Rehberlik Modulu`, 15, 30);
+        pdf.text(`Rapor Tarihi: ${today}`, 15, 38);
+
+        /* Marka amblemi sağ üstte.
+           Bu rapor MEB resmî evrakı DEĞİL — altında "resmi evrak niteligi
+           tasimaz" ibaresi var — o yüzden uygulama markası basılabiliyor.
+           mebDocument.js ile üretilen resmî belgelere amblem KONULMAZ. */
+        pdf.setFillColor(255, 255, 255);
+        pdf.circle(W - 25, 18, 9, 'F');
+        try { pdf.addImage(AMBLEM_BASE64, 'PNG', W - 32, 11, 14, 14); } catch { /* amblemsiz de basılır */ }
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('Basari Kampi', W - 25, 32, { align: 'center' });
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(255, 255, 255);
 
         // Student Info Box
         pdf.setFillColor(243, 244, 246);
@@ -364,7 +379,7 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
         // Footer
         pdf.setFontSize(8);
         pdf.setTextColor(156, 163, 175);
-        pdf.text('Bu rapor AI Koc Sistemi tarafindan otomatik olarak uretilmistir. Resmi evrak niteligi tasimaz.', W / 2, H - 10, { align: 'center' });
+        pdf.text('Bu rapor Basari Kampi tarafindan otomatik olarak uretilmistir. Resmi evrak niteligi tasimaz.', W / 2, H - 10, { align: 'center' });
 
         pdf.save(`${student.name}_${result.testId}_Analiz.pdf`);
     };

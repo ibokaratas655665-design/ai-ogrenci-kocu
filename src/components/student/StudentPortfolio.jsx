@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { Star, TrendingUp, ClipboardList, Award, Download, Share2, Brain, Target, Zap, BookOpen, Medal } from 'lucide-react';
+import { AMBLEM_BASE64 } from '../../data/amblemBase64';
 
 const BADGE_EMOJI_MAP = {
     'fire': '🔥', 'star': '⭐', 'brain': '🧠', 'trophy': '🏆', 'rocket': '🚀',
@@ -46,6 +47,16 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
             doc.setFontSize(12);
             doc.setFont('helvetica', 'normal');
             doc.text(student?.name || 'Öğrenci', 15, 32);
+
+            // Sağ üstte marka amblemi — koçluk çıktısı, resmî evrak değil
+            doc.setFillColor(255, 255, 255);
+            doc.circle(188, 16, 8, 'F');
+            try { doc.addImage(AMBLEM_BASE64, 'PNG', 182, 10, 12, 12); } catch { /* amblemsiz de basılır */ }
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('Basari Kampi', 188, 30, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
 
             // Temel Bilgiler
             doc.setTextColor(30, 30, 30);
@@ -92,7 +103,7 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
             doc.rect(0, 270, 210, 27, 'F');
             doc.setFontSize(9);
             doc.setTextColor(120, 120, 140);
-            doc.text('Bu portfolyo AI Öğrenci Koçu tarafından oluşturulmuştur.', 15, 281);
+            doc.text('Bu portfolyo Başarı Kampı tarafından oluşturulmuştur.', 15, 281);
             doc.text(new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }), 15, 289);
 
             doc.save(`${student?.name || 'portfolyo'}-portfolyo.pdf`);

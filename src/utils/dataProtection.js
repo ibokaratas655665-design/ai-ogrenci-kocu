@@ -1,33 +1,39 @@
 // ═══════════════════════════════════════════════════════════════
 //  Veri Koruma Yardımcısı
-//  Kritik işlemler için İbrahim Karataş onayı zorunlu
+//  Geri alınamaz işlemler için yazılı onay ister
 // ═══════════════════════════════════════════════════════════════
 
-const OWNER_NAME = 'İbrahim Karataş';
+/**
+ * Onay için yazılması gereken söz.
+ *
+ * Eskiden kurucunun kişi adı beklenirdi ve beklenen ad zaten ekranda
+ * yazılıydı — yani güvenlik değil, yalnızca yanlışlıkla tıklamayı
+ * engelleyen bir adımdı. Uygulama artık birçok koçun kullandığı bir
+ * ürün; kimsenin kişi adı koda gömülmez.
+ */
+const ONAY_SOZU = 'ONAYLIYORUM';
 
 /**
- * Kritik veri işlemi için admin onayı ister.
- * Kullanıcı doğru ismi yazarsa callback çalışır.
+ * Kritik veri işlemi için yazılı onay ister.
  * @param {string} actionDescription - Yapılacak işlemin açıklaması
  * @param {Function} onConfirm - Onay verilince çalışacak fonksiyon
  * @returns {boolean} - Onaylandı mı?
  */
 export const requireOwnerConfirmation = (actionDescription, onConfirm) => {
     const entered = window.prompt(
-        `🔒 VERİ KORUMA - YÖNETİCİ ONAYI GEREKLİ\n\n` +
+        `🔒 VERİ KORUMA — ONAY GEREKLİ\n\n` +
         `İşlem: "${actionDescription}"\n\n` +
-        `Bu işlem GERİ ALINAMAZDIR.\n` +
-        `Devam etmek için tam adınızı girin:\n` +
-        `(${OWNER_NAME})`
+        `Bu işlem GERİ ALINAMAZ.\n` +
+        `Devam etmek için "${ONAY_SOZU}" yazın:`
     );
 
     if (entered === null) return false; // İptal
 
-    if (entered.trim() === OWNER_NAME) {
+    if (entered.trim().toLocaleUpperCase('tr-TR') === ONAY_SOZU) {
         onConfirm();
         return true;
     } else {
-        window.alert(`❌ Onay başarısız!\nGirilen: "${entered}"\nBeklenen: "${OWNER_NAME}"\n\nİşlem iptal edildi.`);
+        window.alert(`❌ Onay başarısız!\nGirilen: "${entered}"\nBeklenen: "${ONAY_SOZU}"\n\nİşlem iptal edildi.`);
         return false;
     }
 };

@@ -93,7 +93,7 @@ class GlobalErrorBoundary extends React.Component {
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-surface-2">
     <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
-    <div className="text-brand font-bold text-lg animate-pulse">AI Koç Yükleniyor...</div>
+    <div className="text-brand font-bold text-lg animate-pulse">Başarı Kampı Yükleniyor...</div>
   </div>
 );
 

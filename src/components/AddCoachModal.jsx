@@ -171,7 +171,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
                                         value={formData.name}
                                         onChange={handleChange}
                                         className="pl-10 w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand focus:border-brand"
-                                        placeholder="Örn: İbrahim Karataş"
+                                        placeholder="Örn: Ayşe Yılmaz"
                                         required
                                     />
                                 </div>

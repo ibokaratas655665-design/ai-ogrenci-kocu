@@ -135,7 +135,7 @@ export const ParentPortalPage = ({ studentId }) => {
                 )}
 
                 <div className="text-center text-xs text-ink-3 pb-6">
-                    Bu sayfa AI Öğrenci Koçu tarafından oluşturulmuştur.<br />
+                    Bu sayfa Başarı Kampı tarafından oluşturulmuştur.<br />
                     Veriler yalnızca öğrencinin cihazından okunmaktadır.
                 </div>
             </div>

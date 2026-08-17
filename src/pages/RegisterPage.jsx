@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Brain, User, Users, ArrowRight, Phone, Hash, School } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import MARKA from '../data/marka';
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -63,12 +64,14 @@ const RegisterPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-surface-2 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8 glass-card p-10 animate-fade-in">
                 <div className="text-center">
-                    <div className="mx-auto h-12 w-12 bg-brand rounded-xl flex items-center justify-center text-white mb-4">
-                        <Brain size={28} />
-                    </div>
-                    <h2 className="mt-2 text-2xl font-extrabold text-ink">İbrahim Karataş ile Başarıya Başla</h2>
+                    <img
+                        src={MARKA.logo}
+                        alt={MARKA.ad}
+                        className="w-40 h-auto mx-auto mb-3 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-2xl dark:p-2"
+                    />
+                    <h2 className="mt-2 text-2xl font-extrabold text-ink">Başarıya Başla</h2>
                     <p className="mt-2 text-sm text-ink-2">
-                        Yapay zeka destekli eğitim dünyasına katıl.
+                        Programını, denemelerini ve gelişimini tek yerden takip et.
                     </p>
                 </div>
 

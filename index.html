@@ -6,7 +6,10 @@
   <!-- Google Translate'i devre dışı bırak - React DOM'u bozuyor -->
   <meta name="google" content="notranslate" />
   <meta name="googlebot" content="notranslate" />
-  <link rel="icon" type="image/svg+xml" href="/logo512.svg" />
+  <!-- Favicon: küçük boyutta yazı okunmadığı için yalnızca amblem.
+       scripts/ikon-uret.mjs üretir. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
   <link rel="manifest" href="/manifest.json" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -16,33 +19,35 @@
   <!-- iOS PWA (Apple) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="AI Koç" />
+  <meta name="apple-mobile-web-app-title" content="Başarı Kampı" />
   <!-- iOS requires PNG icons, not SVG -->
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
   <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120.png" />
   <!-- iOS Splash Screens -->
-  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#312e81" media="(prefers-color-scheme: dark)" />
-  <title>AI Öğrenci Koçu — Koçluk ve Rehberlik Sistemi</title>
+  <!-- Tema rengi amblemin laciverti -->
+  <meta name="theme-color" content="#16294A" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#16294A" media="(prefers-color-scheme: dark)" />
+  <title>Başarı Kampı — Koçluk ve Rehberlik Sistemi</title>
   <meta name="description"
     content="Özel öğrenci koçluğu ve okul rehberlik servisi tek uygulamada: ders programı, deneme analizi, görev takibi ve MEB düzenine uygun rehberlik dosyaları." />
 
-  <!-- Open Graph / Facebook / WhatsApp -->
+  <!-- Open Graph / Facebook / WhatsApp.
+       Adres Firebase Hosting'e taşındı; eski Netlify adresi kullanılmıyor. -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://ibrahimkaratas-koc.netlify.app/" />
-  <meta property="og:title" content="AI Öğrenci Koçu — Koçluk ve Rehberlik Sistemi" />
+  <meta property="og:url" content="https://ai-ogrenci-kocu-b037b.web.app/" />
+  <meta property="og:title" content="Başarı Kampı — Koçluk ve Rehberlik Sistemi" />
   <meta property="og:description"
     content="Koçluk çalışmanız ve rehberlik dosyanız tek uygulamada. Öğrenci ve veli hesapları ücretsiz." />
-  <meta property="og:image" content="/logo512.svg" />
+  <meta property="og:image" content="/icon-512.png" />
 
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://ibrahimkaratas-koc.netlify.app/" />
-  <meta property="twitter:title" content="İbrahim Karataş - Yapay Zeka Koçluk Sistemi" />
-  <meta property="twitter:description" content="YKS ve LGS sürecinde profesyonel yol arkadaşınız." />
-  <meta property="twitter:image" content="/logo512.svg" />
+  <meta property="twitter:url" content="https://ai-ogrenci-kocu-b037b.web.app/" />
+  <meta property="twitter:title" content="Başarı Kampı — Koçluk ve Rehberlik Sistemi" />
+  <meta property="twitter:description" content="YKS, LGS, KPSS ve AGS sürecinde koçluk ve rehberlik." />
+  <meta property="twitter:image" content="/icon-512.png" />
 </head>
 
 <body>

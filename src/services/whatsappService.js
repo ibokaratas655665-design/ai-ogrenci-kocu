@@ -88,7 +88,7 @@ export const TEMPLATE_VARIABLES = [
     { key: 'ad', label: 'Öğrenci adı (ilk isim)', example: 'Mehmet' },
     { key: 'ogrenciAdi', label: 'Öğrenci tam adı', example: 'Mehmet Öz' },
     { key: 'veliAdi', label: 'Veli adı', example: 'Ayşe Hanım' },
-    { key: 'kocAdi', label: 'Koç adı', example: 'İbrahim Karataş' },
+    { key: 'kocAdi', label: 'Koç adı', example: 'Ayşe Yılmaz' },
     { key: 'okulNo', label: 'Okul numarası', example: '123' },
     { key: 'sinif', label: 'Sınıf / şube', example: '12-A' },
     { key: 'hedef', label: 'Hedef bölüm/üniversite', example: 'Tıp' },

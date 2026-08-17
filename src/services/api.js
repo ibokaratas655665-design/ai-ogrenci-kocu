@@ -43,7 +43,7 @@ const api = {
             const isMasterAdmin = (identifier === 'admin@admin.com' || identifier === 'ibokaratas655665@gmail.com');
 
             if (role === 'coach' && isMasterAdmin) {
-                const adminUser = { id: 'admin_master', name: 'İbrahim Karataş', email: identifier, role: 'admin', approved: true };
+                const adminUser = { id: 'admin_master', name: 'Sistem Yöneticisi', email: identifier, role: 'admin', approved: true };
                 localStorage.setItem(DB_KEYS.USER, JSON.stringify(adminUser));
                 return { success: true, user: adminUser };
             }

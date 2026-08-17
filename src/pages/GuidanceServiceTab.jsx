@@ -285,7 +285,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
             // Footer
             pdf.setFontSize(8); pdf.setTextColor(100, 116, 139);
-            pdf.text('© Bu rapor AI Ogrenci Kocu Gelismis Rehberlik Servisi tarafindan olusturulmustur. Tum haklari saklidir.', W / 2 + 5, H - 10, { align: 'center' });
+            pdf.text('© Bu rapor Basari Kampi Gelismis Rehberlik Servisi tarafindan olusturulmustur. Tum haklari saklidir.', W / 2 + 5, H - 10, { align: 'center' });
 
             savePDF(pdf, `${studentName.replace(/\s+/g, '_')}_Resmi_Rehberlik_Analizi`);
         } catch (e) {
@@ -485,7 +485,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
         // Footer
         pdf.setFontSize(8);
         pdf.setTextColor(150, 150, 150);
-        pdf.text('AI Ogrenci Kocu - Rehberlik Hizmetleri', 20, 285);
+        pdf.text('Basari Kampi - Rehberlik Hizmetleri', 20, 285);
 
         savePDF(pdf, `Toplu_Envanter_Raporu_${new Date().toLocaleDateString('tr-TR')}`);
     };

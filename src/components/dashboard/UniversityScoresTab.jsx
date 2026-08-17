@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Download, Plus, Trash2, Edit2, X, GraduationCap, Building2, Award, Save, CheckCircle, BookOpen, Star, ChevronDown, ChevronUp, Rocket } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { AYT_PROGRAMS, TYT_PROGRAMS, YDT_PROGRAMS, GELECEK_PROGRAMS } from '../../data/universityScoresData';
+import { AMBLEM_BASE64 } from '../../data/amblemBase64';
 
 const STORAGE_KEY = 'university_scores_v2';
 const YEAR_KEY = 'university_scores_year';
@@ -122,7 +123,12 @@ const generateCardPDF = (allData, year, stats) => {
   pdf.setTextColor(201, 168, 76); pdf.setFontSize(16); pdf.setFont('helvetica', 'bold');
   pdf.text(`UNIVERSITE TABAN PUANLARI - ${year} YKS`, 15, 14);
   pdf.setFontSize(8); pdf.setTextColor(180,180,180);
-  pdf.text(`${stats.total} Bolum | ${today} | AI Ogrenci Kocu - Ibrahim Karatas`, 15, 22);
+  pdf.text(`${stats.total} Bolum | ${today}`, 15, 22);
+  // Sağ üstte marka amblemi — koçluk çıktısı, resmî evrak değil
+  pdf.setFillColor(255, 255, 255); pdf.circle(W - 22, 12, 7, 'F');
+  try { pdf.addImage(AMBLEM_BASE64, 'PNG', W - 27, 7, 10, 10); } catch { /* amblemsiz de basılır */ }
+  pdf.setFontSize(6.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255, 255, 255);
+  pdf.text('Basari Kampi', W - 22, 24, { align: 'center' });
 
   let y = 34;
   const cardW = W - 20;
@@ -213,7 +219,7 @@ const generateCardPDF = (allData, year, stats) => {
 
   // Footer on last page
   pdf.setFontSize(6); pdf.setTextColor(150,150,150);
-  pdf.text(trToEn('Bu rapor AI Ogrenci Kocu tarafindan olusturulmustur. YOK Atlas verilerine dayanmaktadir.'), W/2, H-5, {align:'center'});
+  pdf.text(trToEn('Bu rapor Basari Kampi tarafindan olusturulmustur. YOK Atlas verilerine dayanmaktadir.'), W/2, H-5, {align:'center'});
 
   pdf.save(`Taban_Puanlari_${year}_Rapor.pdf`);
 };

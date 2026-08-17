@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { savePDF } from './pdfSave';
+import { AMBLEM_BASE64 } from '../data/amblemBase64';
+import { MARKA } from '../data/marka';
 import { calculateEstimatedScore, getAYTAreaNets, getOBPScore, getAYTMaxScoreArea } from './scoreCalculator';
 
 // ─── Uygulama Renk Paleti ─────────────────────────────────────────
@@ -129,7 +131,14 @@ const addFooters = (doc, leftText) => {
         doc.setTextColor(...COLORS.slate400);
         doc.text(t(leftText), 14, 291);
         doc.text(`Sayfa ${i} / ${count}`, 196, 291, { align: 'right' });
-        doc.text('YZ Ogrenci Kocu — Ibrahim Karatas', 105, 291, { align: 'center' });
+        /* Alt bilgide amblem + ad — resmî evrak değil, koçluk çıktısı
+           olduğu belli olsun. */
+        try {
+            doc.addImage(AMBLEM_BASE64, 'PNG', 97, 287, 6, 6);
+        } catch { /* amblemsiz de basılabilir */ }
+        doc.setFont('helvetica', 'bold');
+        doc.text(t(MARKA.ad), 105, 291.5, { align: 'left' });
+        doc.setFont('helvetica', 'normal');
     }
 };
 
@@ -170,13 +179,16 @@ export const generateBulkExamReport = (trial, exams, students) => {
         doc.rect(0, 18, 210, 30, 'F');
         doc.setFillColor(...COLORS.violet);
         doc.rect(0, 0, 6, 48, 'F');
-        doc.setFillColor(...COLORS.violet);
-        doc.circle(20, 14, 8, 'F');
-        doc.setFontSize(8);
+        /* Amblem, başlık şeridinin soluna. Beyaz zeminli olduğu için
+           koyu şeritte kaybolmasın diye altına beyaz daire konuyor. */
+        doc.setFillColor(...COLORS.white);
+        doc.circle(20, 14, 8.5, 'F');
+        try {
+            doc.addImage(AMBLEM_BASE64, 'PNG', 13, 7, 14, 14);
+        } catch { /* amblem basılamazsa rapor yine üretilsin */ }
+        doc.setFontSize(18);
         doc.setTextColor(...COLORS.white);
         doc.setFont('helvetica', 'bold');
-        doc.text('AI', 20, 17, { align: 'center' });
-        doc.setFontSize(18);
         doc.text(trialName, 32, 16);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
@@ -271,6 +283,8 @@ export const generateStudentReport = (student, trial, allExams = []) => {
         doc.setFillColor(...COLORS.slate800); doc.rect(0, 0, 210, 50, 'F');
         doc.setFillColor(...COLORS.indigo); doc.rect(0, 28, 210, 22, 'F');
         doc.setFillColor(...COLORS.violet); doc.rect(0, 0, 6, 50, 'F');
+        /* Baş harf dairesi öğrenciyi işaret ettiği için korunuyor;
+           marka ambleme sağ üst köşeye, adı da yanına konuyor. */
         doc.setFillColor(...COLORS.violet); doc.circle(22, 18, 10, 'F');
         doc.setFontSize(9); doc.setTextColor(...COLORS.white); doc.setFont('helvetica', 'bold');
         doc.text(studentName.substring(0, 2).toUpperCase(), 22, 21, { align: 'center' });
@@ -278,6 +292,13 @@ export const generateStudentReport = (student, trial, allExams = []) => {
         doc.setFontSize(10); doc.text(trialName, 36, 36);
         doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...COLORS.indigoLight);
         doc.text(`${t(examType)} SINAVI  •  ${t(dateStr)}`, 36, 42);
+
+        doc.setFillColor(...COLORS.white); doc.circle(191, 14, 7.5, 'F');
+        try {
+            doc.addImage(AMBLEM_BASE64, 'PNG', 185, 8, 12, 12);
+        } catch { /* amblem basılamazsa rapor yine üretilsin */ }
+        doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...COLORS.white);
+        doc.text(t(MARKA.ad), 191, 25, { align: 'center' });
 
         let yPos = 58;
         const getTotalNetLocal = (s) => (parseFloat(s.totalNet) || parseFloat(s.tyt) || Object.values(s.subjects || {}).reduce((a, b) => a + (parseFloat(b?.net) || 0), 0));

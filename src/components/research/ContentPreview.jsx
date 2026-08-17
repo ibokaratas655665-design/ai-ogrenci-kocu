@@ -89,7 +89,7 @@ const ContentPreview = ({ content, onClose }) => {
                     {/* İletişim / Alt Bilgi */}
                     {panel.isContact && (
                         <div className="mt-auto pt-8 text-center text-sm text-ink-2 border-t border-line">
-                            <p>© 2026 AI Öğrenci Koçu</p>
+                            <p>© 2026 Başarı Kampı</p>
                         </div>
                     )}
                 </div>

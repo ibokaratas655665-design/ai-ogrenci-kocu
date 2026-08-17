@@ -7,6 +7,7 @@ import {
     MessageCircle,
 } from 'lucide-react';
 import { PLANLAR, ogrenciBasiAylik, sezonBilgisi, DENEME_GUN, tl } from '../data/pricingPlans';
+import MARKA from '../data/marka';
 
 /**
  * 🏠 KARŞILAMA SAYFASI
@@ -78,11 +79,12 @@ const LandingPage = () => {
             {/* ── Üst çubuk ──────────────────────────────── */}
             <nav className="fixed w-full z-40 bg-surface/85 backdrop-blur-md border-b border-line">
                 <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+                    {/* Üst çubukta yalnızca amblem — logonun yazı kısmı bu
+                        boyutta okunmuyor, ad zaten yanında metin olarak var. */}
                     <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-9 h-9 rounded-xl bg-brand text-white grid place-items-center shrink-0">
-                            <GraduationCap size={19} />
-                        </span>
-                        <span className="font-black text-sm sm:text-base truncate">AI Öğrenci Koçu</span>
+                        <img src={MARKA.amblem} alt="" width="36" height="36"
+                            className="w-9 h-9 shrink-0 object-contain" />
+                        <span className="font-black text-sm sm:text-base truncate">{MARKA.ad}</span>
                     </div>
 
                     <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-ink-2">
@@ -339,14 +341,14 @@ const LandingPage = () => {
                 <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <GraduationCap size={18} className="text-brand" />
-                        <span className="font-black text-sm">AI Öğrenci Koçu</span>
+                        <span className="font-black text-sm">Başarı Kampı</span>
                     </div>
                     <p className="text-[11px] text-ink-3 text-center">
                         Öğrenci ve veli verileri KVKK kapsamındadır; rehberlik kayıtları
                         mesleki gizlilik altındadır.
                     </p>
                     <p className="text-[11px] text-ink-3">
-                        © {new Date().getFullYear()} İbrahim Karataş
+                        © {new Date().getFullYear()} Başarı Kampı
                     </p>
                 </div>
             </footer>

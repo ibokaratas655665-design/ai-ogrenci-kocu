@@ -304,7 +304,7 @@ const IOSCard = ({ isDetected, isSafari, isStandalone }) => {
                             onClick={() => {
                                 if (navigator.share) {
                                     navigator.share({
-                                        title: 'AI Öğrenci Koçu',
+                                        title: 'Başarı Kampı',
                                         url: window.location.origin
                                     });
                                 }
@@ -552,7 +552,7 @@ const DownloadPage = () => {
                             <div className="on-color w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-ink shadow-lg group-hover:scale-110 transition">
                                 <Brain size={22} />
                             </div>
-                            <span className="text-ink font-bold hidden sm:block">AI Öğrenci Koçu</span>
+                            <span className="text-ink font-bold hidden sm:block">Başarı Kampı</span>
                         </button>
                         <div className="flex items-center gap-3">
                             <button
@@ -697,7 +697,7 @@ const DownloadPage = () => {
                     <Brain size={18} className="text-brand" />
                     <span className="text-ink-2 font-semibold text-sm">EĞİTİM KOÇU İBRAHİM KARATAŞ</span>
                 </div>
-                <p className="text-ink-3 text-xs">© 2024 İbrahim Karataş. Tüm hakları saklıdır.</p>
+                <p className="text-ink-3 text-xs">© {new Date().getFullYear()} Başarı Kampı. Tüm hakları saklıdır.</p>
             </footer>
         </div>
     );

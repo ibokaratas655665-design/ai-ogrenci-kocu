@@ -185,7 +185,7 @@ const TeacherSchedulerTab = () => {
             <div className="flex justify-between items-center bg-surface p-8 rounded-[40px] shadow-sm border border-line">
                 <div>
                     <h1 className="text-3xl font-black text-ink tracking-tighter uppercase">Öğretmen & Ders Dağıtım Sistemi</h1>
-                    <p className="text-ink-3 font-bold text-sm uppercase tracking-widest mt-1">İbrahim Karataş Eğitim Koçluğu</p>
+                    <p className="text-ink-3 font-bold text-sm uppercase tracking-widest mt-1">Başarı Kampı</p>
                 </div>
                 <div className="flex gap-4">
                     <button onClick={() => setActiveTab('definitions')} className={cn("px-6 py-3 rounded-2xl text-sm font-black transition-all", activeTab === 'definitions' ? "bg-surface-inv text-ink shadow-xl" : "bg-surface-2 text-ink-3 hover:bg-surface-3")}>TANIMLAMALAR</button>
