@@ -11,6 +11,8 @@ import NotificationPanel from './components/NotificationPanel';
 import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import useGlobalModalDismiss from './hooks/useGlobalModalDismiss';
 import Modal from './components/ui/Modal';
+import { profilOku } from './services/kimlikKopru';
+import { auth } from './firebaseConfig';
 
 // 🛡️ Oturum Zaman Aşımı Uyarı Banner'ı
 const SessionTimeoutBanner = () => {
@@ -199,7 +201,9 @@ function App() {
 
                   <Route path="/admin" element={
                     <RouteGuard allowedRoles={['admin']}>
-                      <AdminDashboard />
+                      <YoneticiKapisi>
+                        <AdminDashboard />
+                      </YoneticiKapisi>
                     </RouteGuard>
                   } />
 
@@ -299,6 +303,41 @@ function App() {
 }
 
 // Güvenlik Duvarı Bileşeni
+/**
+ * Yönetici rotası için SUNUCU doğrulaması.
+ *
+ * `RouteGuard` rolü `user_session` üzerinden okuyor; o da localStorage.
+ * Ölçüldü: konsoldan `user_session.role = 'admin'` yazan biri yönetici
+ * ekranını AÇABİLİYOR. Veri sızmıyor — `users`, `abonelikler` ve
+ * `kullaniciProfil` yazımı kuralla engellendi (3/3 reddedildi) — ama
+ * ekranın hiç açılmaması doğrusu.
+ *
+ * `kullaniciProfil/{uid}.rol == 'admin'` güvenilir bir sinyal: kural
+ * `rol: 'admin'` yazımını yalnızca gerçek yönetici uid'ine izin veriyor
+ * (`request.resource.data.rol != 'admin' || yoneticiMi()`).
+ */
+function YoneticiKapisi({ children }) {
+  const { user } = useAuth();
+  const [durum, setDurum] = React.useState('kontrol');
+
+  React.useEffect(() => {
+    let iptal = false;
+    (async () => {
+      try {
+        const profil = await profilOku(auth?.currentUser?.uid);
+        if (!iptal) setDurum(profil?.rol === 'admin' ? 'izin' : 'red');
+      } catch {
+        // Sunucuya ulaşılamıyorsa yönetici ekranı AÇILMAZ — güvenli taraf.
+        if (!iptal) setDurum('red');
+      }
+    })();
+    return () => { iptal = true; };
+  }, [user?.id]);
+
+  if (durum === 'kontrol') return <PageLoader />;
+  if (durum === 'red') return <Navigate to="/login" replace />;
+  return children;
+}
 function RouteGuard({ children, allowedRoles }) {
   const { user, isAuthenticated, loading } = useAuth();
 
