@@ -115,3 +115,99 @@ export default function Field({
         </div>
     );
 }
+
+// ══════════════════════════════════════════════════════════════
+//  ONAY KUTUSU VE SEÇENEK DÜĞMESİ
+//
+//  Denetimde 16 yerde `type="checkbox"`, 4 yerde `type="radio"` elle
+//  kurulmuştu. Elle kurulanlarda tekrar eden üç sorun vardı:
+//    · etiket girdiye bağlanmıyor (tıklanınca kutu değişmiyor,
+//      ekran okuyucu ne olduğunu söyleyemiyor),
+//    · dokunma hedefi 44 pikselin altında kalıyor,
+//    · odak halkası görünmüyor.
+//  Burada üçü de bir kez çözülüyor.
+// ══════════════════════════════════════════════════════════════
+
+/** Kutu ve düğme için ortak kabuk — 44px dokunma hedefi garanti. */
+const secimKabugu = (devreDisi) => cn(
+    'flex items-start gap-3 min-h-[44px] py-2 rounded-dmd',
+    'cursor-pointer select-none',
+    devreDisi && 'opacity-50 cursor-not-allowed'
+);
+
+const secimKutusu = (tur) => cn(
+    'mt-0.5 shrink-0 w-5 h-5 border-2 border-line bg-surface',
+    'text-brand accent-[var(--brand)]',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1',
+    'disabled:cursor-not-allowed',
+    tur === 'radio' ? 'rounded-full' : 'rounded-[6px]'
+);
+
+/**
+ * Tek onay kutusu.
+ *
+ *   <Checkbox etiket="Cihazı hatırla" ipucu="Güvenliğiniz için önerilir"
+ *             checked={x} onChange={e => setX(e.target.checked)} />
+ */
+export const Checkbox = React.forwardRef(function Checkbox(
+    { etiket, ipucu, className, disabled, ...kalan }, ref
+) {
+    const id = useId();
+    const ipucuId = ipucu ? `${id}-ipucu` : undefined;
+
+    return (
+        <div className={className}>
+            <label htmlFor={id} className={secimKabugu(disabled)}>
+                <input
+                    ref={ref}
+                    id={id}
+                    type="checkbox"
+                    disabled={disabled}
+                    aria-describedby={ipucuId}
+                    className={secimKutusu('checkbox')}
+                    {...kalan}
+                />
+                <span className="min-w-0">
+                    <span className="tip-small text-ink block">{etiket}</span>
+                    {ipucu && <span id={ipucuId} className="tip-caption text-ink-3 block">{ipucu}</span>}
+                </span>
+            </label>
+        </div>
+    );
+});
+
+/**
+ * Seçenek düğmesi grubu — `role="radiogroup"` ile.
+ *
+ *   <RadioGrubu etiket="Rol" ad="rol" deger={rol} onChange={setRol}
+ *               secenekler={[{ deger: 'coach', etiket: 'Koç' }]} />
+ */
+export function RadioGrubu({ etiket, ad, deger, onChange, secenekler = [], className, disabled }) {
+    const id = useId();
+    return (
+        <div className={cn('flex flex-col gap-1.5', className)} role="radiogroup" aria-labelledby={etiket ? `${id}-b` : undefined}>
+            {etiket && <span id={`${id}-b`} className="tip-label text-ink-2">{etiket}</span>}
+            {secenekler.map((s) => {
+                const sid = `${id}-${s.deger}`;
+                return (
+                    <label key={s.deger} htmlFor={sid} className={secimKabugu(disabled || s.disabled)}>
+                        <input
+                            id={sid}
+                            type="radio"
+                            name={ad}
+                            value={s.deger}
+                            checked={String(deger) === String(s.deger)}
+                            disabled={disabled || s.disabled}
+                            onChange={(e) => onChange?.(e.target.value, e)}
+                            className={secimKutusu('radio')}
+                        />
+                        <span className="min-w-0">
+                            <span className="tip-small text-ink block">{s.etiket}</span>
+                            {s.ipucu && <span className="tip-caption text-ink-3 block">{s.ipucu}</span>}
+                        </span>
+                    </label>
+                );
+            })}
+        </div>
+    );
+}

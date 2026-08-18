@@ -22,7 +22,7 @@ export { default as Tooltip } from './Tooltip';
 export { default as Progress, HalkaProgress } from './Progress';
 export { default as Avatar, AvatarGrubu } from './Avatar';
 export { default as Icon, SIMGE_PUNTO } from './Icon';
-export { default as Field, Input, Textarea, Select, girdiSinifi } from './Field';
+export { default as Field, Input, Textarea, Select, Checkbox, RadioGrubu, girdiSinifi } from './Field';
 export { default as DataTable } from './DataTable';
 export { default as OnayKutusu } from './OnayKutusu';
 export { BosDurum, Iskelet, IskeletKart, BolumHataSiniri } from './Durumlar';
