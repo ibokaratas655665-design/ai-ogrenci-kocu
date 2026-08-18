@@ -11,7 +11,8 @@ import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { analyzeSociometry } from '../utils/sociometryAnalysis';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
-import { yaz } from '../services/veriDeposu';
+import { yaz, listeOku } from '../services/veriDeposu';
+import halkaAcik from '../services/halkaAcikGonderim';
 
 const GuidanceServiceTab = ({ students = [] }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tests', 'students', 'analytics'
@@ -29,6 +30,8 @@ const GuidanceServiceTab = ({ students = [] }) => {
     }, []);
 
     const loadData = () => {
+        // Halka açık gönderimleri önce içeri al, sonra listeyi kur
+        halkaAcikKutuyuAktar().then(() => loadAllStudentResults()).catch(() => {});
         const allTests = guidanceService.getTests();
         // Alfabetik sıralama
         const sortedTests = allTests.sort((a, b) => a.title.localeCompare(b.title, 'tr'));
@@ -36,6 +39,37 @@ const GuidanceServiceTab = ({ students = [] }) => {
         loadAllStudentResults();
     };
 
+
+    /**
+     * Halka açık kutudaki gönderimleri koçun yerel listesine aktarır.
+     *
+     * `/envanter/:testId` ve `/obp-girisi` korumasız rotalar; o cihazda
+     * oturum olmadığı için gönderim `syncData`'ya yazılamıyor. Gönderim
+     * ayrı bir kutuya bırakılıyor (bkz. services/halkaAcikGonderim.js),
+     * koç burada okuyup kendi verisine alıyor ve kutudan siliyor.
+     */
+    const halkaAcikKutuyuAktar = async () => {
+        const kocId = JSON.parse(localStorage.getItem('user_session') || 'null')?.id;
+        if (!kocId) return;
+
+        const gonderimler = await halkaAcik.kutuyuOku(kocId);
+        if (!gonderimler.length) return;
+
+        const envanterler = gonderimler.filter((g) => g.tur === 'envanter');
+        if (envanterler.length) {
+            const mevcut = listeOku('public_test_submissions');
+            // Aynı gönderim iki kez düşmesin: test + tarih + okul numarası
+            const anahtar = (r) => `${r.testId}|${r.date}|${r.studentInfo?.schoolNumber || ''}`;
+            const varOlan = new Set(mevcut.map(anahtar));
+            const yeniler = envanterler.map((g) => g.veri).filter((v) => v && !varOlan.has(anahtar(v)));
+            if (yeniler.length) yaz('public_test_submissions', [...mevcut, ...yeniler]);
+        }
+
+        // İşlenen gönderimler kutudan kaldırılır
+        for (const g of gonderimler) {
+            if (g.tur === 'envanter') await halkaAcik.kutudanSil(g.id);
+        }
+    };
     const loadAllStudentResults = () => {
         const results = [];
 
@@ -164,7 +198,10 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
     const handleCopyPublicLink = (testId, title) => {
         const baseUrl = window.location.href.split('#')[0];
-        const shareUrl = `${baseUrl}#/envanter/${testId}`;
+        // Koç kimliği linke eklenmezse gönderim hangi koça ait olduğunu
+        // bilemez ve kutuya düşemez (bkz. services/halkaAcikGonderim.js).
+        const kocId = JSON.parse(localStorage.getItem('user_session') || 'null')?.id ?? '';
+        const shareUrl = `${baseUrl}#/envanter/${testId}${kocId ? `?c=${encodeURIComponent(kocId)}` : ''}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
             setToast(`"${title}" bağlantısı kopyalandı!`);
             setTimeout(() => setToast(null), 3000);

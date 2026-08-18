@@ -4,6 +4,7 @@ import { Brain, CheckCircle, ChevronRight, Play } from 'lucide-react';
 import guidanceService from '../services/guidanceService';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
+import halkaAcik from '../services/halkaAcikGonderim';
 
 const PublicTestEntry = () => {
     const { testId } = useParams();
@@ -121,10 +122,20 @@ const PublicTestEntry = () => {
                 studentInfo: { schoolNumber, name: studentName }
             };
 
-            // Global public testlere ekle
+            // Yerel kopya (aynı cihazdaki koç için)
             const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
             publicResults.push(entry);
             localStorage.setItem('public_test_submissions', JSON.stringify(publicResults));
+
+            /**
+             * ⚠️ Bu sayfa KORUMASIZ: öğrenci giriş yapmadan çözüyor.
+             * O cihazda Firebase oturumu olmadığı için `firebaseSync`
+             * init edilmiyor ve yazım sessizce düşüyordu — gönderim koça
+             * HİÇ ulaşmıyordu. Ölçüldü: oturumsuz syncData yazımı
+             * permission-denied. Gönderim artık ayrı kutuya bırakılıyor.
+             */
+            const kocId = new URLSearchParams(window.location.hash.split('?')[1] || '').get('c');
+            if (kocId) await halkaAcik.gonder(kocId, 'envanter', entry);
 
             setTestResult(entry);
             setStep('result');

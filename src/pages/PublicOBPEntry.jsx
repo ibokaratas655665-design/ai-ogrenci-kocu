@@ -5,6 +5,7 @@ import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
+import halkaAcik from '../services/halkaAcikGonderim';
 
 const PublicOBPEntry = () => {
     const navigate = useNavigate();
@@ -70,7 +71,19 @@ const PublicOBPEntry = () => {
                 updatedBy: coachId
             }, { merge: true });
 
-            // Also update local storage in case we are on the same machine
+            /**
+             * ⚠️ Yukarıdaki `syncData` yazımı oturumsuz cihazda kural
+             * gereği REDDEDİLİYOR (ölçüldü: permission-denied) ve hata
+             * yutulduğu için öğrenci "kaydedildi" görüyordu. Gönderim
+             * artık halka açık kutuya da bırakılıyor; koç kendi
+             * havuzuna oradan aktarıyor.
+             */
+            await halkaAcik.gonder(coachId, 'obp', {
+                student: normName, number: schoolNumber.trim(),
+                obp: calculatedObp, diploma: score,
+            });
+
+            // Aynı cihazda koç da varsa yerel kopya işine yarar
             localStorage.setItem('v2_obp_data', newValue);
             window.dispatchEvent(new StorageEvent('storage', { key: 'v2_obp_data', newValue }));
 

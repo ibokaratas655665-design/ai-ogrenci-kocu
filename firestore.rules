@@ -471,6 +471,44 @@ service cloud.firestore {
       allow create, update, delete: if yoneticiMi();
     }
 
+    // ── halkaAcikGonderim: giriş yapmadan gelen form gönderimleri ──
+    //
+    // ⚠️ NEDEN AYRI BİR KOLEKSİYON?
+    //
+    // `/obp-girisi` ve `/envanter/:testId` rotaları KORUMASIZ: öğrenci
+    // giriş yapmadan OBP/diploma notunu giriyor ya da envanteri çözüyor.
+    // O cihazda Firebase oturumu olmadığı için:
+    //   · `firebaseSync` init edilmiyor (sahipUid yok, yazım erken çıkıyor),
+    //   · `PublicOBPEntry` doğrudan `syncData`'ya yazmayı deniyor ve
+    //     kural `girisYapmis()` istediği için REDDEDİLİYOR.
+    //
+    // Ölçülerek doğrulandı: oturumsuz `setDoc(syncData/...)` →
+    // permission-denied. Yani iki ürün özelliği de sessizce ölüydü;
+    // öğrenci formu dolduruyor, koça hiçbir şey ulaşmıyordu.
+    //
+    // Çözüm: yazması herkese açık ama ŞEKLİ SIKI, okuması yalnızca hedef
+    // koça ait ayrı bir kutu. `syncData` havuzuna dokunulmuyor; koç
+    // gönderimi görüp kendi havuzuna kendi aktarıyor.
+    match /halkaAcikGonderim/{belge} {
+      // Yazma açık — ama yalnızca bu dört alan, sıkı tiplerle.
+      allow create: if makulBoyut()
+        && request.resource.data.keys().hasOnly(['kocId', 'tur', 'veri', 'olusturma'])
+        && request.resource.data.kocId is string
+        && request.resource.data.kocId.size() > 0
+        && request.resource.data.kocId.size() < 120
+        && request.resource.data.tur in ['obp', 'envanter']
+        && request.resource.data.veri is string
+        && request.resource.data.veri.size() < 100000;
+
+      // Okuma yalnızca gönderimin hedeflediği koça.
+      allow get, list: if girisYapmis() && profilVar()
+        && resource.data.kocId == profil().kocId;
+
+      // Gönderim değiştirilemez; koç yalnızca işledikten sonra siler.
+      allow update: if false;
+      allow delete: if girisYapmis() && profilVar()
+        && resource.data.kocId == profil().kocId;
+    }
     // ── users: kullanıcı profilleri ──────────────────────────
     //
     // ⚠️ ÖNCEKİ HÂLİ `allow read: if girisYapmis();` İDİ.
