@@ -35,10 +35,20 @@ export default defineConfig(({ mode }) => ({
       output: {
         // Büyük satıcı kütüphaneleri ayrı parçalara alınır; ilk açılış
         // tek 1 MB'lık dosyayı beklemez.
+        /**
+         * ⚠️  ve  BİLEREK ELLE CHUNK'LANMIYOR.
+         *
+         * Elle chunk'landıklarında Vite bunları giriş HTML'ine
+         *  olarak ekliyordu: açılış sayfasında hiç
+         * grafik ya da PDF yokken 540 KB pdf + 416 KB charts indiriliyordu.
+         * Bırakıldığında Rollup bunları kullanan LAZY sayfalarla birlikte
+         * böler; kullanıcı grafiğe/PDF'e gelene kadar inmezler.
+         *
+         *  ve  elle kalıyor: ikisi de ilk ekranda
+         * zaten gerekli (yönlendirme ve oturum).
+         */
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          pdf: ['jspdf', 'html2canvas'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
         },
       },
