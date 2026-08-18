@@ -54,6 +54,25 @@ const SYNC_KEYS = [
      *                        koç başka cihazda farklı limit görüyordu.
      */
     'parent_links', 'messages', 'appointments', 'coach_subscriptions',
+    /**
+     * ⚠️ BU ANAHTARLAR DA LİSTE DIŞINDAYDI — aynı hata sınıfı.
+     *
+     * Yukarıdaki dört anahtar (parent_links, messages, appointments,
+     * coach_subscriptions) bulunduktan sonra kapsam TEKRAR tarandı ve
+     * altı anahtar daha listede olmadığı için cihaza hapsoluyordu:
+     *
+     *   student_study_plan      → öğrencinin ÇALIŞMA PLANI. Öğrenci planı
+     *   student_exam_type         oluşturuyor, koç panelinde hiç görünmüyor;
+     *   student_closed_slots      öğrenci cihaz değiştirince planı kayboluyordu.
+     *   pdr_events              → rehberlik etkinlikleri yalnızca oluşturan
+     *                             cihazda kalıyordu.
+     *   public_test_submissions → halka açık testten gelen gönderimler koça
+     *                             ulaşmıyordu.
+     *   all_self_assessments    → öğrencinin öz değerlendirmesi ve onun koç
+     *                             indeksi senkronlanmıyordu.
+     */
+    'student_study_plan', 'student_exam_type', 'student_closed_slots',
+    'pdr_events', 'public_test_submissions', 'all_self_assessments',
     'tp_name', 'tp_teachers', 'tp_students', 'tp_pairings', 'tp_schedule', 'tp_blocked', 'tp_avail'
 ];
 
@@ -122,7 +141,11 @@ const DYNAMIC_KEY_PATTERNS = [
     /^assigned_tests_/,
     /^gamification_stats_/,
     /^user_stats_/,
-    /^pomodoro_log_/,
+    // pomodoro_log_ dardı: pomodoro_<id>_total ve _daily_<tarih> kapsam dışı kalıyordu
+    /^pomodoro_/,
+    /^tracker_/,
+    /^coach_email_/,
+    /^self_assessment_/,
     /^completed_topics_/,
     /^student_goals_/,
     /^coach_notes_/,
