@@ -9,6 +9,8 @@ import { useTheme } from '../context/ThemeContext';
 import SmartNotificationBell from '../components/shared/SmartNotifications';
 import { useNavigate } from 'react-router-dom';
 import GuidanceServiceTab from './GuidanceServiceTab';
+import PdrOgrenciHavuzu from '../components/guidance/PdrOgrenciHavuzu';
+import pdrHavuz from '../services/pdrOgrencileri';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
 import { parsePdfExamData } from '../utils/pdfParser';
@@ -168,7 +170,6 @@ const NAV_BY_SECTION = {
                    gitmiyordu — ham setItem'lar yaz()'a çevrildi. */
                 { id: 'self-assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
                 { id: 'pomodoro-tracker', icon: MODULE_ICONS.pomodoro, label: 'Pomodoro Takip' },
-                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
             ],
         },
         {
@@ -176,9 +177,7 @@ const NAV_BY_SECTION = {
             accent: 'var(--accent)',
             items: [
                 { id: 'programs', icon: MODULE_ICONS.programs, label: 'Programlar', perm: 'programs' },
-                { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
                 { id: 'task-templates', icon: MODULE_ICONS.tasks, label: 'Görev Şablonları' },
-                { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
                 { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
             ],
         },
@@ -230,10 +229,30 @@ const NAV_BY_SECTION = {
             label: 'Öğrenci Çalışmaları',
             accent: 'var(--accent)',
             items: [
+                /* V1.1: PDR'nin KENDİ öğrenci havuzu — okul kapsamlı liste.
+                   Koçluk öğrencilerinden ayrı tutulur (pdr_students anahtarı,
+                   pdr_ önekli kimlikler); yanlışlıkla birleşemezler. */
+                { id: 'pdr-ogrenciler', icon: MODULE_ICONS.groups, label: 'Öğrenci Havuzu', perm: 'guidance' },
                 { id: 'pdr-6', icon: MODULE_ICONS.appointments, label: '6 · Görüşme', perm: 'guidance' },
                 { id: 'pdr-7', icon: MODULE_ICONS.groups, label: '7 · Sınıf Dosyası', perm: 'guidance' },
                 { id: 'pdr-8', icon: MODULE_ICONS.analysis, label: '8 · Risk Haritaları', perm: 'guidance' },
                 { id: 'pdr-9', icon: MODULE_ICONS.guidance, label: '9 · Özel Eğitim / BEP', perm: 'guidance' },
+            ],
+        },
+        {
+            /* V1.1 kararı: Sıralama/Projeler/Sunumlar PDR'ye taşındı;
+               Denemeler/Programlar/Taban Puan iki bölümde de görünür.
+               Sekme kimlikleri AYNI olduğu için render blokları ve veri
+               ortak — çift kayıt oluşmaz, yalnızca giriş yolu çoğalır. */
+            label: 'Akademik Takip',
+            accent: 'var(--c5)',
+            items: [
+                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
+                { id: 'programs', icon: MODULE_ICONS.programs, label: 'Programlar', perm: 'programs' },
+                { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
+                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
+                { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
+                { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
             ],
         },
         {
@@ -2950,7 +2969,24 @@ const CoachDashboard = () => {
      *   8  Risk Haritaları     → risk alarm paneli
      *   9  Kaynaştırma / BEP   → BEP plan motoru
      */
-    const pdrModulleri = useMemo(() => ({
+    /**
+     * V1.1 — PDR öğrenci havuzu (okul kapsamlı liste, koçluktan ayrı).
+     * PDR modülleri ve PDR grupları KOÇLUK + HAVUZ birleşik listesini
+     * görür; koçluk ekranları havuzu hiç görmez. Kimlikler pdr_ önekli
+     * olduğu için iki küme yanlışlıkla birleşemez.
+     */
+    const [pdrOgrenciSurumu, setPdrOgrenciSurumu] = useState(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- üçü de bilinçli: listele() reaktif değil; havuz değişince (sürüm), bölüm/sekme değişince yeniden okunur
+    const pdrOgrencileri = useMemo(() => pdrHavuz.listele(), [pdrOgrenciSurumu, bolum, activeTab]);
+    const pdrCalismaOgrencileri = useMemo(
+        () => [...students, ...pdrOgrencileri.map((o) => ({ ...o, pdrHavuzu: true }))],
+        [students, pdrOgrencileri]
+    );
+
+    const pdrModulleri = useMemo(() => {
+        /* PDR modülleri birleşik listeyi görür (yukarıdaki not) */
+        const students = pdrCalismaOgrencileri;
+        return {
         '1': [{
             id: 'akis', label: 'Plan ve İş Akışı', icon: ClipboardList,
             render: () => <WorkflowTab students={students} setToast={setToast} />,
@@ -3001,7 +3037,7 @@ const CoachDashboard = () => {
             render: () => <BEPCenter students={students} setToast={setToast} />,
         }],
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), [students, user?.id, user?.name]);
+    }; }, [pdrCalismaOgrencileri, user?.id, user?.name]);
 
     // Firebase Sync - Coach için başlat + real-time dinle
     React.useEffect(() => {
@@ -3733,7 +3769,10 @@ const CoachDashboard = () => {
                             çalışma araçları o dosyanın İÇİNDE alt sekme olarak
                             durur; danışman çalışmayı yaptığı yerde dosyalar.
                            ══════════════════════════════════════════════════ */}
-                        {activeTab?.startsWith('pdr-') && (
+                        {activeTab === 'pdr-ogrenciler' && (
+                            <PdrOgrenciHavuzu onDegisti={() => setPdrOgrenciSurumu((v) => v + 1)} />
+                        )}
+                        {activeTab?.startsWith('pdr-') && activeTab !== 'pdr-ogrenciler' && (
                             <DecimalFolderTab
                                 key={activeTab}
                                 klasorNo={activeTab.slice(4)}
@@ -3774,7 +3813,7 @@ const CoachDashboard = () => {
                         )}
 
                         {/* NEW WORKING TABS */}
-                        {activeTab === 'groups' && <GroupsTab students={students} setToast={setToast} bolum={bolum} />}
+                        {activeTab === 'groups' && <GroupsTab students={bolum === 'pdr' ? pdrCalismaOgrencileri : students} setToast={setToast} bolum={bolum} />}
                         {activeTab === 'projects' && <ProjectsTab students={students} setToast={setToast} />}
                         {activeTab === 'leaderboard' && <LeaderboardTab students={students} />}
                         {activeTab === 'presentations' && <PresentationsTab students={students} setToast={setToast} />}

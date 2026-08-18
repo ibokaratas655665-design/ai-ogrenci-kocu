@@ -509,6 +509,18 @@ const StudentDashboard = () => {
             window.history.replaceState(null, '', `${yol || '#/'}?sekme=${activeTab}`);
         } catch { /* ignore */ }
     }, [activeTab]);
+
+    /**
+     * V1.1 — Bugün kartındaki koç mesajı, mesaj AÇILINCA düşsün.
+     * Mesajlar sekmesi açıldığında cihaza görülme damgası yazılır;
+     * BugunEkrani damgadan eski mesajı göstermez. Damga yalnızca
+     * görünümü etkiler — mesajın kendisi ve geçmiş silinmez (okundu
+     * işareti gibi cihaz-yereldir, bilerek senkronlanmaz).
+     */
+    useEffect(() => {
+        if (activeTab !== 'messages' || !user?.id) return;
+        try { localStorage.setItem(`bugun_mesaj_goruldu_${user.id}`, new Date().toISOString()); } catch { /* ignore */ }
+    }, [activeTab, user?.id]);
     const [schedule, setSchedule] = useState({});
     const [programConfig, setProgramConfig] = useState({ programDurationMonths: 1, dailySlotCount: 6, title: 'Çalışma Programı' });
     const [activeMonth, setActiveMonth] = useState(1);
@@ -2038,7 +2050,7 @@ const StudentDashboard = () => {
                             ÇÖZDÜĞÜN SORU VE OKUDUĞUN SAYFA · KOÇUNA ANINDA DÜŞER
                         </p>
                     </div>
-                    <DailyStudyLog studentId={user?.id} />
+                    <DailyStudyLog studentId={user?.id} ogrenci={user} />
                 </div>
             )}
 
@@ -2051,7 +2063,7 @@ const StudentDashboard = () => {
                             YANLIŞLARINI KAYDET · SİSTEM SANA TEKRAR GETİRSİN
                         </p>
                     </div>
-                    <ErrorNotebook studentId={user?.id} />
+                    <ErrorNotebook studentId={user?.id} ogrenci={user} />
                 </div>
             )}
 

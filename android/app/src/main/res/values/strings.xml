@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">AI Ogrenci Kocu</string>
+    <string name="app_name">Başarı Kampı</string>
     <string name="title_activity_main">AI Ogrenci Kocu</string>
     <string name="package_name">com.aiogrencikocu.app</string>
     <string name="custom_url_scheme">com.aiogrencikocu.app</string>

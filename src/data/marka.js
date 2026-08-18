@@ -15,7 +15,7 @@ export const MARKA = {
     ad: 'Başarı Kampı',
 
     /** Uzun ad — karşılama sayfası, uygulama mağazası, manifest. */
-    tamAd: 'Başarı Kampı — Koçluk ve Rehberlik Sistemi',
+    tamAd: 'Başarı Kampı Koçluk Platformu',
 
     /** Adın hemen altında görünen tanım satırı. */
     altBaslik: 'Koçluk Platformu',

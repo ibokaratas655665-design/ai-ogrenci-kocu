@@ -25,6 +25,8 @@ import OgrenciGirisiAc from '../components/coach/OgrenciGirisiAc';
 import ParentQRModal from '../components/student/ParentQRModal';
 import Modal from '../components/ui/Modal';
 import { yaz, listeOku, nesneOku } from '../services/veriDeposu';
+import DenemeAnalizi from '../components/student/DenemeAnalizi';
+import OgrenciVeriYonetimi from '../components/coach/OgrenciVeriYonetimi';
 
 const StudentDetailPage = () => {
     const { id } = useParams();

@@ -99,10 +99,24 @@ export default function BugunEkrani({
             .slice(0, 4)
     ), [tasks, bugunSonu]);
 
-    /** Koçtan gelen son mesaj. */
-    const koctanSon = useMemo(() => (
-        [...messages].reverse().find((m) => m.sender === 'coach')
-    ), [messages]);
+    /**
+     * Koçtan gelen son mesaj — yalnızca öğrenci HENÜZ AÇMADIYSA.
+     *
+     * "Bugün" günlük iş listesidir: öğrenci Mesajlar sekmesini açınca
+     * StudentDashboard cihaza bir görülme damgası yazar ve damgadan
+     * eski mesajlar bu karttan düşer. Damga yalnızca GÖRÜNÜMÜ etkiler —
+     * mesajın kendisi, geçmişi ve koç tarafındaki kayıt silinmez
+     * (okundu işareti gibi cihaz-yereldir, bilerek senkronlanmaz).
+     */
+    const koctanSon = useMemo(() => {
+        const son = [...messages].reverse().find((m) => m.sender === 'coach');
+        if (!son) return null;
+        try {
+            const goruldu = localStorage.getItem(`bugun_mesaj_goruldu_${kullanici?.id}`);
+            if (goruldu && son.timestamp && new Date(son.timestamp) <= new Date(goruldu)) return null;
+        } catch { /* damga okunamazsa kart görünür kalır — güvenli taraf */ }
+        return son;
+    }, [messages, kullanici?.id]);
 
     /** En zayıf ders — "zorlandığın yer", suçlayıcı olmayan bir dille. */
     const zayifDers = useMemo(() => {

@@ -40,6 +40,8 @@ const SYNC_KEYS = [
     'whatsapp_custom_templates', 'whatsapp_settings', 'whatsapp_message_log',
     // Koçun görev şablonları — sablon sekmesi menüye bağlanınca kapsama alındı
     'task_templates',
+    // V1.1: PDR okul öğrenci havuzu — koçluk listesinden ayrı anahtar
+    'pdr_students',
     'error_notebook', 'program_progress', 'study_log', 'bep_data',
     /**
      * ⚠️ BU DÖRT ANAHTAR SENKRON LİSTESİNDE YOKTU ve her biri gerçek bir

@@ -15,6 +15,8 @@ import {
     AlertTriangle, Brain, Target, Zap, TrendingUp, Filter, ChevronDown,
 } from 'lucide-react';
 import Modal from '../ui/Modal';
+import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
+import DenemeAnalizi from './DenemeAnalizi';
 
 const LS_KEY = 'error_notebook';
 
@@ -29,7 +31,9 @@ const ERROR_TYPES = [
     { id: 'calculation', label: 'İşlem Hatası', icon: AlertTriangle, color: 'var(--accent)', hint: 'Yol doğruydu, işlemde hata yaptım' },
 ];
 
-const SUBJECTS = [
+/* V1.1: dersler öğrencinin alanından türetilir (utils/dersKonu);
+   bu liste yalnızca katalog çözülemezse devreye giren yedektir. */
+const YEDEK_DERSLER = [
     'Matematik', 'Geometri', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji',
     'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü', 'İngilizce', 'Edebiyat',
 ];
@@ -64,7 +68,7 @@ const nextReviewAt = (stage) => {
 const typeById = (id) => ERROR_TYPES.find((t) => t.id === id) || ERROR_TYPES[0];
 
 // ════════════════════════════════════════════════════════════
-const ErrorNotebook = ({ studentId, readOnly = false }) => {
+const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
     const [entries, setEntries] = useState(safeParse);
     const [showForm, setShowForm] = useState(false);
     const [search, setSearch] = useState('');
@@ -229,6 +233,26 @@ const ErrorNotebook = ({ studentId, readOnly = false }) => {
                 </div>
             )}
 
+            {view === 'analiz' ? (
+                <>
+                    {/* Görünüm değiştirici analizde de kalsın */}
+                    <div className="flex gap-1 bg-surface/[0.03] p-1 rounded-2xl border border-line w-fit">
+                        {[
+                            { id: 'due', label: `Tekrar (${stats.due})` },
+                            { id: 'all', label: 'Tümü' },
+                            { id: 'mastered', label: 'Öğrenildi' },
+                            { id: 'analiz', label: 'Deneme Analizi' },
+                        ].map((v) => (
+                            <button key={v.id} onClick={() => setView(v.id)}
+                                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${view === v.id ? 'bg-brand text-ink-on' : 'text-ink-3 hover:text-ink-2'}`}>
+                                {v.label}
+                            </button>
+                        ))}
+                    </div>
+                    <DenemeAnalizi ogrenci={ogrenci} studentId={studentId} bakis={readOnly ? 'koc' : 'ogrenci'} />
+                </>
+            ) : (
+            <>
             {/* ── Araç çubuğu ────────────────────────────── */}
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex gap-1 bg-surface/[0.03] p-1 rounded-2xl border border-line">
@@ -236,6 +260,9 @@ const ErrorNotebook = ({ studentId, readOnly = false }) => {
                         { id: 'due', label: `Tekrar (${stats.due})` },
                         { id: 'all', label: 'Tümü' },
                         { id: 'mastered', label: 'Öğrenildi' },
+                        /* V1.1: hata defteri verisi deneme + günlük
+                           kayıtla birleşip analiz görünümüne dönüşür */
+                        { id: 'analiz', label: 'Deneme Analizi' },
                     ].map((v) => (
                         <button
                             key={v.id}
@@ -354,7 +381,10 @@ const ErrorNotebook = ({ studentId, readOnly = false }) => {
                 </div>
             )}
 
-            {showForm && <EntryForm onSave={addEntry} onClose={() => setShowForm(false)} />}
+            </>
+            )}
+
+            {showForm && <EntryForm ogrenci={ogrenci} onSave={addEntry} onClose={() => setShowForm(false)} />}
         </div>
     );
 };
@@ -507,9 +537,12 @@ const Field = ({ label, value, multiline }) => (
 );
 
 // ════════════════════════════════════════════════════════════
-const EntryForm = ({ onSave, onClose }) => {
+const EntryForm = ({ onSave, onClose, ogrenci = null }) => {
+    const dersler = useMemo(() => ogrencininDersleri(ogrenci), [ogrenci]);
+    const dersAdlari = dersler.length ? dersler.map((d) => d.ad) : YEDEK_DERSLER;
+    const [konuSerbest, setKonuSerbest] = useState(false);
     const [form, setForm] = useState({
-        subject: 'Matematik',
+        subject: undefined,
         topic: '',
         source: '',
         errorType: 'knowledge',
@@ -518,7 +551,9 @@ const EntryForm = ({ onSave, onClose }) => {
     });
 
     const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
-    const valid = form.subject && form.topic.trim();
+    const seciliDers = form.subject ?? dersAdlari[0] ?? '';
+    const konular = dersinKonulari(dersler, seciliDers);
+    const valid = seciliDers && form.topic.trim();
 
     return (
         <Modal
@@ -545,21 +580,36 @@ const EntryForm = ({ onSave, onClose }) => {
                     <div>
                         <Label>Ders *</Label>
                         <select
-                            value={form.subject}
-                            onChange={set('subject')}
+                            value={seciliDers}
+                            onChange={(e) => { setForm((p) => ({ ...p, subject: e.target.value, topic: '' })); setKonuSerbest(false); }}
                             className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
                         >
-                            {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                            {dersAdlari.map((s) => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </div>
                     <div>
                         <Label>Konu *</Label>
-                        <input
-                            value={form.topic}
-                            onChange={set('topic')}
-                            placeholder="Türev - Zincir kuralı"
-                            className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                        />
+                        {konular.length > 0 && !konuSerbest ? (
+                            <select
+                                value={form.topic}
+                                onChange={(e) => {
+                                    if (e.target.value === '__diger__') { setKonuSerbest(true); setForm((p) => ({ ...p, topic: '' })); return; }
+                                    setForm((p) => ({ ...p, topic: e.target.value }));
+                                }}
+                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
+                            >
+                                <option value="">— Konu seç —</option>
+                                {konular.map((kAd) => <option key={kAd} value={kAd}>{kAd}</option>)}
+                                <option value="__diger__">Diğer…</option>
+                            </select>
+                        ) : (
+                            <input
+                                value={form.topic}
+                                onChange={set('topic')}
+                                placeholder="Türev - Zincir kuralı"
+                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                            />
+                        )}
                     </div>
                 </div>
 
@@ -630,7 +680,7 @@ const EntryForm = ({ onSave, onClose }) => {
                     Vazgeç
                 </button>
                 <button
-                    onClick={() => valid && onSave(form)}
+                    onClick={() => valid && onSave({ ...form, subject: seciliDers })}
                     disabled={!valid}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-ink-on font-black text-sm disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition"
                 >

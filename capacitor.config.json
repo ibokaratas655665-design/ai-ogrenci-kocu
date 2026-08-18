@@ -1,6 +1,6 @@
 {
   "appId": "com.aiogrencikocu.app",
-  "appName": "AI Ogrenci Kocu",
+  "appName": "Başarı Kampı",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

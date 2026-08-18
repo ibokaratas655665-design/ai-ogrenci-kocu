@@ -14,13 +14,19 @@ import {
 import studyLog from '../../services/studyLogService';
 import { getSubjectColor, getSubjectLabel } from '../../data/programColors';
 import Modal from '../ui/Modal';
+import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
 
-const SUBJECTS = [
+/**
+ * V1.1: Ders listesi artık öğrencinin ALANINDAN türetilir
+ * (utils/dersKonu). Bu sabit liste yalnızca alan/sınav bilgisi hiç
+ * çözülemezse devreye giren yedektir.
+ */
+const YEDEK_DERSLER = [
     'Matematik', 'Geometri', 'Türkçe', 'Edebiyat', 'Fizik', 'Kimya', 'Biyoloji',
     'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü', 'İngilizce', 'Fen Bilimleri',
 ];
 
-const DailyStudyLog = ({ studentId }) => {
+const DailyStudyLog = ({ studentId, ogrenci = null }) => {
     const [version, setVersion] = useState(0);
     const [showForm, setShowForm] = useState(false);
     const [formKind, setFormKind] = useState('soru');
@@ -225,6 +231,7 @@ const DailyStudyLog = ({ studentId }) => {
 
             {showForm && (
                 <EntryForm
+                    ogrenci={ogrenci}
                     kind={formKind}
                     onSave={save}
                     onClose={() => setShowForm(false)}
@@ -249,9 +256,13 @@ const Legend = ({ color, label }) => (
 );
 
 // ════════════════════════════════════════════════════════════
-const EntryForm = ({ kind, onSave, onClose }) => {
+const EntryForm = ({ kind, onSave, onClose, ogrenci = null }) => {
+    /* Alan bazlı dersler — katalog çözülemezse yedek düz liste */
+    const dersler = useMemo(() => ogrencininDersleri(ogrenci), [ogrenci]);
+    const dersAdlari = dersler.length ? dersler.map((d) => d.ad) : YEDEK_DERSLER;
+    const [konuSerbest, setKonuSerbest] = useState(false);
     const [form, setForm] = useState({
-        subject: kind === 'kitap' ? '' : 'Matematik',
+        subject: kind === 'kitap' ? '' : undefined,
         topic: '',
         correct: '',
         wrong: '',
@@ -262,17 +273,19 @@ const EntryForm = ({ kind, onSave, onClose }) => {
     });
 
     const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+    const seciliDers = form.subject ?? dersAdlari[0] ?? '';
+    const konular = dersinKonulari(dersler, seciliDers);
 
     const valid = kind === 'kitap'
         ? form.subject.trim() && Number(form.pages) > 0
-        : form.subject && (Number(form.correct) || Number(form.wrong) || Number(form.blank));
+        : seciliDers && (Number(form.correct) || Number(form.wrong) || Number(form.blank));
 
     const submit = () => {
         if (!valid) return;
         onSave({
             kind,
             date: form.date,
-            subject: form.subject.trim(),
+            subject: (kind === 'kitap' ? form.subject : seciliDers).trim(),
             topic: form.topic.trim(),
             minutes: Number(form.minutes) || 0,
             ...(kind === 'kitap'
@@ -363,21 +376,36 @@ const EntryForm = ({ kind, onSave, onClose }) => {
                             <div>
                                 <Label>Ders *</Label>
                                 <select
-                                    value={form.subject}
-                                    onChange={set('subject')}
+                                    value={seciliDers}
+                                    onChange={(e) => { setForm((p) => ({ ...p, subject: e.target.value, topic: '' })); setKonuSerbest(false); }}
                                     className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
                                 >
-                                    {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                    {dersAdlari.map((s) => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <Label>Konu</Label>
-                                <input
-                                    value={form.topic}
-                                    onChange={set('topic')}
-                                    placeholder="Türev"
-                                    className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                                />
+                                {konular.length > 0 && !konuSerbest ? (
+                                    <select
+                                        value={form.topic}
+                                        onChange={(e) => {
+                                            if (e.target.value === '__diger__') { setKonuSerbest(true); setForm((p) => ({ ...p, topic: '' })); return; }
+                                            setForm((p) => ({ ...p, topic: e.target.value }));
+                                        }}
+                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
+                                    >
+                                        <option value="">— Konu seç —</option>
+                                        {konular.map((kAd) => <option key={kAd} value={kAd}>{kAd}</option>)}
+                                        <option value="__diger__">Diğer…</option>
+                                    </select>
+                                ) : (
+                                    <input
+                                        value={form.topic}
+                                        onChange={set('topic')}
+                                        placeholder="Türev"
+                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                                    />
+                                )}
                             </div>
                         </div>
 

@@ -11,7 +11,7 @@ import Modal from './ui/Modal';
 import { listeOku, oku } from '../services/veriDeposu';
 
 // ─── Gemini API şablonu (öğrenci odaklı koç) ─────────────────
-const COACH_SYSTEM_PROMPT = `Sen "AI Koç" adında bir YKS (Türkiye Yükseköğretim Kurumları Sınavı) uzmanı ve kişisel eğitim koçusun. 
+const COACH_SYSTEM_PROMPT = `Sen "Başarı Kampı Koçluk Platformu" uygulamasının koçluk asistanısın; bir YKS (Türkiye Yükseköğretim Kurumları Sınavı) uzmanı ve kişisel eğitim koçusun. 
 Öğrencilere Türkçe olarak yardım edeceksin.
 Görevlerin:
 - TYT ve AYT konularını açıklamak
@@ -95,7 +95,7 @@ const APIKeySetup = ({ onSave }) => {
                 </div>
                 <h3 className="font-black text-ink text-lg mb-2">Gemini AI Anahtarı Gerekli</h3>
                 <p className="text-sm text-ink-2 mb-6">
-                    AI Koç özelliğini kullanmak için ücretsiz Google Gemini API anahtarı gereklidir.
+                    Koçluk Asistanı özelliğini kullanmak için ücretsiz Google Gemini API anahtarı gereklidir.
                 </p>
 
                 <div className="bg-brand-soft rounded-xl p-4 mb-5 text-left space-y-2">
@@ -130,7 +130,7 @@ const APIKeySetup = ({ onSave }) => {
                     disabled={!key}
                     className="on-color w-full py-3 bg-gradient-to-r from-violet-600 to-brand text-white font-black rounded-xl hover:opacity-90 disabled:opacity-50 transition shadow-md"
                 >
-                    AI Koç'u Aktifleştir ✨
+                    Koçluk Asistanını Aktifleştir ✨
                 </button>
             </div>
         </div>
@@ -142,7 +142,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: `Merhaba! 👋 Ben senin AI Koçun.\n\nSana şu konularda yardımcı olabilirim:\n✅ TYT/AYT konu anlatımı\n📊 Net analizi ve strateji\n📅 Çalışma programı\n💪 Motivasyon ve stres yönetimi\n\nNe öğrenmek veya sormak istiyorsun?`,
+            content: `Merhaba! 👋 Ben Başarı Kampı koçluk asistanınım.\n\nSana şu konularda yardımcı olabilirim:\n✅ TYT/AYT konu anlatımı\n📊 Net analizi ve strateji\n📅 Çalışma programı\n💪 Motivasyon ve stres yönetimi\n\nNe öğrenmek veya sormak istiyorsun?`,
             timestamp: Date.now(),
         }
     ]);
@@ -303,7 +303,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
                         <Bot size={20} className="text-ink" />
                     </div>
                     <div>
-                        <p className="font-black text-ink text-sm">AI Koç</p>
+                        <p className="font-black text-ink text-sm">Koçluk Asistanı</p>
                         <div className="flex items-center gap-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                             <span className="text-xs text-ink-2">{hasKey ? 'Çevrimiçi · Gemini 2.0 Flash' : 'API key gerekli'}</span>
@@ -399,7 +399,7 @@ export const AICoachButton = ({ studentData = null, className = '' }) => {
                 className={`on-color flex items-center gap-2 bg-gradient-to-r from-violet-600 to-brand text-white font-bold px-4 py-2.5 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-normal ${className}`}
             >
                 <Bot size={16} />
-                AI Koç
+                Koçluk Asistanı
                 <Sparkles size={12} className="opacity-80" />
             </button>
             <AICoachChat studentData={studentData} isOpen={open} onClose={() => setOpen(false)} />

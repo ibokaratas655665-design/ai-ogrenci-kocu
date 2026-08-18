@@ -32,7 +32,7 @@ const AICoachWidget = () => {
             <button
                 onClick={() => setIsOpen(true)}
                 className="fixed bottom-6 right-24 bg-surface hover:bg-surface-2 text-brand p-4 rounded-full shadow-xl transition transform hover:scale-110 z-50 flex items-center justify-center border border-brand-line group"
-                title="AI Koç ile Konuş"
+                title="Koçluk Asistanı ile Konuş"
             >
                 <div className="relative">
                     <Bot size={24} />
@@ -42,7 +42,7 @@ const AICoachWidget = () => {
                     </span>
                 </div>
                 <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-yavas ease-in-out whitespace-nowrap group-hover:ml-2 font-bold">
-                    AI Koç
+                    Koçluk Asistanı
                 </span>
             </button>
         );
@@ -57,7 +57,7 @@ const AICoachWidget = () => {
                         <Bot size={20} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-sm">AI Koç Asistanı</h3>
+                        <h3 className="font-bold text-sm">Koçluk Asistanı</h3>
                         <div className="flex items-center space-x-1">
                             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                             <span className="text-xs text-brand">Çevrimiçi</span>
