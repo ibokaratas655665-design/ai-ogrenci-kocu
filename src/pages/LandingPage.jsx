@@ -90,11 +90,16 @@ const LandingPage = () => {
                             className="h-7 w-auto object-contain shrink-0" />
                     </div>
 
-                    <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-ink-2">
-                        <a href="#neler-yapar" className="hover:text-brand transition">Neler Yapar</a>
-                        <a href="#paketler" className="hover:text-brand transition">Paketler</a>
-                        <a href="#kimler" className="hover:text-brand transition">Kimler Kullanır</a>
-                        <a href="#indir" className="hover:text-brand transition">İndir</a>
+                    {/* Dokunma hedefi: bağlantılar 20 piksel yüksekliğindeydi.
+                        Tablette (768px) menü görünür ve ekran dokunmatik;
+                        20px, WCAG'ın 24px'lik alt sınırının bile altında.
+                        Dikey padding ile 44 piksele çıkarıldı — yazı boyutu
+                        ve görünüm aynı kaldı. */}
+                    <div className="hidden md:flex items-center gap-4 text-sm font-semibold text-ink-2">
+                        <a href="#neler-yapar" className="px-2 py-3 rounded-dmd hover:text-brand transition">Neler Yapar</a>
+                        <a href="#paketler" className="px-2 py-3 rounded-dmd hover:text-brand transition">Paketler</a>
+                        <a href="#kimler" className="px-2 py-3 rounded-dmd hover:text-brand transition">Kimler Kullanır</a>
+                        <a href="#indir" className="px-2 py-3 rounded-dmd hover:text-brand transition">İndir</a>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
