@@ -33,6 +33,27 @@ const GENISLIKLER = {
 const ODAKLANABILIR =
     'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Açık pencere sayacı — sayfa kaydırma kilidi için.
+ *
+ * ⚠️ ESKİDEN HER PENCERE KİLİDİ KENDİ BAŞINA YÖNETİYORDU:
+ *
+ *     const onceki = document.body.style.overflow;
+ *     document.body.style.overflow = 'hidden';
+ *     return () => { document.body.style.overflow = onceki; };
+ *
+ * İki pencere üst üste açılıp FARKLI SIRAYLA kapandığında ikincisi
+ * `onceki` olarak 'hidden' kaydettiği için kilidi geri veremiyordu:
+ * sayfa bir daha hiç kaymıyordu. Canlıda görüldü — öğrenci alt çubuktan
+ * "Tüm Bölümler" menüsünü açıp bir sekmeye geçince, o sekmede ve
+ * sonraki bütün sekmelerde ekran donuyordu; görünen kısım çalışıyor
+ * ama aşağısı açılmıyordu.
+ *
+ * Sayaç, kilidi yalnızca SON pencere kapandığında serbest bırakır.
+ */
+let acikPencereSayisi = 0;
+let kilitOncesiOverflow = null;
+
 export default function Modal({
     acik = true,
     onClose,
@@ -106,12 +127,23 @@ export default function Modal({
         };
     }, [acik, kapat]);
 
-    // Arkadaki sayfa kaymasın
+    // Arkadaki sayfa kaymasın — kilit sayaçla yönetilir (bkz. yukarıdaki not)
     useEffect(() => {
-        if (!acik) return;
-        const onceki = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = onceki; };
+        if (!acik) return undefined;
+
+        if (acikPencereSayisi === 0) {
+            kilitOncesiOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+        }
+        acikPencereSayisi += 1;
+
+        return () => {
+            acikPencereSayisi = Math.max(0, acikPencereSayisi - 1);
+            if (acikPencereSayisi === 0) {
+                document.body.style.overflow = kilitOncesiOverflow ?? '';
+                kilitOncesiOverflow = null;
+            }
+        };
     }, [acik]);
 
     if (!acik || typeof document === 'undefined') return null;

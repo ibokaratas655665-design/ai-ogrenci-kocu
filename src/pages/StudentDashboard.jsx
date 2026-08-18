@@ -1282,7 +1282,23 @@ const StudentDashboard = () => {
                                     ? { ...m, read: true }
                                     : m
                             );
-                            yaz('messages', updated);
+                            /**
+                             * ⚠️ BURADA BİLEREK `veriDeposu.yaz` KULLANILMIYOR.
+                             *
+                             * `yaz` storage olayı yayar ve bulut senkronunu
+                             * tetikler. Bu bileşen (satır ~564) storage olayını
+                             * dinleyip state güncelliyor; ayrıca aşağıda
+                             * `unreadCount > 0` iken RENDER SIRASINDA
+                             * `setTimeout(markAllRead, 2000)` kuruluyor.
+                             * Üçü birleşince geri besleme döngüsü oluşuyor:
+                             * yaz → olay → yeniden render → yeni zamanlayıcı →
+                             * yaz… Öğrenci mesaj sekmesini açtığında uygulama
+                             * kilitleniyordu (canlıda görüldü).
+                             *
+                             * "Okundu" işareti cihaz-yereldir; 2 dakikalık
+                             * toplu senkron turunda zaten buluta gider.
+                             */
+                            localStorage.setItem('messages', JSON.stringify(updated));
                         } catch { /* ignore */ }
                     };
 
