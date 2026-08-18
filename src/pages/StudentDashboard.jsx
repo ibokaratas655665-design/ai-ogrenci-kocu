@@ -148,15 +148,14 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
     const [selectedExam, setSelectedExam] = useState(null);
     const [toastMsg, setToastMsg] = useState('');
 
-    // Modal açıkken body scroll'unu kilitle (tuharlık önleme)
-    useEffect(() => {
-        if (selectedExam) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => { document.body.style.overflow = ''; };
-    }, [selectedExam]);
+    /**
+     * ⚠️ BURAYA GÖVDE KİLİDİ EKLEME. Detay penceresi ortak `ui/Modal`
+     * ile açılıyor; kilidi Modal sayaçla yönetiyor. Eskiden burada duran
+     * ikinci kilit hem gereksizdi hem tehlikeliydi: temizliği `body`yi
+     * koşulsuz '' yapıyordu — başka bir pencere açıkken bile kilidi
+     * kaldırıyordu. MobileBottomNav'daki eşi telefonda tüm sekmelerin
+     * kaydırmasını kalıcı kilitlemişti (ayrıntı orada).
+     */
 
     const showToast = (msg) => {
         setToastMsg(msg);

@@ -92,18 +92,20 @@ export default function MobilGezinme({ ogeler = [], gruplar = [], aktif, onDegis
     // Aktif sekme "Daha Fazla" içindeyse düğme de aktif görünsün
     const aktifIcerde = !birincilKimlikler.has(aktif);
 
-    // Sayfa açıkken arkadaki içerik kaymasın; Escape kapatsın
-    useEffect(() => {
-        if (!dahaFazla) return;
-        const onceki = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        const tusa = (e) => e.key === 'Escape' && setDahaFazla(false);
-        document.addEventListener('keydown', tusa);
-        return () => {
-            document.body.style.overflow = onceki;
-            document.removeEventListener('keydown', tusa);
-        };
-    }, [dahaFazla]);
+    /**
+     * ⚠️ BURAYA GÖVDE KİLİDİ / ESCAPE EFEKTİ EKLEME.
+     *
+     * "Daha Fazla" sayfası ortak `ui/Modal` ile açılıyor; Modal hem
+     * `body.overflow` kilidini (sayaçla) hem Escape'i zaten yönetiyor.
+     * Eskiden burada duran sayaçsız ikinci kilit, Modal'ınkiyle şöyle
+     * çakışıyordu: menü açılınca önce Modal kilitler (body='hidden'),
+     * sonra buradaki efekt `onceki` olarak 'hidden' KAYDEDERDİ; menü
+     * kapanınca Modal kilidi doğru bırakır, buradaki temizlik 'hidden'ı
+     * GERİ YAZARDI. Sonuç: sayfa sonsuza dek kilitli — telefonda hiçbir
+     * sekme kaydırılamıyordu (canlıda görüldü, tarayıcıda ölçülerek
+     * yeniden üretildi). Masaüstünde bileşen `lg:hidden` olduğu için
+     * hata yalnızca mobilde çıkıyordu.
+     */
 
     const sec = (id) => { setDahaFazla(false); onDegis?.(id); };
 
