@@ -18,7 +18,8 @@
     "lint:hatalar": "eslint . --quiet",
     "test": "vitest run",
     "test:izle": "vitest",
-    "tanimsiz-jsx": "node scripts/tanimsiz-jsx.mjs"
+    "tanimsiz-jsx": "node scripts/tanimsiz-jsx.mjs",
+    "senkron-tara": "node scripts/senkron-tara.mjs"
   },
   "build": {
     "appId": "com.ogrencikocu.app",
