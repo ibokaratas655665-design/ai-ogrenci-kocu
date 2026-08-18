@@ -8,6 +8,7 @@ import { EXAM_TOPICS, EXAM_INFO, SUBJECT_COLORS, EXAM_COLORS, generateStudyPlan,
 import { checkPermission } from '../utils/permissions';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const StudyPlanner = () => {
     const navigate = useNavigate();
@@ -88,9 +89,12 @@ const StudyPlanner = () => {
             setGeneratedPlan(plan);
 
             // Kaydet
-            localStorage.setItem('student_study_plan', JSON.stringify(plan));
-            localStorage.setItem('student_exam_type', examType);
-            localStorage.setItem('student_closed_slots', JSON.stringify(closedSlots)); // Kapalı etütleri de kaydet
+            // Öğrencinin çalışma planı: veriDeposu yerel + bulut yazıyor.
+            // Anahtarlar SYNC_KEYS'e alındı ama yazma noktası tetikleyicisizdi;
+            // plan ancak 2 dakikalık toplu turda gidiyordu.
+            yaz('student_study_plan', plan);
+            yaz('student_exam_type', examType);
+            yaz('student_closed_slots', closedSlots);
 
             setIsGenerating(false);
             setStep(3);
