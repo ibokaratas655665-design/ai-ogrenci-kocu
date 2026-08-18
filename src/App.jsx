@@ -12,6 +12,7 @@ import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import useGlobalModalDismiss from './hooks/useGlobalModalDismiss';
 import Modal from './components/ui/Modal';
 import { profilOku } from './services/kimlikKopru';
+import { yoneticiHesabiMi } from './data/yoneticiHesabi';
 import { auth } from './firebaseConfig';
 
 // 🛡️ Oturum Zaman Aşımı Uyarı Banner'ı
@@ -324,8 +325,25 @@ function YoneticiKapisi({ children }) {
     let iptal = false;
     (async () => {
       try {
-        const profil = await profilOku(auth?.currentUser?.uid);
-        if (!iptal) setDurum(profil?.rol === 'admin' ? 'izin' : 'red');
+        const uid = auth?.currentUser?.uid;
+        const profil = await profilOku(uid);
+
+        /**
+         * İKİ KABUL YOLU — ikisi de sunucu kaynaklı, kurcalanamaz:
+         *
+         *  1. `kullaniciProfil/{uid}.rol === 'admin'` — kural bu değeri
+         *     yalnızca gerçek yönetici uid'ine yazdırıyor.
+         *  2. Firebase oturumundaki e-posta yönetici listesinde.
+         *     `auth.currentUser.email` kimlik belirtecinden gelir;
+         *     localStorage gibi kurcalanamaz.
+         *
+         * İkincisi olmasaydı, profili henüz yazılmamış bir yönetici
+         * kendi panelinden KİLİTLENİRDİ. Profil ilk girişte yazılıyor
+         * ama eski hesaplarda bulunmayabilir.
+         */
+        const eposta = auth?.currentUser?.email;
+        const izinli = profil?.rol === 'admin' || yoneticiHesabiMi(eposta);
+        if (!iptal) setDurum(izinli ? 'izin' : 'red');
       } catch {
         // Sunucuya ulaşılamıyorsa yönetici ekranı AÇILMAZ — güvenli taraf.
         if (!iptal) setDurum('red');
