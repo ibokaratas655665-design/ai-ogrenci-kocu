@@ -20,7 +20,7 @@ import {
     CheckCircle, Clock, AlertCircle, Star, Target,
     TrendingUp, Award, Zap, Send, X, ChevronRight,
     PlayCircle, Flame, Trophy, Plus, Check, XCircle,
-    Download, FileText, Eye, Moon, Sun, BookX, PencilLine
+    Download, FileText, Eye, Moon, Sun, BookX, PencilLine, User
 } from 'lucide-react';
 import { generateStudentReport } from '../utils/pdfGenerator';
 import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';

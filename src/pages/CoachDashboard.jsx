@@ -9,7 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import SmartNotificationBell from '../components/shared/SmartNotifications';
 import { useNavigate } from 'react-router-dom';
 import GuidanceServiceTab from './GuidanceServiceTab';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
 import { parsePdfExamData } from '../utils/pdfParser';
 import ProgramBuilderModal from '../components/ProgramBuilderModal';

@@ -3,7 +3,7 @@
  * Haftalık ve deneme bazında net değişimini gösterir
  */
 import React, { useMemo, useState } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, ReferenceLine, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, BarChart, Bar, ReferenceLine, Legend, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, BarChart2, ArrowUp, ArrowDown } from 'lucide-react';
 import { calculateEstimatedScore } from '../../utils/scoreCalculator';
 

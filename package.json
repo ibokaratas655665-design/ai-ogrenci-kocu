@@ -17,7 +17,8 @@
     "ikonlar": "node scripts/ikon-uret.mjs",
     "lint:hatalar": "eslint . --quiet",
     "test": "vitest run",
-    "test:izle": "vitest"
+    "test:izle": "vitest",
+    "tanimsiz-jsx": "node scripts/tanimsiz-jsx.mjs"
   },
   "build": {
     "appId": "com.ogrencikocu.app",
