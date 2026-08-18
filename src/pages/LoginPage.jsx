@@ -696,9 +696,13 @@ const LoginPage = () => {
                         </div>
 
                         <div className="text-center mb-8 relative z-10">
-                            <h2 className="text-3xl font-black syne tracking-tight">
+                            {/* Sayfanın ANA başlığı bu;  idi ve sayfada hiç
+                                 yoktu. Ekran okuyucu sayfa yapısını başlık
+                                düzeyinden çıkarır, atlanan düzey gezinmeyi bozar.
+                                Görünüm aynı — yalnızca etiket doğru olanla değişti. */}
+                            <h1 className="text-3xl font-black syne tracking-tight">
                                 {role === 'student' ? 'Giriş Portalı' : isRegistering ? 'Kaydol' : 'Koç Girişi'}
-                            </h2>
+                            </h1>
                             <p className="text-ink-3 text-sm mt-2 font-medium">
                                 Devam etmek için bilgilerinizi girin
                             </p>
