@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Zap, RefreshCw, ChevronRight, Target, Brain, Star, CheckCircle, BookOpen, Clock } from 'lucide-react';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku } from '../../services/veriDeposu';
 
 const SUBJECT_TOPICS = {
     turkce: ['Paragraf Anlama', 'Sözcük Anlamı', 'Dil Bilgisi', 'Ses Bilgisi', 'Yazım Kuralları', 'Noktalama', 'Anlam İlişkileri', 'Sözcük Türleri', 'Cümle Bilgisi', 'Metin Türleri'],
@@ -24,7 +24,7 @@ const AITopicSuggestions = ({ examData = [], userId }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [completedIds, setCompletedIds] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(`completed_topics_${userId || 'student'}_${new Date().toDateString()}`) || '[]'); }
+        try { return listeOku(`completed_topics_${userId || 'student'}_${new Date().toDateString()}`); }
         catch { return []; }
     });
     const [lastGenerated, setLastGenerated] = useState(null);

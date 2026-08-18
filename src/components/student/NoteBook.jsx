@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Search, Tag, StickyNote, Pin, Trash2, Edit3, Check, BookOpen } from 'lucide-react';
+import { listeOku } from '../../services/veriDeposu';
 
 const NOTE_COLORS = [
     { bg: 'bg-warn-soft', border: 'border-warn', dot: 'bg-yellow-400', label: 'Sarı' },
@@ -19,7 +20,7 @@ const TAGS = ['Matematik', 'Türkçe', 'Fen', 'Sosyal', 'Fizik', 'Kimya', 'Biyol
 const NoteBook = ({ userId }) => {
     const LS_KEY = `notebook_${userId || 'student'}`;
     const [notes, setNotes] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
+        try { return listeOku(LS_KEY); }
         catch { return []; }
     });
     const [search, setSearch] = useState('');

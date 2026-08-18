@@ -75,8 +75,8 @@ const bosMu = (deger) => {
     return deger == null || deger === '';
 };
 
-const buluta = (anahtar, deger) => {
-    if (bosMu(deger)) return;
+const buluta = (anahtar, deger, zorla = false) => {
+    if (!zorla && bosMu(deger)) return;
     try { window.firebaseSync?.syncKey?.(anahtar); } catch { /* senkron yoksa sorun değil */ }
 };
 
@@ -117,13 +117,21 @@ export const nesneOku = (anahtar) => {
  *
  * Üç adımın birlikte yapılması şart: yalnızca localStorage'a yazan eski
  * kod, ekranı tazelemiyor ya da veriyi buluta göndermiyordu.
+ *
+ * `secenek.zorla` — SİLME İÇİN ŞART. Boş-değer koruması, `useEffect`
+ * deseninde ilk render'ın boş state'iyle bulutun kazara silinmesini
+ * önlüyor; ama kullanıcı listedeki SON kaydı bilerek sildiğinde sonuç
+ * boş listedir ve korumaya takılırsa buluta hiç gitmez — silinen kayıt
+ * bir sonraki açılışta geri gelir (canlıda GuidanceServiceTab'ta
+ * görüldü). Bilinçli kullanıcı eyleminde `{ zorla: true }` geç;
+ * `useEffect(() => yaz(...), [state])` deseninde ASLA geçme.
  */
-export const yaz = (anahtar, deger) => {
+export const yaz = (anahtar, deger, secenek = {}) => {
     try {
         const metin = JSON.stringify(deger);
         localStorage.setItem(anahtar, metin);
         olayYay(anahtar, metin);
-        buluta(anahtar, deger);
+        buluta(anahtar, deger, secenek.zorla === true);
         return true;
     } catch (e) {
         console.error(`veriDeposu: ${anahtar} yazılamadı`, e?.message);

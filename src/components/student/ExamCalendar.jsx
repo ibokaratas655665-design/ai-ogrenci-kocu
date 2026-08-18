@@ -4,7 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, BookOpen, Plus, X, Check } from 'lucide-react';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku } from '../../services/veriDeposu';
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const DAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -19,14 +19,14 @@ const ExamCalendar = ({ userId }) => {
 
     // Kayıtlı etkinlikleri yükle
     const [customEvents, setCustomEvents] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(`calendar_events_${userId || 'student'}`) || '[]'); }
+        try { return listeOku(`calendar_events_${userId || 'student'}`); }
         catch { return []; }
     });
 
     // v2_trials_data'dan gerçek denemeleri çek
     const trialEvents = useMemo(() => {
         try {
-            const trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+            const trials = listeOku('v2_trials_data');
             return trials.map(t => ({
                 id: `trial_${t.id}`,
                 date: t.date ? new Date(t.date).toISOString().split('T')[0] : null,

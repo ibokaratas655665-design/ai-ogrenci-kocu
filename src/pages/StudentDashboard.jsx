@@ -78,7 +78,7 @@ import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
-import { yaz } from '../services/veriDeposu';
+import { yaz, listeOku, nesneOku, oku } from '../services/veriDeposu';
 
 
 // ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
@@ -175,8 +175,8 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
     const handlePDF = (exam) => {
         try {
             // v2_results_data'dan tam veriyi bul
-            const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-            const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+            const v2Results = listeOku('v2_results_data');
+            const v2Trials = listeOku('v2_trials_data');
             // Öğrenciye ait sonucu bul
             const fullResult = v2Results.find(r => r.id === exam.id) || exam;
             const trial = v2Trials.find(t => t.id === fullResult.trialId) || { name: exam.name, examType: exam.examType, date: exam.date };
@@ -595,7 +595,7 @@ const StudentDashboard = () => {
         if (!user?.id) return;
         try {
             const key = `assigned_tests_${user.id}`;
-            const raw = JSON.parse(localStorage.getItem(key) || '[]');
+            const raw = listeOku(key);
             const allTests = guidanceService.getTests();
             const enriched = raw.map(a => {
                 const testDef = allTests.find(t => t.id === a.testId);
@@ -614,7 +614,7 @@ const StudentDashboard = () => {
     const loadTasks = async () => {
         if (!user?.id) return;
         try {
-            const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            const allTasks = nesneOku('student_tasks');
             const userIdStr = String(user.id);
             let myTasks = allTasks[userIdStr] || allTasks[user.id] || [];
             if (myTasks.length === 0 && user.schoolNumber) {
@@ -673,7 +673,7 @@ const StudentDashboard = () => {
             }
 
             // 3. Legacy format (eski kayıtlar için geriye dönük uyumluluk)
-            const savedLocal = JSON.parse(localStorage.getItem(`program_${user.id}`) || 'null');
+            const savedLocal = oku(`program_${user.id}`, null);
             if (savedLocal?.schedule && Object.keys(savedLocal.schedule).length > 0) {
                 setSchedule(savedLocal.schedule);
                 if (savedLocal?.config) setProgramConfig(prev => ({ ...prev, ...savedLocal.config }));
@@ -688,8 +688,8 @@ const StudentDashboard = () => {
         if (!user?.id) return;
         try {
             const oldExams = await api.exams.getStudentExams(user.id);
-            const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-            const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+            const v2Results = listeOku('v2_results_data');
+            const v2Trials = listeOku('v2_trials_data');
 
             // Türkçe karakterleri normalize et (İ→i, Ş→s vb.)
             const normTR = normalizeTRName;
@@ -785,7 +785,7 @@ const StudentDashboard = () => {
         if (!newMessage.trim()) return;
         try {
             // Koçun hangi key ile mesajları sakladığını bul
-            const allMessages = JSON.parse(localStorage.getItem('student_messages') || '{}');
+            const allMessages = nesneOku('student_messages');
             // Koçun key'ini bul: user.id veya schoolNumber
             const useKey = allMessages[user.id] ? user.id :
                 (allMessages[user.schoolNumber] ? user.schoolNumber : user.id);
@@ -830,7 +830,7 @@ const StudentDashboard = () => {
      */
     const handleCompleteTask = (taskId) => {
         let ham;
-        try { ham = JSON.parse(localStorage.getItem('student_tasks') || '{}'); }
+        try { ham = nesneOku('student_tasks'); }
         catch { ham = {}; }
 
         const isaretle = (t) => (
@@ -1275,7 +1275,7 @@ const StudentDashboard = () => {
                     // Tab açıldığında okunmamış mesajları okundu yap
                     const markAllRead = () => {
                         try {
-                            const allMsgs = JSON.parse(localStorage.getItem('messages') || '[]');
+                            const allMsgs = listeOku('messages');
                             const updated = allMsgs.map(m =>
                                 (m.receiverId === user?.id || m.receiverName === user?.name) && !m.read
                                     ? { ...m, read: true }
@@ -1303,7 +1303,7 @@ const StudentDashboard = () => {
 
                     const bulkMessages = (() => {
                         try {
-                            const all = JSON.parse(localStorage.getItem('messages') || '[]');
+                            const all = listeOku('messages');
                             return all.filter(m =>
                                 m.receiverId === user?.id ||
                                 m.receiverName === user?.name ||
@@ -1795,7 +1795,7 @@ const StudentDashboard = () => {
                         <div className="premium-card p-1 sm:p-2 border-line">
                             <XPLeaderboard
                                 students={(() => {
-                                    try { return JSON.parse(localStorage.getItem('coach_students') || '[]'); } catch { return []; }
+                                    try { return listeOku('coach_students'); } catch { return []; }
                                 })()}
                                 currentUserId={user?.id}
                             />

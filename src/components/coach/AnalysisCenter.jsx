@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import SectionTabs from '../shared/SectionTabs';
 import { buildRosterStatus } from '../../services/reportService';
+import { listeOku } from '../../services/veriDeposu';
 
 const AnalysisCenter = (props) => {
     const { students, setToast, renderOverview } = props;
@@ -45,7 +46,7 @@ const AnalysisCenter = (props) => {
     }, [students]);
 
     const v2 = useMemo(() => {
-        const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } };
+        const read = (k) => { try { return listeOku(k); } catch { return []; } };
         return { results: read('v2_results_data'), trials: read('v2_trials_data') };
     }, [students]);
 

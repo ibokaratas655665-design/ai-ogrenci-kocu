@@ -13,6 +13,7 @@ import {
     CartesianGrid, Cell, LineChart, Line, Legend
 } from 'recharts';
 import { generateBulkExamReport } from '../../utils/pdfGenerator';
+import { listeOku } from '../../services/veriDeposu';
 
 const SUBJECT_LABELS = {
     turkce: 'Türkçe', matematik: 'Matematik', fizik: 'Fizik',
@@ -48,7 +49,7 @@ const ClassInstantAnalysis = ({ students = [], trials = [], results: propsResult
     // localStorage'dan veya props'tan sonuçları al
     const allResults = useMemo(() => {
         if (propsResults) return propsResults;
-        try { return JSON.parse(localStorage.getItem('v2_results_data') || '[]'); } catch { return []; }
+        try { return listeOku('v2_results_data'); } catch { return []; }
     }, [propsResults]);
 
     // Mevcut deneme seçimi

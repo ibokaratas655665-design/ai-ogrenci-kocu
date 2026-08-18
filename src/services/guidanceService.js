@@ -4,7 +4,7 @@
  */
 
 import { TEST_DATA, calculateResult } from '../data/tests.js';
-import { yaz } from './veriDeposu';
+import { yaz, nesneOku } from './veriDeposu';
 
 // Rehberlik Yazıları
 const GUIDANCE_ARTICLES = [
@@ -168,7 +168,7 @@ const guidanceService = {
             };
 
             // LocalStorage'a kaydet
-            const allResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
+            const allResults = nesneOku('student_guidance_results');
             if (!allResults[studentId]) allResults[studentId] = [];
             allResults[studentId].push(savedResult);
             yaz('student_guidance_results', allResults);
@@ -187,7 +187,7 @@ const guidanceService = {
      * Toplu sonuç ekleme (bulk upload için)
      */
     addBulkResults: (studentId, results) => {
-        const allResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
+        const allResults = nesneOku('student_guidance_results');
         if (!allResults[studentId]) allResults[studentId] = [];
 
         const newResults = results.map(r => ({
@@ -206,7 +206,7 @@ const guidanceService = {
      * Öğrencinin tüm test sonuçlarını getir
      */
     getStudentResults: (studentId) => {
-        const allResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
+        const allResults = nesneOku('student_guidance_results');
         return allResults[studentId] || [];
     },
 

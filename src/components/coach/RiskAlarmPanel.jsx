@@ -5,12 +5,12 @@ import {
     Bell, MessageSquare, Target, Zap, X, Send
 } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku, nesneOku } from '../../services/veriDeposu';
 
 // ─── Risk Hesaplayıcı ───────────────────────────────────────
 const calcStudentRisk = (student) => {
-    const results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-    const tasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+    const results = listeOku('v2_results_data');
+    const tasks = nesneOku('student_tasks');
 
     // Öğrencinin denemeleri
     const normTR = (s) => String(s || '').toLowerCase()
@@ -240,7 +240,7 @@ const RiskAlarmPanel = ({ students = [], setToast }) => {
     const handleSendMessage = (student, msg) => {
         if (!msg.trim()) return;
         try {
-            const allMsgs = JSON.parse(localStorage.getItem('student_messages') || '{}');
+            const allMsgs = nesneOku('student_messages');
             const key = String(student.id);
             if (!allMsgs[key]) allMsgs[key] = [];
             allMsgs[key].push({

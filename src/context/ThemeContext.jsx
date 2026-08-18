@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { yaziTipiBul, puntoBul } from '../data/appearanceCatalog';
+import { nesneOku } from '../services/veriDeposu';
 
 const ThemeContext = createContext();
 
@@ -165,7 +166,7 @@ export const ThemeProvider = ({ children }) => {
              * (hover, yumuşak zemin, kenar) seçilen renkten üretiliyor.
              */
             try {
-                const appSettings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+                const appSettings = nesneOku('app_settings');
                 const marka = normalizeHex(appSettings?.general?.themeColor);
                 const vurgu = normalizeHex(appSettings?.general?.themeAccentColor);
 

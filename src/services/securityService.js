@@ -1,3 +1,4 @@
+import { nesneOku, oku, listeOku } from './veriDeposu';
 /**
  * 🛡️ GENEL GÜVENLİK SERVİSİ
  *
@@ -29,7 +30,7 @@ const CONFIG = {
  */
 const sureleriAyarlardanYukle = () => {
     try {
-        const s = JSON.parse(localStorage.getItem('app_settings') || '{}');
+        const s = nesneOku('app_settings');
         const dk = parseInt(s?.general?.sessionTimeout, 10);
         if (!Number.isFinite(dk) || dk < 5) return;          // 5 dk altı kabul edilmez
         CONFIG.SESSION_TIMEOUT_MS = dk * 60 * 1000;
@@ -54,7 +55,7 @@ sureleriAyarlardanYukle();
 export const recordFailedAttempt = (identifier) => {
     try {
         const key = `${CONFIG.STORAGE_KEY_ATTEMPTS}_${btoa(identifier)}`;
-        const stored = JSON.parse(localStorage.getItem(key) || '{"count":0,"firstAt":0,"lockedUntil":0}');
+        const stored = oku(key, null) || { count: 0, firstAt: 0, lockedUntil: 0 };
 
         const now = Date.now();
 
@@ -95,7 +96,7 @@ export const recordFailedAttempt = (identifier) => {
 export const checkLoginLock = (identifier) => {
     try {
         const key = `${CONFIG.STORAGE_KEY_ATTEMPTS}_${btoa(identifier)}`;
-        const stored = JSON.parse(localStorage.getItem(key) || 'null');
+        const stored = oku(key, null);
 
         if (!stored) return { locked: false };
 
@@ -287,7 +288,7 @@ const SUSPICIOUS_LOG_KEY = 'sec_suspicious_log';
  */
 export const logSuspiciousActivity = (type, detail) => {
     try {
-        const log = JSON.parse(localStorage.getItem(SUSPICIOUS_LOG_KEY) || '[]');
+        const log = listeOku(SUSPICIOUS_LOG_KEY);
         log.push({
             type,
             detail,
@@ -305,7 +306,7 @@ export const logSuspiciousActivity = (type, detail) => {
  */
 export const getSecurityLogs = () => {
     try {
-        return JSON.parse(localStorage.getItem(SUSPICIOUS_LOG_KEY) || '[]');
+        return listeOku(SUSPICIOUS_LOG_KEY);
     } catch (e) {
         return [];
     }

@@ -81,7 +81,7 @@ import { bildir, onayla } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
-import { oku, yaz } from '../services/veriDeposu';
+import { oku, yaz, listeOku, nesneOku } from '../services/veriDeposu';
 
 // 🛡️ Safe JSON Parser
 /**
@@ -271,13 +271,13 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
 
     const getCompletedTests = (studentId) => {
         try {
-            return JSON.parse(localStorage.getItem(`test_results_${studentId}`) || '[]');
+            return listeOku(`test_results_${studentId}`);
         } catch { return []; }
     };
 
     const getAssignedTests = (studentId) => {
         try {
-            return JSON.parse(localStorage.getItem(`assigned_tests_${studentId}`) || '[]');
+            return listeOku(`assigned_tests_${studentId}`);
         } catch { return []; }
     };
 
@@ -292,7 +292,7 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
 
     const handleUnassign = async (studentId, testId) => {
         if (await onayla({ mesaj: 'Bu test atamasını kaldırmak istediğinize emin misiniz?', tehlikeli: true })) {
-            const assigned = JSON.parse(localStorage.getItem(`assigned_tests_${studentId}`) || '[]');
+            const assigned = listeOku(`assigned_tests_${studentId}`);
             const filtered = assigned.filter(a => a.testId !== testId);
             localStorage.setItem(`assigned_tests_${studentId}`, JSON.stringify(filtered));
             setToast('Atama kaldırıldı.');
@@ -936,18 +936,18 @@ const ExamsTab = ({ students, setToast }) => {
     const [exams, setExamsState] = useState(() => {
         try {
             // Önce v2, sonra legacy
-            const v2 = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+            const v2 = listeOku('v2_results_data');
             if (v2.length > 0) return v2;
-            const legacy = JSON.parse(localStorage.getItem('exams_data') || '[]');
+            const legacy = listeOku('exams_data');
             return legacy;
         } catch { return []; }
     });
 
     const [trials, setTrialsState] = useState(() => {
         try {
-            const v2 = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
+            const v2 = listeOku('v2_trials_data');
             if (v2.length > 0) return v2;
-            const legacy = JSON.parse(localStorage.getItem('trials_data') || '[]');
+            const legacy = listeOku('trials_data');
             return legacy;
         } catch { return []; }
     });
@@ -970,9 +970,15 @@ const ExamsTab = ({ students, setToast }) => {
         setTrialsState(prev => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
             try {
-                localStorage.setItem('v2_trials_data', JSON.stringify(next));
-                localStorage.setItem('trials_data', JSON.stringify(next));
-                window.dispatchEvent(new StorageEvent('storage', { key: 'v2_trials_data' }));
+                /* Eskiden yalnızca localStorage'a yazılıyordu (hemen
+                   yukarıdaki setExams `yaz` kullanırken burası unutulmuş):
+                   deneme kayıtları buluta ancak 2 dk'lık toplu turda
+                   gidiyordu; sekme erken kapanırsa hiç gitmiyordu —
+                   randevudaki hatanın aynısı. `zorla`: son deneme
+                   silinince liste boş kalsa da silme buluta gitsin.
+                   `yaz` storage olayını kendi yayıyor. */
+                yaz('v2_trials_data', next, { zorla: true });
+                yaz('trials_data', next, { zorla: true });
             } catch (e) { console.warn('Trial veri kaydı:', e); }
             return next;
         });
@@ -1925,7 +1931,7 @@ const ManageCoachesTab = ({ setToast }) => {
     const [addForm, setAddForm] = useState({ name: '', email: '', phone: '', coachRole: 'subCoach', permissions: ['analysis', 'exams'], sections: ['kocluk'] });
 
     const [coaches, setCoaches] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('managed_coaches') || '[]'); } catch { return []; }
+        try { return listeOku('managed_coaches'); } catch { return []; }
     });
 
     const saveCoaches = (list) => {
@@ -2805,7 +2811,7 @@ const CoachDashboard = () => {
     useEffect(() => {
         const oku = () => {
             try {
-                const s = JSON.parse(localStorage.getItem("app_settings") || "{}");
+                const s = nesneOku("app_settings");
                 const ad = s?.general?.appName;
                 if (ad && String(ad).trim()) {
                     setAppName(String(ad).trim().toLocaleUpperCase("tr-TR"));
@@ -3192,7 +3198,7 @@ const CoachDashboard = () => {
             // Bu değer kaydediliyor ama hiçbir yerde kontrol edilmiyordu.
             const limit = (() => {
                 try {
-                    const s = JSON.parse(localStorage.getItem('app_settings') || '{}');
+                    const s = nesneOku('app_settings');
                     const n = parseInt(s?.general?.maxStudentsPerCoach, 10);
                     return Number.isFinite(n) && n > 0 ? n : null;
                 } catch { return null; }
@@ -3254,7 +3260,7 @@ const CoachDashboard = () => {
     const handleAssignTask = (taskData) => {
         try {
             // Get existing tasks from localStorage
-            const existingTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            const existingTasks = nesneOku('student_tasks');
             const assignedTestsKey = (studentId) => `assigned_tests_${studentId}`;
 
             // Görev yükünü her öğrenci için kaydet
@@ -3284,7 +3290,7 @@ const CoachDashboard = () => {
 
                 // 🆕 Inventory/Test ataması ise özel assigned_tests listesine de ekle
                 if (taskData.category === 'inventory' || taskData.category === 'test') {
-                    const studentAssignedTests = JSON.parse(localStorage.getItem(assignedTestsKey(studentId)) || '[]');
+                    const studentAssignedTests = listeOku(assignedTestsKey(studentId));
 
                     // Test ID'sini belirle (Inventory listesindeki isimden veya başlıktan)
                     let testId = 'general_test';

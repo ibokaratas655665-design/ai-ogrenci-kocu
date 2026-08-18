@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { listeOku } from '../services/veriDeposu';
 
 const NotificationContext = createContext();
 
@@ -8,7 +9,7 @@ const STORAGE_KEY = 'app_notifications';
 
 const loadNotifications = () => {
     try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        return listeOku(STORAGE_KEY);
     } catch {
         return [];
     }

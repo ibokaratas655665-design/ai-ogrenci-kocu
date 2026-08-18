@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Send, CheckCircle, TrendingUp, Brain, Heart, Zap, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
+import { listeOku } from '../../services/veriDeposu';
 
 const QUESTIONS = [
     { id: 'motivation',  label: 'Bu hafta motivasyonumu nasıl değerlendiriyorum?', icon: Zap,       color: 'amber' },
@@ -87,7 +88,7 @@ export const SelfAssessmentForm = ({ userId, userName, onClose }) => {
         // Tüm öz-değerlendirmeler için koç indeksi
         const allKey = 'all_self_assessments';
         try {
-            const all = JSON.parse(localStorage.getItem(allKey) || '[]');
+            const all = listeOku(allKey);
             const filtered = all.filter(a => !(a.userId === userId && a.week === key));
             localStorage.setItem(allKey, JSON.stringify([...filtered, data]));
         } catch { }
@@ -193,7 +194,7 @@ export const SelfAssessmentForm = ({ userId, userName, onClose }) => {
 export const CoachSelfAssessmentView = ({ students }) => {
     const [expanded, setExpanded] = useState(null);
     const assessments = (() => {
-        try { return JSON.parse(localStorage.getItem('all_self_assessments') || '[]'); } catch { return []; }
+        try { return listeOku('all_self_assessments'); } catch { return []; }
     })();
 
     const weekKey = WEEK_KEY();

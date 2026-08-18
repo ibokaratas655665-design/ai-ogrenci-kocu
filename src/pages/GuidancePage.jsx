@@ -12,6 +12,7 @@ import { jsPDF } from 'jspdf';
 import { savePDF } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
+import { listeOku } from '../services/veriDeposu';
 
 const GuidancePage = () => {
     const { user } = useAuth();
@@ -112,7 +113,7 @@ const GuidancePage = () => {
 
         // Save result to localStorage
         const resultsKey = `test_results_${user.id}`;
-        const currentResults = JSON.parse(localStorage.getItem(resultsKey) || '[]');
+        const currentResults = listeOku(resultsKey);
         const newResult = {
             ...result,
             testTitle: activeTest.title,

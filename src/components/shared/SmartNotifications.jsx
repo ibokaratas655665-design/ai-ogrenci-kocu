@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, X, Check, AlertTriangle, Trophy, BookOpen, Flame, Zap, MessageSquare, Target, CheckCircle } from 'lucide-react';
+import { listeOku, nesneOku } from '../../services/veriDeposu';
 
 // ─── Bildirim Tipleri & Stiller ───────────────────────────────
 const NOTIF_CONFIG = {
@@ -136,7 +137,7 @@ const generateCoachNotifications = (students, tasks, messages) => {
 
     // Risk alarm
     try {
-        const results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+        const results = listeOku('v2_results_data');
         const riskStudents = students.filter(s => {
             const sResults = results.filter(r => String(r.student || '').toLowerCase().includes(String(s.name || '').toLowerCase().split(' ')[0].toLowerCase()));
             if (sResults.length < 2) return false;
@@ -175,7 +176,7 @@ const generateCoachNotifications = (students, tasks, messages) => {
     const inactiveStudents = students.filter(s => {
         try {
             const gamKey = `gamification_stats_${s.id || s.schoolNumber}`;
-            const gam = JSON.parse(localStorage.getItem(gamKey) || '{}');
+            const gam = nesneOku(gamKey);
             if (!gam.lastActivityDate) return false;
             const daysSince = (now - new Date(gam.lastActivityDate)) / (1000 * 60 * 60 * 24);
             return daysSince >= 3;
@@ -283,7 +284,7 @@ const SmartNotificationBell = ({
 }) => {
     const [open, setOpen] = useState(false);
     const [dismissed, setDismissed] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('dismissed_notifs') || '[]'); } catch { return []; }
+        try { return listeOku('dismissed_notifs'); } catch { return []; }
     });
 
     // Bildirimleri hesapla

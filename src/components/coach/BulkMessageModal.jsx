@@ -11,7 +11,7 @@ import {
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
 import Modal from '../ui/Modal';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku } from '../../services/veriDeposu';
 
 // ─── Mesaj Şablonları ─────────────────────────────────────────────────
 const TEMPLATES = [
@@ -89,7 +89,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
         else if (filterMode === 'risky') {
             // Son 2 denemede düşüş var mı? (Basit kural)
             list = list.filter(s => {
-                const exams = JSON.parse(localStorage.getItem('v2_results_data') || '[]')
+                const exams = listeOku('v2_results_data')
                     .filter(r => r.studentId === s.id || r.studentName === s.name)
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .slice(0, 2);
@@ -99,8 +99,8 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
         }
         else if (filterMode === 'top') {
             list = list.sort((a, b) => {
-                const aExams = JSON.parse(localStorage.getItem('v2_results_data') || '[]').filter(r => r.studentId === a.id);
-                const bExams = JSON.parse(localStorage.getItem('v2_results_data') || '[]').filter(r => r.studentId === b.id);
+                const aExams = listeOku('v2_results_data').filter(r => r.studentId === a.id);
+                const bExams = listeOku('v2_results_data').filter(r => r.studentId === b.id);
                 const aNet = aExams.length ? parseFloat(aExams[aExams.length - 1].totalNet) || 0 : 0;
                 const bNet = bExams.length ? parseFloat(bExams[bExams.length - 1].totalNet) || 0 : 0;
                 return bNet - aNet;
@@ -110,7 +110,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
             // Son 3 günde hiç aktivite yok → mesaj yok
             const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
             list = list.filter(s => {
-                const msgs = JSON.parse(localStorage.getItem('messages') || '[]');
+                const msgs = listeOku('messages');
                 const hasRecent = msgs.some(m => m.senderId === s.id && new Date(m.timestamp) > threeDaysAgo);
                 return !hasRecent;
             });
@@ -149,7 +149,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
 
         try {
             // localStorage'daki mesaj sistemine ekle
-            const existingMessages = JSON.parse(localStorage.getItem('messages') || '[]');
+            const existingMessages = listeOku('messages');
             const now = new Date().toISOString();
 
             const newMessages = targetStudents.map(student => ({

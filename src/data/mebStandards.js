@@ -1,3 +1,4 @@
+import { nesneOku } from '../services/veriDeposu';
 /**
  * 🏛️ MEB BELGE VE VERİ STANDARTLARI
  *
@@ -81,7 +82,7 @@ export const evrakSayisiUret = () => {
     const k = kurumBilgisi();
     const yil = new Date().getFullYear();
     let sayac = {};
-    try { sayac = JSON.parse(localStorage.getItem(SAYAC_KEY) || '{}'); } catch { sayac = {}; }
+    try { sayac = nesneOku(SAYAC_KEY); } catch { sayac = {}; }
     const sira = (sayac[yil] || 0) + 1;
     sayac[yil] = sira;
     localStorage.setItem(SAYAC_KEY, JSON.stringify(sayac));

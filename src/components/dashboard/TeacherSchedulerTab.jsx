@@ -10,7 +10,7 @@ import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
 import Modal from '../ui/Modal';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku, nesneOku } from '../../services/veriDeposu';
 
 // Utility for Tailwind classes
 const cn = (...inputs) => twMerge(clsx(inputs));
@@ -24,11 +24,11 @@ const TeacherSchedulerTab = () => {
     ];
     const ROOMS = ['A-101', 'B-202', 'C-303', 'D-404'];
 
-    const [teachers, setTeachers] = useState(() => JSON.parse(localStorage.getItem('tp_teachers') || '[]'));
-    const [students, setStudents] = useState(() => JSON.parse(localStorage.getItem('tp_students') || '[]'));
-    const [pairings, setPairings] = useState(() => JSON.parse(localStorage.getItem('tp_pairings') || '[]'));
-    const [schedule, setSchedule] = useState(() => JSON.parse(localStorage.getItem('tp_schedule') || '{}'));
-    const [teacherAvailability, setTeacherAvailability] = useState(() => JSON.parse(localStorage.getItem('tp_avail') || '{}'));
+    const [teachers, setTeachers] = useState(() => listeOku('tp_teachers'));
+    const [students, setStudents] = useState(() => listeOku('tp_students'));
+    const [pairings, setPairings] = useState(() => listeOku('tp_pairings'));
+    const [schedule, setSchedule] = useState(() => nesneOku('tp_schedule'));
+    const [teacherAvailability, setTeacherAvailability] = useState(() => nesneOku('tp_avail'));
     
     const [activeTab, setActiveTab] = useState('program'); // 'program' | 'definitions'
     const [activeTeacherId, setActiveTeacherId] = useState(null);

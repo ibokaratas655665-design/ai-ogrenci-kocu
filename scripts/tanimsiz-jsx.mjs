@@ -21,7 +21,7 @@
 import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
 
-const dosyalar = execSync('git ls-files "src/**/*.jsx" "src/**/*.js"', { encoding: 'utf8' })
+const dosyalar = execSync('git ls-files "src/*.jsx" "src/*.js" "src/**/*.jsx" "src/**/*.js"', { encoding: 'utf8' })
     .split('\n').map((s) => s.trim()).filter(Boolean);
 
 // Bileşen gibi görünen ama tanımlı olan tarayıcı/JS globalleri

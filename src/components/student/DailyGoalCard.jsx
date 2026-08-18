@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Target, Check, Flame, Zap, Plus, X, RefreshCw, Trophy } from 'lucide-react';
+import { listeOku, nesneOku } from '../../services/veriDeposu';
 
 // ─── Hazır Şablonlar ─────────────────────────────────────────
 const TEMPLATES = [
@@ -54,7 +55,7 @@ const MiniConfetti = () => (
 // ─── Ana Bileşen ─────────────────────────────────────────────
 const DailyGoalCard = ({ userId, onAction }) => {
     const [goals, setGoals] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(todayKey()) || '[]'); } catch { return []; }
+        try { return listeOku(todayKey()); } catch { return []; }
     });
     const [newGoalText, setNewGoalText] = useState('');
     const [showAdd, setShowAdd] = useState(false);
@@ -70,7 +71,7 @@ const DailyGoalCard = ({ userId, onAction }) => {
     // İstatistik - tamamlanan gün sayısı
     const [streak, setStreak] = useState(() => {
         try {
-            const s = JSON.parse(localStorage.getItem(statsKey(userId)) || '{}');
+            const s = nesneOku(statsKey(userId));
             return s.streak || 0;
         } catch { return 0; }
     });
@@ -113,7 +114,7 @@ const DailyGoalCard = ({ userId, onAction }) => {
             setTimeout(() => setCelebration(false), 3000);
             // Streak güncelle
             try {
-                const s = JSON.parse(localStorage.getItem(statsKey(userId)) || '{}');
+                const s = nesneOku(statsKey(userId));
                 const today = new Date().toDateString();
                 if (s.lastCompleted !== today) {
                     const newStreak = (s.streak || 0) + 1;

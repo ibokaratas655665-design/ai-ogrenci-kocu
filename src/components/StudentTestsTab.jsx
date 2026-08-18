@@ -19,6 +19,7 @@ import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import Modal from './ui/Modal';
+import { listeOku } from '../services/veriDeposu';
 
 /* ── Yardımcı: options'u normalize et ────────────────────────── */
 function normalizeOptions(test, question) {
@@ -105,7 +106,7 @@ const StudentTestsTab = ({ user }) => {
 
         // Test sonuçlarını yükle
         try {
-            const saved = JSON.parse(localStorage.getItem(`test_results_${user.id}`) || '[]');
+            const saved = listeOku(`test_results_${user.id}`);
             setTestResults(saved);
         } catch {
             setTestResults([]);
@@ -161,13 +162,13 @@ const StudentTestsTab = ({ user }) => {
 
             // test_results_${userId} anahtarına ekle
             const key = `test_results_${user.id}`;
-            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+            const existing = listeOku(key);
             existing.unshift(entry);
             localStorage.setItem(key, JSON.stringify(existing));
 
             // assigned_tests'te 'completed' yap
             const assignedKey = `assigned_tests_${user.id}`;
-            const assignedData = JSON.parse(localStorage.getItem(assignedKey) || '[]');
+            const assignedData = listeOku(assignedKey);
             const updated = assignedData.map(t =>
                 t.testId === activeTest.id
                     ? { ...t, status: 'completed', completedDate: new Date().toISOString() }
@@ -310,7 +311,7 @@ const StudentTestsTab = ({ user }) => {
     const classmates = React.useMemo(() => {
         if (!isClassList) return [];
         try {
-            const list = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const list = listeOku('coach_students');
             return list.filter(s => s.grade === user?.grade && s.section === user?.section && s.id !== user?.id)
                 .sort((a, b) => a.name.localeCompare(b.name));
         } catch { return []; }

@@ -8,6 +8,7 @@ import {
 import { pendingFor } from '../services/taskStore';
 import { hataAnlat } from '../services/hataMesaji';
 import Modal from './ui/Modal';
+import { listeOku, oku } from '../services/veriDeposu';
 
 // ─── Gemini API şablonu (öğrenci odaklı koç) ─────────────────
 const COACH_SYSTEM_PROMPT = `Sen "AI Koç" adında bir YKS (Türkiye Yükseköğretim Kurumları Sınavı) uzmanı ve kişisel eğitim koçusun. 
@@ -172,7 +173,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
         // Son 3 deneme sonucu
         let examCtx = '';
         try {
-            const results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
+            const results = listeOku('v2_results_data');
             const my = results.filter(r =>
                 studentData?.name && String(r.student || r.studentName || '').toLowerCase().includes(studentData.name.split(' ')[0].toLowerCase())
             ).slice(-3);
@@ -200,7 +201,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
         let pomCtx = '';
         try {
             if (studentData?.id) {
-                const logs = JSON.parse(localStorage.getItem(`pomodoro_log_${studentData.id}`) || '[]');
+                const logs = listeOku(`pomodoro_log_${studentData.id}`);
                 const week = logs.filter(l => (Date.now() - new Date(l.startedAt || 0).getTime()) < 7 * 24 * 3600 * 1000);
                 const totalMin = week.reduce((s, l) => s + (l.minutes || 25), 0);
                 const uniqueSubjs = [...new Set(week.map(l => l.subject).filter(Boolean))];
@@ -215,7 +216,7 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
                 const d = new Date();
                 const week = Math.ceil(d.getDate() / 7);
                 const weekKey = `self_assessment_${d.getFullYear()}_${d.getMonth()}_w${week}_${studentData.id}`;
-                const sa = JSON.parse(localStorage.getItem(weekKey) || 'null');
+                const sa = oku(weekKey, null);
                 if (sa?.scores) {
                     const avg = (Object.values(sa.scores).reduce((a, b) => a + b, 0) / 5).toFixed(1);
                     selfCtx = `\n[Bu Haftaki Öz-Değerlendirme Ortalaması: ${avg}/5 — Motivasyon: ${sa.scores.motivation}, Stres: ${sa.scores.stress}]`;

@@ -6,6 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../firebaseConfig';
 import { havuzSahibiUid } from './kimlikKopru';
 import LZString from 'lz-string';
+import { oku, listeOku } from './veriDeposu';
 
 /**
  * Firebase oturumunun geri yüklenmesini bekler.
@@ -613,7 +614,7 @@ class FirebaseSync {
 
         // ── Oturum ───────────────────────────────────────────
         try {
-            const o = JSON.parse(localStorage.getItem('user_session') || 'null');
+            const o = oku('user_session', null);
             rapor.oturum = o ? { id: o.id, uid: o.uid, rol: o.role, ad: o.name, kocId: o.coachId ?? o.ownerCoachId ?? null } : null;
         } catch { rapor.oturum = null; }
 
@@ -674,7 +675,7 @@ class FirebaseSync {
 
         // ── Öğrencilerin sunucu kimliği var mı? ──────────────
         try {
-            const liste = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const liste = listeOku('coach_students');
             rapor.ogrenciler.toplam = liste.length;
             if (uid) {
                 const s = await getDocs(query(collection(db, 'ogrenciKimlik'), where('kocUid', '==', uid)));

@@ -142,6 +142,11 @@ export const markaGocu = (yeniAd) => {
         ayar.general.appName = yeniAd;
         localStorage.setItem('app_settings', JSON.stringify(ayar));
         try { window.dispatchEvent(new Event('settings-updated')); } catch { /* ignore */ }
+        /* Buluta da gitsin — gitmezse bir sonraki senkron turu eski adı
+           geri indirir ve göç her açılışta tekrarlanır. Bu dosya alt
+           katman olduğu için veriDeposu'na bağlanmıyor (döngü riski);
+           veriDeposu.buluta ile aynı korumalı desen. */
+        try { window.firebaseSync?.syncKey?.('app_settings'); } catch { /* senkron yoksa sorun değil */ }
         return true;
     } catch {
         return false;

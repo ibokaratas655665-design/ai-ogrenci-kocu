@@ -1,3 +1,4 @@
+import { nesneOku } from '../services/veriDeposu';
 // HELPER: Topic normalization - string veya object destekler
 export const getTopicName = (topic) => {
     return typeof topic === 'object' && topic.name ? topic.name : topic;
@@ -1080,7 +1081,7 @@ export const getCustomCurriculum = () => {
 // Custom PDFs per Exam Type (Books, Exams, etc.)
 export const getExamResources = () => {
     try {
-        return JSON.parse(localStorage.getItem('exam_resources') || '{}');
+        return nesneOku('exam_resources');
     } catch (e) {
         return {};
     }
@@ -1112,7 +1113,7 @@ export const removeExamResource = (examType, id) => {
 
 export const saveCustomTopics = (exam, section, updatedTopics) => {
     try {
-        const current = JSON.parse(localStorage.getItem('custom_curriculum') || '{}');
+        const current = nesneOku('custom_curriculum');
         if (!current[exam]) current[exam] = {};
 
         // Handling nested grades for AYT, YDT vs flat for TYT, LGS

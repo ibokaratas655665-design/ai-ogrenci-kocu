@@ -8,11 +8,12 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
+import { listeOku, nesneOku } from '../../services/veriDeposu';
 
 // ─── Yardımcı: v2 sonuçlarından öğrenci statsları hesapla ────
 const buildStudentStats = (students) => {
-    const results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-    const tasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+    const results = listeOku('v2_results_data');
+    const tasks = nesneOku('student_tasks');
 
     const normTR = (s) => String(s || '').toLowerCase()
         .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ş/g, 's').replace(/Ş/g, 's')

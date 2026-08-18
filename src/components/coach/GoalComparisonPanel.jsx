@@ -4,6 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { Target, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Search, Trophy, AlertTriangle } from 'lucide-react';
+import { listeOku, nesneOku } from '../../services/veriDeposu';
 
 const normTR = (str) => String(str || '').toLowerCase()
     .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
@@ -23,7 +24,7 @@ const GoalComparisonPanel = ({ students = [] }) => {
     const [expandedId, setExpandedId] = useState(null);
 
     const v2Results = useMemo(() => {
-        try { return JSON.parse(localStorage.getItem('v2_results_data') || '[]'); } catch { return []; }
+        try { return listeOku('v2_results_data'); } catch { return []; }
     }, []);
 
     // Her öğrenci için: hedef net, gerçek son net, fark
@@ -33,7 +34,7 @@ const GoalComparisonPanel = ({ students = [] }) => {
             let goalTYT = {};
             let targetUniv = '';
             try {
-                goalTYT = JSON.parse(localStorage.getItem(LS_KEY + '_tyt') || '{}');
+                goalTYT = nesneOku(LS_KEY + '_tyt');
                 targetUniv = localStorage.getItem(LS_KEY + '_univ') || '';
             } catch { }
 

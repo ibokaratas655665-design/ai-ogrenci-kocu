@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Trophy, Star, Flame, Zap, TrendingUp, Crown, Medal, Users } from 'lucide-react';
+import { nesneOku } from '../../services/veriDeposu';
 
 // ─── Liderlik Puanı Hesapla ──────────────────────────────────
 const calcLeaderScore = (student) => {
     try {
         const gamKey = `gamification_stats_${student.id || student.schoolNumber}`;
-        const gamData = JSON.parse(localStorage.getItem(gamKey) || '{}');
+        const gamData = nesneOku(gamKey);
 
         const xp = Number(gamData.totalXP || 0);
         const streak = Number(gamData.currentStreak || 0);

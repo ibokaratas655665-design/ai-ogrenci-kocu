@@ -1,3 +1,4 @@
+import { listeOku } from './veriDeposu';
 /**
  * 🔔 BİLDİRİM SERVİSİ
  *
@@ -22,7 +23,7 @@ const OLAY = 'notifications-updated';
 
 const oku = () => {
     try {
-        const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
+        const raw = listeOku(KEY);
         return Array.isArray(raw) ? raw : [];
     } catch {
         return [];

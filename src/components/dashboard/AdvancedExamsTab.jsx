@@ -25,6 +25,7 @@ import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
 import Modal from '../ui/Modal';
+import { nesneOku, listeOku } from '../../services/veriDeposu';
 
 const CurriculumManager = () => {
     const [selectedExam, setSelectedExam] = useState('TYT');
@@ -134,7 +135,7 @@ const CurriculumManager = () => {
 // ─── OBP Yönetimi ─────────────────────────────────────────────────────────────
 const OBPManager = () => {
     const [obpData, setObpData] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('v2_obp_data') || '{}'); } catch { return {}; }
+        try { return nesneOku('v2_obp_data'); } catch { return {}; }
     });
     const [newStudent, setNewStudent] = useState('');
     const [newNumber, setNewNumber] = useState('');
@@ -468,7 +469,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
 
     // ── Sınıf Karşılaştırma (gerçek sınıf/şube verisi) ─────────────
     // Öğrenci kaydından sınıf bilgisini al
-    const students = JSON.parse(localStorage.getItem('coach_students') || '[]');
+    const students = listeOku('coach_students');
     const normName = (s) => String(s || '').toLowerCase()
         .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
         .replace(/ü/g, 'u').replace(/Ü/g, 'u').replace(/ş/g, 's').replace(/Ş/g, 's')
@@ -2051,10 +2052,10 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
     // results: [{id, trialId, gradeLevel, student, subjects, totalNet, tyt, ... }]
 
     const [trials, setTrials] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('v2_trials_data') || '[]'); } catch { return []; }
+        try { return listeOku('v2_trials_data'); } catch { return []; }
     });
     const [results, setResults] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('v2_results_data') || '[]'); } catch { return []; }
+        try { return listeOku('v2_results_data'); } catch { return []; }
     });
 
     // Prevent immediate overwrite of existing DB data on first mount

@@ -24,7 +24,7 @@ import { gorebilir } from '../services/accessControl';
 import OgrenciGirisiAc from '../components/coach/OgrenciGirisiAc';
 import ParentQRModal from '../components/student/ParentQRModal';
 import Modal from '../components/ui/Modal';
-import { yaz } from '../services/veriDeposu';
+import { yaz, listeOku, nesneOku } from '../services/veriDeposu';
 
 const StudentDetailPage = () => {
     const { id } = useParams();
@@ -70,7 +70,7 @@ const StudentDetailPage = () => {
         if (!onaylandi) return;
 
         try {
-            const hepsi = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const hepsi = listeOku('coach_students');
             const kalan = hepsi.filter((s) => String(s?.id) !== String(id));
             localStorage.setItem('coach_students', JSON.stringify(kalan));
             // Panelin listesi anında tazelensin
@@ -150,7 +150,7 @@ const StudentDetailPage = () => {
              * erişimde "bulunamadı" denir — "yetkin yok" demek, o kimlikte
              * bir öğrencinin VAR olduğunu doğrulamak olurdu.
              */
-            const allStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const allStudents = listeOku('coach_students');
             const aday = allStudents.find(s => s && s.id != null && String(s.id) === String(id));
             const found = aday && gorebilir(user, aday) ? aday : null;
 
@@ -173,7 +173,7 @@ const StudentDetailPage = () => {
             }
 
             // Görevleri yükle
-            const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            const allTasks = nesneOku('student_tasks');
             setHomeworks(allTasks[id] || allTasks[String(id)] || []);
 
             // Programı yükle
@@ -193,7 +193,7 @@ const StudentDetailPage = () => {
 
             // Öğrenci istatistikleri
             try {
-                const stats = JSON.parse(localStorage.getItem(`user_stats_${id}`) || '{}');
+                const stats = nesneOku(`user_stats_${id}`);
                 const totalTime = parseInt(localStorage.getItem(`pomodoro_${id}_total`) || '0');
                 const dailyKey2 = `pomodoro_${id}_daily_${new Date().toDateString()}`;
                 const dailyPom = parseInt(localStorage.getItem(dailyKey2) || '0');
@@ -202,17 +202,17 @@ const StudentDetailPage = () => {
 
             // Test sonuçları
             try {
-                const testRes = JSON.parse(localStorage.getItem(`test_results_${id}`) || '[]');
+                const testRes = listeOku(`test_results_${id}`);
                 setStudentTestResults(testRes);
             } catch { }
 
             // 📊 Deneme sonuçlarını yükle (YKS) - Gelişmiş eşleşme mantığı
             try {
-                const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-                const v2Trials = JSON.parse(localStorage.getItem('v2_trials_data') || '[]');
-                const legacyResults = JSON.parse(localStorage.getItem('exams_data') || '[]');
+                const v2Results = listeOku('v2_results_data');
+                const v2Trials = listeOku('v2_trials_data');
+                const legacyResults = listeOku('exams_data');
 
-                const coachStudents2 = JSON.parse(localStorage.getItem('coach_students') || '[]');
+                const coachStudents2 = listeOku('coach_students');
                 const curr = coachStudents2.find(s => s && s.id != null && String(s.id) === String(id));
 
                 if (curr) {
@@ -340,7 +340,7 @@ const StudentDetailPage = () => {
         setHomeworks(updatedHomeworks);
 
         // LocalStorage'a kaydet - öğrenciye ulaşsın (key her zaman string)
-        const allTasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+        const allTasks = nesneOku('student_tasks');
         const keyStr = String(id);
         if (!allTasks[keyStr]) allTasks[keyStr] = [];
         allTasks[keyStr].push(newHomework);

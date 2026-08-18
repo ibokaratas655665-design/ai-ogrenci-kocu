@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, TrendingUp, AlertCircle, CheckCircle, Flame, Trophy } from 'lucide-react';
+import { listeOku, nesneOku } from '../../services/veriDeposu';
 
 /**
  * Madde 11: Akıllı Motivasyon Bildirimleri
@@ -11,7 +12,7 @@ import { Bell, X, TrendingUp, AlertCircle, CheckCircle, Flame, Trophy } from 'lu
 const MotivationNotifications = ({ user, examData = [], tasks = [] }) => {
     const [notifications, setNotifications] = useState([]);
     const [dismissed, setDismissed] = useState(() => {
-        try { return JSON.parse(localStorage.getItem('mot_dismissed') || '[]'); } catch { return []; }
+        try { return listeOku('mot_dismissed'); } catch { return []; }
     });
 
     useEffect(() => {
@@ -52,7 +53,7 @@ const MotivationNotifications = ({ user, examData = [], tasks = [] }) => {
 
         // — 3. Günlük seri teşviki —
         try {
-            const gamStats = JSON.parse(localStorage.getItem(`gamification_${user?.id}`) || '{}');
+            const gamStats = nesneOku(`gamification_${user?.id}`);
             const streak = gamStats.currentStreak || 0;
             if (streak >= 3 && streak < 7) {
                 generated.push({

@@ -1,3 +1,4 @@
+import { nesneOku } from './veriDeposu';
 /**
  * 📋 GÖREV DEPOSU — tek okuma noktası
  *
@@ -18,7 +19,7 @@ const isDone = (t) => Boolean(t?.completed) || t?.status === 'Tamamlandı';
 /** Ham deposu döndürür (bozuksa boş nesne). */
 export const readStore = () => {
     try {
-        const parsed = JSON.parse(localStorage.getItem(KEY) || '{}');
+        const parsed = nesneOku(KEY);
         return parsed && typeof parsed === 'object' ? parsed : {};
     } catch {
         return {};

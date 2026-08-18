@@ -11,7 +11,7 @@ import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { analyzeSociometry } from '../utils/sociometryAnalysis';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
-import { yaz, listeOku } from '../services/veriDeposu';
+import { yaz, listeOku, oku, nesneOku } from '../services/veriDeposu';
 import halkaAcik from '../services/halkaAcikGonderim';
 
 const GuidanceServiceTab = ({ students = [] }) => {
@@ -49,7 +49,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
      * koç burada okuyup kendi verisine alıyor ve kutudan siliyor.
      */
     const halkaAcikKutuyuAktar = async () => {
-        const kocId = JSON.parse(localStorage.getItem('user_session') || 'null')?.id;
+        const kocId = oku('user_session', null)?.id;
         if (!kocId) return;
 
         const gonderimler = await halkaAcik.kutuyuOku(kocId);
@@ -77,10 +77,10 @@ const GuidanceServiceTab = ({ students = [] }) => {
         students.forEach(student => {
             // Check legacy path
             const legacyKey = `test_results_${student.id}`;
-            const legacyResults = JSON.parse(localStorage.getItem(legacyKey) || '[]');
+            const legacyResults = listeOku(legacyKey);
 
             // Check guidanceService unified path
-            const unifiedResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}')[student.id] || [];
+            const unifiedResults = nesneOku('student_guidance_results')[student.id] || [];
 
             // Merge unique results (based on date/id)
             const merged = [...legacyResults];
@@ -102,7 +102,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
         });
 
         // 2. Public submissions
-        const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
+        const publicResults = listeOku('public_test_submissions');
         publicResults.forEach((publicRes, idx) => {
             results.push({
                 ...publicRes,
@@ -123,22 +123,26 @@ const GuidanceServiceTab = ({ students = [] }) => {
         if (!(await onayla({ mesaj: 'Bu test sonucunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', tehlikeli: true }))) return;
 
         if (result.studentId === 'public') {
-            const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
+            const publicResults = listeOku('public_test_submissions');
             const filtered = publicResults.filter(r =>
                 !(r.testId === result.testId && r.date === result.date && r.studentInfo?.schoolNumber === result.studentInfo?.schoolNumber)
             );
-            localStorage.setItem('public_test_submissions', JSON.stringify(filtered));
+            /* Silme buluta da gitmeli, yoksa kayıt bir sonraki senkron
+               turunda geri gelir. `zorla`: son kayıt silinince liste boş
+               kalsa da gönderilsin (yaz'ın boş-değer koruması bilinçli
+               silmede devre dışı). */
+            yaz('public_test_submissions', filtered, { zorla: true });
         } else {
             // Delete from all potential paths
             const legacyKey = `test_results_${result.studentId}`;
-            const legacyResults = JSON.parse(localStorage.getItem(legacyKey) || '[]');
+            const legacyResults = listeOku(legacyKey);
             const filteredLegacy = legacyResults.filter(r => !(r.testId === result.testId && r.date === result.date));
-            localStorage.setItem(legacyKey, JSON.stringify(filteredLegacy));
+            yaz(legacyKey, filteredLegacy, { zorla: true });
 
-            const unifiedData = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
+            const unifiedData = nesneOku('student_guidance_results');
             if (unifiedData[result.studentId]) {
                 unifiedData[result.studentId] = unifiedData[result.studentId].filter(r => !(r.testId === result.testId && r.date === result.date));
-                yaz('student_guidance_results', unifiedData);
+                yaz('student_guidance_results', unifiedData, { zorla: true });
             }
         }
 
@@ -155,7 +159,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
         selectedStudents.forEach(studentId => {
             const assignedTestsKey = `assigned_tests_${studentId}`;
-            const currentTests = JSON.parse(localStorage.getItem(assignedTestsKey) || '[]');
+            const currentTests = listeOku(assignedTestsKey);
 
             // Seçilen her testi ekle
             selectedTests.forEach(testId => {
@@ -178,7 +182,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
     const assignSingleTestToStudent = (studentId, testId) => {
         const assignedTestsKey = `assigned_tests_${studentId}`;
-        const currentTests = JSON.parse(localStorage.getItem(assignedTestsKey) || '[]');
+        const currentTests = listeOku(assignedTestsKey);
 
         if (!currentTests.find(t => t.testId === testId)) {
             currentTests.push({
@@ -200,7 +204,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
         const baseUrl = window.location.href.split('#')[0];
         // Koç kimliği linke eklenmezse gönderim hangi koça ait olduğunu
         // bilemez ve kutuya düşemez (bkz. services/halkaAcikGonderim.js).
-        const kocId = JSON.parse(localStorage.getItem('user_session') || 'null')?.id ?? '';
+        const kocId = oku('user_session', null)?.id ?? '';
         const shareUrl = `${baseUrl}#/envanter/${testId}${kocId ? `?c=${encodeURIComponent(kocId)}` : ''}`;
         navigator.clipboard.writeText(shareUrl).then(() => {
             setToast(`"${title}" bağlantısı kopyalandı!`);

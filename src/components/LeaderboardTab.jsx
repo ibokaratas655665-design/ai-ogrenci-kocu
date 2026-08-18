@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Trophy, Medal, Award, TrendingUp, Star } from 'lucide-react';
+import { listeOku, nesneOku } from '../services/veriDeposu';
 
 const LeaderboardTab = ({ students }) => {
     // Calculate scores from exam data
@@ -8,7 +9,7 @@ const LeaderboardTab = ({ students }) => {
     const calculateScores = () => {
         return students.map(student => {
             // Get student exam data from localStorage
-            const examsData = JSON.parse(localStorage.getItem('exams_data') || '[]');
+            const examsData = listeOku('exams_data');
             const studentExams = examsData.filter(exam => exam.student === student.name);
 
             const avgScore = studentExams.length > 0
@@ -16,7 +17,7 @@ const LeaderboardTab = ({ students }) => {
                 : 0;
 
             // Get completed tasks
-            const tasks = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+            const tasks = nesneOku('student_tasks');
             const studentTasks = tasks[student.id] || [];
             const completedTasks = studentTasks.filter(t => t.completed).length;
 

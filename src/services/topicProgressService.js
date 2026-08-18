@@ -23,6 +23,7 @@
  * yarım kalan konular listenin başına çekilir.
  */
 
+import { nesneOku } from './veriDeposu';
 import {
     sinavBul, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri,
     dersAdi as dersAdiKatalog, hedefSoruHesapla, ZORLUK_ADI,
@@ -528,7 +529,7 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
 /** Koçun belirlediği ölçütler (Ayarlar → Genel). */
 export const olcutOku = () => {
     try {
-        const s = JSON.parse(localStorage.getItem('app_settings') || '{}');
+        const s = nesneOku('app_settings');
         const t = s?.topic || {};
         return {
             carpan: Number(t.carpan) > 0 ? Number(t.carpan) : VARSAYILAN_OLCUT.carpan,

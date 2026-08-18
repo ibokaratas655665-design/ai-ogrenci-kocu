@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus, Users } from 'lucide-react';
+import { listeOku } from '../../services/veriDeposu';
 
 /**
  * Madde 13: Öğrenci Sınıf Ortalaması Karşılaştırma Widget'ı
@@ -9,8 +10,8 @@ const ClassComparisonWidget = ({ userId, currentStudent }) => {
     const { studentNet, classAvg, diff, classSize, studentName } = useMemo(() => {
         try {
             // Tüm öğrenciler ve sonuçlar
-            const allStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
-            const v2Results = JSON.parse(localStorage.getItem('examResults_v2') || '[]');
+            const allStudents = listeOku('coach_students');
+            const v2Results = listeOku('examResults_v2');
 
             // Normalizer
             const normTR = (str) => String(str || '').toLowerCase()

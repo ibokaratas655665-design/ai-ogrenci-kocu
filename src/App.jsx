@@ -14,6 +14,7 @@ import Modal from './components/ui/Modal';
 import { profilOku } from './services/kimlikKopru';
 import { yoneticiHesabiMi } from './data/yoneticiHesabi';
 import { auth } from './firebaseConfig';
+import { nesneOku } from './services/veriDeposu';
 
 // 🛡️ Oturum Zaman Aşımı Uyarı Banner'ı
 const SessionTimeoutBanner = () => {
@@ -372,7 +373,7 @@ function RouteGuard({ children, allowedRoles }) {
     // Bakım modu kaydediliyor ama hiçbir yerde kontrol edilmiyordu.
     // Sistem kilidinden farkı: koçlar çalışmaya devam eder, yalnızca
     // öğrenci ve veli erişimi durur.
-    const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+    const settings = nesneOku('app_settings');
     if (settings.maintenanceMode === true && user.role === 'student') {
       return <Navigate to="/login" state={{ error: 'Sistem geçici olarak bakımdadır. Lütfen daha sonra tekrar deneyin.' }} replace />;
     }

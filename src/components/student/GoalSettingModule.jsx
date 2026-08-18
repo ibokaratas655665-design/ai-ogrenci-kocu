@@ -8,6 +8,7 @@ import {
     BookOpen, Star, Info, Flame, Edit3, CheckCircle,
     Award, AlertTriangle, Zap, BarChart2
 } from 'lucide-react';
+import { oku } from '../../services/veriDeposu';
 
 // ─── TYT Ders Hedefleri ───────────────────────────────────────────────
 const TYT_SUBJECTS = [
@@ -122,11 +123,11 @@ const GoalSettingModule = ({ user, examData = [] }) => {
     const defaultAYT = { SAY: {}, EA: {}, SÖZ: {} };
 
     const [tytGoals, setTytGoals] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(LS_KEY + '_tyt')) || defaultTYT; } catch { return defaultTYT; }
+        return oku(LS_KEY + '_tyt', null) || defaultTYT;
     });
     const [aytType, setAytType] = useState(() => localStorage.getItem(LS_KEY + '_ayttype') || 'SAY');
     const [aytGoals, setAytGoals] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(LS_KEY + '_ayt')) || {}; } catch { return {}; }
+        return oku(LS_KEY + '_ayt', null) || {};
     });
     const [showAYT, setShowAYT] = useState(false);
     const [targetUniv, setTargetUniv] = useState(() => localStorage.getItem(LS_KEY + '_univ') || '');

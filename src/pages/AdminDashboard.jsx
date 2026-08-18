@@ -13,7 +13,7 @@ import firebaseSync from '../services/firebaseSync';
 import { bildir } from '../services/uiGeriBildirim';
 import { DataTable, Badge, Button, Avatar } from '../components/ui';
 import Modal from '../components/ui/Modal';
-import { yaz } from '../services/veriDeposu';
+import { yaz, listeOku } from '../services/veriDeposu';
 
 // ── Onay Dialogu ─────────────────────────────────────────────
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
@@ -219,7 +219,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
         setLoading(true);
         setError('');
         try {
-            const localUsers = JSON.parse(localStorage.getItem('users_db') || '[]');
+            const localUsers = listeOku('users_db');
             if (localUsers.some(u => u.phone === phone.trim())) {
                 setError('Bu telefon numarası zaten kayıtlı.');
                 setLoading(false);
@@ -382,8 +382,8 @@ export default function AdminDashboard() {
 
                 setPendingUsers(pending || []);
             } else if (activeTab === 'users') {
-                const localUsers = JSON.parse(localStorage.getItem('users_db') || '[]');
-                const coachStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
+                const localUsers = listeOku('users_db');
+                const coachStudents = listeOku('coach_students');
 
                 const coaches = localUsers.filter(u => u.role === 'coach' || u.role === 'admin');
                 const students = coachStudents.map((s, i) => ({
@@ -449,13 +449,13 @@ export default function AdminDashboard() {
         if (!user) return;
         setConfirmDialog(null);
 
-        const localUsers = JSON.parse(localStorage.getItem('users_db') || '[]');
+        const localUsers = listeOku('users_db');
         const filtered = localUsers.filter(u =>
             u.id !== user.id && u.phone !== user.phone
         );
         yaz('users_db', filtered);
 
-        const coachStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
+        const coachStudents = listeOku('coach_students');
         const filteredStudents = coachStudents.filter(s =>
             s.id !== user.id && s.name !== user.name
         );
@@ -472,7 +472,7 @@ export default function AdminDashboard() {
     const handleSaveUser = async (originalUser, updatedFields) => {
         try {
             // ── users_db güncelle ──
-            const localUsers = JSON.parse(localStorage.getItem('users_db') || '[]');
+            const localUsers = listeOku('users_db');
             let foundInLocal = false;
             const updatedLocal = localUsers.map(u => {
                 const match = u.id === originalUser.id || (u.phone && u.phone === originalUser.phone);
@@ -494,7 +494,7 @@ export default function AdminDashboard() {
             }
 
             // ── coach_students güncelle ──
-            const coachStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const coachStudents = listeOku('coach_students');
             let foundInStudents = false;
             const updatedStudents = coachStudents.map(s => {
                 const match = s.id === originalUser.id || s.name === originalUser.name;

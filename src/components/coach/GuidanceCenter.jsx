@@ -13,6 +13,7 @@ import React, { useMemo } from 'react';
 import { Brain, ClipboardList, Share2, Briefcase, FileText } from 'lucide-react';
 import SectionTabs from '../shared/SectionTabs';
 import BEPCenter from '../guidance/bep/BEPCenter';
+import { listeOku } from '../../services/veriDeposu';
 
 const GuidanceCenter = (props) => {
     const { students, setToast, onAssignTask } = props;
@@ -41,7 +42,7 @@ const GuidanceCenter = (props) => {
 
     const pendingTests = useMemo(() => {
         try {
-            const assigned = JSON.parse(localStorage.getItem('assigned_tests') || '[]');
+            const assigned = listeOku('assigned_tests');
             return assigned.filter((t) => t.status === 'pending').length;
         } catch {
             return 0;

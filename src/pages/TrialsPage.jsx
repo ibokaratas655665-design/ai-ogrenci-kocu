@@ -10,6 +10,7 @@ import html2pdf from 'html2pdf.js';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import Modal from '../components/ui/Modal';
+import { listeOku } from '../services/veriDeposu';
 
 const TrialsPage = () => {
     const { user } = useAuth();
@@ -48,8 +49,8 @@ const TrialsPage = () => {
         // Fetch all results: Guidance + YKS Exams
         const guidanceRes = guidanceService.getStudentResults(user.id);
         
-        const v2Results = JSON.parse(localStorage.getItem('v2_results_data') || '[]');
-        const legacyResults = JSON.parse(localStorage.getItem('exams_data') || '[]');
+        const v2Results = listeOku('v2_results_data');
+        const legacyResults = listeOku('exams_data');
         
         const sName = user.name.toLowerCase().trim();
         const sNum = (user.schoolNumber || user.number || '').toString().trim();

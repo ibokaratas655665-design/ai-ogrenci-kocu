@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Volume2, VolumeX, BookOpen, BarChart2, ChevronDown, X } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
 import Modal from '../ui/Modal';
+import { listeOku } from '../../services/veriDeposu';
 
 const SUBJECTS = [
     'Türkçe', 'Matematik', 'Fen Bilimleri', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü',
@@ -22,7 +23,7 @@ const LOG_KEY = (userId) => `pomodoro_log_${userId}`;
 
 const savePomodoroLog = (userId, session) => {
     try {
-        const logs = JSON.parse(localStorage.getItem(LOG_KEY(userId)) || '[]');
+        const logs = listeOku(LOG_KEY(userId));
         logs.push(session);
         localStorage.setItem(LOG_KEY(userId), JSON.stringify(logs));
     } catch { }
@@ -62,7 +63,7 @@ const SubjectSelector = ({ selected, onSelect }) => {
 // ─── İstatistik Mini Paneli ───────────────────────────────────────
 const PomodoroStats = ({ userId, onClose }) => {
     const logs = (() => {
-        try { return JSON.parse(localStorage.getItem(LOG_KEY(userId)) || '[]'); } catch { return []; }
+        try { return listeOku(LOG_KEY(userId)); } catch { return []; }
     })();
 
     const today = new Date().toDateString();
@@ -141,7 +142,7 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
     const timerRef = useRef(null);
 
     const logs = (() => {
-        try { return JSON.parse(localStorage.getItem(LOG_KEY(userId)) || '[]'); } catch { return []; }
+        try { return listeOku(LOG_KEY(userId)); } catch { return []; }
     })();
     const todayCount = logs.filter(l => new Date(l.startedAt).toDateString() === new Date().toDateString()).length;
 
@@ -330,7 +331,7 @@ export const CoachPomodoroView = ({ students }) => {
     const [selected, setSelected] = useState(null);
 
     const getLogs = (s) => {
-        try { return JSON.parse(localStorage.getItem(LOG_KEY(s.id)) || '[]'); } catch { return []; }
+        try { return listeOku(LOG_KEY(s.id)); } catch { return []; }
     };
 
     const studentStats = students.map(s => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Calendar, Edit2, Check, X } from 'lucide-react';
 import Modal from '../ui/Modal';
+import { nesneOku } from '../../services/veriDeposu';
 
 // ─── YKS Tarih ──────────────────────────────────────────────
 const getNextYKS = () => {
@@ -197,7 +198,7 @@ const YKSCountdownWidget = ({ userId, examData = [], userGrade }) => {
 
     const storageKey = `yks_goals_${userId || 'guest'}`;
     const [goals, setGoals] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); }
+        try { return nesneOku(storageKey); }
         catch { return {}; }
     });
 

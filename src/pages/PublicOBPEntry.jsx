@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import halkaAcik from '../services/halkaAcikGonderim';
+import { nesneOku } from '../services/veriDeposu';
 
 const PublicOBPEntry = () => {
     const navigate = useNavigate();
@@ -49,7 +50,7 @@ const PublicOBPEntry = () => {
                 try { currentObpData = JSON.parse(docSnap.data().value); } catch { }
             } else {
                 // fallback to localStorage if firebase not available or empty
-                try { currentObpData = JSON.parse(localStorage.getItem('v2_obp_data') || '{}'); } catch { }
+                try { currentObpData = nesneOku('v2_obp_data'); } catch { }
             }
 
             const normName = studentName.trim().toUpperCase();

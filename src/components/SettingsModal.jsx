@@ -3,6 +3,7 @@ import { X, Save, Settings, Shield, Users, Lock, Unlock, BookOpen, FileText, Cal
 import AppearancePanel from './settings/AppearancePanel';
 import InstitutionPanel from './settings/InstitutionPanel';
 import Modal from './ui/Modal';
+import { oku } from '../services/veriDeposu';
 
 /** Varsayılanlar — styles/theme.css ile aynı değerler. */
 const DEFAULT_BRAND = '#1E3A8A';
@@ -67,7 +68,7 @@ const SettingsModal = ({ onClose }) => {
     useEffect(() => {
         let kayit = null;
         try {
-            kayit = JSON.parse(localStorage.getItem('app_settings') || 'null');
+            kayit = oku('app_settings', null);
         } catch {
             kayit = null;
         }

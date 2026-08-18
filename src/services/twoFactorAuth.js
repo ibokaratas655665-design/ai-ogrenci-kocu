@@ -9,7 +9,7 @@ import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailL
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import app from '../firebaseConfig';
-import { yaz } from './veriDeposu';
+import { yaz, listeOku } from './veriDeposu';
 
 const auth = getAuth(app);
 
@@ -266,7 +266,7 @@ export const revokeTrustedDevice = async (studentId) => {
  */
 export const saveCoachEmail = (phone, email) => {
     try {
-        const users = JSON.parse(localStorage.getItem('users_db') || '[]');
+        const users = listeOku('users_db');
         const idx = users.findIndex(u => u.phone === phone);
         if (idx !== -1) {
             users[idx].email = email;
@@ -283,7 +283,7 @@ export const saveCoachEmail = (phone, email) => {
  */
 export const getCoachEmail = (phone) => {
     try {
-        const users = JSON.parse(localStorage.getItem('users_db') || '[]');
+        const users = listeOku('users_db');
         const coach = users.find(u => u.phone === phone);
         return coach?.email || null;
     } catch (e) {

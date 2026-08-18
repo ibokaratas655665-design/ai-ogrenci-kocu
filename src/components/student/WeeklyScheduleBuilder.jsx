@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
+import { oku } from '../../services/veriDeposu';
 
 const SUBJECTS = [
     { id: 'turkce', label: 'Türkçe', color: 'var(--c1)', bg: 'color-mix(in srgb, #eef2ff 55%, var(--surface))', emoji: '📖', exam: ['TYT', 'LGS'] },
@@ -101,7 +102,7 @@ const ScheduleCell = ({ dayIdx, slotId, assignment, onAssign, onClear, selectedS
 const WeeklyScheduleBuilder = ({ user }) => {
     const LS_KEY = `weekly_schedule_${user?.id || 'student'}`;
     const [schedule, setSchedule] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; }
+        return oku(LS_KEY, null) || {};
     });
 
     // Seçili ders

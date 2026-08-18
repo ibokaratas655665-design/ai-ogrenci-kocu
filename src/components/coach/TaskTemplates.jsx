@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Save, Trash2, Send, ClipboardList, X, Check, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import { yaz } from '../../services/veriDeposu';
+import { yaz, listeOku, nesneOku } from '../../services/veriDeposu';
 
 const LS_KEY = 'task_templates';
 const DEFAULT_TEMPLATES = [
@@ -27,7 +27,7 @@ const PRIORITY_MAP = { urgent: 'Acil', high: 'Yüksek', normal: 'Normal', low: '
 const TaskTemplates = ({ students = [], setToast }) => {
     const [templates, setTemplates] = useState(() => {
         try {
-            const saved = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+            const saved = listeOku(LS_KEY);
             return [...DEFAULT_TEMPLATES, ...saved.filter(t => !DEFAULT_TEMPLATES.find(d => d.id === t.id))];
         } catch { return DEFAULT_TEMPLATES; }
     });
@@ -64,7 +64,7 @@ const TaskTemplates = ({ students = [], setToast }) => {
         if (selectedStudents.length === 0) { setToast?.('❌ En az bir öğrenci seçin'); return; }
         const tpl = templates.find(t => t.id === templateId);
         if (!tpl) return;
-        const existing = JSON.parse(localStorage.getItem('student_tasks') || '{}');
+        const existing = nesneOku('student_tasks');
         const now = new Date();
         selectedStudents.forEach(sid => {
             const key = String(sid);

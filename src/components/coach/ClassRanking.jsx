@@ -4,6 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { Trophy, TrendingUp, TrendingDown, Minus, Medal, Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { listeOku } from '../../services/veriDeposu';
 
 const normTR = (str) => String(str || '').toLowerCase()
     .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
@@ -23,7 +24,7 @@ const ClassRanking = ({ students = [] }) => {
     const [examType, setExamType] = useState('all');
 
     const v2Results = useMemo(() => {
-        try { return JSON.parse(localStorage.getItem('v2_results_data') || '[]'); } catch { return []; }
+        try { return listeOku('v2_results_data'); } catch { return []; }
     }, []);
 
     const rankData = useMemo(() => {

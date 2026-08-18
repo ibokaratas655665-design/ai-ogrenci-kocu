@@ -1,3 +1,4 @@
+import { oku } from './veriDeposu';
 /**
  * 🎬 DEMO SÜRÜM
  *
@@ -40,7 +41,7 @@ const yedekle = () => {
 
 const yedegiGeriYukle = () => {
     let yedek = null;
-    try { yedek = JSON.parse(localStorage.getItem(YEDEK) || 'null'); } catch { yedek = null; }
+    try { yedek = oku(YEDEK, null); } catch { yedek = null; }
     if (!yedek) return false;
 
     ANAHTARLAR.forEach((k) => {

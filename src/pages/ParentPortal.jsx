@@ -23,6 +23,7 @@ import wa from '../services/whatsappService';
 import ParentBadgeStrip from '../components/parent/ParentBadgeStrip';
 import parentLinks from '../services/parentLinkService';
 import veliBaglanti from '../services/veliBaglanti';
+import { nesneOku } from '../services/veriDeposu';
 
 const safeParse = (key, fallback = []) => {
     try {
@@ -722,7 +723,7 @@ const CoachNoteCard = ({ note }) => (
 const ContactCard = ({ student }) => {
     const coachPhone = (() => {
         try {
-            const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+            const settings = nesneOku('app_settings');
             return settings.coachPhone || '';
         } catch {
             return '';

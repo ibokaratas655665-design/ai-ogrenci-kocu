@@ -5,6 +5,7 @@ import guidanceService from '../services/guidanceService';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import halkaAcik from '../services/halkaAcikGonderim';
+import { listeOku } from '../services/veriDeposu';
 
 const PublicTestEntry = () => {
     const { testId } = useParams();
@@ -123,7 +124,7 @@ const PublicTestEntry = () => {
             };
 
             // Yerel kopya (aynı cihazdaki koç için)
-            const publicResults = JSON.parse(localStorage.getItem('public_test_submissions') || '[]');
+            const publicResults = listeOku('public_test_submissions');
             publicResults.push(entry);
             localStorage.setItem('public_test_submissions', JSON.stringify(publicResults));
 
@@ -149,7 +150,7 @@ const PublicTestEntry = () => {
         const isClassList = test?.inputType === 'class_list';
         if (!isClassList) return [];
         try {
-            const list = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const list = listeOku('coach_students');
             // Daha esnek eşleşme: hem okul numarası hem de isim kontrolü (küçük/büyük harf duyarsız)
             const studentEntry = list.find(s =>
                 String(s.schoolNumber).trim().toLowerCase() === String(schoolNumber).trim().toLowerCase() ||
