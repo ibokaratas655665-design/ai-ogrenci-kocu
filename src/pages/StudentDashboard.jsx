@@ -1345,11 +1345,26 @@ const StudentDashboard = () => {
                                                 <p className="text-xs font-bold text-ink-2 uppercase tracking-widest leading-relaxed">HENÜZ BİR DUYURU<br/>BULUNMUYOR</p>
                                             </div>
                                         ) : bulkMessages.map((msg, i) => {
+                                            /**
+                                             * ⚠️ SON `|| NORMAL_STIL` ŞART.
+                                             *
+                                             * Eskiden yalnızca `[msg.priority || 'normal']` vardı. Üç
+                                             * bilinen değerin (normal/important/urgent) dışında bir
+                                             * öncelikle kaydedilmiş TEK bir mesaj — eski sürümden,
+                                             * demo verisinden ya da `priority: 'high'` yazan bir
+                                             * yerden — `cfg`'yi `undefined` yapıyor ve hemen altındaki
+                                             * `cfg.border` okuması bütün sekmeyi çökertiyordu.
+                                             * Öğrenci "Mesajlar"a girince uygulamadan atılıyordu.
+                                             *
+                                             * Hemen aşağıdaki `typeEmoji` bu yedeği zaten taşıyordu
+                                             * (`|| '📨'`); burada unutulmuş.
+                                             */
+                                            const NORMAL_STIL = { border: 'border-line', bg: 'bg-surface', color: 'text-brand', icon: MessageSquare };
                                             const cfg = {
                                                 urgent: { border: 'border-danger/30', bg: 'bg-danger/5', color: 'text-danger', icon: AlertCircle },
                                                 important: { border: 'border-warn/30', bg: 'bg-warn/5', color: 'text-warn', icon: Zap },
-                                                normal: { border: 'border-line', bg: 'bg-surface', color: 'text-brand', icon: MessageSquare },
-                                            }[msg.priority || 'normal'];
+                                                normal: NORMAL_STIL,
+                                            }[msg.priority || 'normal'] || NORMAL_STIL;
                                             
                                             const typeEmoji = {
                                                 motivation: '🔥', exam_reminder: '📅', study_tip: '💡',
