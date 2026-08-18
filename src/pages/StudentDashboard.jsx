@@ -481,7 +481,34 @@ const StudentDashboard = () => {
     const { stats: gamStats, completeTask: gamCompleteTask, completePomodoro: gamCompletePomodoro, recordDailyLogin, recordExamView } = useGamification();
 
     // ── State
-    const [activeTab, setActiveTab] = useState('home');
+    /**
+     * Sekme URL'de taşınır: yenileme ve paylaşılan bağlantı aynı sekmeye
+     * döner (eskiden her yenileme "Bugün"e savuruyordu).
+     *
+     * ⚠️ Uygulama HashRouter kullanıyor — hash ROTANIN KENDİSİ
+     * (#/student). Sekme bu yüzden hash İÇİNDEKİ sorguya yazılır:
+     * `#/student?sekme=messages`. Hash'i düz `#sekme=x` yapmak rotayı
+     * ezer ve yönlendirmeyi kırar (denendi, kırdı). Aynı kalıbı
+     * LoginPage/JoinPage de kullanıyor (`hash.split('?')[1]`).
+     *
+     * ⚠️ Liste SEKME_GRUPLARI'ndaki kimliklerle aynı olmalı — yeni sekme
+     * oraya eklenip buraya eklenmezse çökme olmaz, yalnızca o sekmenin
+     * derin bağlantısı ana sekmeye düşer.
+     */
+    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests'];
+    const [activeTab, setActiveTab] = useState(() => {
+        try {
+            const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
+            if (h && GECERLI_SEKMELER.includes(h)) return h;
+        } catch { /* hash okunamazsa varsayılana düş */ }
+        return 'home';
+    });
+    useEffect(() => {
+        try {
+            const [yol] = window.location.hash.split('?');
+            window.history.replaceState(null, '', `${yol || '#/'}?sekme=${activeTab}`);
+        } catch { /* ignore */ }
+    }, [activeTab]);
     const [schedule, setSchedule] = useState({});
     const [programConfig, setProgramConfig] = useState({ programDurationMonths: 1, dailySlotCount: 6, title: 'Çalışma Programı' });
     const [activeMonth, setActiveMonth] = useState(1);

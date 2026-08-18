@@ -2713,7 +2713,17 @@ const StudentModal = ({ student, onClose, onSave }) => {
                     ekran dışında kalıp görünmez oluyordu (styles/mobil.css) */}
                 <div className="pencere-alt-cubuk pt-4 flex space-x-3 bg-surface -mx-6 px-6 border-t border-line mt-2">
                     <button onClick={onClose} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-lg font-bold hover:bg-surface-3 transition">İptal</button>
-                    <button onClick={() => onSave(formData)} className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition">Kaydet</button>
+                    <button
+                        onClick={() => {
+                            /* Ad olmadan kayıt sessizce kırılır: mesaj/rapor
+                               eşleştirmeleri ada dayanıyor. Bu form tek
+                               doğrulamasız formdu (diğerleri bildir() ile
+                               uyarıyor) — aynı desene bağlandı. */
+                            if (!formData.name?.trim()) { bildir('Öğrenci adı zorunludur.', 'uyari'); return; }
+                            onSave(formData);
+                        }}
+                        className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition"
+                    >Kaydet</button>
                 </div>
             </div>
         </Modal>
@@ -2753,10 +2763,32 @@ const CoachDashboard = () => {
         try { localStorage.setItem('coach_active_section', bolum); } catch { /* ignore */ }
     }, [bolum]);
 
-    // Koçluk bölümünde açılış artık "Bugün" — grafik değil iş listesi
-    const [activeTab, setActiveTab] = useState(() => (
-        (localStorage.getItem('coach_active_section') === 'pdr') ? 'pdr-archive' : 'bugun'
-    ));
+    // Koçluk bölümünde açılış artık "Bugün" — grafik değil iş listesi.
+    //
+    // Sekme URL'de de taşınır: yenileme ve paylaşılan bağlantı aynı
+    // sekmeye döner. ⚠️ Uygulama HashRouter kullandığı için hash ROTANIN
+    // KENDİSİ (#/coach); sekme hash İÇİNDEKİ sorguya yazılır:
+    // `#/coach?sekme=analysis`. Düz `#sekme=x` rotayı ezer (denendi,
+    // kırdı). Geçerlilik listesi NAV_BY_SECTION'dan türetilir, elle
+    // kopya yok; pdr-* alt sekmeleri desenle kabul edilir.
+    const [activeTab, setActiveTab] = useState(() => {
+        try {
+            const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
+            if (h) {
+                const gecerli = new Set(
+                    Object.values(NAV_BY_SECTION).flat().flatMap((g) => g.items.map((i) => i.id))
+                );
+                if (gecerli.has(h) || h.startsWith('pdr-')) return h;
+            }
+        } catch { /* hash okunamazsa varsayılana düş */ }
+        return (localStorage.getItem('coach_active_section') === 'pdr') ? 'pdr-archive' : 'bugun';
+    });
+    useEffect(() => {
+        try {
+            const [yol] = window.location.hash.split('?');
+            window.history.replaceState(null, '', `${yol || '#/'}?sekme=${activeTab}`);
+        } catch { /* ignore */ }
+    }, [activeTab]);
 
     // Bölüm değişince o bölümde olmayan sekmede kalınmaz
     const bolumGruplari = NAV_BY_SECTION[bolum] || NAV_BY_SECTION.kocluk;
