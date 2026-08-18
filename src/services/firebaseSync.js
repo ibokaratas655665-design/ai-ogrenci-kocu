@@ -42,6 +42,8 @@ const SYNC_KEYS = [
     'task_templates',
     // V1.1: PDR okul öğrenci havuzu — koçluk listesinden ayrı anahtar
     'pdr_students',
+    // Deneme Analizi sistemi: öğrencinin kendi deneme kayıtları
+    'deneme_analizleri',
     'error_notebook', 'program_progress', 'study_log', 'bep_data',
     /**
      * ⚠️ BU DÖRT ANAHTAR SENKRON LİSTESİNDE YOKTU ve her biri gerçek bir

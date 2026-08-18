@@ -23,6 +23,7 @@ import { Trash2, Database, ChevronDown } from 'lucide-react';
 import { listeOku, yaz } from '../../services/veriDeposu';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
 import { ogrencininDenemeleri } from '../../utils/denemeAnalizi';
+import denemeKayitlari from '../../services/denemeKayitlari';
 
 const tarihLabel = (t) => {
     const d = new Date(t || 0);
@@ -77,6 +78,8 @@ export default function OgrenciVeriYonetimi({ student }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- surum bilinçli: listeOku reaktif değil, silme sonrası yeniden okutur
         [kimlik, surum]
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- surum bilinçli (üstteki not)
+    const analizKayitlari = useMemo(() => denemeKayitlari.ogrencininKayitlari(kimlik), [kimlik, surum]);
     const denemeler = useMemo(
         () => ogrencininDenemeleri(listeOku('v2_results_data'), student?.name, 'all'),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- surum bilinçli (üstteki not)
@@ -130,7 +133,25 @@ export default function OgrenciVeriYonetimi({ student }) {
                         />
                     ))}
                 </Kaynak>
-                <Kaynak baslik="Deneme Kayıtları" sayi={denemeler.length}>
+                <Kaynak baslik="Deneme Analizleri (öğrenci girişli)" sayi={analizKayitlari.length}>
+                    {analizKayitlari.length === 0 && <p className="px-3 py-2 text-xs text-ink-3">Kayıt yok.</p>}
+                    {analizKayitlari.map((k) => (
+                        <Satir
+                            key={k.id}
+                            baslik={k.ad + ' (' + k.tur + ')'}
+                            altyazi={tarihLabel(k.tarih)}
+                            onSil={async () => {
+                                const onay = await onayla({ mesaj: '"' + k.ad + '" deneme analizi silinsin mi? Bu işlem geri alınamaz ve tüm cihazlara yansır.', tehlikeli: true });
+                                if (!onay) return;
+                                const sonuc = denemeKayitlari.sil(k.id, kimlik);
+                                if (!sonuc.basarili) { bildir(sonuc.hata, 'hata'); return; }
+                                bildir('Kayıt silindi ve buluta işlendi.', 'basari');
+                                setSurum((v) => v + 1);
+                            }}
+                        />
+                    ))}
+                </Kaynak>
+                <Kaynak baslik="Deneme Kayıtları (koç yüklemesi)" sayi={denemeler.length}>
                     {denemeler.length === 0 && <p className="px-3 py-2 text-xs text-ink-3">Kayıt yok.</p>}
                     {denemeler.map((d, i) => (
                         <Satir

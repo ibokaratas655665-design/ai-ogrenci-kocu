@@ -58,8 +58,11 @@ export const dersOzeti = (denemeler) => {
     denemeler.forEach((d, i) => {
         Object.entries(d.subjects || {}).forEach(([anahtar, s]) => {
             if (!s || typeof s !== 'object') return;
-            if (!dersler.has(anahtar)) dersler.set(anahtar, { anahtar, ad: dersAdi(anahtar), netler: [], son: null });
-            const kayit = dersler.get(anahtar);
+            /* Birleştirme anahtarı GÖRÜNEN ad: koç kaydı 'mat', öğrenci
+               kaydı 'Matematik' yazar — ikisi tek satırda toplanmalı */
+            const gorunen = dersAdi(anahtar);
+            if (!dersler.has(gorunen)) dersler.set(gorunen, { anahtar, ad: gorunen, netler: [], son: null });
+            const kayit = dersler.get(gorunen);
             kayit.netler.push(sayi(s.net));
             kayit.son = { dogru: sayi(s.correct), yanlis: sayi(s.wrong), bos: sayi(s.blank), net: sayi(s.net), denemeSira: i };
         });
@@ -183,7 +186,119 @@ export const gunlukSeri = (gunlukler) => {
         }));
 };
 
+/* ══════════════════════════════════════════════════════════════
+ *  DENEME ANALİZİ SİSTEMİ EKLERİ
+ *  Öğrencinin kendi girdiği kayıtlar (deneme_analizleri) ile koçun
+ *  yüklediği v2 sonuçları TEK zaman çizgisinde birleşir; hata nedeni
+ *  ve süre analizi yalnızca öğrenci kayıtlarından gelir (v2'de o veri
+ *  YOKTUR — uydurulmaz).
+ * ══════════════════════════════════════════════════════════════ */
+
+/**
+ * v2 (koç) + manuel (öğrenci) denemelerini tek listede, tarihe göre
+ * ESKİDEN YENİYE birleştirir. Ortak biçim:
+ * { kaynak:'koc'|'ogrenci', ad, tur, tarihMs, totalNet, subjects,
+ *   konuHatalari?, degerlendirme?, sureDk?, kayitId? }
+ */
+export const birlesikDenemeler = (v2Results, manuelKayitlar, ogrenciAdi, sinavTuru = 'all') => {
+    const v2 = ogrencininDenemeleri(v2Results, ogrenciAdi, sinavTuru).map((d) => ({
+        kaynak: 'koc',
+        ad: d.examName || d.name || 'Deneme',
+        tur: d.examType || 'TYT',
+        tarihMs: new Date(d.uploadedAt || 0).getTime(),
+        totalNet: sayi(d.totalNet),
+        subjects: d.subjects || {},
+    }));
+    const manuel = (manuelKayitlar || [])
+        .filter((k) => sinavTuru === 'all' || k.tur === sinavTuru)
+        .map((k) => ({
+            kaynak: 'ogrenci',
+            ad: k.ad, tur: k.tur,
+            tarihMs: new Date(k.tarih || k.olusturma || 0).getTime(),
+            totalNet: +Object.values(k.dersler || {}).reduce((a, d) => a + sayi(d.net), 0).toFixed(2),
+            subjects: k.dersler || {},
+            konuHatalari: k.konuHatalari || [],
+            degerlendirme: k.degerlendirme || null,
+            sureDk: k.sureDk || null,
+            kayitId: k.id,
+        }));
+    return [...v2, ...manuel].sort((a, b) => a.tarihMs - b.tarihMs);
+};
+
+/**
+ * Hata NEDENLERİNİN deneme deneme değişimi (yalnızca öğrenci kayıtları).
+ * Dönen: { seriler: [{ad, tarih, <nedenId>: adet…}], toplamlar: [{neden, adet}] }
+ * "Dikkat hatası: D1→5, D2→3, D3→1" görünümünün veri kaynağı budur.
+ */
+export const nedenTrendi = (manuelKayitlar) => {
+    const sirali = [...(manuelKayitlar || [])]
+        .sort((a, b) => new Date(a.tarih || a.olusturma) - new Date(b.tarih || b.olusturma));
+    const toplamMap = new Map();
+    const seriler = sirali.map((k, i) => {
+        const nokta = {
+            sira: i + 1, ad: k.ad,
+            tarih: k.tarih ? new Date(k.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
+        };
+        (k.konuHatalari || []).forEach((h) => {
+            (h.nedenler || []).forEach((n) => {
+                nokta[n] = (nokta[n] || 0) + (sayi(h.adet) || 1);
+                toplamMap.set(n, (toplamMap.get(n) || 0) + (sayi(h.adet) || 1));
+            });
+        });
+        return nokta;
+    });
+    return {
+        seriler,
+        toplamlar: [...toplamMap.entries()].map(([neden, adet]) => ({ neden, adet })).sort((a, b) => b.adet - a.adet),
+    };
+};
+
+/** Süre serisi + soru başına ortalama süre (süre girilen kayıtlarda). */
+export const sureSerisi = (manuelKayitlar) =>
+    [...(manuelKayitlar || [])]
+        .filter((k) => sayi(k.sureDk) > 0)
+        .sort((a, b) => new Date(a.tarih || 0) - new Date(b.tarih || 0))
+        .map((k, i) => {
+            const soru = Object.values(k.dersler || {})
+                .reduce((a, d) => a + sayi(d.dogru) + sayi(d.yanlis) + sayi(d.bos), 0);
+            return {
+                sira: i + 1, ad: k.ad,
+                tarih: k.tarih ? new Date(k.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
+                sureDk: sayi(k.sureDk),
+                soruBasinaSn: soru > 0 ? Math.round((sayi(k.sureDk) * 60) / soru) : null,
+            };
+        });
+
+/**
+ * Koç özeti — mevcut veriden türetilen kartlar (yapay zekâ değil):
+ * en sık hata nedeni, son denemelerde tekrar eden konu, gelişen ve
+ * gerileyen alan, takip edilmesi gereken konu.
+ */
+export const kocOzeti = (birlesik, manuelKayitlar) => {
+    const ozet = [];
+    const { toplamlar } = nedenTrendi(manuelKayitlar);
+    if (toplamlar.length) ozet.push({ tur: 'neden', deger: toplamlar[0].neden, adet: toplamlar[0].adet });
+
+    const konuSay = new Map();
+    (manuelKayitlar || []).forEach((k) => (k.konuHatalari || []).forEach((h) => {
+        const anahtar = h.ders + ' · ' + h.konu;
+        konuSay.set(anahtar, (konuSay.get(anahtar) || 0) + 1);
+    }));
+    const tekrar = [...konuSay.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
+    if (tekrar.length) ozet.push({ tur: 'tekrar-konu', deger: tekrar[0][0], adet: tekrar[0][1] });
+
+    const sozde = birlesik.map((b) => ({ subjects: b.subjects, uploadedAt: new Date(b.tarihMs).toISOString(), totalNet: b.totalNet }));
+    const guc = gucluZayifAnalizi(sozde);
+    if (guc.gelisen.length) ozet.push({ tur: 'gelisen', deger: guc.gelisen[0].ad, adet: guc.gelisen[0].degisim });
+    if (guc.gerileyen.length) ozet.push({ tur: 'gerileyen', deger: guc.gerileyen[0].ad, adet: guc.gerileyen[0].degisim });
+    if (tekrar.length || guc.gerileyen.length) {
+        ozet.push({ tur: 'takip', deger: tekrar.length ? tekrar[0][0] : guc.gerileyen[0].ad, adet: null });
+    }
+    return ozet;
+};
+
 export default {
     ogrencininDenemeleri, dersOzeti, trendSerisi,
     gucluZayifAnalizi, konuHatalari, calismaOncelikleri, gunlukSeri,
+    birlesikDenemeler, nedenTrendi, sureSerisi, kocOzeti,
 };

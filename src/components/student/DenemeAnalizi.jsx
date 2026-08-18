@@ -17,12 +17,19 @@ import {
     ResponsiveContainer, LineChart, Line, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Target, AlertCircle, BarChart2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, AlertCircle, BarChart2, PlusCircle, Trash2, Timer, HelpCircle } from 'lucide-react';
 import { listeOku } from '../../services/veriDeposu';
 import {
-    ogrencininDenemeleri, dersOzeti, trendSerisi,
+    dersOzeti, trendSerisi,
     gucluZayifAnalizi, konuHatalari, calismaOncelikleri, gunlukSeri,
+    birlesikDenemeler, nedenTrendi, sureSerisi, kocOzeti,
 } from '../../utils/denemeAnalizi';
+import denemeKayitlari from '../../services/denemeKayitlari';
+import { nedenAdi } from '../../data/hataNedenleri';
+import DenemeAnaliziGiris from './DenemeAnaliziGiris';
+import { onayla, bildir } from '../../services/uiGeriBildirim';
+
+const NEDEN_RENKLERI = ['var(--danger)', 'var(--warn)', 'var(--info)'];
 
 const TUR_ADI = {
     knowledge: 'Bilgi Eksiği', misread: 'Soruyu Yanlış Okuma',
@@ -46,8 +53,12 @@ const Bolum = ({ baslik, ikon: Ikon, children }) => (
 
 export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', sinavTuru = 'all' }) {
     const [tur, setTur] = useState(sinavTuru);
+    const [girisAcik, setGirisAcik] = useState(false);
+    const [surum, setSurum] = useState(0);
 
     const v2Results = useMemo(() => listeOku('v2_results_data'), []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- surum bilinçli: kayıt/silme sonrası yeniden okutur
+    const manuelKayitlar = useMemo(() => denemeKayitlari.ogrencininKayitlari(studentId), [studentId, surum]);
     const hatalar = useMemo(
         () => listeOku('error_notebook').filter((h) => String(h.studentId) === String(studentId)),
         [studentId]
@@ -57,10 +68,29 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
         [studentId]
     );
 
-    const denemeler = useMemo(
-        () => ogrencininDenemeleri(v2Results, ogrenci?.name, tur),
-        [v2Results, ogrenci?.name, tur]
+    /* Koç kayıtları (v2) + öğrencinin kendi kayıtları TEK zaman
+       çizgisinde. Mevcut motor v2 biçimi beklediği için uyarlanır. */
+    const denemeler = useMemo(() => (
+        birlesikDenemeler(v2Results, manuelKayitlar, ogrenci?.name, tur)
+            .map((b) => ({ subjects: b.subjects, uploadedAt: new Date(b.tarihMs).toISOString(), totalNet: b.totalNet, examName: b.ad, examType: b.tur }))
+    ), [v2Results, manuelKayitlar, ogrenci?.name, tur]);
+    const nedenler = useMemo(() => nedenTrendi(manuelKayitlar), [manuelKayitlar]);
+    const sureler = useMemo(() => sureSerisi(manuelKayitlar), [manuelKayitlar]);
+    const ozetKartlari = useMemo(
+        () => (bakis === 'koc'
+            ? kocOzeti(birlesikDenemeler(v2Results, manuelKayitlar, ogrenci?.name, tur), manuelKayitlar)
+            : []),
+        [bakis, v2Results, manuelKayitlar, ogrenci?.name, tur]
     );
+
+    const kayitSil = async (k) => {
+        const onay = await onayla({ mesaj: '"' + k.ad + '" deneme analizi silinsin mi? Bu işlem geri alınamaz ve tüm cihazlara yansır.', tehlikeli: true });
+        if (!onay) return;
+        const sonuc = denemeKayitlari.sil(k.id, studentId);
+        if (!sonuc.basarili) { bildir(sonuc.hata, 'hata'); return; }
+        bildir('Deneme analizi silindi.', 'basari');
+        setSurum((s) => s + 1);
+    };
     const seri = useMemo(() => trendSerisi(denemeler), [denemeler]);
     const dersler = useMemo(() => dersOzeti(denemeler), [denemeler]);
     const guc = useMemo(() => gucluZayifAnalizi(denemeler), [denemeler]);
@@ -72,7 +102,7 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
         ? +(seri[seri.length - 1].toplamNet - seri[seri.length - 2].toplamNet).toFixed(2)
         : null;
 
-    const hicVeriYok = !denemeler.length && !hatalar.length && !haftalik.length;
+    const hicVeriYok = !denemeler.length && !hatalar.length && !haftalik.length && !manuelKayitlar.length;
 
     return (
         <div className="space-y-4">
@@ -87,17 +117,84 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                             : 'Ben nasıl gelişiyorum?'}
                     </p>
                 </div>
-                <select
-                    value={tur}
-                    onChange={(e) => setTur(e.target.value)}
-                    aria-label="Sınav türü"
-                    className="bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink"
-                >
-                    <option value="all">Tüm denemeler</option>
-                    <option value="TYT">TYT</option>
-                    <option value="AYT">AYT</option>
-                </select>
+                <div className="flex items-center gap-2">
+                    {bakis === 'ogrenci' && (
+                        <button type="button" onClick={() => setGirisAcik(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand text-white text-xs font-bold hover:bg-brand-hover transition">
+                            <PlusCircle size={14} /> Yeni Deneme Analizi
+                        </button>
+                    )}
+                    <select
+                        value={tur}
+                        onChange={(e) => setTur(e.target.value)}
+                        aria-label="Sınav türü"
+                        className="bg-surface border border-line rounded-xl px-3 py-2 text-sm text-ink"
+                    >
+                        <option value="all">Tüm denemeler</option>
+                        <option value="TYT">TYT</option>
+                        <option value="AYT">AYT</option>
+                    </select>
+                </div>
             </div>
+
+            {girisAcik && (
+                <DenemeAnaliziGiris
+                    ogrenci={ogrenci}
+                    onKapat={() => setGirisAcik(false)}
+                    onKaydedildi={() => setSurum((s) => s + 1)}
+                />
+            )}
+
+            {/* Koç özet kartları — mevcut veriden türetilir, YZ değil */}
+            {ozetKartlari.length > 0 && (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {ozetKartlari.map((o) => (
+                        <div key={o.tur} className="bg-surface border border-line rounded-2xl p-3">
+                            <p className="tip-label text-ink-3">
+                                {{ neden: 'En sık hata nedeni', 'tekrar-konu': 'Tekrar eden konu', gelisen: 'Gelişen alan', gerileyen: 'Gerileyen alan', takip: 'Takip edilmesi gereken' }[o.tur]}
+                            </p>
+                            <p className="text-sm font-black text-ink mt-1 truncate">
+                                {o.tur === 'neden' ? nedenAdi(o.deger) : o.deger}
+                            </p>
+                            {o.adet !== null && (
+                                <p className="text-xs text-ink-3">
+                                    {o.tur === 'gelisen' ? ('+' + o.adet + ' net') : o.tur === 'gerileyen' ? (o.adet + ' net') : (o.adet + ' kez')}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Öğrencinin kendi deneme kayıtları */}
+            {manuelKayitlar.length > 0 && (
+                <div className="bg-surface border border-line rounded-2xl p-4 sm:p-5">
+                    <h4 className="tip-h4 mb-3">Deneme Kayıtlarım ({manuelKayitlar.length})</h4>
+                    <div className="divide-y divide-line">
+                        {[...manuelKayitlar].reverse().map((k) => {
+                            const toplam = +Object.values(k.dersler || {}).reduce((a, d) => a + (Number(d.net) || 0), 0).toFixed(2);
+                            const hataAdet = (k.konuHatalari || []).reduce((a, h) => a + (Number(h.adet) || 0), 0);
+                            return (
+                                <div key={k.id} className="flex items-center justify-between gap-3 py-2.5">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-ink truncate">{k.ad} <span className="text-ink-3 font-medium">· {k.tur}</span></p>
+                                        <p className="text-xs text-ink-3">
+                                            {k.tarih && new Date(k.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} · {toplam} net
+                                            {hataAdet > 0 && (' · ' + hataAdet + ' konu hatası')}
+                                            {k.sureDk ? (' · ' + k.sureDk + ' dk') : ''}
+                                            {k.degerlendirme && k.degerlendirme.sonrakiHedef ? (' · 🎯 ' + k.degerlendirme.sonrakiHedef) : ''}
+                                        </p>
+                                    </div>
+                                    <button type="button" onClick={() => kayitSil(k)} aria-label={k.ad + ' kaydını sil'}
+                                        className="shrink-0 p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger/10 transition">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {hicVeriYok && (
                 <div className="text-center py-12 text-ink-3 border border-dashed border-line rounded-2xl">
@@ -196,6 +293,59 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                             ))}
                         </div>
                     )}
+                </Bolum>
+            )}
+
+            {/* ── Hata nedenleri: dağılım + zaman içi değişim ────
+                Kaynak YALNIZCA öğrencinin manuel girdiği nedenler;
+                otomatik tahmin yok. */}
+            {nedenler.toplamlar.length > 0 && (
+                <Bolum baslik="Hata Nedenleri" ikon={HelpCircle}>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                        {nedenler.toplamlar.map((t) => (
+                            <Rozet key={t.neden} renk="var(--ink-3)">{nedenAdi(t.neden)}: {t.adet}</Rozet>
+                        ))}
+                    </div>
+                    {nedenler.seriler.length >= 2 && (
+                        <>
+                            <p className="tip-caption mb-2">Deneme deneme değişim (en sık 3 neden):</p>
+                            <div className="h-48">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={nedenler.seriler} margin={{ top: 4, right: 8, bottom: 0, left: -22 }}>
+                                        <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
+                                        <XAxis dataKey="tarih" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                                        <YAxis allowDecimals={false} tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
+                                        <Legend />
+                                        {nedenler.toplamlar.slice(0, 3).map((t, i) => (
+                                            <Line key={t.neden} type="monotone" dataKey={t.neden} name={nedenAdi(t.neden)}
+                                                stroke={NEDEN_RENKLERI[i]} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </>
+                    )}
+                </Bolum>
+            )}
+
+            {/* ── Süre değişimi (yalnızca süre girilen denemeler) ── */}
+            {sureler.length >= 2 && (
+                <Bolum baslik="Süre Değişimi" ikon={Timer}>
+                    <p className="tip-caption mb-2">
+                        Son denemede soru başına ortalama {sureler[sureler.length - 1].soruBasinaSn ?? '—'} sn.
+                    </p>
+                    <div className="h-44">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={sureler} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" />
+                                <XAxis dataKey="tarih" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                                <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} />
+                                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
+                                <Line type="monotone" dataKey="sureDk" name="Süre (dk)" stroke="var(--brand)" strokeWidth={2} dot={{ r: 3 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 </Bolum>
             )}
 

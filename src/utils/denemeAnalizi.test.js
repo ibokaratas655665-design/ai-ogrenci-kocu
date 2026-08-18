@@ -139,3 +139,73 @@ describe('trendSerisi', () => {
         expect(seri[1].sira).toBe(2);
     });
 });
+
+/* ── Deneme Analizi sistemi ekleri ─────────────────────────── */
+import { birlesikDenemeler, nedenTrendi, sureSerisi, kocOzeti } from './denemeAnalizi';
+
+const manuel = (ad, tarih, dersler = {}, konuHatalari = [], sureDk = null) => ({
+    id: 'da_' + ad, studentId: 's1', ad, tur: 'TYT', tarih, sureDk,
+    dersler, konuHatalari, olusturma: tarih + 'T10:00:00.000Z',
+});
+
+describe('birlesikDenemeler', () => {
+    it('koç (v2) ve öğrenci kayıtlarını tarihe göre tek çizgide birleştirir', () => {
+        const v2 = [deneme('Ecrin Acar', 10, 50)];
+        const man = [manuel('Kendi Denemem', '2026-01-05', { Matematik: { net: 20 } })];
+        const b = birlesikDenemeler(v2, man, 'Ecrin Acar');
+        expect(b).toHaveLength(2);
+        expect(b[0].kaynak).toBe('ogrenci');   // 5 Oca < 10 Oca
+        expect(b[1].kaynak).toBe('koc');
+        expect(b[0].totalNet).toBe(20);        // ders netlerinden otomatik toplam
+    });
+
+    it('tür süzgeci öğrenci kayıtlarına da uygulanır', () => {
+        const man = [manuel('A', '2026-01-05'), { ...manuel('B', '2026-01-06'), tur: 'AYT' }];
+        expect(birlesikDenemeler([], man, 'X', 'AYT')).toHaveLength(1);
+    });
+});
+
+describe('nedenTrendi', () => {
+    it('nedenlerin deneme deneme değişimini ve toplamını çıkarır', () => {
+        const man = [
+            manuel('D1', '2026-01-05', {}, [{ ders: 'Mat', konu: 'X', adet: 5, nedenler: ['dikkat'] }]),
+            manuel('D2', '2026-01-12', {}, [{ ders: 'Mat', konu: 'X', adet: 3, nedenler: ['dikkat'] }]),
+            manuel('D3', '2026-01-19', {}, [{ ders: 'Mat', konu: 'X', adet: 1, nedenler: ['dikkat', 'sure'] }]),
+        ];
+        const t = nedenTrendi(man);
+        expect(t.seriler.map((s) => s.dikkat)).toEqual([5, 3, 1]);   // azalış görünür
+        expect(t.toplamlar[0]).toEqual({ neden: 'dikkat', adet: 9 });
+    });
+
+    it('neden girilmemişse trend uydurmaz', () => {
+        const t = nedenTrendi([manuel('D1', '2026-01-05')]);
+        expect(t.toplamlar).toEqual([]);
+    });
+});
+
+describe('sureSerisi', () => {
+    it('süre girilen denemelerden soru başına saniye hesaplar', () => {
+        const man = [manuel('D1', '2026-01-05', { Matematik: { dogru: 20, yanlis: 10, bos: 10, net: 17.5 } }, [], 80)];
+        const s = sureSerisi(man);
+        expect(s).toHaveLength(1);
+        expect(s[0].soruBasinaSn).toBe(120);   // 80dk*60 / 40 soru
+    });
+
+    it('süresiz kayıtları seriye almaz', () => {
+        expect(sureSerisi([manuel('D1', '2026-01-05')])).toEqual([]);
+    });
+});
+
+describe('kocOzeti', () => {
+    it('en sık neden ve tekrar eden konuyu mevcut veriden çıkarır', () => {
+        const man = [
+            manuel('D1', '2026-01-05', {}, [{ ders: 'Mat', konu: 'Problemler', adet: 2, nedenler: ['bilgi'] }]),
+            manuel('D2', '2026-01-12', {}, [{ ders: 'Mat', konu: 'Problemler', adet: 1, nedenler: ['bilgi'] }]),
+        ];
+        const b = birlesikDenemeler([], man, 'X');
+        const o = kocOzeti(b, man);
+        expect(o.find((x) => x.tur === 'neden')?.deger).toBe('bilgi');
+        expect(o.find((x) => x.tur === 'tekrar-konu')?.deger).toBe('Mat · Problemler');
+        expect(o.find((x) => x.tur === 'takip')).toBeTruthy();
+    });
+});
