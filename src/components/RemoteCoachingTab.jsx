@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Video, Plus, X, Calendar, Clock, User, Link as LinkIcon, CheckCircle } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
+import Modal from './ui/Modal';
 
 const RemoteCoachingTab = ({ students, setToast }) => {
     const [sessions, setSessions] = useState(() => {
@@ -240,135 +241,139 @@ const RemoteCoachingTab = ({ students, setToast }) => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4">
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl">
-                        <div className="on-color bg-gradient-to-r from-red-600 to-red-700 p-6 text-ink rounded-t-2xl">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold">
-                                    {editingSession ? 'Oturumu Düzenle' : 'Yeni Oturum'}
-                                </h2>
-                                <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
-                                    <X size={24} />
-                                </button>
-                            </div>
+                <Modal
+                    acik
+                    onClose={resetForm}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0"
+                >
+                    <div className="on-color bg-gradient-to-r from-red-600 to-red-700 p-6 text-ink rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">
+                                {editingSession ? 'Oturumu Düzenle' : 'Yeni Oturum'}
+                            </h2>
+                            <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
+                                <X size={24} />
+                            </button>
                         </div>
+                    </div>
 
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Öğrenci</label>
-                                    <select
-                                        value={formData.studentId}
-                                        onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    >
-                                        <option value="">Seçiniz...</option>
-                                        {students.map(student => (
-                                            <option key={student.id} value={student.id}>{student.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Başlık</label>
-                                    <input
-                                        type="text"
-                                        value={formData.title}
-                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                        placeholder="Örn: Bire Bir Koçluk"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Tarih</label>
-                                    <input
-                                        type="date"
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Saat</label>
-                                    <input
-                                        type="time"
-                                        value={formData.time}
-                                        onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Süre (dk)</label>
-                                    <select
-                                        value={formData.duration}
-                                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    >
-                                        <option value="15">15 dk</option>
-                                        <option value="30">30 dk</option>
-                                        <option value="45">45 dk</option>
-                                        <option value="60">60 dk</option>
-                                    </select>
-                                </div>
-                            </div>
-
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Toplantı Linki (Zoom, Google Meet, vb.)</label>
-                                <input
-                                    type="url"
-                                    value={formData.meetingLink}
-                                    onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Notlar</label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
-                                    rows="3"
-                                    placeholder="Ön hazırlık, gündem..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Durum</label>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Öğrenci</label>
                                 <select
-                                    value={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    value={formData.studentId}
+                                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                                     className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
                                 >
-                                    <option value="scheduled">Planlandı</option>
-                                    <option value="completed">Tamamlandı</option>
-                                    <option value="cancelled">İptal Edildi</option>
+                                    <option value="">Seçiniz...</option>
+                                    {students.map(student => (
+                                        <option key={student.id} value={student.id}>{student.name}</option>
+                                    ))}
                                 </select>
                             </div>
 
-                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
-                                <button
-                                    onClick={resetForm}
-                                    className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-ink rounded-lg hover:shadow-lg font-medium transition"
-                                >
-                                    {editingSession ? 'Güncelle' : 'Planla'}
-                                </button>
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Başlık</label>
+                                <input
+                                    type="text"
+                                    value={formData.title}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                    placeholder="Örn: Bire Bir Koçluk"
+                                />
                             </div>
                         </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Tarih</label>
+                                <input
+                                    type="date"
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Saat</label>
+                                <input
+                                    type="time"
+                                    value={formData.time}
+                                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Süre (dk)</label>
+                                <select
+                                    value={formData.duration}
+                                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                >
+                                    <option value="15">15 dk</option>
+                                    <option value="30">30 dk</option>
+                                    <option value="45">45 dk</option>
+                                    <option value="60">60 dk</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Toplantı Linki (Zoom, Google Meet, vb.)</label>
+                            <input
+                                type="url"
+                                value={formData.meetingLink}
+                                onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                placeholder="https://..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Notlar</label>
+                            <textarea
+                                value={formData.notes}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                                rows="3"
+                                placeholder="Ön hazırlık, gündem..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Durum</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-red-500"
+                            >
+                                <option value="scheduled">Planlandı</option>
+                                <option value="completed">Tamamlandı</option>
+                                <option value="cancelled">İptal Edildi</option>
+                            </select>
+                        </div>
+
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
+                            <button
+                                onClick={resetForm}
+                                className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-ink rounded-lg hover:shadow-lg font-medium transition"
+                            >
+                                {editingSession ? 'Güncelle' : 'Planla'}
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </Modal>
             )}
         </div>
     );

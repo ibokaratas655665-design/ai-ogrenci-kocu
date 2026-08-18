@@ -37,6 +37,9 @@ function ToastYigini({ kayitlar, kapat }) {
                     >
                         <Simge size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
                         <p className="flex-1 text-sm text-ink leading-snug break-words">{k.mesaj}</p>
+                        {k.sure === 0 && (
+                            <span className="sr-only">Bu bildirim kapatılana kadar kalır.</span>
+                        )}
                         <button
                             type="button"
                             onClick={() => kapat(k.id)}
@@ -61,7 +64,28 @@ export function UIGeriBildirimProvider({ children }) {
     }, []);
 
     useEffect(() => bildirimleriDinle((kayit) => {
-        setToastlar((o) => [...o.slice(-3), kayit]);   // en çok 4 tane üst üste
+        setToastlar((o) => {
+            /**
+             * ⚠️ YİNELEME ENGELİ YOKTU.
+             *
+             * Aynı bildirim arka arkaya tetiklendiğinde (döngüde çalışan
+             * kayıt, hızlı çift tıklama, birden çok bileşenin aynı olaya
+             * tepki vermesi) ekran aynı metinden üst üste yığıyordu.
+             * Kullanıcı için gürültü, ekranı kaplayan bir yığın demekti.
+             *
+             * Aynı metin ve tür zaten ekrandaysa yeni toast eklenmez;
+             * mevcut olanın süresi baştan başlar.
+             */
+            const ayni = o.find((t) => t.mesaj === kayit.mesaj && t.tur === kayit.tur);
+            if (ayni) return o;
+            return [...o.slice(-3), kayit];             // en çok 4 tane üst üste
+        });
+
+        /**
+         * `sure: 0` KALICI bildirim demektir — kullanıcı kapatana kadar
+         * ekranda durur. Kritik hatalar (veri kaydedilemedi, yetki
+         * reddedildi) otomatik kaybolmamalı; kullanıcı görmeden geçebilir.
+         */
         if (kayit.sure > 0) {
             setTimeout(() => kapat(kayit.id), kayit.sure);
         }

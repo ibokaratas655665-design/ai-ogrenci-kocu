@@ -14,25 +14,22 @@
  */
 
 import { planBul, sezonBilgisi, DENEME_GUN } from '../data/pricingPlans';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../firebaseConfig';
+import { nesneOku, yaz as depoYaz } from './veriDeposu';
 
 const KEY = 'coach_subscriptions';
 
-const oku = () => {
-    try {
-        const raw = localStorage.getItem(KEY);
-        if (!raw || !raw.trim()) return {};
-        const v = JSON.parse(raw);
-        return v && typeof v === 'object' ? v : {};
-    } catch {
-        return {};
-    }
-};
+const oku = () => nesneOku(KEY);
 
+/**
+ * Yazma `veriDeposu` üzerinden: yerel kayıt, storage olayı ve bulut
+ * senkronu orada bir kez çözülüyor. Burada yalnızca bu servise özel
+ * `subscription-updated` olayı kalıyor.
+ */
 const yaz = (depo) => {
-    localStorage.setItem(KEY, JSON.stringify(depo));
-    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* ignore */ }
-    try { window.dispatchEvent(new Event('subscription-updated')); } catch { /* ignore */ }
-    try { window.firebaseSync?.syncKey?.(KEY); } catch { /* senkron yoksa sorun değil */ }
+    depoYaz(KEY, depo);
+    try { window.dispatchEvent(new Event('subscription-updated')); } catch { /* eski tarayıcı */ }
 };
 
 const bugun = () => new Date().toISOString().slice(0, 10);
@@ -41,6 +38,96 @@ const gunEkle = (gun) => {
     const d = new Date();
     d.setDate(d.getDate() + gun);
     return d.toISOString().slice(0, 10);
+};
+
+// ══════════════════════════════════════════════════════════════
+//  SUNUCU KAYNAĞI — paketin DOĞRULUK KAYNAĞI burasıdır
+//
+//  ⚠️ `abonelikler/{kocUid}` belgesi Firestore kurallarında koça SALT
+//  OKUNUR yapılmıştı (koç kendi paketini yükseltemesin diye), ama
+//  UYGULAMA BU BELGEYİ HİÇ OKUMUYORDU. Bütün paket/kontenjan kararı
+//  yerel `coach_subscriptions` anahtarından veriliyordu.
+//
+//  Ölçülerek kanıtlandı: koç konsoldan
+//      localStorage.setItem('coach_subscriptions',
+//          JSON.stringify({ [kocId]: { planId: 'rehberlik', durum: 'aktif' } }))
+//  yazdığında `ogrenciEklenebilir(kocId, 500)` → { izin: true, limit: null }
+//  dönüyordu. Yani sunucudaki koruma vardı ama BAĞLI DEĞİLDİ.
+//
+//  Artık kritik karar sunucudan okunur. Sunucuda kayıt yoksa ücretsiz
+//  kademe uygulanır — yerel kayıt ne yazarsa yazsın yükseltme sayılmaz.
+// ══════════════════════════════════════════════════════════════
+
+/** Sunucudaki abonelik belgesi. Yoksa (ya da okunamazsa) null. */
+export const sunucuAboneligiOku = async (kocUid) => {
+    if (!kocUid) return null;
+    try {
+        const snap = await getDoc(doc(db, 'abonelikler', String(kocUid)));
+        return snap.exists() ? snap.data() : null;
+    } catch {
+        // Yetki reddi ya da ağ yok: paket YÜKSELTİLMİŞ sayılmaz.
+        return null;
+    }
+};
+
+/**
+ * Öğrenci limiti kontrolü — SUNUCU ESASLI.
+ *
+ * Yerel kayıt yalnızca gösterim/çevrimdışı içindir; limit kararında
+ * sunucudaki belge esastır. Belge yoksa ücretsiz kademe uygulanır.
+ *
+ * ⚠️ Bu bir istemci kontrolüdür ve DevTools ile aşılabilir. Gerçek
+ * zorlama için sunucu tarafı gerekir (Firestore kuralları kayıt
+ * SAYAMADIĞI için sayaç + Cloud Function şart — Blaze planı).
+ * Buradaki kazanç: localStorage kurcalayarak limit aşmak artık işe
+ * yaramıyor.
+ *
+ * @returns {Promise<{izin:boolean, limit:number|null, mevcut:number, mesaj:string|null, kaynak:string}>}
+ */
+export const ogrenciEklenebilirGuvenli = async (kocId, mevcutSayi) => {
+    // Kimlik oturumdan okunur; parametre olarak alınsaydı çağıran
+    // başka bir koçun uid'ini vererek onun paketini kullanabilirdi.
+    const kocUid = auth?.currentUser?.uid || null;
+    const sunucu = await sunucuAboneligiOku(kocUid);
+
+    let plan;
+    let kaynak;
+    if (sunucu && sunucu.durum === 'aktif') {
+        const gecerli = !sunucu.bitis || sunucu.bitis >= bugun();
+        plan = planBul(gecerli ? sunucu.planId : 'ucretsiz');
+        kaynak = gecerli ? 'sunucu' : 'sunucu-suresi-dolmus';
+    } else {
+        plan = planBul('ucretsiz');
+        kaynak = sunucu ? 'sunucu-pasif' : 'sunucu-kayit-yok';
+    }
+
+    const limit = plan.ogrenciLimiti;
+    if (limit == null) return { izin: true, limit: null, mevcut: mevcutSayi, mesaj: null, kaynak };
+    if (mevcutSayi < limit) return { izin: true, limit, mevcut: mevcutSayi, mesaj: null, kaynak };
+
+    return {
+        izin: false,
+        limit,
+        mevcut: mevcutSayi,
+        mesaj: `${plan.ad} paketi ${limit} öğrenci ile sınırlı. `
+            + 'Daha fazlası için paketinizi yükseltin.',
+        kaynak,
+    };
+};
+
+/**
+ * Yönetici paketi onaylarken sunucuya da yazar.
+ * Kural gereği yalnızca yönetici uid'i başarılı olur; koç çağırırsa
+ * sessizce reddedilir ve yerel kayıt tek başına yetki vermez.
+ */
+export const sunucuAboneligiYaz = async (kocUid, kayit) => {
+    if (!kocUid) return { basarili: false, hata: 'kocUid yok' };
+    try {
+        await setDoc(doc(db, 'abonelikler', String(kocUid)), kayit, { merge: true });
+        return { basarili: true };
+    } catch (e) {
+        return { basarili: false, hata: e?.code || e?.message };
+    }
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -205,4 +292,6 @@ export const bekleyenTalepler = () =>
 export default {
     abonelik, gecerliMi, kalanGun, yururluktekiPlan, ogrenciEklenebilir,
     denemeBaslat, paketTalepEt, paketOnayla, paketIptal, bekleyenTalepler,
+    // Sunucu esaslı — kontenjan kararı bunlarla verilir
+    sunucuAboneligiOku, ogrenciEklenebilirGuvenli, sunucuAboneligiYaz,
 };

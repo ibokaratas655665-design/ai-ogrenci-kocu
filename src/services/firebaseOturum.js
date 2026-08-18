@@ -91,9 +91,29 @@ export const oturumAc = async (kimlik, sifre, rol) => {
     }
 };
 
+/**
+ * Yalnızca DENER — hesap yoksa OLUŞTURMAZ.
+ *
+ * `oturumAc` hesabı yoksa açıyor; bu, "uygulama girişi zaten doğrulandı"
+ * varsayımına dayanır. Sunucu tarafından kimlik doğrulayan akışlarda
+ * (davetle katılmış öğrencinin girişi) bu varsayım geçersizdir: orada
+ * şifreyi doğrulayan tek merci Firebase'dir, hesap otomatik açılırsa
+ * yanlış şifreyle yeni bir hesap yaratılmış olurdu.
+ */
+export const oturumDene = async (kimlik, sifre, rol) => {
+    const eposta = sanalEposta(kimlik, rol);
+    if (!eposta || !sifre) return { basarili: false, hata: 'Kimlik veya şifre eksik.' };
+    try {
+        const sonuc = await signInWithEmailAndPassword(auth, eposta, sifre);
+        return { basarili: true, uid: sonuc.user.uid };
+    } catch (e) {
+        return { basarili: false, hata: e?.code || 'Giriş doğrulanamadı.' };
+    }
+};
+
 /** Çıkışta Firebase oturumunu da kapatır. */
 export const oturumKapat = async () => {
     try { await fbSignOut(auth); } catch { /* zaten kapalıysa sorun değil */ }
 };
 
-export default { oturumAc, oturumKapat, oturumVar, sanalEposta };
+export default { oturumAc, oturumDene, oturumKapat, oturumVar, sanalEposta };

@@ -6,7 +6,7 @@
  *
  * Rota: #/veli/:studentId  (eski #/parent-report/:studentId de buraya düşer)
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -22,6 +22,7 @@ import { lightAxis, lightGrid, lightTooltip } from '../components/charts/chartTh
 import wa from '../services/whatsappService';
 import ParentBadgeStrip from '../components/parent/ParentBadgeStrip';
 import parentLinks from '../services/parentLinkService';
+import veliBaglanti from '../services/veliBaglanti';
 
 const safeParse = (key, fallback = []) => {
     try {
@@ -50,35 +51,76 @@ const ParentPortal = () => {
     const { studentId: adresParametresi } = useParams();
     const [periodDays, setPeriodDays] = useState(7);
 
-    const cozum = useMemo(() => {
-        if (!adresParametresi) return { durum: 'gecersiz' };
-        // Yalnızca rakamdan oluşuyorsa bu eski (güvensiz) bir bağlantıdır
-        if (/^\d+$/.test(adresParametresi)) return { durum: 'eski' };
-        const c = parentLinks.cozumle(adresParametresi);
-        return c ? { durum: 'gecerli', ogrenciId: c.ogrenciId } : { durum: 'gecersiz' };
+    /**
+     * PORTAL VELİNİN CİHAZINDA HİÇ AÇILMIYORDU.
+     *
+     * Öğrenciyi coach_students içinde, belirteci de parent_links
+     * anahtarında arıyordu. İkisi de yalnızca KOÇUN tarayıcısındaydı;
+     * portal oturum istemediği için senkron burada hiç başlamıyor ve bu
+     * anahtarlar velinin cihazına hiç inmiyordu. Veli her koşulda
+     * "Öğrenci Bulunamadı" görüyordu — ürünün vaat ettiği özellik
+     * hiçbir zaman teslim edilmedi.
+     *
+     * Artık rapor SUNUCUDAN okunuyor: koçun cihazı velinin göreceği
+     * özeti hesaplayıp bağlantı belgesine yazıyor, veli yalnızca o
+     * belgeyi okuyor. Koçun veri havuzu veliye asla açılmıyor.
+     *
+     * Yerel yol yedek olarak duruyor: koç kendi cihazında önizleme
+     * yaptığında (özet henüz yayınlanmamışsa) çalışsın diye.
+     */
+    const [durum, setDurum] = useState('yukleniyor');
+    const [sunucuVeri, setSunucuVeri] = useState(null);
+    const [yerelId, setYerelId] = useState(null);
+
+    useEffect(() => {
+        let iptal = false;
+        (async () => {
+            if (!adresParametresi) { setDurum('gecersiz'); return; }
+            // Yalnızca rakamdan oluşan adres ESKİ ve güvensiz biçimdir
+            if (/^\d+$/.test(adresParametresi)) { setDurum('eski'); return; }
+
+            const r = await veliBaglanti.portalOku(adresParametresi);
+            if (iptal) return;
+
+            if (r.durum === 'gecerli' && r.ozet) { setSunucuVeri(r); setDurum('gecerli'); return; }
+            if (r.durum === 'iptal' || r.durum === 'suresi_doldu') { setDurum(r.durum); return; }
+
+            // Sunucuda yoksa eski yerel kayda düş (koçun kendi cihazı)
+            const c = parentLinks.cozumle(adresParametresi);
+            if (c && c.ogrenciId) { setYerelId(c.ogrenciId); setDurum('yerel'); return; }
+            setDurum('gecersiz');
+        })();
+        return () => { iptal = true; };
     }, [adresParametresi]);
 
-    const studentId = cozum.ogrenciId ?? null;
-
-    const student = useMemo(() => {
-        if (!studentId) return null;
+    const yerelOgrenci = useMemo(() => {
+        if (durum !== 'yerel' || !yerelId) return null;
         const list = safeParse('coach_students');
-        return list.find((s) => String(s.id) === String(studentId)) || null;
-    }, [studentId]);
+        return list.find((s) => String(s.id) === String(yerelId)) || null;
+    }, [durum, yerelId]);
 
-    const report = useMemo(
-        () => (student ? buildStudentReport(student, { periodDays }) : null),
-        [student, periodDays]
+    const yerelRapor = useMemo(
+        () => (yerelOgrenci ? buildStudentReport(yerelOgrenci, { periodDays }) : null),
+        [yerelOgrenci, periodDays]
     );
 
+    const student = durum === 'gecerli' ? (sunucuVeri && sunucuVeri.ogrenci) : yerelOgrenci;
+    const report = durum === 'gecerli'
+        ? ((sunucuVeri && sunucuVeri.ozet && sunucuVeri.ozet[String(periodDays)]) || null)
+        : yerelRapor;
+
     const coachNote = useMemo(() => {
-        const notes = safeParse(`coach_notes_${studentId}`);
+        if (durum === 'gecerli') return (sunucuVeri && sunucuVeri.kocNotu) || null;
+        const notes = safeParse(`coach_notes_${yerelId}`);
         const visible = notes.filter((n) => n.visibleToParent);
         return visible.length ? visible[visible.length - 1] : null;
-    }, [studentId]);
+    }, [durum, sunucuVeri, yerelId]);
 
-    if (cozum.durum === 'eski') return <EskiBaglanti />;
-    if (!student) return <NotFound />;
+    if (durum === 'yukleniyor') return <Yukleniyor />;
+    if (durum === 'eski') return <EskiBaglanti />;
+    if (durum === 'iptal') return <BaglantiKapali />;
+    if (durum === 'suresi_doldu') return <SuresiDoldu />;
+    if (!student || !report) return <NotFound />;
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-indigo-50/40 atmos atmos-light">
@@ -88,7 +130,7 @@ const ParentPortal = () => {
 
                 {/* Koçun/rehberliğin yaptığı yeni çalışmalar — tıklanınca
                     ilgili bölüme gider ve sayaç sıfırlanır */}
-                <ParentBadgeStrip user={{ id: `parent_${studentId}`, studentId }} />
+                <ParentBadgeStrip user={{ id: `parent_${student.id}`, studentId: student.id }} />
 
                 {/* Dönem seçici */}
                 <div className="flex gap-1.5 mt-4 mb-4">
@@ -747,6 +789,47 @@ const EskiBaglanti = () => (
             <p className="text-sm text-ink-2 leading-relaxed mt-3">
                 Koçunuzdan yeni bağlantıyı istemeniz yeterli — WhatsApp'tan
                 gönderebilir.
+            </p>
+        </div>
+    </div>
+);
+
+/** Sunucudan özet okunurken. Veli boş ekran görmemeli. */
+const Yukleniyor = () => (
+    <div className="min-h-screen flex items-center justify-center bg-surface-2 p-6">
+        <div className="text-center">
+            <div className="w-10 h-10 rounded-full border-2 border-line border-t-brand animate-spin mx-auto mb-3" />
+            <p className="text-sm text-ink-3">Rapor hazırlanıyor…</p>
+        </div>
+    </div>
+);
+
+/** Koç bağlantıyı iptal etmiş. */
+const BaglantiKapali = () => (
+    <div className="min-h-screen flex items-center justify-center bg-surface-2 p-6">
+        <div className="bg-surface rounded-3xl p-8 max-w-sm w-full text-center shadow-lg border border-line">
+            <div className="w-14 h-14 bg-warn-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={26} className="text-warn" />
+            </div>
+            <h2 className="text-lg font-black text-ink mb-2">Bağlantı Kapatıldı</h2>
+            <p className="text-sm text-ink-2 leading-relaxed">
+                Koç bu bağlantıyı kapatmış. Güncel bağlantı için koçunuzla iletişime geçin.
+            </p>
+        </div>
+    </div>
+);
+
+/** Belirtecin süresi dolmuş — kural sunucuda da reddediyor. */
+const SuresiDoldu = () => (
+    <div className="min-h-screen flex items-center justify-center bg-surface-2 p-6">
+        <div className="bg-surface rounded-3xl p-8 max-w-sm w-full text-center shadow-lg border border-line">
+            <div className="w-14 h-14 bg-warn-soft rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={26} className="text-warn" />
+            </div>
+            <h2 className="text-lg font-black text-ink mb-2">Bağlantının Süresi Doldu</h2>
+            <p className="text-sm text-ink-2 leading-relaxed">
+                Güvenlik nedeniyle veli bağlantıları belirli bir süre sonra geçersiz olur.
+                Koçunuzdan yeni bağlantı isteyin.
             </p>
         </div>
     </div>

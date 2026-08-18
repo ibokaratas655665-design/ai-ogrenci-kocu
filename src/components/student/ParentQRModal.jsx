@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QrCode, Download, X, Share2, MessageCircle, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import wa from '../../services/whatsappService';
-import parentLinks from '../../services/parentLinkService';
+import veliBaglanti from '../../services/veliBaglanti';
+import { buildStudentReport } from '../../services/reportService';
+import Modal from '../ui/Modal';
 
 /**
  * 👨‍👩‍👧 Veli QR Kodu
@@ -21,24 +23,54 @@ const ParentQRModal = ({ student, onClose }) => {
     const [surum, setSurum] = useState(0);      // yenilemede QR'ı yeniden çizdirir
     const [yenilendi, setYenilendi] = useState(false);
 
-    const shareUrl = React.useMemo(
-        () => wa.buildParentPortalLink(student?.id),
+    /**
+     * Bağlantı artık SUNUCUDA üretiliyor ve aynı anda velinin göreceği
+     * rapor özeti de yayınlanıyor.
+     *
+     * Eskiden bağlantı yalnızca koçun localStorage'ında duruyordu; veli
+     * tıkladığında portal o kaydı bulamıyor ve her koşulda "Öğrenci
+     * Bulunamadı" gösteriyordu. Yani QR üretiliyor ama hiçbir işe
+     * yaramıyordu.
+     */
+    const [shareUrl, setShareUrl] = useState('');
+    const [baglantiHatasi, setBaglantiHatasi] = useState('');
+
+    useEffect(() => {
+        if (!student?.id) return undefined;
+        let iptal = false;
+        setBaglantiHatasi('');
+        (async () => {
+            const r = await veliBaglanti.baglantiAl(student, buildStudentReport);
+            if (iptal) return;
+            if (r.basarili) setShareUrl(r.adres || '');
+            else setBaglantiHatasi(r.hata || 'Bağlantı oluşturulamadı.');
+        })();
+        return () => { iptal = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [student?.id, surum]
-    );
+    }, [student?.id, surum]);
     const parentPhone = student?.parentPhone;
     const canWhatsApp = wa.isValidPhone(parentPhone);
 
-    const baglantiyiYenile = () => {
+    const baglantiyiYenile = async () => {
         if (!student?.id) return;
-        parentLinks.yenile(student.id);
+        const r = await veliBaglanti.yenile(student, buildStudentReport);
+        if (!r.basarili) { setBaglantiHatasi(r.hata || 'Bağlantı yenilenemedi.'); return; }
+        setShareUrl(r.adres || '');
         setSurum((v) => v + 1);
         setYenilendi(true);
         setTimeout(() => setYenilendi(false), 4000);
     };
 
     useEffect(() => {
-        if (!student) return;
+        /**
+         * Bağlantı artık SUNUCUDAN asenkron geliyor. Bu koruma olmadan
+         * efekt ilk turda BOŞ adresle çalışıp "QR kod oluşturulamadı"
+         * hatasını kalıcı olarak yazıyordu; adres sonradan gelse bile
+         * hata ekranda kalıyordu.
+         */
+        if (!student || !shareUrl) return undefined;
+        setQrError(null);
+        setQrReady(false);
         let cancelled = false;
 
         (async () => {
@@ -89,112 +121,127 @@ const ParentQRModal = ({ student, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface rounded-3xl shadow-2xl max-w-sm w-full p-6 relative animate-scale-in">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-2 rounded-xl text-ink-3 hover:text-ink-2 hover:bg-surface-3 transition"
-                >
-                    <X size={18} />
-                </button>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="sm"
+            govdeClassName="p-6"
+        >
+            <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-xl text-ink-3 hover:text-ink-2 hover:bg-surface-3 transition"
+            >
+                <X size={18} />
+            </button>
 
-                <div className="text-center mb-4">
-                    <div className="w-12 h-12 bg-brand-soft rounded-2xl flex items-center justify-center mx-auto mb-3">
-                        <QrCode size={24} className="text-brand" />
-                    </div>
-                    <h2 className="text-lg font-black text-ink">Veli Portalı</h2>
-                    <p className="text-xs text-ink-2 mt-1">
-                        QR kodu veliyle paylaşın. Telefonuyla tarayarak gelişim raporunu görüntüleyebilir.
-                    </p>
+            <div className="text-center mb-4">
+                <div className="w-12 h-12 bg-brand-soft rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <QrCode size={24} className="text-brand" />
                 </div>
-
-                {/* QR */}
-                <div className="flex justify-center mb-4">
-                    {qrError ? (
-                        <div className="w-56 h-56 bg-warn-soft rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-warn px-4">
-                            <AlertCircle size={40} className="text-warn mb-2" />
-                            <p className="text-xs text-warn text-center">
-                                QR kod oluşturulamadı.<br />Aşağıdaki bağlantıyı elle paylaşabilirsiniz.
-                            </p>
-                        </div>
-                    ) : (
-                        <canvas
-                            ref={canvasRef}
-                            className={`rounded-2xl border border-brand-line ${qrReady ? 'shadow-sm' : 'opacity-0 h-0'}`}
-                        />
-                    )}
-                    {!qrReady && !qrError && (
-                        <div className="w-56 h-56 bg-brand-soft rounded-2xl flex items-center justify-center border-2 border-dashed border-brand-line">
-                            <span className="w-7 h-7 border-2 border-brand-line border-t-indigo-600 rounded-full animate-spin" />
-                        </div>
-                    )}
-                </div>
-
-                <p className="text-center text-sm font-bold text-ink-2 mb-4">
-                    📋 {student?.name}
-                    {student?.parentName && (
-                        <span className="block text-xs font-normal text-ink-3 mt-0.5">
-                            Veli: {student.parentName}
-                        </span>
-                    )}
+                <h2 className="text-lg font-black text-ink">Veli Portalı</h2>
+                <p className="text-xs text-ink-2 mt-1">
+                    QR kodu veliyle paylaşın. Telefonuyla tarayarak gelişim raporunu görüntüleyebilir.
                 </p>
-
-                {/* Link */}
-                <div className="bg-surface-2 rounded-xl p-3 mb-2">
-                    <p className="text-[10px] text-ink-2 font-bold uppercase mb-1">Paylaşım Bağlantısı</p>
-                    <p className="text-xs text-brand font-mono break-all">{shareUrl}</p>
-                </div>
-
-                {/* Bağlantı gizli tutulmalı — veliye şifre sorulmadığı için
-                    tek koruma bu adresin bilinmemesi. Yanlış kişiye giderse
-                    koç buradan yenileyip eskisini geçersiz kılar. */}
-                <div className="mb-4">
-                    <button
-                        onClick={baglantiyiYenile}
-                        className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-line text-ink-2 font-bold text-xs hover:bg-surface-3 transition"
-                    >
-                        <RefreshCw size={13} /> Bağlantıyı Yenile
-                    </button>
-                    <p className="text-[10px] text-ink-3 leading-snug mt-1.5 text-center">
-                        {yenilendi
-                            ? '✅ Yeni bağlantı üretildi. Eski bağlantı artık açılmıyor — veliye yenisini gönderin.'
-                            : 'Bağlantı yanlış kişiye gittiyse yenileyin. Bu bağlantıyı bilen herkes raporu görebilir.'}
-                    </p>
-                </div>
-
-                {/* WhatsApp */}
-                {canWhatsApp ? (
-                    <button
-                        onClick={sendViaWhatsApp}
-                        className="w-full flex items-center justify-center gap-2 py-3 mb-2 bg-ok text-white rounded-xl font-bold text-sm hover:brightness-105 active:scale-[0.98] transition"
-                    >
-                        <MessageCircle size={16} /> Veliye WhatsApp'tan Gönder
-                    </button>
-                ) : (
-                    <p className="text-[11px] text-warn bg-warn-soft rounded-xl px-3 py-2 mb-2 leading-snug">
-                        WhatsApp'tan göndermek için öğrenci kartına veli telefonu ekleyin.
-                    </p>
-                )}
-
-                <div className="flex gap-2">
-                    <button
-                        onClick={copyLink}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-brand-line rounded-xl text-brand font-bold text-sm hover:bg-brand-soft transition"
-                    >
-                        {copied ? <Check size={15} /> : <Share2 size={15} />}
-                        {copied ? 'Kopyalandı' : 'Link Kopyala'}
-                    </button>
-                    {qrReady && (
-                        <button
-                            onClick={downloadQR}
-                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-hover transition"
-                        >
-                            <Download size={15} /> QR İndir
-                        </button>
-                    )}
-                </div>
             </div>
-        </div>
+
+            {/* QR */}
+            <div className="flex justify-center mb-4">
+                {qrError ? (
+                    <div className="w-56 h-56 bg-warn-soft rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-warn px-4">
+                        <AlertCircle size={40} className="text-warn mb-2" />
+                        <p className="text-xs text-warn text-center">
+                            QR kod oluşturulamadı.<br />Aşağıdaki bağlantıyı elle paylaşabilirsiniz.
+                        </p>
+                    </div>
+                ) : (
+                    <canvas
+                        ref={canvasRef}
+                        className={`rounded-2xl border border-brand-line ${qrReady ? 'shadow-sm' : 'opacity-0 h-0'}`}
+                    />
+                )}
+                {!qrReady && !qrError && (
+                    <div className="w-56 h-56 bg-brand-soft rounded-2xl flex items-center justify-center border-2 border-dashed border-brand-line">
+                        <span className="w-7 h-7 border-2 border-brand-line border-t-indigo-600 rounded-full animate-spin" />
+                    </div>
+                )}
+            </div>
+
+            <p className="text-center text-sm font-bold text-ink-2 mb-4">
+                📋 {student?.name}
+                {student?.parentName && (
+                    <span className="block text-xs font-normal text-ink-3 mt-0.5">
+                        Veli: {student.parentName}
+                    </span>
+                )}
+            </p>
+
+            {/* Link */}
+            <div className="bg-surface-2 rounded-xl p-3 mb-2">
+                <p className="text-[10px] text-ink-2 font-bold uppercase mb-1">Paylaşım Bağlantısı</p>
+                {baglantiHatasi ? (
+                    /* Sessiz başarısızlık YASAK: bağlantı üretilemediyse koç bunu
+                       görmeli, yoksa çalışmayan bir QR paylaşır. */
+                    <p className="text-xs text-danger font-bold leading-snug">
+                        Bağlantı oluşturulamadı ({baglantiHatasi}). Bulut oturumunuz kapalı
+                        olabilir — çıkış yapıp tekrar giriş yapın.
+                    </p>
+                ) : shareUrl ? (
+                    <p className="text-xs text-brand font-mono break-all">{shareUrl}</p>
+                ) : (
+                    <p className="text-xs text-ink-3">Bağlantı hazırlanıyor…</p>
+                )}
+            </div>
+
+            {/* Bağlantı gizli tutulmalı — veliye şifre sorulmadığı için
+                tek koruma bu adresin bilinmemesi. Yanlış kişiye giderse
+                koç buradan yenileyip eskisini geçersiz kılar. */}
+            <div className="mb-4">
+                <button
+                    onClick={baglantiyiYenile}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-line text-ink-2 font-bold text-xs hover:bg-surface-3 transition"
+                >
+                    <RefreshCw size={13} /> Bağlantıyı Yenile
+                </button>
+                <p className="text-[10px] text-ink-3 leading-snug mt-1.5 text-center">
+                    {yenilendi
+                        ? '✅ Yeni bağlantı üretildi. Eski bağlantı artık açılmıyor — veliye yenisini gönderin.'
+                        : 'Bağlantı yanlış kişiye gittiyse yenileyin. Bu bağlantıyı bilen herkes raporu görebilir.'}
+                </p>
+            </div>
+
+            {/* WhatsApp */}
+            {canWhatsApp ? (
+                <button
+                    onClick={sendViaWhatsApp}
+                    className="w-full flex items-center justify-center gap-2 py-3 mb-2 bg-ok text-white rounded-xl font-bold text-sm hover:brightness-105 active:scale-[0.98] transition"
+                >
+                    <MessageCircle size={16} /> Veliye WhatsApp'tan Gönder
+                </button>
+            ) : (
+                <p className="text-[11px] text-warn bg-warn-soft rounded-xl px-3 py-2 mb-2 leading-snug">
+                    WhatsApp'tan göndermek için öğrenci kartına veli telefonu ekleyin.
+                </p>
+            )}
+
+            <div className="flex gap-2">
+                <button
+                    onClick={copyLink}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-brand-line rounded-xl text-brand font-bold text-sm hover:bg-brand-soft transition"
+                >
+                    {copied ? <Check size={15} /> : <Share2 size={15} />}
+                    {copied ? 'Kopyalandı' : 'Link Kopyala'}
+                </button>
+                {qrReady && (
+                    <button
+                        onClick={downloadQR}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-hover transition"
+                    >
+                        <Download size={15} /> QR İndir
+                    </button>
+                )}
+            </div>
+        </Modal>
     );
 };
 

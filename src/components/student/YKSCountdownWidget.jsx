@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Calendar, Edit2, Check, X } from 'lucide-react';
+import Modal from '../ui/Modal';
 
 // ─── YKS Tarih ──────────────────────────────────────────────
 const getNextYKS = () => {
@@ -59,99 +60,103 @@ const GoalEditor = ({ userId, goals, onSave, onClose }) => {
     const allSubjects = activeGroup === 'TYT' ? TYT_SUBJECTS : aytSubjectsForBranch;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-modal-base flex items-center justify-center p-4">
-            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-black text-ink flex items-center gap-2">
-                        <Target size={18} className="text-brand" />
-                        Hedef Net Belirle
-                    </h3>
-                    <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
-                </div>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-6"
+        >
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-ink flex items-center gap-2">
+                    <Target size={18} className="text-brand" />
+                    Hedef Net Belirle
+                </h3>
+                <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
+            </div>
 
-                {/* Branş seç (AYT için) */}
-                <div className="mb-4">
-                    <p className="text-xs font-black text-ink-2 uppercase tracking-wide mb-2">Branşın</p>
-                    <div className="grid grid-cols-2 gap-2">
-                        {BRANCHES.map(b => (
-                            <button
-                                key={b.id}
-                                onClick={() => { setActiveBranch(b.id); setLocal(prev => ({ ...prev, _branch: b.id })); }}
-                                className={`py-2 px-3 rounded-xl text-xs font-bold border-2 transition ${activeBranch === b.id ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2 hover:border-line'}`}
-                            >
-                                {b.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* TYT / AYT toggle */}
-                <div className="flex rounded-xl border border-line overflow-hidden mb-4">
-                    {['TYT', 'AYT'].map(g => (
+            {/* Branş seç (AYT için) */}
+            <div className="mb-4">
+                <p className="text-xs font-black text-ink-2 uppercase tracking-wide mb-2">Branşın</p>
+                <div className="grid grid-cols-2 gap-2">
+                    {BRANCHES.map(b => (
                         <button
-                            key={g}
-                            onClick={() => setActiveGroup(g)}
-                            className={`flex-1 py-2 text-xs font-black transition ${activeGroup === g ? 'bg-brand text-ink' : 'text-ink-2 hover:bg-surface-2'}`}
+                            key={b.id}
+                            onClick={() => { setActiveBranch(b.id); setLocal(prev => ({ ...prev, _branch: b.id })); }}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border-2 transition ${activeBranch === b.id ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-2 hover:border-line'}`}
                         >
-                            {g} Hedefleri
+                            {b.label}
                         </button>
                     ))}
                 </div>
+            </div>
 
-                {/* Slider'lar */}
-                <div className="space-y-4">
-                    {allSubjects.map(s => (
-                        <div key={s.key}>
-                            <div className="flex justify-between text-xs font-bold text-ink-2 mb-1">
-                                <span>{s.label}</span>
-                                <span className="text-ink-3">Maks: {s.maxNet} net</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="range"
-                                    min={0}
-                                    max={s.maxNet}
-                                    step={0.5}
-                                    value={local[s.key] || 0}
-                                    onChange={e => setLocal(prev => ({ ...prev, [s.key]: parseFloat(e.target.value) }))}
-                                    className="flex-1"
-                                    style={{ accentColor: s.color }}
-                                />
-                                <span className="text-sm font-black w-8 text-right" style={{ color: s.color }}>
-                                    {local[s.key] || 0}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Toplam TYT */}
-                <div className="border-t border-line pt-3 mt-4 grid grid-cols-2 gap-2">
-                    <div>
-                        <p className="text-xs text-ink-3 mb-0.5">TYT Hedef Toplam</p>
-                        <p className="text-xl font-black text-brand">
-                            {TYT_SUBJECTS.reduce((a, s) => a + (local[s.key] || 0), 0).toFixed(0)} / 120
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-ink-3 mb-0.5">AYT Hedef Toplam</p>
-                        <p className="text-xl font-black text-c4">
-                            {AYT_SUBJECTS.reduce((a, s) => a + (local[s.key] || 0), 0).toFixed(0)}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-5">
-                    <button onClick={onClose} className="flex-1 py-2.5 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
+            {/* TYT / AYT toggle */}
+            <div className="flex rounded-xl border border-line overflow-hidden mb-4">
+                {['TYT', 'AYT'].map(g => (
                     <button
-                        onClick={() => { onSave(local); onClose(); }}
-                        className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-hover flex items-center justify-center gap-1.5 transition"
+                        key={g}
+                        onClick={() => setActiveGroup(g)}
+                        className={`flex-1 py-2 text-xs font-black transition ${activeGroup === g ? 'bg-brand text-ink' : 'text-ink-2 hover:bg-surface-2'}`}
                     >
-                        <Check size={14} /> Kaydet
+                        {g} Hedefleri
                     </button>
+                ))}
+            </div>
+
+            {/* Slider'lar */}
+            <div className="space-y-4">
+                {allSubjects.map(s => (
+                    <div key={s.key}>
+                        <div className="flex justify-between text-xs font-bold text-ink-2 mb-1">
+                            <span>{s.label}</span>
+                            <span className="text-ink-3">Maks: {s.maxNet} net</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="range"
+                                min={0}
+                                max={s.maxNet}
+                                step={0.5}
+                                value={local[s.key] || 0}
+                                onChange={e => setLocal(prev => ({ ...prev, [s.key]: parseFloat(e.target.value) }))}
+                                className="flex-1"
+                                style={{ accentColor: s.color }}
+                            />
+                            <span className="text-sm font-black w-8 text-right" style={{ color: s.color }}>
+                                {local[s.key] || 0}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Toplam TYT */}
+            <div className="border-t border-line pt-3 mt-4 grid grid-cols-2 gap-2">
+                <div>
+                    <p className="text-xs text-ink-3 mb-0.5">TYT Hedef Toplam</p>
+                    <p className="text-xl font-black text-brand">
+                        {TYT_SUBJECTS.reduce((a, s) => a + (local[s.key] || 0), 0).toFixed(0)} / 120
+                    </p>
+                </div>
+                <div>
+                    <p className="text-xs text-ink-3 mb-0.5">AYT Hedef Toplam</p>
+                    <p className="text-xl font-black text-c4">
+                        {AYT_SUBJECTS.reduce((a, s) => a + (local[s.key] || 0), 0).toFixed(0)}
+                    </p>
                 </div>
             </div>
-        </div>
+
+            <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-5">
+                <button onClick={onClose} className="flex-1 py-2.5 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
+                <button
+                    onClick={() => { onSave(local); onClose(); }}
+                    className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-hover flex items-center justify-center gap-1.5 transition"
+                >
+                    <Check size={14} /> Kaydet
+                </button>
+            </div>
+        </Modal>
     );
 };
 

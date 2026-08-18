@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { analyzeSociometry } from '../utils/sociometryAnalysis';
 import { bildir, onayla } from '../services/uiGeriBildirim';
+import Modal from '../components/ui/Modal';
 
 const GuidanceServiceTab = ({ students = [] }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tests', 'students', 'analytics'
@@ -1016,32 +1017,37 @@ const GuidanceServiceTab = ({ students = [] }) => {
 
             {/* Bireysel Atama Modalı */}
             {assigningStudent && (
-                <div className="fixed inset-0 z-modal-top bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setAssigningStudent(null)}>
-                    <div className="bg-surface rounded-3xl w-full max-w-xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 bg-brand text-white border-b border-indigo-700">
-                            <h3 className="text-xl font-bold">{assigningStudent.name} İÇİN ENVANTER ATA</h3>
-                            <p className="text-brand text-sm mt-1">Rehberlik servisi tarafından uygulanacak testi seçin</p>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                            {tests.map(test => (
-                                <button
-                                    key={test.id}
-                                    onClick={() => assignSingleTestToStudent(assigningStudent.id, test.id)}
-                                    className="w-full p-4 border border-line rounded-2xl text-left bg-surface-2 hover:bg-brand-soft hover:border-brand-line transition group flex items-center justify-between"
-                                >
-                                    <div>
-                                        <p className="font-bold text-ink group-hover:text-brand transition-colors uppercase tracking-tight">{test.title}</p>
-                                        <p className="text-xs text-ink-3 mt-0.5">{test.questions?.length} Soru • {test.desc}</p>
-                                    </div>
-                                    <PlusCircle size={24} className="text-brand group-hover:text-brand transition" />
-                                </button>
-                            ))}
-                        </div>
-                        <div className="p-4 bg-surface-2 border-t border-line flex justify-end">
-                            <button onClick={() => setAssigningStudent(null)} className="px-6 py-2 text-ink-2 font-bold hover:bg-surface-3 rounded-xl transition">Kapat</button>
-                        </div>
+                <Modal
+                    acik
+                    onClose={() => setAssigningStudent(null)}
+                    baslikGizle
+                    genislik="lg"
+                    katmanClassName="z-modal-top"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 p-6 bg-brand text-white border-b border-indigo-700">
+                        <h3 className="text-xl font-bold">{assigningStudent.name} İÇİN ENVANTER ATA</h3>
+                        <p className="text-brand text-sm mt-1">Rehberlik servisi tarafından uygulanacak testi seçin</p>
                     </div>
-                </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-3">
+                        {tests.map(test => (
+                            <button
+                                key={test.id}
+                                onClick={() => assignSingleTestToStudent(assigningStudent.id, test.id)}
+                                className="w-full p-4 border border-line rounded-2xl text-left bg-surface-2 hover:bg-brand-soft hover:border-brand-line transition group flex items-center justify-between"
+                            >
+                                <div>
+                                    <p className="font-bold text-ink group-hover:text-brand transition-colors uppercase tracking-tight">{test.title}</p>
+                                    <p className="text-xs text-ink-3 mt-0.5">{test.questions?.length} Soru • {test.desc}</p>
+                                </div>
+                                <PlusCircle size={24} className="text-brand group-hover:text-brand transition" />
+                            </button>
+                        ))}
+                    </div>
+                    <div className="p-4 bg-surface-2 border-t border-line flex justify-end">
+                        <button onClick={() => setAssigningStudent(null)} className="px-6 py-2 text-ink-2 font-bold hover:bg-surface-3 rounded-xl transition">Kapat</button>
+                    </div>
+                </Modal>
             )}
         </div>
     );

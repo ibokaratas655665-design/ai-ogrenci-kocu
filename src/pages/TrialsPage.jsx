@@ -9,6 +9,7 @@ import ReportCard from '../components/reports/ReportCard';
 import html2pdf from 'html2pdf.js';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
+import Modal from '../components/ui/Modal';
 
 const TrialsPage = () => {
     const { user } = useAuth();
@@ -299,82 +300,86 @@ const TrialsPage = () => {
 
             {/* Test Modal */}
             {activeTest && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-modal-base flex items-center justify-center p-4">
-                    <div className="bg-surface w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
-                        <div className="bg-brand p-6 text-white flex justify-between items-center">
-                            <div>
-                                <h2 className="text-xl font-bold">{activeTest.title}</h2>
-                                <p className="text-brand text-sm mt-1">{activeTest.questions.length} Soru</p>
-                            </div>
-                            <button onClick={closeTest} className="bg-surface/10 hover:bg-surface/20 p-2 rounded-full transition"><X size={20} /></button>
+                <Modal
+                    acik
+                    onClose={closeTest}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 bg-brand p-6 text-white flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-bold">{activeTest.title}</h2>
+                            <p className="text-brand text-sm mt-1">{activeTest.questions.length} Soru</p>
                         </div>
+                        <button onClick={closeTest} className="bg-surface/10 hover:bg-surface/20 p-2 rounded-full transition"><X size={20} /></button>
+                    </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-surface-2">
-                            {!testResult ? (
-                                activeTest.questions.map((q, idx) => (
-                                    <div key={q.id} className="bg-surface p-6 rounded-2xl shadow-sm border border-line">
-                                        <div className="flex items-start mb-4">
-                                            <span className="bg-brand-soft text-brand font-bold w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">{idx + 1}</span>
-                                            <p className="font-bold text-ink text-lg leading-relaxed">{q.text}</p>
-                                        </div>
-                                        <div className="space-y-3 pl-11">
-                                            {q.options.map((opt, optIdx) => (
-                                                <button
-                                                    key={optIdx}
-                                                    onClick={() => handleAnswer(q.id, optIdx)}
-                                                    className={`w-full text-left p-4 rounded-xl text-base font-medium transition flex items-center border ${answers[q.id] === optIdx
-                                                        ? 'bg-brand text-white border-indigo-600 shadow-md shadow-indigo-200'
-                                                        : 'bg-surface-2 hover:bg-surface text-ink-2 border-transparent hover:border-line hover:shadow-sm'}`}
-                                                >
-                                                    <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${answers[q.id] === optIdx ? 'border-white' : 'border-line-2'}`}>
-                                                        {answers[q.id] === optIdx && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
-                                                    </div>
-                                                    {opt}
-                                                </button>
-                                            ))}
-                                        </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-8 bg-surface-2">
+                        {!testResult ? (
+                            activeTest.questions.map((q, idx) => (
+                                <div key={q.id} className="bg-surface p-6 rounded-2xl shadow-sm border border-line">
+                                    <div className="flex items-start mb-4">
+                                        <span className="bg-brand-soft text-brand font-bold w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">{idx + 1}</span>
+                                        <p className="font-bold text-ink text-lg leading-relaxed">{q.text}</p>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8">
-                                    <div className="w-24 h-24 bg-ok-soft rounded-full flex items-center justify-center mx-auto mb-6 text-ok shadow-xl shadow-green-100 animate-bounce-short">
-                                        <CheckCircle size={48} />
-                                    </div>
-                                    <h3 className="text-3xl font-black text-ink mb-2">Test Tamamlandı!</h3>
-                                    <p className="text-ink-2 mb-8 text-lg">Harika iş çıkardın, işte sonuçların:</p>
-
-                                    <div className="bg-brand-soft p-8 rounded-3xl border border-brand-line inline-block text-left w-full max-w-md mx-auto shadow-inner">
-                                        <div className="flex justify-between items-center mb-6 pb-6 border-b border-brand-line">
-                                            <span className="font-bold text-ink-2 uppercase tracking-wider text-sm">Seviye</span>
-                                            <span className="font-black text-brand text-2xl">{testResult.level}</span>
-                                        </div>
-                                        <div className="bg-surface p-6 rounded-2xl text-ink-2 leading-relaxed shadow-sm text-center italic">
-                                            "{testResult.comment}"
-                                        </div>
+                                    <div className="space-y-3 pl-11">
+                                        {q.options.map((opt, optIdx) => (
+                                            <button
+                                                key={optIdx}
+                                                onClick={() => handleAnswer(q.id, optIdx)}
+                                                className={`w-full text-left p-4 rounded-xl text-base font-medium transition flex items-center border ${answers[q.id] === optIdx
+                                                    ? 'bg-brand text-white border-indigo-600 shadow-md shadow-indigo-200'
+                                                    : 'bg-surface-2 hover:bg-surface text-ink-2 border-transparent hover:border-line hover:shadow-sm'}`}
+                                            >
+                                                <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${answers[q.id] === optIdx ? 'border-white' : 'border-line-2'}`}>
+                                                    {answers[q.id] === optIdx && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
+                                                </div>
+                                                {opt}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8">
+                                <div className="w-24 h-24 bg-ok-soft rounded-full flex items-center justify-center mx-auto mb-6 text-ok shadow-xl shadow-green-100 animate-bounce-short">
+                                    <CheckCircle size={48} />
+                                </div>
+                                <h3 className="text-3xl font-black text-ink mb-2">Test Tamamlandı!</h3>
+                                <p className="text-ink-2 mb-8 text-lg">Harika iş çıkardın, işte sonuçların:</p>
 
-                        <div className="p-6 border-t border-line bg-surface flex justify-end">
-                            {!testResult ? (
-                                <button
-                                    onClick={submitTest}
-                                    className="bg-brand text-white px-10 py-4 rounded-xl font-bold shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:scale-105 transition active:scale-95"
-                                >
-                                    Testi Tamamla
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={closeTest}
-                                    className="bg-surface-inv text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-surface-inv transition hover:scale-105"
-                                >
-                                    Kapat ve Sonuçlara Dön
-                                </button>
-                            )}
-                        </div>
+                                <div className="bg-brand-soft p-8 rounded-3xl border border-brand-line inline-block text-left w-full max-w-md mx-auto shadow-inner">
+                                    <div className="flex justify-between items-center mb-6 pb-6 border-b border-brand-line">
+                                        <span className="font-bold text-ink-2 uppercase tracking-wider text-sm">Seviye</span>
+                                        <span className="font-black text-brand text-2xl">{testResult.level}</span>
+                                    </div>
+                                    <div className="bg-surface p-6 rounded-2xl text-ink-2 leading-relaxed shadow-sm text-center italic">
+                                        "{testResult.comment}"
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
+
+                    <div className="p-6 border-t border-line bg-surface flex justify-end">
+                        {!testResult ? (
+                            <button
+                                onClick={submitTest}
+                                className="bg-brand text-white px-10 py-4 rounded-xl font-bold shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:scale-105 transition active:scale-95"
+                            >
+                                Testi Tamamla
+                            </button>
+                        ) : (
+                            <button
+                                onClick={closeTest}
+                                className="bg-surface-inv text-white px-10 py-4 rounded-xl font-bold shadow-lg hover:bg-surface-inv transition hover:scale-105"
+                            >
+                                Kapat ve Sonuçlara Dön
+                            </button>
+                        )}
+                    </div>
+                </Modal>
             )}
         </div>
     );

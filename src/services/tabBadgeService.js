@@ -23,6 +23,8 @@
  * geldiğinde rozet kendiliğinden geri gelir.
  */
 
+import { listeOku } from './veriDeposu';
+
 const SEEN_KEY = (rol, userId) => `tab_seen_${rol}_${userId || 'anon'}`;
 
 /** Sekme başına saklanacak en fazla kimlik — depo şişmesin. */
@@ -38,10 +40,11 @@ const guvenliJson = (key, def) => {
     }
 };
 
-const dizi = (key) => {
-    const v = guvenliJson(key, []);
-    return Array.isArray(v) ? v : [];
-};
+/**
+ * Liste okuma tek kapıdan: veriDeposu.listeOku bozuk JSON'u da
+ * dizi olmayan değeri de boş diziye indirger.
+ */
+const dizi = (key) => listeOku(key);
 
 /**
  * Görülmüş kayıtlar: { [tabId]: { at: ISO, ids: [...] } }

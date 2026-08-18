@@ -54,7 +54,7 @@ import RealtimeNotificationBell from '../components/shared/RealtimeNotifications
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import { notifyMany } from '../services/notificationService';
-import { BOLUMLER, BOLUM_LISTESI, erisilenBolumler, isAnaKoc, gorunurOgrenciler, gorebilir, sahiplikEkle } from '../services/accessControl';
+import { BOLUMLER, BOLUM_LISTESI, erisilenBolumler, isAnaKoc, gorunurOgrenciler, gorebilir, sahiplikEkle, onayDurumu } from '../services/accessControl';
 import DecimalFolderTab from '../components/guidance/DecimalFolderTab';
 import SosyometriPaneli from '../components/guidance/SosyometriPaneli';
 import BEPCenter from '../components/guidance/bep/BEPCenter';
@@ -62,6 +62,7 @@ import ApprovalCenter from '../components/coach/ApprovalCenter';
 import CoachTaskCenter from '../components/coach/CoachTaskCenter';
 import CouponManager from '../components/coach/CouponManager';
 import InviteManager from '../components/coach/InviteManager';
+import KatilimTalepleri from '../components/coach/KatilimTalepleri';
 import subscription from '../services/subscriptionService';
 import { SINAV_LISTESI, alanListesi, ogrencininSinavi } from '../data/examTopics';
 import coachTasks from '../services/coachTaskService';
@@ -79,18 +80,15 @@ import MARKA from '../data/marka';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
+import Modal from '../components/ui/Modal';
+import { oku, yaz } from '../services/veriDeposu';
 
 // 🛡️ Safe JSON Parser
-const safeParse = (key, defaultValue = []) => {
-    try {
-        const val = localStorage.getItem(key);
-        if (!val || !val.trim() || val === 'undefined' || val === 'null' || val === '[object Object]') return defaultValue;
-        return JSON.parse(val);
-    } catch (e) {
-        console.error(`Corrupt data in ${key}:`, e);
-        return defaultValue;
-    }
-};
+/**
+ * Okuma tek kapıdan: `veriDeposu.oku` bozuk JSON'da varsayılana düşer,
+ * '[object Object]' gibi bozuk yazımları da eler.
+ */
+const safeParse = (key, defaultValue = []) => oku(key, defaultValue);
 
 const normalizeName = (name) => {
     if (!name) return '';
@@ -1659,154 +1657,158 @@ const ExamsTab = ({ students, setToast }) => {
 
             {/* Student Detail Modal */}
             {selectedStudent && (
-                <div className="fixed inset-0 bg-black/50 z-modal-base flex items-center justify-center p-4" onClick={() => setSelectedStudent(null)}>
-                    <div className="bg-surface rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto icerik-gecis" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-line flex justify-between items-center sticky top-0 bg-surface z-10">
-                            <div>
-                                <h3 className="text-xl font-bold text-ink">{selectedStudent.student}</h3>
-                                <p className="text-sm text-ink-2">{selectedStudent.name} Sonuç Karnesi</p>
-                            </div>
-                            <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-surface-3 rounded-full">
-                                <X size={20} />
-                            </button>
+                <Modal
+                    acik
+                    onClose={() => setSelectedStudent(null)}
+                    baslikGizle
+                    genislik="xl"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="p-6 border-b border-line flex justify-between items-center shrink-0 bg-surface">
+                        <div>
+                            <h3 className="text-xl font-bold text-ink">{selectedStudent.student}</h3>
+                            <p className="text-sm text-ink-2">{selectedStudent.name} Sonuç Karnesi</p>
                         </div>
-                        <div className="p-6 space-y-8">
-                            {/* Metadata Section (Personal Info) */}
-                            {selectedStudent.metadata && Object.keys(selectedStudent.metadata).length > 0 && (
-                                <div className="bg-surface-2 p-4 rounded-xl border border-line icerik-gecis">
-                                    <h4 className="font-bold text-ink-2 mb-3 flex items-center text-sm uppercase tracking-wide">
-                                        <Users size={16} className="mr-2 text-brand" />
-                                        Öğrenci Bilgileri
-                                    </h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-6 text-sm">
-                                        {Object.entries(selectedStudent.metadata).map(([key, val]) => (
-                                            <div key={key} className="border-l-2 border-brand-line pl-3">
-                                                <span className="block text-ink-3 text-xs font-semibold uppercase mb-0.5">{key}</span>
-                                                <span className="font-bold text-ink">{val}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Key Stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-brand-soft p-4 rounded-xl text-center">
-                                    <div className="text-xs text-brand font-medium uppercase">TYT Toplam</div>
-                                    <div className="text-3xl font-bold text-brand">{selectedStudent.tyt}</div>
-                                </div>
-                                <div className="bg-ok-soft p-4 rounded-xl text-center">
-                                    <div className="text-xs text-ok font-medium uppercase">Genel Sıralama</div>
-                                    <div className="text-3xl font-bold text-ok">#{selectedStudent.rank}</div>
-                                </div>
-                                <div className="bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] p-4 rounded-xl text-center">
-                                    <div className="text-xs text-c4 font-medium uppercase">Katılım</div>
-                                    <div className="text-3xl font-bold text-c4">{studentHistoryData.length}</div>
-                                    <div className="text-xs text-c4">Deneme</div>
-                                </div>
-                                <div className="bg-warn-soft p-4 rounded-xl text-center">
-                                    <div className="text-xs text-warn font-medium uppercase">Net Ortalaması</div>
-                                    <div className="text-3xl font-bold text-warn">
-                                        {(studentHistoryData.reduce((a, b) => a + b.tyt, 0) / (studentHistoryData.length || 1)).toFixed(1)}
-                                    </div>
+                        <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-surface-3 rounded-full">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-8">
+                        {/* Metadata Section (Personal Info) */}
+                        {selectedStudent.metadata && Object.keys(selectedStudent.metadata).length > 0 && (
+                            <div className="bg-surface-2 p-4 rounded-xl border border-line icerik-gecis">
+                                <h4 className="font-bold text-ink-2 mb-3 flex items-center text-sm uppercase tracking-wide">
+                                    <Users size={16} className="mr-2 text-brand" />
+                                    Öğrenci Bilgileri
+                                </h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-6 text-sm">
+                                    {Object.entries(selectedStudent.metadata).map(([key, val]) => (
+                                        <div key={key} className="border-l-2 border-brand-line pl-3">
+                                            <span className="block text-ink-3 text-xs font-semibold uppercase mb-0.5">{key}</span>
+                                            <span className="font-bold text-ink">{val}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+                        )}
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* D/Y/N Table */}
-                                <div>
-                                    <h4 className="font-bold text-ink-2 mb-4 flex items-center">
-                                        <ClipboardList size={18} className="mr-2 text-brand" />
-                                        Detaylı Net Analizi
-                                    </h4>
-                                    <div className="overflow-hidden rounded-xl border border-line">
-                                        <table className="min-w-full divide-y divide-line">
-                                            <thead className="bg-surface-2">
-                                                <tr>
-                                                    <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2">Ders</th>
-                                                    <th className="px-4 py-2 text-center text-xs font-semibold text-ok">Doğru</th>
-                                                    <th className="px-4 py-2 text-center text-xs font-semibold text-danger">Yanlış</th>
-                                                    <th className="px-4 py-2 text-center text-xs font-semibold text-brand">Net</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-line bg-surface text-sm">
-                                                {[
-                                                    { name: 'Türkçe', key: 'turkce' },
-                                                    { name: 'Matematik', key: 'mat' },
-                                                    { name: 'Fen Bilimleri', key: 'fen' },
-                                                    { name: 'Sosyal Bil.', key: 'sosyal' }
-                                                ].map((subject) => {
-                                                    const data = selectedStudent.subjects?.[subject.key];
-                                                    return (
-                                                        <tr key={subject.key} className="hover:bg-surface-2">
-                                                            <td className="px-4 py-3 font-medium text-ink">{subject.name}</td>
-                                                            <td className="px-4 py-3 text-center text-ok font-bold">{getD(data)}</td>
-                                                            <td className="px-4 py-3 text-center text-danger">{getY(data)}</td>
-                                                            <td className="px-4 py-3 text-center font-bold text-brand">{getNet(data).toFixed(2)}</td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {/* Radar Chart */}
-                                <div>
-                                    <h4 className="font-bold text-ink-2 mb-4 flex items-center">
-                                        <Activity size={18} className="mr-2 text-c4" />
-                                        Başarı Dağılımı
-                                    </h4>
-                                    <div className="h-64 w-full bg-surface-2 rounded-xl relative" style={{ minHeight: '256px' }}>
-                                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
-                                                { subject: 'Türkçe', A: getNet(selectedStudent.subjects?.turkce), fullMark: 40 },
-                                                { subject: 'Matematik', A: getNet(selectedStudent.subjects?.mat), fullMark: 40 },
-                                                { subject: 'Fen', A: getNet(selectedStudent.subjects?.fen), fullMark: 20 },
-                                                { subject: 'Sosyal', A: getNet(selectedStudent.subjects?.sosyal), fullMark: 20 },
-                                            ]}>
-                                                <PolarGrid />
-                                                <PolarAngleAxis dataKey="subject" />
-                                                <PolarRadiusAxis angle={30} domain={[0, 40]} />
-                                                <Radar name={selectedStudent.student} dataKey="A" stroke="var(--brand)" fill="var(--brand)" fillOpacity={0.5}  animationDuration={300} />
-                                                <RechartsTooltip />
-                                            </RadarChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                        {/* Key Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-brand-soft p-4 rounded-xl text-center">
+                                <div className="text-xs text-brand font-medium uppercase">TYT Toplam</div>
+                                <div className="text-3xl font-bold text-brand">{selectedStudent.tyt}</div>
+                            </div>
+                            <div className="bg-ok-soft p-4 rounded-xl text-center">
+                                <div className="text-xs text-ok font-medium uppercase">Genel Sıralama</div>
+                                <div className="text-3xl font-bold text-ok">#{selectedStudent.rank}</div>
+                            </div>
+                            <div className="bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] p-4 rounded-xl text-center">
+                                <div className="text-xs text-c4 font-medium uppercase">Katılım</div>
+                                <div className="text-3xl font-bold text-c4">{studentHistoryData.length}</div>
+                                <div className="text-xs text-c4">Deneme</div>
+                            </div>
+                            <div className="bg-warn-soft p-4 rounded-xl text-center">
+                                <div className="text-xs text-warn font-medium uppercase">Net Ortalaması</div>
+                                <div className="text-3xl font-bold text-warn">
+                                    {(studentHistoryData.reduce((a, b) => a + b.tyt, 0) / (studentHistoryData.length || 1)).toFixed(1)}
                                 </div>
                             </div>
+                        </div>
 
-                            {/* History Line Chart */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* D/Y/N Table */}
                             <div>
                                 <h4 className="font-bold text-ink-2 mb-4 flex items-center">
-                                    <TrendingUp size={18} className="mr-2 text-info" />
-                                    Gelişim Grafiği (Tüm Denemeler)
+                                    <ClipboardList size={18} className="mr-2 text-brand" />
+                                    Detaylı Net Analizi
                                 </h4>
-                                <div className="h-64 w-full bg-surface border border-line rounded-xl p-4">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={studentHistoryData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                            <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} />
-                                            <RechartsTooltip
-                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="tyt"
-                                                stroke="var(--brand)"
-                                                strokeWidth={3}
-                                                dot={{ r: 4, fill: 'var(--brand)', strokeWidth: 2, stroke: '#fff' }}
-                                                activeDot={{ r: 6 }}
-                                             animationDuration={300} />
-                                        </LineChart>
+                                <div className="overflow-hidden rounded-xl border border-line">
+                                    <table className="min-w-full divide-y divide-line">
+                                        <thead className="bg-surface-2">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2">Ders</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold text-ok">Doğru</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold text-danger">Yanlış</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold text-brand">Net</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-line bg-surface text-sm">
+                                            {[
+                                                { name: 'Türkçe', key: 'turkce' },
+                                                { name: 'Matematik', key: 'mat' },
+                                                { name: 'Fen Bilimleri', key: 'fen' },
+                                                { name: 'Sosyal Bil.', key: 'sosyal' }
+                                            ].map((subject) => {
+                                                const data = selectedStudent.subjects?.[subject.key];
+                                                return (
+                                                    <tr key={subject.key} className="hover:bg-surface-2">
+                                                        <td className="px-4 py-3 font-medium text-ink">{subject.name}</td>
+                                                        <td className="px-4 py-3 text-center text-ok font-bold">{getD(data)}</td>
+                                                        <td className="px-4 py-3 text-center text-danger">{getY(data)}</td>
+                                                        <td className="px-4 py-3 text-center font-bold text-brand">{getNet(data).toFixed(2)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Radar Chart */}
+                            <div>
+                                <h4 className="font-bold text-ink-2 mb-4 flex items-center">
+                                    <Activity size={18} className="mr-2 text-c4" />
+                                    Başarı Dağılımı
+                                </h4>
+                                <div className="h-64 w-full bg-surface-2 rounded-xl relative" style={{ minHeight: '256px' }}>
+                                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                                            { subject: 'Türkçe', A: getNet(selectedStudent.subjects?.turkce), fullMark: 40 },
+                                            { subject: 'Matematik', A: getNet(selectedStudent.subjects?.mat), fullMark: 40 },
+                                            { subject: 'Fen', A: getNet(selectedStudent.subjects?.fen), fullMark: 20 },
+                                            { subject: 'Sosyal', A: getNet(selectedStudent.subjects?.sosyal), fullMark: 20 },
+                                        ]}>
+                                            <PolarGrid />
+                                            <PolarAngleAxis dataKey="subject" />
+                                            <PolarRadiusAxis angle={30} domain={[0, 40]} />
+                                            <Radar name={selectedStudent.student} dataKey="A" stroke="var(--brand)" fill="var(--brand)" fillOpacity={0.5}  animationDuration={300} />
+                                            <RechartsTooltip />
+                                        </RadarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
-
                         </div>
+
+                        {/* History Line Chart */}
+                        <div>
+                            <h4 className="font-bold text-ink-2 mb-4 flex items-center">
+                                <TrendingUp size={18} className="mr-2 text-info" />
+                                Gelişim Grafiği (Tüm Denemeler)
+                            </h4>
+                            <div className="h-64 w-full bg-surface border border-line rounded-xl p-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={studentHistoryData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                                        <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} />
+                                        <RechartsTooltip
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="tyt"
+                                            stroke="var(--brand)"
+                                            strokeWidth={3}
+                                            dot={{ r: 4, fill: 'var(--brand)', strokeWidth: 2, stroke: '#fff' }}
+                                            activeDot={{ r: 6 }}
+                                         animationDuration={300} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
                     </div>
-                </div>
+                </Modal>
             )}
         </div>
     );
@@ -1822,70 +1824,74 @@ const PermissionEditModal = ({ coach, onClose, onSave }) => {
     );
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md my-4" onClick={e => e.stopPropagation()}>
-                <div className="on-color bg-gradient-to-r from-slate-700 to-indigo-700 px-6 py-4 rounded-t-2xl flex justify-between items-center">
-                    <div>
-                        <h3 className="text-ink font-bold text-base flex items-center gap-2">
-                            <Settings size={16} /> {coach.name} — İzin Düzenle
-                        </h3>
-                        <p className="text-brand text-xs mt-0.5">Koçun erişebileceği sekmeleri belirleyin</p>
-                    </div>
-                    <button onClick={onClose} className="text-ink-2 hover:text-ink"><X size={20} /></button>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
+            <div className="on-color bg-gradient-to-r from-slate-700 to-indigo-700 px-6 py-4 shrink-0 flex justify-between items-center">
+                <div>
+                    <h3 className="text-ink font-bold text-base flex items-center gap-2">
+                        <Settings size={16} /> {coach.name} — İzin Düzenle
+                    </h3>
+                    <p className="text-brand text-xs mt-0.5">Koçun erişebileceği sekmeleri belirleyin</p>
                 </div>
-                <div className="p-5 space-y-4">
+                <button onClick={onClose} className="text-ink-2 hover:text-ink"><X size={20} /></button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-2">Rol</label>
+                    <div className="flex gap-3">
+                        <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition text-sm font-medium ${role === 'subCoach' ? 'bg-info-soft border-blue-400 text-info' : 'bg-surface-2 border-line text-ink-2'}`}>
+                            <input type="radio" name="role" value="subCoach" checked={role === 'subCoach'} onChange={() => setRole('subCoach')} className="accent-blue-600" />
+                            Standart Koç
+                        </label>
+                        <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition text-sm font-medium ${role === 'masterCoach' ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border-purple-400 text-c4' : 'bg-surface-2 border-line text-ink-2'}`}>
+                            <input type="radio" name="role" value="masterCoach" checked={role === 'masterCoach'} onChange={() => setRole('masterCoach')} className="accent-purple-600" />
+                            Yönetici Koç
+                        </label>
+                    </div>
+                </div>
+                {role === 'subCoach' && (
                     <div>
-                        <label className="block text-xs font-bold text-ink-2 mb-2">Rol</label>
-                        <div className="flex gap-3">
-                            <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition text-sm font-medium ${role === 'subCoach' ? 'bg-info-soft border-blue-400 text-info' : 'bg-surface-2 border-line text-ink-2'}`}>
-                                <input type="radio" name="role" value="subCoach" checked={role === 'subCoach'} onChange={() => setRole('subCoach')} className="accent-blue-600" />
-                                Standart Koç
-                            </label>
-                            <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition text-sm font-medium ${role === 'masterCoach' ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border-purple-400 text-c4' : 'bg-surface-2 border-line text-ink-2'}`}>
-                                <input type="radio" name="role" value="masterCoach" checked={role === 'masterCoach'} onChange={() => setRole('masterCoach')} className="accent-purple-600" />
-                                Yönetici Koç
-                            </label>
-                        </div>
-                    </div>
-                    {role === 'subCoach' && (
-                        <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-xs font-bold text-ink-2">Sekme İzinleri</label>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setPerms(PERM_ALL_TABS.map(t => t.id))} className="text-xs text-brand hover:underline">Tümünü Seç</button>
-                                    <span className="text-ink-3">|</span>
-                                    <button onClick={() => setPerms([])} className="text-xs text-danger hover:underline">Temizle</button>
-                                </div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-xs font-bold text-ink-2">Sekme İzinleri</label>
+                            <div className="flex gap-2">
+                                <button onClick={() => setPerms(PERM_ALL_TABS.map(t => t.id))} className="text-xs text-brand hover:underline">Tümünü Seç</button>
+                                <span className="text-ink-3">|</span>
+                                <button onClick={() => setPerms([])} className="text-xs text-danger hover:underline">Temizle</button>
                             </div>
-                            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-                                {PERM_ALL_TABS.map(tab => (
-                                    <label key={tab.id} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition text-xs font-medium ${perms.includes(tab.id) ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}>
-                                        <input type="checkbox" checked={perms.includes(tab.id)} onChange={() => toggle(tab.id)} className="accent-indigo-600" />
-                                        {tab.label}
-                                    </label>
-                                ))}
-                            </div>
-                            <p className="text-xs text-ink-3 mt-2">{perms.length} / {PERM_ALL_TABS.length} sekme seçili</p>
                         </div>
-                    )}
-                    {role === 'masterCoach' && (
-                        <div className="bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border border-[color-mix(in_srgb,var(--c4)_35%,transparent)] rounded-xl p-3 text-xs text-c4 flex items-start gap-2">
-                            <Shield size={14} className="flex-shrink-0 mt-0.5" />
-                            <span>Yönetici koç tüm sekmelere otomatik olarak erişebilir.</span>
+                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                            {PERM_ALL_TABS.map(tab => (
+                                <label key={tab.id} className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition text-xs font-medium ${perms.includes(tab.id) ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}>
+                                    <input type="checkbox" checked={perms.includes(tab.id)} onChange={() => toggle(tab.id)} className="accent-indigo-600" />
+                                    {tab.label}
+                                </label>
+                            ))}
                         </div>
-                    )}
-                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
-                        <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
-                        <button
-                            onClick={() => onSave(coach.id, role === 'masterCoach' ? PERM_ALL_TABS.map(t => t.id) : perms, role)}
-                            className="on-color flex-1 bg-gradient-to-r from-brand to-violet-600 text-white py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition shadow-lg text-sm"
-                        >
-                            Kaydet
-                        </button>
+                        <p className="text-xs text-ink-3 mt-2">{perms.length} / {PERM_ALL_TABS.length} sekme seçili</p>
                     </div>
+                )}
+                {role === 'masterCoach' && (
+                    <div className="bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border border-[color-mix(in_srgb,var(--c4)_35%,transparent)] rounded-xl p-3 text-xs text-c4 flex items-start gap-2">
+                        <Shield size={14} className="flex-shrink-0 mt-0.5" />
+                        <span>Yönetici koç tüm sekmelere otomatik olarak erişebilir.</span>
+                    </div>
+                )}
+                <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
+                    <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
+                    <button
+                        onClick={() => onSave(coach.id, role === 'masterCoach' ? PERM_ALL_TABS.map(t => t.id) : perms, role)}
+                        className="on-color flex-1 bg-gradient-to-r from-brand to-violet-600 text-white py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition shadow-lg text-sm"
+                    >
+                        Kaydet
+                    </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
@@ -2175,94 +2181,98 @@ const ManageCoachesTab = ({ setToast }) => {
 
             {/* Add Coach Modal */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setIsAddModalOpen(false)}>
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-lg my-4" onClick={e => e.stopPropagation()}>
-                        <div className="on-color bg-gradient-to-r from-brand to-violet-600 px-6 py-4 rounded-t-2xl flex justify-between items-center">
-                            <h3 className="text-ink font-bold flex items-center gap-2"><Plus size={18} /> Yeni Koç Ekle</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="text-ink-2 hover:text-ink"><X size={20} /></button>
+                <Modal
+                    acik
+                    onClose={() => setIsAddModalOpen(false)}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 on-color bg-gradient-to-r from-brand to-violet-600 px-6 py-4 flex justify-between items-center">
+                        <h3 className="text-ink font-bold flex items-center gap-2"><Plus size={18} /> Yeni Koç Ekle</h3>
+                        <button onClick={() => setIsAddModalOpen(false)} className="text-ink-2 hover:text-ink"><X size={20} /></button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-1">Ad Soyad *</label>
+                                <input type="text" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="Ahmet Yılmaz" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-1">E-posta *</label>
+                                <input type="email" value={addForm.email} onChange={e => setAddForm(p => ({ ...p, email: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="ahmet@ornek.com" />
+                            </div>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-1">Ad Soyad *</label>
-                                    <input type="text" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="Ahmet Yılmaz" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-1">E-posta *</label>
-                                    <input type="email" value={addForm.email} onChange={e => setAddForm(p => ({ ...p, email: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="ahmet@ornek.com" />
-                                </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-1">Telefon</label>
+                                <input type="tel" value={addForm.phone} onChange={e => setAddForm(p => ({ ...p, phone: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="0555 123 45 67" />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-1">Telefon</label>
-                                    <input type="tel" value={addForm.phone} onChange={e => setAddForm(p => ({ ...p, phone: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" placeholder="0555 123 45 67" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-1">Rol</label>
-                                    <select value={addForm.coachRole} onChange={e => setAddForm(p => ({ ...p, coachRole: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface">
-                                        <option value="subCoach">Standart Koç (Özel İzinler)</option>
-                                        <option value="masterCoach">Yönetici Koç (Tüm Yetkiler)</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-1">Rol</label>
+                                <select value={addForm.coachRole} onChange={e => setAddForm(p => ({ ...p, coachRole: e.target.value }))} className="w-full border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-surface">
+                                    <option value="subCoach">Standart Koç (Özel İzinler)</option>
+                                    <option value="masterCoach">Yönetici Koç (Tüm Yetkiler)</option>
+                                </select>
                             </div>
-                            {/* Bölüm erişimi: koç hangi mesaide çalışacak?
-                                Yalnız koçluk yapan bir koça rehberlik dosyalarını,
-                                yalnız rehberlik yapan birine koçluk programlarını
-                                açmanın anlamı yok. */}
-                            {addForm.coachRole === 'subCoach' && (
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-2">Çalışma Bölümleri</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {BOLUM_LISTESI.map((b) => {
-                                            const secili = (addForm.sections || ['kocluk']).includes(b.id);
-                                            return (
-                                                <label
-                                                    key={b.id}
-                                                    className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition text-xs ${secili ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={secili}
-                                                        onChange={() => setAddForm((p) => {
-                                                            const mevcut = p.sections || ['kocluk'];
-                                                            const yeni = mevcut.includes(b.id)
-                                                                ? mevcut.filter((x) => x !== b.id)
-                                                                : [...mevcut, b.id];
-                                                            // En az bir bölüm kalmalı, yoksa koç hiçbir şey göremez
-                                                            return { ...p, sections: yeni.length ? yeni : mevcut };
-                                                        })}
-                                                        className="accent-indigo-600 mt-0.5"
-                                                    />
-                                                    <span>
-                                                        <span className="font-bold block">{b.ad}</span>
-                                                        <span className="opacity-80">{b.aciklama}</span>
-                                                    </span>
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-                            {addForm.coachRole === 'subCoach' && (
-                                <div>
-                                    <label className="block text-xs font-bold text-ink-2 mb-2">Erişim İzinleri (Sekme bazlı)</label>
-                                    <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                                        {ALL_TABS.map(tab => (
-                                            <label key={tab.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition text-xs font-medium ${addForm.permissions.includes(tab.id) ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}>
-                                                <input type="checkbox" checked={addForm.permissions.includes(tab.id)} onChange={() => toggleAddPermission(tab.id)} className="accent-indigo-600" />
-                                                {tab.label}
+                        </div>
+                        {/* Bölüm erişimi: koç hangi mesaide çalışacak?
+                            Yalnız koçluk yapan bir koça rehberlik dosyalarını,
+                            yalnız rehberlik yapan birine koçluk programlarını
+                            açmanın anlamı yok. */}
+                        {addForm.coachRole === 'subCoach' && (
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-2">Çalışma Bölümleri</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {BOLUM_LISTESI.map((b) => {
+                                        const secili = (addForm.sections || ['kocluk']).includes(b.id);
+                                        return (
+                                            <label
+                                                key={b.id}
+                                                className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition text-xs ${secili ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={secili}
+                                                    onChange={() => setAddForm((p) => {
+                                                        const mevcut = p.sections || ['kocluk'];
+                                                        const yeni = mevcut.includes(b.id)
+                                                            ? mevcut.filter((x) => x !== b.id)
+                                                            : [...mevcut, b.id];
+                                                        // En az bir bölüm kalmalı, yoksa koç hiçbir şey göremez
+                                                        return { ...p, sections: yeni.length ? yeni : mevcut };
+                                                    })}
+                                                    className="accent-indigo-600 mt-0.5"
+                                                />
+                                                <span>
+                                                    <span className="font-bold block">{b.ad}</span>
+                                                    <span className="opacity-80">{b.aciklama}</span>
+                                                </span>
                                             </label>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
-                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
-                                <button onClick={() => setIsAddModalOpen(false)} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
-                                <button onClick={handleAddCoach} className="on-color flex-1 bg-gradient-to-r from-brand to-violet-600 text-white py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition shadow-lg text-sm">Koç Ekle</button>
                             </div>
+                        )}
+                        {addForm.coachRole === 'subCoach' && (
+                            <div>
+                                <label className="block text-xs font-bold text-ink-2 mb-2">Erişim İzinleri (Sekme bazlı)</label>
+                                <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+                                    {ALL_TABS.map(tab => (
+                                        <label key={tab.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition text-xs font-medium ${addForm.permissions.includes(tab.id) ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}>
+                                            <input type="checkbox" checked={addForm.permissions.includes(tab.id)} onChange={() => toggleAddPermission(tab.id)} className="accent-indigo-600" />
+                                            {tab.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
+                            <button onClick={() => setIsAddModalOpen(false)} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
+                            <button onClick={handleAddCoach} className="on-color flex-1 bg-gradient-to-r from-brand to-violet-600 text-white py-2.5 rounded-xl font-bold hover:from-indigo-700 hover:to-violet-700 transition shadow-lg text-sm">Koç Ekle</button>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
 
             {/* Permission Edit Modal */}
@@ -2310,124 +2320,122 @@ const CoachDetailModal = ({ coach, onClose, onSave, onOpenPermissions }) => {
     };
 
     return (
-        <div
-            className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={onClose}
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
         >
-            <div
-                className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Modal header */}
-                <div className="on-color bg-gradient-to-r from-brand to-violet-600 px-6 py-5 flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-surface/20 flex items-center justify-center text-ink font-bold text-lg backdrop-blur-sm">
-                            {form.name.charAt(0) || '?'}
-                        </div>
-                        <div>
-                            <h3 className="text-ink font-bold text-base leading-tight">{coach.name}</h3>
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block ${coach.coachRole === 'masterCoach' ? 'bg-purple-300/30 text-c4' : 'bg-blue-300/30 text-info'}`}>
-                                {coach.coachRole === 'masterCoach' ? 'Yönetici Koç' : 'Standart Koç'}
-                            </span>
-                        </div>
+            {/* Modal header */}
+            <div className="shrink-0 on-color bg-gradient-to-r from-brand to-violet-600 px-6 py-5 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-surface/20 flex items-center justify-center text-ink font-bold text-lg backdrop-blur-sm">
+                        {form.name.charAt(0) || '?'}
                     </div>
-                    <button onClick={onClose} className="text-ink-2 hover:text-ink mt-1 transition">
-                        <X size={20} />
+                    <div>
+                        <h3 className="text-ink font-bold text-base leading-tight">{coach.name}</h3>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block ${coach.coachRole === 'masterCoach' ? 'bg-purple-300/30 text-c4' : 'bg-blue-300/30 text-info'}`}>
+                            {coach.coachRole === 'masterCoach' ? 'Yönetici Koç' : 'Standart Koç'}
+                        </span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="text-ink-2 hover:text-ink mt-1 transition">
+                    <X size={20} />
+                </button>
+            </div>
+
+            {/* Form */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                {/* Ad */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
+                        <Users size={12} className="text-brand" /> Ad Soyad
+                    </label>
+                    <input
+                        type="text"
+                        value={form.name}
+                        onChange={e => handleChange('name', e.target.value)}
+                        className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                        placeholder="Koç Adı Soyadı"
+                    />
+                </div>
+
+                {/* E-posta */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
+                        <Mail size={12} className="text-brand" /> E-posta Adresi
+                    </label>
+                    <input
+                        type="email"
+                        value={form.email}
+                        onChange={e => handleChange('email', e.target.value)}
+                        className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                        placeholder="ornek@mail.com"
+                    />
+                </div>
+
+                {/* Telefon */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
+                        <Phone size={12} className="text-brand" /> Telefon
+                    </label>
+                    <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={e => handleChange('phone', e.target.value)}
+                        className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+                        placeholder="0555 123 45 67"
+                    />
+                </div>
+
+                {/* Yetki bilgisi + hızlı erişim */}
+                <div className="bg-surface-2 border border-line rounded-xl p-3.5 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-ink-2 mb-0.5">Yetki & Sekmeler</p>
+                        {coach.coachRole === 'masterCoach' ? (
+                            <p className="text-xs text-c4 font-semibold">Tüm sekmelere tam erişim</p>
+                        ) : (
+                            <p className="text-xs text-ink-2">
+                                {(coach.permissions || []).length} sekme atanmış
+                            </p>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => onOpenPermissions(coach)}
+                        className="flex items-center gap-1.5 text-xs bg-brand text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-brand-hover transition shadow-sm"
+                    >
+                        <Shield size={12} /> Yetkileri Düzenle
                     </button>
                 </div>
 
-                {/* Form */}
-                <div className="p-6 space-y-4">
-                    {/* Ad */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
-                            <Users size={12} className="text-brand" /> Ad Soyad
-                        </label>
-                        <input
-                            type="text"
-                            value={form.name}
-                            onChange={e => handleChange('name', e.target.value)}
-                            className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
-                            placeholder="Koç Adı Soyadı"
-                        />
-                    </div>
+                {/* Koçun eklenme tarihi */}
+                {coach.addedAt && (
+                    <p className="text-xs text-ink-3 flex items-center gap-1">
+                        <Calendar size={11} />
+                        Eklenme: {new Date(coach.addedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                )}
 
-                    {/* E-posta */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
-                            <Mail size={12} className="text-brand" /> E-posta Adresi
-                        </label>
-                        <input
-                            type="email"
-                            value={form.email}
-                            onChange={e => handleChange('email', e.target.value)}
-                            className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
-                            placeholder="ornek@mail.com"
-                        />
-                    </div>
-
-                    {/* Telefon */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 mb-1.5 flex items-center gap-1.5">
-                            <Phone size={12} className="text-brand" /> Telefon
-                        </label>
-                        <input
-                            type="tel"
-                            value={form.phone}
-                            onChange={e => handleChange('phone', e.target.value)}
-                            className="w-full border border-line rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
-                            placeholder="0555 123 45 67"
-                        />
-                    </div>
-
-                    {/* Yetki bilgisi + hızlı erişim */}
-                    <div className="bg-surface-2 border border-line rounded-xl p-3.5 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-ink-2 mb-0.5">Yetki & Sekmeler</p>
-                            {coach.coachRole === 'masterCoach' ? (
-                                <p className="text-xs text-c4 font-semibold">Tüm sekmelere tam erişim</p>
-                            ) : (
-                                <p className="text-xs text-ink-2">
-                                    {(coach.permissions || []).length} sekme atanmış
-                                </p>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => onOpenPermissions(coach)}
-                            className="flex items-center gap-1.5 text-xs bg-brand text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-brand-hover transition shadow-sm"
-                        >
-                            <Shield size={12} /> Yetkileri Düzenle
-                        </button>
-                    </div>
-
-                    {/* Koçun eklenme tarihi */}
-                    {coach.addedAt && (
-                        <p className="text-xs text-ink-3 flex items-center gap-1">
-                            <Calendar size={11} />
-                            Eklenme: {new Date(coach.addedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
-                    )}
-
-                    {/* Butonlar */}
-                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm"
-                        >
-                            İptal
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!dirty}
-                            className={`on-color flex-1 py-2.5 rounded-xl font-bold transition shadow-lg text-sm flex items-center justify-center gap-2 ${dirty ? 'bg-gradient-to-r from-brand to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700' : 'bg-surface-3 text-ink-3 cursor-not-allowed'}`}
-                        >
-                            <CheckCircle size={15} />
-                            Değişiklikleri Kaydet
-                        </button>
-                    </div>
+                {/* Butonlar */}
+                <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm"
+                    >
+                        İptal
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!dirty}
+                        className={`on-color flex-1 py-2.5 rounded-xl font-bold transition shadow-lg text-sm flex items-center justify-center gap-2 ${dirty ? 'bg-gradient-to-r from-brand to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700' : 'bg-surface-3 text-ink-3 cursor-not-allowed'}`}
+                    >
+                        <CheckCircle size={15} />
+                        Değişiklikleri Kaydet
+                    </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
@@ -2471,221 +2479,225 @@ const StudentModal = ({ student, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4 icerik-gecis">
-            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
-                <div className="bg-brand px-6 py-4 flex justify-between items-center">
-                    <h3 className="text-ink font-bold text-lg">{student ? 'Öğrenci Düzenle' : 'Yeni Öğrenci Ekle'}</h3>
-                    <button onClick={onClose} className="text-brand hover:text-ink"><X size={24} /></button>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Adı Soyadı</label>
-                        <div className="relative">
-                            <Users className="absolute left-3 top-2.5 text-ink-3" size={18} />
-                            <input
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                type="text"
-                                className="pl-10 w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
-                                placeholder="Örn: Mehmet Öz"
-                            />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-ink-2 mb-1">Okul No</label>
-                            <input
-                                name="schoolNumber"
-                                value={formData.schoolNumber}
-                                onChange={handleChange}
-                                type="text"
-                                className="w-full border border-line-2 rounded-lg p-2"
-                                placeholder="123"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-ink-2 mb-1">Şube</label>
-                            <input
-                                name="section"
-                                value={formData.section}
-                                onChange={handleChange}
-                                type="text"
-                                className="w-full border border-line-2 rounded-lg p-2"
-                                placeholder="A"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-ink-2 mb-1">Sınıf / Seviye</label>
-                        <select
-                            name="grade"
-                            value={formData.grade}
-                            onChange={handleChange}
-                            className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
-                        >
-                            <option value="">Seçiniz...</option>
-                            <option value="5">5. Sınıf</option>
-                            <option value="6">6. Sınıf</option>
-                            <option value="7">7. Sınıf</option>
-                            <option value="8">8. Sınıf</option>
-                            <option value="9">9. Sınıf</option>
-                            <option value="10">10. Sınıf</option>
-                            <option value="11">11. Sınıf</option>
-                            <option value="12">12. Sınıf</option>
-                            <option value="Mezun">Mezun</option>
-                            <option value="Üniversite">Üniversite / Mezun (KPSS-AGS)</option>
-                        </select>
-                    </div>
-
-                    {/* Sınav türü konu takibini belirler: öğrenci kendi
-                        müfredatını görsün diye ayrı bir alan. Eskiden sınıf
-                        seçeneğinin içine gömülüydü ve KPSS/AGS hiç yoktu. */}
-                    <div>
-                        <label className="block text-sm font-bold text-ink-2 mb-1">Hazırlandığı Sınav</label>
-                        <select
-                            name="examType"
-                            value={formData.examType || ''}
-                            onChange={handleChange}
-                            className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
-                        >
-                            <option value="">Sınıfa göre otomatik</option>
-                            {SINAV_LISTESI.map((s) => (
-                                <option key={s.id} value={s.id}>{s.icon} {s.ad}</option>
-                            ))}
-                        </select>
-                        <p className="text-[11px] text-ink-3 mt-1 leading-snug">
-                            Konu takibi listesi bu seçime göre gelir. Boş bırakılırsa
-                            sınıf düzeyinden belirlenir (5–8 → LGS, 9–12 → YKS).
-                        </p>
-                    </div>
-
-                    {/* Alan seçimi: öğrenci sınavın tamamını değil, alanına
-                        düşen bölümleri çözer. Sözel öğrencisine sayısal
-                        konularını göstermek listeyi kullanılmaz kılıyordu. */}
-                    {alanSecenekleri.length > 0 && (
-                        <div>
-                            <label className="block text-sm font-bold text-ink-2 mb-1">Alan</label>
-                            <select
-                                name="alan"
-                                value={formData.alan || ''}
-                                onChange={handleChange}
-                                className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
-                            >
-                                <option value="">Tüm bölümler</option>
-                                {alanSecenekleri.map((a) => (
-                                    <option key={a.id} value={a.id}>{a.ad}</option>
-                                ))}
-                            </select>
-                            <p className="text-[11px] text-ink-3 mt-1 leading-snug">
-                                Örn. Sözel seçilirse öğrenciye yalnızca TYT ve AYT Sözel
-                                konuları listelenir.
-                            </p>
-                        </div>
-                    )}
-                    <div>
-                        <label className="block text-sm font-bold text-ink-2 mb-1">Hedef Bölüm / Lise</label>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
+            <div className="shrink-0 bg-brand px-6 py-4 flex justify-between items-center">
+                <h3 className="text-ink font-bold text-lg">{student ? 'Öğrenci Düzenle' : 'Yeni Öğrenci Ekle'}</h3>
+                <button onClick={onClose} className="text-brand hover:text-ink"><X size={24} /></button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                <div>
+                    <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Adı Soyadı</label>
+                    <div className="relative">
+                        <Users className="absolute left-3 top-2.5 text-ink-3" size={18} />
                         <input
-                            name="target"
-                            value={formData.target}
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            type="text"
+                            className="pl-10 w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
+                            placeholder="Örn: Mehmet Öz"
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-ink-2 mb-1">Okul No</label>
+                        <input
+                            name="schoolNumber"
+                            value={formData.schoolNumber}
                             onChange={handleChange}
                             type="text"
                             className="w-full border border-line-2 rounded-lg p-2"
-                            placeholder="Örn: Tıp Fakültesi"
+                            placeholder="123"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-ink-2 mb-1">OBP (0-60)</label>
-                            <input
-                                name="obp"
-                                value={formData.obp}
-                                onChange={handleChange}
-                                type="number"
-                                step="0.01"
-                                className="w-full border border-line-2 rounded-lg p-2"
-                                placeholder="Örn: 54.2"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-ink-2 mb-1">Diploma Notu</label>
-                            <input
-                                name="diploma"
-                                value={formData.diploma}
-                                onChange={handleChange}
-                                type="number"
-                                step="0.01"
-                                className="w-full border border-line-2 rounded-lg p-2"
-                                placeholder="Örn: 90.3"
-                            />
-                        </div>
+                    <div>
+                        <label className="block text-sm font-bold text-ink-2 mb-1">Şube</label>
+                        <input
+                            name="section"
+                            value={formData.section}
+                            onChange={handleChange}
+                            type="text"
+                            className="w-full border border-line-2 rounded-lg p-2"
+                            placeholder="A"
+                        />
                     </div>
-                    {/* ── İletişim: WhatsApp gönderimleri bu alanları kullanır ── */}
-                    <div className="pt-2 border-t border-line">
-                        <p className="text-xs font-black uppercase tracking-widest text-ink-3 mb-3">
-                            İletişim Bilgileri
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-ink-2 mb-1">Sınıf / Seviye</label>
+                    <select
+                        name="grade"
+                        value={formData.grade}
+                        onChange={handleChange}
+                        className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
+                    >
+                        <option value="">Seçiniz...</option>
+                        <option value="5">5. Sınıf</option>
+                        <option value="6">6. Sınıf</option>
+                        <option value="7">7. Sınıf</option>
+                        <option value="8">8. Sınıf</option>
+                        <option value="9">9. Sınıf</option>
+                        <option value="10">10. Sınıf</option>
+                        <option value="11">11. Sınıf</option>
+                        <option value="12">12. Sınıf</option>
+                        <option value="Mezun">Mezun</option>
+                        <option value="Üniversite">Üniversite / Mezun (KPSS-AGS)</option>
+                    </select>
+                </div>
+
+                {/* Sınav türü konu takibini belirler: öğrenci kendi
+                    müfredatını görsün diye ayrı bir alan. Eskiden sınıf
+                    seçeneğinin içine gömülüydü ve KPSS/AGS hiç yoktu. */}
+                <div>
+                    <label className="block text-sm font-bold text-ink-2 mb-1">Hazırlandığı Sınav</label>
+                    <select
+                        name="examType"
+                        value={formData.examType || ''}
+                        onChange={handleChange}
+                        className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
+                    >
+                        <option value="">Sınıfa göre otomatik</option>
+                        {SINAV_LISTESI.map((s) => (
+                            <option key={s.id} value={s.id}>{s.icon} {s.ad}</option>
+                        ))}
+                    </select>
+                    <p className="text-[11px] text-ink-3 mt-1 leading-snug">
+                        Konu takibi listesi bu seçime göre gelir. Boş bırakılırsa
+                        sınıf düzeyinden belirlenir (5–8 → LGS, 9–12 → YKS).
+                    </p>
+                </div>
+
+                {/* Alan seçimi: öğrenci sınavın tamamını değil, alanına
+                    düşen bölümleri çözer. Sözel öğrencisine sayısal
+                    konularını göstermek listeyi kullanılmaz kılıyordu. */}
+                {alanSecenekleri.length > 0 && (
+                    <div>
+                        <label className="block text-sm font-bold text-ink-2 mb-1">Alan</label>
+                        <select
+                            name="alan"
+                            value={formData.alan || ''}
+                            onChange={handleChange}
+                            className="w-full border border-line-2 rounded-lg p-2 bg-surface text-ink-2"
+                        >
+                            <option value="">Tüm bölümler</option>
+                            {alanSecenekleri.map((a) => (
+                                <option key={a.id} value={a.id}>{a.ad}</option>
+                            ))}
+                        </select>
+                        <p className="text-[11px] text-ink-3 mt-1 leading-snug">
+                            Örn. Sözel seçilirse öğrenciye yalnızca TYT ve AYT Sözel
+                            konuları listelenir.
                         </p>
-                        <div className="space-y-4">
+                    </div>
+                )}
+                <div>
+                    <label className="block text-sm font-bold text-ink-2 mb-1">Hedef Bölüm / Lise</label>
+                    <input
+                        name="target"
+                        value={formData.target}
+                        onChange={handleChange}
+                        type="text"
+                        className="w-full border border-line-2 rounded-lg p-2"
+                        placeholder="Örn: Tıp Fakültesi"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-bold text-ink-2 mb-1">OBP (0-60)</label>
+                        <input
+                            name="obp"
+                            value={formData.obp}
+                            onChange={handleChange}
+                            type="number"
+                            step="0.01"
+                            className="w-full border border-line-2 rounded-lg p-2"
+                            placeholder="Örn: 54.2"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-ink-2 mb-1">Diploma Notu</label>
+                        <input
+                            name="diploma"
+                            value={formData.diploma}
+                            onChange={handleChange}
+                            type="number"
+                            step="0.01"
+                            className="w-full border border-line-2 rounded-lg p-2"
+                            placeholder="Örn: 90.3"
+                        />
+                    </div>
+                </div>
+                {/* ── İletişim: WhatsApp gönderimleri bu alanları kullanır ── */}
+                <div className="pt-2 border-t border-line">
+                    <p className="text-xs font-black uppercase tracking-widest text-ink-3 mb-3">
+                        İletişim Bilgileri
+                    </p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Telefonu</label>
+                            <input
+                                name="phone"
+                                value={formData.phone || ''}
+                                onChange={handleChange}
+                                type="tel"
+                                className="w-full border border-line-2 rounded-lg p-2"
+                                placeholder="0555 123 45 67"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Telefonu</label>
+                                <label className="block text-sm font-bold text-ink-2 mb-1">Veli Adı</label>
                                 <input
-                                    name="phone"
-                                    value={formData.phone || ''}
+                                    name="parentName"
+                                    value={formData.parentName || ''}
+                                    onChange={handleChange}
+                                    type="text"
+                                    className="w-full border border-line-2 rounded-lg p-2"
+                                    placeholder="Ayşe Hanım"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-ink-2 mb-1">Veli Telefonu</label>
+                                <input
+                                    name="parentPhone"
+                                    value={formData.parentPhone || ''}
                                     onChange={handleChange}
                                     type="tel"
                                     className="w-full border border-line-2 rounded-lg p-2"
                                     placeholder="0555 123 45 67"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-ink-2 mb-1">Veli Adı</label>
-                                    <input
-                                        name="parentName"
-                                        value={formData.parentName || ''}
-                                        onChange={handleChange}
-                                        type="text"
-                                        className="w-full border border-line-2 rounded-lg p-2"
-                                        placeholder="Ayşe Hanım"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-ink-2 mb-1">Veli Telefonu</label>
-                                    <input
-                                        name="parentPhone"
-                                        value={formData.parentPhone || ''}
-                                        onChange={handleChange}
-                                        type="tel"
-                                        className="w-full border border-line-2 rounded-lg p-2"
-                                        placeholder="0555 123 45 67"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-ink-2 mb-1">Velisi E-posta</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-2.5 text-ink-3" size={18} />
-                                    <input
-                                        name="parentEmail"
-                                        value={formData.parentEmail}
-                                        onChange={handleChange}
-                                        type="email"
-                                        className="pl-10 w-full border border-line-2 rounded-lg p-2"
-                                        placeholder="veli@ornek.com"
-                                    />
-                                </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-ink-2 mb-1">Velisi E-posta</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-2.5 text-ink-3" size={18} />
+                                <input
+                                    name="parentEmail"
+                                    value={formData.parentEmail}
+                                    onChange={handleChange}
+                                    type="email"
+                                    className="pl-10 w-full border border-line-2 rounded-lg p-2"
+                                    placeholder="veli@ornek.com"
+                                />
                             </div>
                         </div>
                     </div>
-                    {/* Kaydet/İptal pencerenin altına yapışır; uzun formda
-                        ekran dışında kalıp görünmez oluyordu (styles/mobil.css) */}
-                    <div className="pencere-alt-cubuk pt-4 flex space-x-3 bg-surface -mx-6 px-6 border-t border-line mt-2">
-                        <button onClick={onClose} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-lg font-bold hover:bg-surface-3 transition">İptal</button>
-                        <button onClick={() => onSave(formData)} className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition">Kaydet</button>
-                    </div>
+                </div>
+                {/* Kaydet/İptal pencerenin altına yapışır; uzun formda
+                    ekran dışında kalıp görünmez oluyordu (styles/mobil.css) */}
+                <div className="pencere-alt-cubuk pt-4 flex space-x-3 bg-surface -mx-6 px-6 border-t border-line mt-2">
+                    <button onClick={onClose} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-lg font-bold hover:bg-surface-3 transition">İptal</button>
+                    <button onClick={() => onSave(formData)} className="flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition">Kaydet</button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
@@ -3095,7 +3107,7 @@ const CoachDashboard = () => {
                 }
 
                 // Persistence confirmation
-                localStorage.setItem('coach_students', JSON.stringify(updatedList));
+                yaz('coach_students', updatedList);
 
                 // Feedback
                 const msg = [];
@@ -3169,7 +3181,8 @@ const CoachDashboard = () => {
         }
     }, [toast]);
 
-    const handleSaveStudent = (data) => {
+    // Kontenjan kararı sunucudan okunduğu için async
+    const handleSaveStudent = async (data) => {
         if (editingStudent) {
             // Update Existing
             setStudents(tumOgrenciler.map(s => s.id === editingStudent.id ? { ...s, ...data } : s));
@@ -3195,7 +3208,10 @@ const CoachDashboard = () => {
             // Paket sınırı: satın alınan paketin öğrenci hakkı aşılamaz.
             // Bu kontrol eskiden yoktu; paketler yalnızca giriş ekranında
             // gösterilen bir listeydi, hiçbir yerde uygulanmıyordu.
-            const paket = subscription.ogrenciEklenebilir(user?.id, students.length);
+            // Kontenjan kararı SUNUCUDAN: yerel `coach_subscriptions`
+            // kurcalanarak limit aşılabiliyordu (ölçüldü). Sunucuda kayıt
+            // yoksa ücretsiz kademe uygulanır.
+            const paket = await subscription.ogrenciEklenebilirGuvenli(user?.id, students.length);
             if (!paket.izin) {
                 setToast(paket.mesaj);
                 return;
@@ -3499,8 +3515,18 @@ const CoachDashboard = () => {
                         sayfası var. Otuz sekmeyi yatay kaydırmalı bir şeritte
                         göstermek mobil için masaüstü düzenini küçültmekten
                         ibaretti; kullanıcı sekmelerin çoğunu hiç görmüyordu. */}
-                    <nav className="hidden lg:block mt-5 -mb-px overflow-x-auto no-scrollbar">
-                        <div className="flex items-end gap-5 min-w-max pb-0.5">
+                    {/* ⚠️ SEKMELER GİZLİ KALIYORDU.
+                        Şerit `overflow-x-auto` + `min-w-max` idi ve kaydırma
+                        çubuğu da `no-scrollbar` ile gizlenmişti. İçerik
+                        genişliği 1400 pikselle sınırlanınca 14 sekmenin son
+                        üçü (Görevler, Kuponlar, Davetler) ekran dışında
+                        kalıyor, YANLARINDA HİÇBİR İPUCU OLMUYORDU — koç
+                        "Davetler nerede?" diye soruyordu; 310 piksel gizliydi.
+
+                        Artık gruplar alt satıra SARILIYOR: yatay kaydırma
+                        yok, her sekme görünür. */}
+                    <nav className="hidden lg:block mt-5 -mb-px">
+                        <div className="flex flex-wrap items-end gap-x-5 gap-y-3 pb-0.5">
                             {bolumGruplari.map((group) => {
                                 const tabs = group.items.filter(
                                     (t) => (!t.perm || hasPermission(t.perm)) && (!t.boss || isMasterCoach)
@@ -3582,7 +3608,18 @@ const CoachDashboard = () => {
                                 ogrenciler={students}
                                 mesajlar={safeParse('messages', [])}
                                 randevular={safeParse('appointments', [])}
-                                onaylar={students.filter((s) => s.approvalStatus === 'bekliyor' || s.approved === false)}
+                                /**
+                                 * ⚠️ BURADA `|| s.approved === false` VARDI ve REDDEDİLEN
+                                 * kaydı da "onay bekliyor" sayıyordu: reddedilen öğrencide
+                                 * `approvalStatus='reddedildi'` ile birlikte `approved=false`
+                                 * de duruyor. Sonuç: Onay Merkezi "Onay Bekliyor 0,
+                                 * Reddedildi 1" derken bu kart "1 kayıt onayını bekliyor"
+                                 * diyordu; koç karta tıklayıp boş liste görüyordu.
+                                 *
+                                 * Artık tek doğruluk kaynağı `onayDurumu` — Onay Merkezi de
+                                 * aynı işlevi kullanıyor, iki ekran artık aynı sayıyı verir.
+                                 */
+                                onaylar={students.filter((s) => onayDurumu(s) === 'bekliyor')}
                                 onOgrenciAc={(s) => navigate(`/coach/student/${s.id}`)}
                                 onGit={(id) => { setActiveTab(id); okundu(id); }}
                             />
@@ -3660,8 +3697,19 @@ const CoachDashboard = () => {
                         {/* 🧑‍🏫 Koç görevleri — ana koç atar, koç kendine düşeni görür */}
                         {/* 🎟️ Kupon yönetimi — koçun özel indirim kodları */}
                         {activeTab === 'coupons' && <CouponManager user={user} setToast={setToast} />}
-                        {/* 🔗 Öğrenci davetleri — link/QR ile katılım */}
-                        {activeTab === 'invites' && <InviteManager user={user} setToast={setToast} />}
+                        {/* 🔗 Öğrenci davetleri — link/QR ile katılım
+                            Gelen talepler üstte: koçun ilk işi karar vermek,
+                            yeni davet üretmek ikinci sırada. */}
+                        {activeTab === 'invites' && (
+                            <div className="space-y-6">
+                                {/* Onaylanan öğrenci `coach_students`'a yazılıp storage
+                                    olayı tetikliyor; liste kendiliğinden tazeleniyor. */}
+                                <KatilimTalepleri user={user} setToast={setToast} />
+                                <div className="border-t border-line pt-6">
+                                    <InviteManager user={user} setToast={setToast} />
+                                </div>
+                            </div>
+                        )}
                         {activeTab === 'coach-tasks' && (
                             <CoachTaskCenter
                                 user={user}

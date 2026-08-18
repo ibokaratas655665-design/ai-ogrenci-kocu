@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ChevronLeft, TrendingUp, Brain, Target, MessageSquare, User,
-    Calendar, Plus, BookOpen, CheckCircle, Clock, Edit2, Trash2,
+    Calendar, Plus, BookOpen, CheckCircle, Clock, Edit2, Trash2, KeyRound, Users,
     FileText, Activity, X, Send, ClipboardList, Layers, BarChart2, Award
 } from 'lucide-react';
 import {
@@ -21,6 +21,10 @@ import { onayla, bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import { useAuth } from '../context/AuthContext';
 import { gorebilir } from '../services/accessControl';
+import OgrenciGirisiAc from '../components/coach/OgrenciGirisiAc';
+import ParentQRModal from '../components/student/ParentQRModal';
+import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const StudentDetailPage = () => {
     const { id } = useParams();
@@ -38,12 +42,46 @@ const StudentDetailPage = () => {
      */
     const [kocNotu, setKocNotu] = useState('');
     const [notKaydedildi, setNotKaydedildi] = useState(false);
+    const [girisAcModal, setGirisAcModal] = useState(false);
+    const [veliBaglantiModal, setVeliBaglantiModal] = useState(false);
 
     useEffect(() => {
         if (!id) return;
         try { setKocNotu(localStorage.getItem(`koc_notu_${id}`) || ''); }
         catch { setKocNotu(''); }
     }, [id]);
+
+    /**
+     * Öğrenciyi listeden siler.
+     *
+     * Sahiplik kontrolü zaten `loadAllData`'da yapıldı — bu sayfa
+     * açılabiliyorsa koç bu öğrenciye yetkili demektir. Yine de silme
+     * yıkıcı bir işlem olduğu için onay isteniyor ve öğrencinin adı
+     * onay metninde yazıyor: yanlış kaydı silmek kolay olmasın.
+     */
+    const ogrenciyiSil = async () => {
+        if (!student) return;
+        const onaylandi = await onayla({
+            baslik: `${student.name} silinecek`,
+            mesaj: 'Öğrencinin kaydı listenizden kaldırılacak. Bu işlem geri alınamaz.',
+            onayMetni: 'Evet, sil',
+            tehlikeli: true,
+        });
+        if (!onaylandi) return;
+
+        try {
+            const hepsi = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const kalan = hepsi.filter((s) => String(s?.id) !== String(id));
+            localStorage.setItem('coach_students', JSON.stringify(kalan));
+            // Panelin listesi anında tazelensin
+            window.dispatchEvent(new StorageEvent('storage', { key: 'coach_students' }));
+            window.firebaseSync?.syncKey?.('coach_students');
+            bildir(`${student.name} silindi.`, 'basari');
+            navigate('/coach/dashboard');
+        } catch (e) {
+            bildir(hataAnlat(e, 'kaydet'), 'hata');
+        }
+    };
 
     const notuKaydet = () => {
         const metin = kocNotu.trim();
@@ -306,7 +344,11 @@ const StudentDetailPage = () => {
         const keyStr = String(id);
         if (!allTasks[keyStr]) allTasks[keyStr] = [];
         allTasks[keyStr].push(newHomework);
-        localStorage.setItem('student_tasks', JSON.stringify(allTasks));
+        // veriDeposu: yerel + arayüz olayı + BULUT. Eskiden yalnızca
+        // localStorage'a yazıyordu; yorumdaki "öğrenciye ulaşsın" ancak
+        // 2 dakikalık toplu turda gerçekleşiyor, koç sekmeyi kapatırsa
+        // görev öğrenciye HİÇ ulaşmıyordu.
+        yaz('student_tasks', allTasks);
 
         setShowHomeworkModal(false);
     };
@@ -358,6 +400,59 @@ const StudentDetailPage = () => {
                             {(student.grade || student.section) && <span>Şubesi</span>}
                         </p>
                     </div>
+
+                    {/* ⚠️ ÖĞRENCİ SİLME BURADA YOKTU. Silme yalnızca koç
+                        panelindeki tablo satırının en sağındaki simgedeydi;
+                        koç bir öğrenciyi yönetmek için detay sayfasına
+                        geliyor ve silecek bir şey bulamıyordu. */}
+                    <div className="flex flex-wrap items-center gap-2 self-start">
+                        {/* Elle eklenen öğrencinin sunucu kimliği yoktur ve
+                            kendi cihazından giriş yapamaz. Bu düğme, mevcut
+                            kaydını koruyarak ona giriş kimliği açar. */}
+                        <button
+                            type="button"
+                            onClick={() => setGirisAcModal(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-dmd border border-brand/30 text-brand text-sm font-bold hover:bg-brand-soft transition-colors duration-hizli focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        >
+                            <KeyRound size={15} /> Öğrenci Girişi Aç
+                        </button>
+
+                        {/* ⚠️ KOÇ PANELİNDE VELİ BAĞLANTISI ÜRETECEK EKRAN YOKTU.
+                            Veli QR/paylaşım ekranı yalnızca ÖĞRENCİ panelinde
+                            duruyordu; oysa bağlantıyı veliye gönderen taraf koç.
+                            Koç veliye rapor göndermek istediğinde yapabileceği
+                            hiçbir şey yoktu. */}
+                        <button
+                            type="button"
+                            onClick={() => setVeliBaglantiModal(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-dmd border border-accent/30 text-accent text-sm font-bold hover:bg-accent-soft transition-colors duration-hizli focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                            <Users size={15} /> Veli Bağlantısı
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={ogrenciyiSil}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-dmd border border-danger/30 text-danger text-sm font-bold hover:bg-danger-soft transition-colors duration-hizli focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                        >
+                            <Trash2 size={15} /> Öğrenciyi Sil
+                        </button>
+                    </div>
+
+                    {veliBaglantiModal && (
+                        <ParentQRModal
+                            student={student}
+                            onClose={() => setVeliBaglantiModal(false)}
+                        />
+                    )}
+
+                    {girisAcModal && (
+                        <OgrenciGirisiAc
+                            ogrenci={student}
+                            onKapat={() => setGirisAcModal(false)}
+                            setToast={(m) => bildir(m)}
+                        />
+                    )}
 
                     {/* Tab Switcher */}
                     <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto">
@@ -994,39 +1089,43 @@ const StudentDetailPage = () => {
                 {/* Ödev Atama Modalı */}
                 {
                     showHomeworkModal && (
-                        <div className="fixed inset-0 z-modal-base flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                            <div className="bg-surface rounded-2xl w-full max-w-md p-6 animate-fade-in shadow-2xl">
-                                <h3 className="text-xl font-bold text-ink mb-4">Yeni Görev Ata</h3>
-                                <form onSubmit={handleAddHomework} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-ink-2 mb-1">Ders / Konu</label>
-                                        <select name="subject" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none">
-                                            <option>Matematik</option>
-                                            <option>Fizik</option>
-                                            <option>Kimya</option>
-                                            <option>Türkçe</option>
-                                            <option>Geometri</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-ink-2 mb-1">Görev Başlığı</label>
-                                        <input required name="title" type="text" placeholder="Örn: 50 Soru Çözümü" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-ink-2 mb-1">Son Tarih</label>
-                                        <input required name="dueDate" type="date" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
-                                    </div>
-                                    <div className="pencere-alt-cubuk bg-surface flex space-x-3 pt-4">
-                                        <button type="button" onClick={() => setShowHomeworkModal(false)} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-xl font-medium hover:bg-surface-3 transition">
-                                            İptal
-                                        </button>
-                                        <button type="submit" className="flex-1 py-2 bg-brand text-white rounded-xl font-medium hover:bg-brand-hover transition">
-                                            Görevi Ata
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                        <Modal
+                            acik
+                            onClose={() => setShowHomeworkModal(false)}
+                            baslikGizle
+                            genislik="md"
+                            govdeClassName="p-6"
+                        >
+                            <h3 className="text-xl font-bold text-ink mb-4">Yeni Görev Ata</h3>
+                            <form onSubmit={handleAddHomework} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-ink-2 mb-1">Ders / Konu</label>
+                                    <select name="subject" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none">
+                                        <option>Matematik</option>
+                                        <option>Fizik</option>
+                                        <option>Kimya</option>
+                                        <option>Türkçe</option>
+                                        <option>Geometri</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-ink-2 mb-1">Görev Başlığı</label>
+                                    <input required name="title" type="text" placeholder="Örn: 50 Soru Çözümü" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-ink-2 mb-1">Son Tarih</label>
+                                    <input required name="dueDate" type="date" className="w-full p-2 border border-line-2 rounded-lg focus:ring-2 focus:ring-brand outline-none" />
+                                </div>
+                                <div className="pencere-alt-cubuk bg-surface flex space-x-3 pt-4">
+                                    <button type="button" onClick={() => setShowHomeworkModal(false)} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-xl font-medium hover:bg-surface-3 transition">
+                                        İptal
+                                    </button>
+                                    <button type="submit" className="flex-1 py-2 bg-brand text-white rounded-xl font-medium hover:bg-brand-hover transition">
+                                        Görevi Ata
+                                    </button>
+                                </div>
+                            </form>
+                        </Modal>
                     )
                 }
 

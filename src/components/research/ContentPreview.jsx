@@ -3,6 +3,7 @@ import pptxgen from "pptxgenjs";
 import jsPDF from "jspdf";
 import { savePDF } from '../../utils/pdfSave';
 import { Download, FileText, Monitor, CheckCircle, RotateCw, Image as ImageIcon } from 'lucide-react';
+import Modal from '../ui/Modal';
 
 const ContentPreview = ({ content, onClose }) => {
     const [brochureSide, setBrochureSide] = useState('outside'); // 'outside' (Dış) or 'inside' (İç)
@@ -139,167 +140,172 @@ const ContentPreview = ({ content, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-modal-high flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-surface w-full max-w-6xl max-h-[95vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="xl"
+            katmanClassName="z-modal-high"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
 
-                {/* Header */}
-                <div className="p-5 border-b border-line flex justify-between items-center bg-surface-2">
-                    <div>
-                        <h3 className="text-xl font-bold text-ink flex items-center gap-2">
-                            <CheckCircle size={22} className="text-ok" />
-                            {content.title}
-                        </h3>
-                        <p className="text-sm text-ink-2 pl-8">
-                            {content.type === 'SLIDE' && 'Sunum Taslağı'}
-                            {content.type === 'BROCHURE' && 'Üç Kırımlı Broşür Tasarımı'}
-                            {content.type === 'BOARD' && 'Pano Düzeni'}
+            {/* Header */}
+            <div className="shrink-0 p-5 border-b border-line flex justify-between items-center bg-surface-2">
+                <div>
+                    <h3 className="text-xl font-bold text-ink flex items-center gap-2">
+                        <CheckCircle size={22} className="text-ok" />
+                        {content.title}
+                    </h3>
+                    <p className="text-sm text-ink-2 pl-8">
+                        {content.type === 'SLIDE' && 'Sunum Taslağı'}
+                        {content.type === 'BROCHURE' && 'Üç Kırımlı Broşür Tasarımı'}
+                        {content.type === 'BOARD' && 'Pano Düzeni'}
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-full transition-colors text-ink-2">
+                        X
+                    </button>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto bg-surface-3 p-8 flex justify-center">
+
+                {/* BROCHURE VIEW */}
+                {content.type === 'BROCHURE' && (
+                    <div className="flex flex-col items-center gap-6 w-full max-w-5xl">
+                        {/* Toggle Switch */}
+                        <div className="flex bg-surface rounded-full p-1 shadow-sm border border-line">
+                            <button
+                                onClick={() => setBrochureSide('outside')}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${brochureSide === 'outside' ? 'bg-brand text-white shadow-md' : 'text-ink-2 hover:text-ink'}`}
+                            >
+                                Dış Yüz (Kapaklar)
+                            </button>
+                            <button
+                                onClick={() => setBrochureSide('inside')}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${brochureSide === 'inside' ? 'bg-brand text-white shadow-md' : 'text-ink-2 hover:text-ink'}`}
+                            >
+                                İç Yüz (İçerik)
+                            </button>
+                        </div>
+
+                        {/* The Brochure Paper */}
+                        <div className="bg-surface aspect-[297/210] w-full shadow-2xl rotate-0 transition-all duration-yavas origin-center border border-line flex">
+                            {brochureSide === 'outside' ? (
+                                // OUTSIDE: [Flap, Back, Front]
+                                content.sides.outside.map((panel, idx) => renderBrochurePanel(panel, idx))
+                            ) : (
+                                // INSIDE: [Left, Center, Right]
+                                content.sides.inside.map((panel, idx) => renderBrochurePanel(panel, idx))
+                            )}
+                        </div>
+
+                        <p className="text-sm text-ink-3 flex items-center gap-2">
+                            <RotateCw size={14} />
+                            Ön ve arka yüz arasında geçiş yaparak tasarımı inceleyin.
                         </p>
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-full transition-colors text-ink-2">
-                            X
-                        </button>
-                    </div>
-                </div>
+                )}
 
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto bg-surface-3 p-8 flex justify-center">
-
-                    {/* BROCHURE VIEW */}
-                    {content.type === 'BROCHURE' && (
-                        <div className="flex flex-col items-center gap-6 w-full max-w-5xl">
-                            {/* Toggle Switch */}
-                            <div className="flex bg-surface rounded-full p-1 shadow-sm border border-line">
-                                <button
-                                    onClick={() => setBrochureSide('outside')}
-                                    className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${brochureSide === 'outside' ? 'bg-brand text-white shadow-md' : 'text-ink-2 hover:text-ink'}`}
-                                >
-                                    Dış Yüz (Kapaklar)
-                                </button>
-                                <button
-                                    onClick={() => setBrochureSide('inside')}
-                                    className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${brochureSide === 'inside' ? 'bg-brand text-white shadow-md' : 'text-ink-2 hover:text-ink'}`}
-                                >
-                                    İç Yüz (İçerik)
-                                </button>
-                            </div>
-
-                            {/* The Brochure Paper */}
-                            <div className="bg-surface aspect-[297/210] w-full shadow-2xl rotate-0 transition-all duration-yavas origin-center border border-line flex">
-                                {brochureSide === 'outside' ? (
-                                    // OUTSIDE: [Flap, Back, Front]
-                                    content.sides.outside.map((panel, idx) => renderBrochurePanel(panel, idx))
-                                ) : (
-                                    // INSIDE: [Left, Center, Right]
-                                    content.sides.inside.map((panel, idx) => renderBrochurePanel(panel, idx))
-                                )}
-                            </div>
-
-                            <p className="text-sm text-ink-3 flex items-center gap-2">
-                                <RotateCw size={14} />
-                                Ön ve arka yüz arasında geçiş yaparak tasarımı inceleyin.
-                            </p>
-                        </div>
-                    )}
-
-                    {/* SLIDE VIEW (Old logic but cleaner) */}
-                    {content.type === 'SLIDE' && (
-                        <div className="space-y-8 w-full max-w-3xl">
-                            {content.sections.map((slide, idx) => (
-                                <div key={idx} className="bg-surface aspect-[16/9] shadow-lg rounded-lg p-12 border border-line flex flex-col relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-2 h-full bg-brand"></div>
-                                    <h2 className="text-3xl font-bold text-ink mb-6">{slide.title}</h2>
-                                    <div className="flex-1 text-xl text-ink-2 leading-relaxed">
-                                        {slide.content}
-                                        {slide.bullets && (
-                                            <ul className="mt-6 space-y-3 list-disc pl-6">
-                                                {slide.bullets.map((b, i) => <li key={i}>{b.text}</li>)}
-                                            </ul>
-                                        )}
-                                        {slide.chartData && (
-                                            <div className="mt-8 h-48 bg-surface-2 rounded border border-dashed border-line-2 flex items-center justify-center text-ink-3">
-                                                [Grafik: {slide.chartData.title}]
-                                            </div>
-                                        )}
-                                        {slide.imagePlaceholder && (
-                                            <div className="mt-8 h-64 bg-brand-soft rounded-lg overflow-hidden border border-brand-line flex items-center justify-center relative group">
-                                                {slide.imagePlaceholder.url ? (
-                                                    <>
-                                                        <img loading="lazy" decoding="async"
-                                                            src={slide.imagePlaceholder.url}
-                                                            alt={slide.imagePlaceholder.alt}
-                                                            className="w-full h-full object-cover transition-transform duration-yavas hover:scale-105"
-                                                            onError={(e) => {
-                                                                e.target.style.display = 'none';
-                                                                e.target.nextSibling.style.display = 'flex';
-                                                            }}
-                                                        />
-                                                        {/* Fallback */}
-                                                        <div className="hidden absolute inset-0 bg-brand-soft flex-col items-center justify-center text-brand gap-2">
-                                                            <ImageIcon size={32} />
-                                                            <span className="text-sm font-medium">{slide.imagePlaceholder.alt}</span>
-                                                        </div>
-                                                        {/* Badge */}
-                                                        <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
-                                                            AI Image
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div className="flex flex-col items-center gap-2 text-brand">
+                {/* SLIDE VIEW (Old logic but cleaner) */}
+                {content.type === 'SLIDE' && (
+                    <div className="space-y-8 w-full max-w-3xl">
+                        {content.sections.map((slide, idx) => (
+                            <div key={idx} className="bg-surface aspect-[16/9] shadow-lg rounded-lg p-12 border border-line flex flex-col relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-2 h-full bg-brand"></div>
+                                <h2 className="text-3xl font-bold text-ink mb-6">{slide.title}</h2>
+                                <div className="flex-1 text-xl text-ink-2 leading-relaxed">
+                                    {slide.content}
+                                    {slide.bullets && (
+                                        <ul className="mt-6 space-y-3 list-disc pl-6">
+                                            {slide.bullets.map((b, i) => <li key={i}>{b.text}</li>)}
+                                        </ul>
+                                    )}
+                                    {slide.chartData && (
+                                        <div className="mt-8 h-48 bg-surface-2 rounded border border-dashed border-line-2 flex items-center justify-center text-ink-3">
+                                            [Grafik: {slide.chartData.title}]
+                                        </div>
+                                    )}
+                                    {slide.imagePlaceholder && (
+                                        <div className="mt-8 h-64 bg-brand-soft rounded-lg overflow-hidden border border-brand-line flex items-center justify-center relative group">
+                                            {slide.imagePlaceholder.url ? (
+                                                <>
+                                                    <img loading="lazy" decoding="async"
+                                                        src={slide.imagePlaceholder.url}
+                                                        alt={slide.imagePlaceholder.alt}
+                                                        className="w-full h-full object-cover transition-transform duration-yavas hover:scale-105"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextSibling.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                    {/* Fallback */}
+                                                    <div className="hidden absolute inset-0 bg-brand-soft flex-col items-center justify-center text-brand gap-2">
                                                         <ImageIcon size={32} />
                                                         <span className="text-sm font-medium">{slide.imagePlaceholder.alt}</span>
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="mt-auto pt-4 border-t flex justify-between text-sm text-ink-3">
-                                        <span>AI Eğitim Koçu</span>
-                                        <span>{idx + 1} / {content.sections.length}</span>
-                                    </div>
+                                                    {/* Badge */}
+                                                    <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded backdrop-blur-sm">
+                                                        AI Image
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-2 text-brand">
+                                                    <ImageIcon size={32} />
+                                                    <span className="text-sm font-medium">{slide.imagePlaceholder.alt}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-auto pt-4 border-t flex justify-between text-sm text-ink-3">
+                                    <span>AI Eğitim Koçu</span>
+                                    <span>{idx + 1} / {content.sections.length}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* BOARD VIEW (Simple Grid) */}
+                {content.type === 'BOARD' && (
+                    <div className="bg-[#f0e6d2] w-full max-w-5xl shadow-xl p-8 border-8 border-warn rounded-sm relative pattern-cork">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-surface-inv -translate-y-2"></div>
+                        <h1 className="text-center text-4xl font-extrabold text-warn mb-8 bg-surface/50 py-2 inline-block px-12 mx-auto rounded shadow-sm border border-warn/20">{content.title}</h1>
+
+                        <div className="grid grid-cols-12 gap-6 auto-rows-min">
+                            {content.items?.map((item, idx) => (
+                                <div key={idx} className={`bg-surface p-6 shadow-md shadow-black/10 rotate-${idx % 2 === 0 ? '1' : '-1'} ${item.size === 'large' ? 'col-span-6 row-span-2' : item.size === 'medium' ? 'col-span-3' : 'col-span-3'}`}>
+                                    <div className="w-4 h-4 rounded-full bg-red-800 mx-auto -mt-8 mb-4 shadow-sm"></div>
+                                    <h3 className="font-bold text-lg mb-2 text-warn">{item.title}</h3>
+                                    <p className="text-sm font-handwriting text-ink-2">{item.content || "..."}</p>
+                                    {item.list && (
+                                        <ul className="list-disc pl-4 text-sm mt-2">
+                                            {item.list.map((l, i) => <li key={i}>{l}</li>)}
+                                        </ul>
+                                    )}
                                 </div>
                             ))}
                         </div>
-                    )}
-
-                    {/* BOARD VIEW (Simple Grid) */}
-                    {content.type === 'BOARD' && (
-                        <div className="bg-[#f0e6d2] w-full max-w-5xl shadow-xl p-8 border-8 border-warn rounded-sm relative pattern-cork">
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-surface-inv -translate-y-2"></div>
-                            <h1 className="text-center text-4xl font-extrabold text-warn mb-8 bg-surface/50 py-2 inline-block px-12 mx-auto rounded shadow-sm border border-warn/20">{content.title}</h1>
-
-                            <div className="grid grid-cols-12 gap-6 auto-rows-min">
-                                {content.items?.map((item, idx) => (
-                                    <div key={idx} className={`bg-surface p-6 shadow-md shadow-black/10 rotate-${idx % 2 === 0 ? '1' : '-1'} ${item.size === 'large' ? 'col-span-6 row-span-2' : item.size === 'medium' ? 'col-span-3' : 'col-span-3'}`}>
-                                        <div className="w-4 h-4 rounded-full bg-red-800 mx-auto -mt-8 mb-4 shadow-sm"></div>
-                                        <h3 className="font-bold text-lg mb-2 text-warn">{item.title}</h3>
-                                        <p className="text-sm font-handwriting text-ink-2">{item.content || "..."}</p>
-                                        {item.list && (
-                                            <ul className="list-disc pl-4 text-sm mt-2">
-                                                {item.list.map((l, i) => <li key={i}>{l}</li>)}
-                                            </ul>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-
-                {/* Footer */}
-                <div className="p-6 border-t border-line bg-surface flex justify-end gap-3 z-20">
-                    <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-ink-2 font-medium hover:bg-surface-3 transition">
-                        Kapat
-                    </button>
-                    <button onClick={content.type === 'SLIDE' ? exportToPPTX : exportToPDF} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-white font-medium hover:bg-brand-hover transition shadow-lg shadow-indigo-200">
-                        {content.type === 'SLIDE' ? <Monitor size={18} /> : <FileText size={18} />}
-                        {content.type === 'SLIDE' ? 'Sunumu İndir (.pptx)' : 'PDF Olarak İndir'}
-                    </button>
-                </div>
+                    </div>
+                )}
 
             </div>
-        </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-line bg-surface flex justify-end gap-3 z-20">
+                <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-ink-2 font-medium hover:bg-surface-3 transition">
+                    Kapat
+                </button>
+                <button onClick={content.type === 'SLIDE' ? exportToPPTX : exportToPDF} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand text-white font-medium hover:bg-brand-hover transition shadow-lg shadow-indigo-200">
+                    {content.type === 'SLIDE' ? <Monitor size={18} /> : <FileText size={18} />}
+                    {content.type === 'SLIDE' ? 'Sunumu İndir (.pptx)' : 'PDF Olarak İndir'}
+                </button>
+            </div>
+
+        </Modal>
     );
 };
 

@@ -12,25 +12,30 @@ import {
 import firebaseSync from '../services/firebaseSync';
 import { bildir } from '../services/uiGeriBildirim';
 import { DataTable, Badge, Button, Avatar } from '../components/ui';
+import Modal from '../components/ui/Modal';
 
 // ── Onay Dialogu ─────────────────────────────────────────────
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
-    <div className="fixed inset-0 z-modal-base bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-surface rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-danger-soft rounded-full flex items-center justify-center shrink-0">
-                    <AlertTriangle size={20} className="text-danger" />
-                </div>
-                <p className="text-ink font-medium">{message}</p>
+    <Modal
+        acik
+        onClose={onCancel}
+        baslikGizle
+        genislik="sm"
+        govdeClassName="p-6"
+    >
+        <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-danger-soft rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-danger" />
             </div>
-            <div className="pencere-alt-cubuk bg-surface flex gap-3 mt-5">
-                <button onClick={onCancel} className="flex-1 py-2.5 border border-line rounded-xl text-ink-2 font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
-                <button onClick={onConfirm} className="flex-1 py-2.5 bg-danger text-white rounded-xl font-semibold hover:bg-danger transition text-sm flex items-center justify-center gap-2">
-                    <Trash2 size={14} /> Evet, Sil
-                </button>
-            </div>
+            <p className="text-ink font-medium">{message}</p>
         </div>
-    </div>
+        <div className="pencere-alt-cubuk bg-surface flex gap-3 mt-5">
+            <button onClick={onCancel} className="flex-1 py-2.5 border border-line rounded-xl text-ink-2 font-semibold hover:bg-surface-2 transition text-sm">İptal</button>
+            <button onClick={onConfirm} className="flex-1 py-2.5 bg-danger text-white rounded-xl font-semibold hover:bg-danger transition text-sm flex items-center justify-center gap-2">
+                <Trash2 size={14} /> Evet, Sil
+            </button>
+        </div>
+    </Modal>
 );
 
 // ── Kullanıcı Düzenleme Modalı ────────────────────────────────
@@ -60,135 +65,139 @@ const EditUserModal = ({ user, onClose, onSave }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
 
-                {/* Header */}
-                <div className={`px-6 py-5 flex items-center justify-between ${isCoach ? 'bg-gradient-to-r from-brand to-violet-600' : 'bg-gradient-to-r from-blue-500 to-cyan-600'}`}>
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-full bg-surface/20 flex items-center justify-center text-ink font-bold text-lg">
-                            {(form.name || '?').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <h3 className="text-ink font-bold text-base leading-tight">{user.name || 'Kullanıcı'}</h3>
-                            <span className="text-ink-2 text-xs">{isCoach ? 'Koç hesabı' : 'Öğrenci hesabı'}</span>
-                        </div>
+            {/* Header */}
+            <div className={`shrink-0 px-6 py-5 flex items-center justify-between ${isCoach ? 'bg-gradient-to-r from-brand to-violet-600' : 'bg-gradient-to-r from-blue-500 to-cyan-600'}`}>
+                <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-surface/20 flex items-center justify-center text-ink font-bold text-lg">
+                        {(form.name || '?').charAt(0).toUpperCase()}
                     </div>
-                    <button onClick={onClose} className="text-ink-2 hover:text-ink transition"><X size={20} /></button>
+                    <div>
+                        <h3 className="text-ink font-bold text-base leading-tight">{user.name || 'Kullanıcı'}</h3>
+                        <span className="text-ink-2 text-xs">{isCoach ? 'Koç hesabı' : 'Öğrenci hesabı'}</span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="text-ink-2 hover:text-ink transition"><X size={20} /></button>
+            </div>
+
+            {/* Form */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                {/* Ad Soyad */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">Ad Soyad *</label>
+                    <input
+                        type="text" value={form.name}
+                        onChange={e => set('name', e.target.value)}
+                        className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                        placeholder="Ad Soyad"
+                    />
                 </div>
 
-                {/* Form */}
-                <div className="p-6 space-y-4">
-                    {/* Ad Soyad */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">Ad Soyad *</label>
-                        <input
-                            type="text" value={form.name}
-                            onChange={e => set('name', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-                            placeholder="Ad Soyad"
-                        />
-                    </div>
+                {/* Telefon */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
+                        <Phone size={11} className="inline mr-1" /> Telefon
+                    </label>
+                    <input
+                        type="tel" value={form.phone}
+                        onChange={e => set('phone', e.target.value)}
+                        className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                        placeholder="05XX XXX XX XX"
+                    />
+                </div>
 
-                    {/* Telefon */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
-                            <Phone size={11} className="inline mr-1" /> Telefon
+                {/* E-posta */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
+                        <Mail size={11} className="inline mr-1" /> E-posta
+                    </label>
+                    <input
+                        type="email" value={form.email}
+                        onChange={e => set('email', e.target.value)}
+                        className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                        placeholder="ornek@mail.com"
+                    />
+                </div>
+
+                {/* Okul */}
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
+                        <School size={11} className="inline mr-1" /> Okul
+                    </label>
+                    <input
+                        type="text" value={form.schoolName}
+                        onChange={e => set('schoolName', e.target.value)}
+                        className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+                        placeholder="Okul adı"
+                    />
+                </div>
+
+                {/* Koç ise: Rol seçimi */}
+                {isCoach && (
+                    <div className="bg-brand-soft border border-brand-line rounded-xl p-4">
+                        <label className="block text-xs font-bold text-brand uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Shield size={12} /> Koç Yetki Rolü
                         </label>
-                        <input
-                            type="tel" value={form.phone}
-                            onChange={e => set('phone', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-                            placeholder="05XX XXX XX XX"
-                        />
-                    </div>
-
-                    {/* E-posta */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
-                            <Mail size={11} className="inline mr-1" /> E-posta
-                        </label>
-                        <input
-                            type="email" value={form.email}
-                            onChange={e => set('email', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-                            placeholder="ornek@mail.com"
-                        />
-                    </div>
-
-                    {/* Okul */}
-                    <div>
-                        <label className="block text-xs font-bold text-ink-2 uppercase tracking-wider mb-1.5">
-                            <School size={11} className="inline mr-1" /> Okul
-                        </label>
-                        <input
-                            type="text" value={form.schoolName}
-                            onChange={e => set('schoolName', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-                            placeholder="Okul adı"
-                        />
-                    </div>
-
-                    {/* Koç ise: Rol seçimi */}
-                    {isCoach && (
-                        <div className="bg-brand-soft border border-brand-line rounded-xl p-4">
-                            <label className="block text-xs font-bold text-brand uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                <Shield size={12} /> Koç Yetki Rolü
+                        <div className="flex gap-2">
+                            <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition text-sm font-medium ${form.coachRole !== 'masterCoach' ? 'bg-info-soft border-blue-400 text-info' : 'bg-surface border-line text-ink-2 hover:bg-surface-2'}`}>
+                                <input
+                                    type="radio" name="coachRole" value="subCoach"
+                                    checked={form.coachRole !== 'masterCoach'}
+                                    onChange={() => set('coachRole', 'subCoach')}
+                                    className="accent-blue-600"
+                                />
+                                Standart Koç
                             </label>
-                            <div className="flex gap-2">
-                                <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition text-sm font-medium ${form.coachRole !== 'masterCoach' ? 'bg-info-soft border-blue-400 text-info' : 'bg-surface border-line text-ink-2 hover:bg-surface-2'}`}>
-                                    <input
-                                        type="radio" name="coachRole" value="subCoach"
-                                        checked={form.coachRole !== 'masterCoach'}
-                                        onChange={() => set('coachRole', 'subCoach')}
-                                        className="accent-blue-600"
-                                    />
-                                    Standart Koç
-                                </label>
-                                <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition text-sm font-medium ${form.coachRole === 'masterCoach' ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border-purple-400 text-c4' : 'bg-surface border-line text-ink-2 hover:bg-surface-2'}`}>
-                                    <input
-                                        type="radio" name="coachRole" value="masterCoach"
-                                        checked={form.coachRole === 'masterCoach'}
-                                        onChange={() => set('coachRole', 'masterCoach')}
-                                        className="accent-purple-600"
-                                    />
-                                    Yönetici Koç
-                                </label>
-                            </div>
-                            <p className="text-xs text-brand mt-2">
-                                {form.coachRole === 'masterCoach'
-                                    ? '★ Yönetici koç tüm sekmelere ve özelliklere tam erişim sağlar.'
-                                    : 'Standart koç sadece atanan sekmelere erişebilir.'}
-                            </p>
+                            <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition text-sm font-medium ${form.coachRole === 'masterCoach' ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border-purple-400 text-c4' : 'bg-surface border-line text-ink-2 hover:bg-surface-2'}`}>
+                                <input
+                                    type="radio" name="coachRole" value="masterCoach"
+                                    checked={form.coachRole === 'masterCoach'}
+                                    onChange={() => set('coachRole', 'masterCoach')}
+                                    className="accent-purple-600"
+                                />
+                                Yönetici Koç
+                            </label>
                         </div>
-                    )}
-
-                    {/* Kayıt tarihi */}
-                    {user.createdAt && (
-                        <p className="text-xs text-ink-3">
-                            Kayıt: {new Date(user.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        <p className="text-xs text-brand mt-2">
+                            {form.coachRole === 'masterCoach'
+                                ? '★ Yönetici koç tüm sekmelere ve özelliklere tam erişim sağlar.'
+                                : 'Standart koç sadece atanan sekmelere erişebilir.'}
                         </p>
-                    )}
-
-                    {/* Butonlar */}
-                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
-                        <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">
-                            İptal
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={!dirty || saving}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition text-sm ${dirty && !saving ? 'bg-gradient-to-r from-brand to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 shadow-lg' : 'bg-surface-3 text-ink-3 cursor-not-allowed'}`}
-                        >
-                            {saving
-                                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                : <><Save size={14} /> Kaydet</>
-                            }
-                        </button>
                     </div>
+                )}
+
+                {/* Kayıt tarihi */}
+                {user.createdAt && (
+                    <p className="text-xs text-ink-3">
+                        Kayıt: {new Date(user.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                )}
+
+                {/* Butonlar */}
+                <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
+                    <button onClick={onClose} className="flex-1 border border-line text-ink-2 py-2.5 rounded-xl font-semibold hover:bg-surface-2 transition text-sm">
+                        İptal
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={!dirty || saving}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition text-sm ${dirty && !saving ? 'bg-gradient-to-r from-brand to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700 shadow-lg' : 'bg-surface-3 text-ink-3 cursor-not-allowed'}`}
+                    >
+                        {saving
+                            ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            : <><Save size={14} /> Kaydet</>
+                        }
+                    </button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
@@ -246,81 +255,85 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-modal-base flex items-center justify-center p-4">
-            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-in">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-black text-ink flex items-center gap-2">
-                        <UserPlus size={20} className="text-brand" />
-                        Yeni Koç Ekle
-                    </h3>
-                    <button onClick={onClose} className="text-ink-3 hover:text-ink-2 p-1">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Ad Soyad *</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)}
-                            className="w-full px-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
-                            placeholder="Mehmet Öz" autoFocus />
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Telefon *</label>
-                        <div className="relative">
-                            <Phone size={16} className="absolute left-3 top-3.5 text-ink-3" />
-                            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                                className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
-                                placeholder="05XX XXX XX XX" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">
-                            E-posta <span className="text-brand font-normal normal-case">(Magic Link icin)</span>
-                        </label>
-                        <div className="relative">
-                            <Mail size={16} className="absolute left-3 top-3.5 text-ink-3" />
-                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                                className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
-                                placeholder="ornek@gmail.com" />
-                        </div>
-                        <p className="text-xs text-ink-3 mt-1">Koc bu e-postaya guvenli giris linki alacak.</p>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Okul Adi</label>
-                        <div className="relative">
-                            <School size={16} className="absolute left-3 top-3.5 text-ink-3" />
-                            <input type="text" value={schoolName} onChange={e => setSchoolName(e.target.value)}
-                                className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none" />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="flex items-center gap-2 text-danger text-sm bg-danger-soft p-3 rounded-lg">
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                    <button onClick={onClose}
-                        className="flex-1 py-3 border border-line rounded-xl text-ink-2 font-semibold hover:bg-surface-2 transition">
-                        Iptal
-                    </button>
-                    <button onClick={handleAdd} disabled={loading}
-                        className="flex-1 py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand-hover transition disabled:opacity-60 flex items-center justify-center gap-2">
-                        {loading
-                            ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            : <><UserPlus size={16} /> Koc Ekle</>
-                        }
-                    </button>
-                </div>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-6"
+        >
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-black text-ink flex items-center gap-2">
+                    <UserPlus size={20} className="text-brand" />
+                    Yeni Koç Ekle
+                </h3>
+                <button onClick={onClose} className="text-ink-3 hover:text-ink-2 p-1">
+                    <X size={20} />
+                </button>
             </div>
-        </div>
+
+            <div className="space-y-4">
+                <div>
+                    <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Ad Soyad *</label>
+                    <input type="text" value={name} onChange={e => setName(e.target.value)}
+                        className="w-full px-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
+                        placeholder="Mehmet Öz" autoFocus />
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Telefon *</label>
+                    <div className="relative">
+                        <Phone size={16} className="absolute left-3 top-3.5 text-ink-3" />
+                        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                            className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
+                            placeholder="05XX XXX XX XX" />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">
+                        E-posta <span className="text-brand font-normal normal-case">(Magic Link icin)</span>
+                    </label>
+                    <div className="relative">
+                        <Mail size={16} className="absolute left-3 top-3.5 text-ink-3" />
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                            className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none"
+                            placeholder="ornek@gmail.com" />
+                    </div>
+                    <p className="text-xs text-ink-3 mt-1">Koc bu e-postaya guvenli giris linki alacak.</p>
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-1">Okul Adi</label>
+                    <div className="relative">
+                        <School size={16} className="absolute left-3 top-3.5 text-ink-3" />
+                        <input type="text" value={schoolName} onChange={e => setSchoolName(e.target.value)}
+                            className="w-full pl-9 pr-4 py-3 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none" />
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="flex items-center gap-2 text-danger text-sm bg-danger-soft p-3 rounded-lg">
+                        <AlertCircle size={16} />
+                        <span>{error}</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+                <button onClick={onClose}
+                    className="flex-1 py-3 border border-line rounded-xl text-ink-2 font-semibold hover:bg-surface-2 transition">
+                    Iptal
+                </button>
+                <button onClick={handleAdd} disabled={loading}
+                    className="flex-1 py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand-hover transition disabled:opacity-60 flex items-center justify-center gap-2">
+                    {loading
+                        ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        : <><UserPlus size={16} /> Koc Ekle</>
+                    }
+                </button>
+            </div>
+        </Modal>
     );
 };
 

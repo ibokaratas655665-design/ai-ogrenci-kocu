@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import studyLog from '../../services/studyLogService';
 import { getSubjectColor, getSubjectLabel } from '../../data/programColors';
+import Modal from '../ui/Modal';
 
 const SUBJECTS = [
     'Matematik', 'Geometri', 'Türkçe', 'Edebiyat', 'Fizik', 'Kimya', 'Biyoloji',
@@ -289,149 +290,153 @@ const EntryForm = ({ kind, onSave, onClose }) => {
         : null;
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface border border-line rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto">
-                <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-line">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-2xl bg-brand/15 border border-brand/30 flex items-center justify-center">
-                            {kind === 'kitap' ? <BookOpen size={16} className="text-brand" /> : <PencilLine size={16} className="text-brand" />}
-                        </div>
-                        <h3 className="text-ink font-black text-base syne">
-                            {kind === 'kitap' ? 'Kitap Okuma Ekle' : 'Soru Çözümü Ekle'}
-                        </h3>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-0"
+        >
+            <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-line">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-brand/15 border border-brand/30 flex items-center justify-center">
+                        {kind === 'kitap' ? <BookOpen size={16} className="text-brand" /> : <PencilLine size={16} className="text-brand" />}
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface/10 transition">
-                        <X size={18} />
-                    </button>
+                    <h3 className="text-ink font-black text-base syne">
+                        {kind === 'kitap' ? 'Kitap Okuma Ekle' : 'Soru Çözümü Ekle'}
+                    </h3>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface/10 transition">
+                    <X size={18} />
+                </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+                <div>
+                    <Label>Tarih</Label>
+                    <input
+                        type="date"
+                        value={form.date}
+                        max={studyLog.todayKey()}
+                        onChange={set('date')}
+                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
+                    />
                 </div>
 
-                <div className="p-5 space-y-4">
-                    <div>
-                        <Label>Tarih</Label>
-                        <input
-                            type="date"
-                            value={form.date}
-                            max={studyLog.todayKey()}
-                            onChange={set('date')}
-                            className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
-                        />
-                    </div>
-
-                    {kind === 'kitap' ? (
-                        <>
+                {kind === 'kitap' ? (
+                    <>
+                        <div>
+                            <Label>Kitap adı *</Label>
+                            <input
+                                value={form.subject}
+                                onChange={set('subject')}
+                                placeholder="Suç ve Ceza"
+                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label>Kitap adı *</Label>
+                                <Label>Okunan sayfa *</Label>
                                 <input
-                                    value={form.subject}
-                                    onChange={set('subject')}
-                                    placeholder="Suç ve Ceza"
+                                    type="number" min="0" inputMode="numeric"
+                                    value={form.pages}
+                                    onChange={set('pages')}
+                                    placeholder="25"
                                     className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <Label>Okunan sayfa *</Label>
-                                    <input
-                                        type="number" min="0" inputMode="numeric"
-                                        value={form.pages}
-                                        onChange={set('pages')}
-                                        placeholder="25"
-                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Süre (dk)</Label>
-                                    <input
-                                        type="number" min="0" inputMode="numeric"
-                                        value={form.minutes}
-                                        onChange={set('minutes')}
-                                        placeholder="30"
-                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <Label>Ders *</Label>
-                                    <select
-                                        value={form.subject}
-                                        onChange={set('subject')}
-                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
-                                    >
-                                        {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Konu</Label>
-                                    <input
-                                        value={form.topic}
-                                        onChange={set('topic')}
-                                        placeholder="Türev"
-                                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <Label>Soru sayıları *</Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                        { k: 'correct', label: 'Doğru', color: 'var(--ok)' },
-                                        { k: 'wrong', label: 'Yanlış', color: 'var(--danger)' },
-                                        { k: 'blank', label: 'Boş', color: 'var(--ink-3)' },
-                                    ].map((f) => (
-                                        <div key={f.k}>
-                                            <input
-                                                type="number" min="0" inputMode="numeric"
-                                                value={form[f.k]}
-                                                onChange={set(f.k)}
-                                                placeholder="0"
-                                                className="w-full bg-surface/[0.04] border rounded-xl px-3 py-2.5 text-sm text-ink text-center font-black focus:outline-none"
-                                                style={{ borderColor: `${f.color}44` }}
-                                            />
-                                            <p className="text-[10px] font-bold text-center mt-1" style={{ color: f.color }}>
-                                                {f.label}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex items-center justify-between mt-2 px-1">
-                                    <span className="text-[11px] text-ink-3">Net</span>
-                                    <span className="text-sm font-black text-brand">{net}</span>
-                                </div>
-                            </div>
-
                             <div>
                                 <Label>Süre (dk)</Label>
                                 <input
                                     type="number" min="0" inputMode="numeric"
                                     value={form.minutes}
                                     onChange={set('minutes')}
-                                    placeholder="45"
+                                    placeholder="30"
                                     className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
                                 />
                             </div>
-                        </>
-                    )}
-                </div>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label>Ders *</Label>
+                                <select
+                                    value={form.subject}
+                                    onChange={set('subject')}
+                                    className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
+                                >
+                                    {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <Label>Konu</Label>
+                                <input
+                                    value={form.topic}
+                                    onChange={set('topic')}
+                                    placeholder="Türev"
+                                    className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                                />
+                            </div>
+                        </div>
 
-                <div className="sticky bottom-0 bg-surface flex gap-2 px-5 py-4 border-t border-line">
-                    <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:bg-surface/5 transition">
-                        Vazgeç
-                    </button>
-                    <button
-                        onClick={submit}
-                        disabled={!valid}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-ink-on font-black text-sm disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition"
-                    >
-                        <Check size={16} /> Kaydet
-                    </button>
-                </div>
+                        <div>
+                            <Label>Soru sayıları *</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { k: 'correct', label: 'Doğru', color: 'var(--ok)' },
+                                    { k: 'wrong', label: 'Yanlış', color: 'var(--danger)' },
+                                    { k: 'blank', label: 'Boş', color: 'var(--ink-3)' },
+                                ].map((f) => (
+                                    <div key={f.k}>
+                                        <input
+                                            type="number" min="0" inputMode="numeric"
+                                            value={form[f.k]}
+                                            onChange={set(f.k)}
+                                            placeholder="0"
+                                            className="w-full bg-surface/[0.04] border rounded-xl px-3 py-2.5 text-sm text-ink text-center font-black focus:outline-none"
+                                            style={{ borderColor: `${f.color}44` }}
+                                        />
+                                        <p className="text-[10px] font-bold text-center mt-1" style={{ color: f.color }}>
+                                            {f.label}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center justify-between mt-2 px-1">
+                                <span className="text-[11px] text-ink-3">Net</span>
+                                <span className="text-sm font-black text-brand">{net}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label>Süre (dk)</Label>
+                            <input
+                                type="number" min="0" inputMode="numeric"
+                                value={form.minutes}
+                                onChange={set('minutes')}
+                                placeholder="45"
+                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                            />
+                        </div>
+                    </>
+                )}
             </div>
-        </div>
+
+            <div className="sticky bottom-0 bg-surface flex gap-2 px-5 py-4 border-t border-line">
+                <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:bg-surface/5 transition">
+                    Vazgeç
+                </button>
+                <button
+                    onClick={submit}
+                    disabled={!valid}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-ink-on font-black text-sm disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition"
+                >
+                    <Check size={16} /> Kaydet
+                </button>
+            </div>
+        </Modal>
     );
 };
 

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { pendingFor } from '../services/taskStore';
 import { hataAnlat } from '../services/hataMesaji';
+import Modal from './ui/Modal';
 
 // ─── Gemini API şablonu (öğrenci odaklı koç) ─────────────────
 const COACH_SYSTEM_PROMPT = `Sen "AI Koç" adında bir YKS (Türkiye Yükseköğretim Kurumları Sınavı) uzmanı ve kişisel eğitim koçusun. 
@@ -286,100 +287,103 @@ const AICoachChat = ({ studentData = null, isOpen, onClose }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="bg-surface-2 w-full sm:max-w-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-                style={{ height: 'min(90vh, 680px)' }}>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="lg"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
 
-                {/* Header */}
-                <div className="on-color bg-gradient-to-r from-violet-600 to-brand px-5 py-4 flex items-center justify-between flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-surface/20 flex items-center justify-center">
-                            <Bot size={20} className="text-ink" />
-                        </div>
-                        <div>
-                            <p className="font-black text-ink text-sm">AI Koç</p>
-                            <div className="flex items-center gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                <span className="text-xs text-ink-2">{hasKey ? 'Çevrimiçi · Gemini 2.0 Flash' : 'API key gerekli'}</span>
-                            </div>
-                        </div>
+            {/* Header */}
+            <div className="on-color bg-gradient-to-r from-violet-600 to-brand px-5 py-4 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-surface/20 flex items-center justify-center">
+                        <Bot size={20} className="text-ink" />
                     </div>
-                    <div className="flex items-center gap-2">
-                        {hasKey && (
-                            <button onClick={() => { setHasKey(false); localStorage.removeItem('gemini_api_key'); }}
-                                className="text-ink-2 hover:text-ink text-xs font-bold px-2 py-1 rounded-lg hover:bg-surface/10 transition">
-                                <Key size={12} />
-                            </button>
-                        )}
-                        <button onClick={onClose} className="text-ink-2 hover:text-ink p-1.5 rounded-xl hover:bg-surface/10 transition">
-                            <X size={18} />
-                        </button>
+                    <div>
+                        <p className="font-black text-ink text-sm">AI Koç</p>
+                        <div className="flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                            <span className="text-xs text-ink-2">{hasKey ? 'Çevrimiçi · Gemini 2.0 Flash' : 'API key gerekli'}</span>
+                        </div>
                     </div>
                 </div>
-
-                {/* İçerik */}
-                {!hasKey ? (
-                    <APIKeySetup onSave={(k) => { setApiKey(k); setHasKey(true); }} />
-                ) : (
-                    <>
-                        {/* Mesajlar */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {messages.map((msg, i) => (
-                                <MessageBubble key={i} msg={msg} />
-                            ))}
-                            {loading && <TypingIndicator />}
-                            <div ref={bottomRef} />
-                        </div>
-
-                        {/* Hızlı sorular (ilk mesajdan sonraki boş durumda göster) */}
-                        {messages.length <= 1 && !loading && (
-                            <div className="px-4 pb-2">
-                                <p className="text-xs text-ink-3 font-bold mb-2 flex items-center gap-1">
-                                    <Sparkles size={11} /> Hızlı Başla
-                                </p>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    {QUICK_PROMPTS.map((qp, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => sendMessage(qp.text)}
-                                            className="flex items-center gap-2 text-left text-xs p-2.5 bg-surface border border-line rounded-xl hover:bg-brand-soft hover:border-brand-line hover:text-brand transition group"
-                                        >
-                                            <qp.icon size={14} className="text-brand group-hover:text-brand flex-shrink-0" />
-                                            <span className="font-medium text-ink-2 group-hover:text-brand">{qp.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Input */}
-                        <div className="border-t border-line bg-surface px-4 py-3 flex-shrink-0">
-                            <div className="flex gap-2 items-end">
-                                <textarea
-                                    ref={inputRef}
-                                    value={input}
-                                    onChange={e => setInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Sorunuzu yazın... (Enter ile gönder)"
-                                    rows={1}
-                                    disabled={loading}
-                                    className="flex-1 resize-none bg-surface-2 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand outline-none border border-line disabled:opacity-50 max-h-28"
-                                    style={{ overflowY: 'auto' }}
-                                />
-                                <button
-                                    onClick={() => sendMessage()}
-                                    disabled={!input.trim() || loading}
-                                    className="p-2.5 bg-brand text-white rounded-xl hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm flex-shrink-0"
-                                >
-                                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                                </button>
-                            </div>
-                            <p className="text-xs text-ink-3 mt-1.5 text-center">Gemini 2.0 Flash · Yanıtlar hatalı olabilir, doğrulayın</p>
-                        </div>
-                    </>
-                )}
+                <div className="flex items-center gap-2">
+                    {hasKey && (
+                        <button onClick={() => { setHasKey(false); localStorage.removeItem('gemini_api_key'); }}
+                            className="text-ink-2 hover:text-ink text-xs font-bold px-2 py-1 rounded-lg hover:bg-surface/10 transition">
+                            <Key size={12} />
+                        </button>
+                    )}
+                    <button onClick={onClose} className="text-ink-2 hover:text-ink p-1.5 rounded-xl hover:bg-surface/10 transition">
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
-        </div>
+
+            {/* İçerik */}
+            {!hasKey ? (
+                <APIKeySetup onSave={(k) => { setApiKey(k); setHasKey(true); }} />
+            ) : (
+                <>
+                    {/* Mesajlar */}
+                    <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                        {messages.map((msg, i) => (
+                            <MessageBubble key={i} msg={msg} />
+                        ))}
+                        {loading && <TypingIndicator />}
+                        <div ref={bottomRef} />
+                    </div>
+
+                    {/* Hızlı sorular (ilk mesajdan sonraki boş durumda göster) */}
+                    {messages.length <= 1 && !loading && (
+                        <div className="px-4 pb-2">
+                            <p className="text-xs text-ink-3 font-bold mb-2 flex items-center gap-1">
+                                <Sparkles size={11} /> Hızlı Başla
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {QUICK_PROMPTS.map((qp, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => sendMessage(qp.text)}
+                                        className="flex items-center gap-2 text-left text-xs p-2.5 bg-surface border border-line rounded-xl hover:bg-brand-soft hover:border-brand-line hover:text-brand transition group"
+                                    >
+                                        <qp.icon size={14} className="text-brand group-hover:text-brand flex-shrink-0" />
+                                        <span className="font-medium text-ink-2 group-hover:text-brand">{qp.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Input */}
+                    <div className="border-t border-line bg-surface px-4 py-3 flex-shrink-0">
+                        <div className="flex gap-2 items-end">
+                            <textarea
+                                ref={inputRef}
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Sorunuzu yazın... (Enter ile gönder)"
+                                rows={1}
+                                disabled={loading}
+                                className="flex-1 resize-none bg-surface-2 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand outline-none border border-line disabled:opacity-50 max-h-28"
+                                style={{ overflowY: 'auto' }}
+                            />
+                            <button
+                                onClick={() => sendMessage()}
+                                disabled={!input.trim() || loading}
+                                className="p-2.5 bg-brand text-white rounded-xl hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm flex-shrink-0"
+                            >
+                                {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                            </button>
+                        </div>
+                        <p className="text-xs text-ink-3 mt-1.5 text-center">Gemini 2.0 Flash · Yanıtlar hatalı olabilir, doğrulayın</p>
+                    </div>
+                </>
+            )}
+        </Modal>
     );
 };
 

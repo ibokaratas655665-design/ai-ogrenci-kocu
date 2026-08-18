@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Video, Link, User, CheckCircle, XCircle, Plus, Trash2, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { onayla } from '../services/uiGeriBildirim';
+import Modal from '../components/ui/Modal';
 
 const RemoteSession = () => {
     const { user } = useAuth();
@@ -160,76 +161,80 @@ const RemoteSession = () => {
 
             {/* Create Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-modal-base flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
-                        <div className="p-6 border-b border-line flex justify-between items-center bg-surface-2">
-                            <h3 className="text-lg font-bold text-ink">Yeni Görüşme Planla</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-ink-3 hover:text-ink-2"><XCircle size={24} /></button>
+                <Modal
+                    acik
+                    onClose={() => setIsModalOpen(false)}
+                    baslikGizle
+                    genislik="md"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 p-6 border-b border-line flex justify-between items-center bg-surface-2">
+                        <h3 className="text-lg font-bold text-ink">Yeni Görüşme Planla</h3>
+                        <button onClick={() => setIsModalOpen(false)} className="text-ink-3 hover:text-ink-2"><XCircle size={24} /></button>
+                    </div>
+                    <form onSubmit={handleCreateSession} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Adı</label>
+                            <input
+                                type="text"
+                                required
+                                className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand focus:border-transparent"
+                                placeholder="Örn: Ahmet Yılmaz"
+                                value={newSession.studentName}
+                                onChange={e => setNewSession({ ...newSession, studentName: e.target.value })}
+                            />
                         </div>
-                        <form onSubmit={handleCreateSession} className="p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-bold text-ink-2 mb-1">Öğrenci Adı</label>
+                                <label className="block text-sm font-bold text-ink-2 mb-1">Tarih</label>
                                 <input
-                                    type="text"
-                                    required
-                                    className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand focus:border-transparent"
-                                    placeholder="Örn: Ahmet Yılmaz"
-                                    value={newSession.studentName}
-                                    onChange={e => setNewSession({ ...newSession, studentName: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-ink-2 mb-1">Tarih</label>
-                                    <input
-                                        type="date"
-                                        required
-                                        className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
-                                        value={newSession.date}
-                                        onChange={e => setNewSession({ ...newSession, date: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-ink-2 mb-1">Saat</label>
-                                    <input
-                                        type="time"
-                                        required
-                                        className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
-                                        value={newSession.time}
-                                        onChange={e => setNewSession({ ...newSession, time: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-ink-2 mb-1">Konu</label>
-                                <input
-                                    type="text"
+                                    type="date"
                                     required
                                     className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
-                                    placeholder="Örn: Deneme Analizi"
-                                    value={newSession.topic}
-                                    onChange={e => setNewSession({ ...newSession, topic: e.target.value })}
+                                    value={newSession.date}
+                                    onChange={e => setNewSession({ ...newSession, date: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-ink-2 mb-1">Görüşme Linki (Opsiyonel)</label>
-                                <div className="relative">
-                                    <Link className="absolute left-3 top-2.5 text-ink-3" size={18} />
-                                    <input
-                                        type="url"
-                                        className="w-full border border-line-2 rounded-lg pl-10 pr-2 py-2 focus:ring-2 focus:ring-brand"
-                                        placeholder="https://..."
-                                        value={newSession.link}
-                                        onChange={e => setNewSession({ ...newSession, link: e.target.value })}
-                                    />
-                                </div>
+                                <label className="block text-sm font-bold text-ink-2 mb-1">Saat</label>
+                                <input
+                                    type="time"
+                                    required
+                                    className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
+                                    value={newSession.time}
+                                    onChange={e => setNewSession({ ...newSession, time: e.target.value })}
+                                />
                             </div>
-                            <button type="submit" className="btn-primary w-full mt-2">
-                                Oluştur
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-ink-2 mb-1">Konu</label>
+                            <input
+                                type="text"
+                                required
+                                className="w-full border border-line-2 rounded-lg p-2 focus:ring-2 focus:ring-brand"
+                                placeholder="Örn: Deneme Analizi"
+                                value={newSession.topic}
+                                onChange={e => setNewSession({ ...newSession, topic: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-ink-2 mb-1">Görüşme Linki (Opsiyonel)</label>
+                            <div className="relative">
+                                <Link className="absolute left-3 top-2.5 text-ink-3" size={18} />
+                                <input
+                                    type="url"
+                                    className="w-full border border-line-2 rounded-lg pl-10 pr-2 py-2 focus:ring-2 focus:ring-brand"
+                                    placeholder="https://..."
+                                    value={newSession.link}
+                                    onChange={e => setNewSession({ ...newSession, link: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <button type="submit" className="btn-primary w-full mt-2">
+                            Oluştur
+                        </button>
+                    </form>
+                </Modal>
             )}
         </div>
     );

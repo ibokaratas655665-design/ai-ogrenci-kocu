@@ -9,6 +9,7 @@ import { twMerge } from 'tailwind-merge';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
+import Modal from '../ui/Modal';
 
 // Utility for Tailwind classes
 const cn = (...inputs) => twMerge(clsx(inputs));
@@ -327,78 +328,91 @@ const TeacherSchedulerTab = () => {
 
             {/* Modals simplified */}
             {isAddingTeacher && (
-                <div className="fixed inset-0 z-modal-base bg-surface-inv/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-surface p-10 rounded-[40px] shadow-2xl w-full max-w-sm space-y-6">
-                        <h3 className="text-xl font-black text-ink uppercase">Yeni Öğretmen</h3>
-                        <input value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Ad" />
-                        <input value={newTeacher.surname} onChange={e=>setNewTeacher({...newTeacher, surname:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Soyad" />
-                        <input value={newTeacher.branch} onChange={e=>setNewTeacher({...newTeacher, branch:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Branş" />
-                        <button onClick={addTeacher} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black">EKLE</button>
-                        <button onClick={()=>setIsAddingTeacher(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
-                    </div>
-                </div>
+                <Modal
+                    acik
+                    onClose={() => setIsAddingTeacher(false)}
+                    baslik="Yeni Öğretmen"
+                    genislik="sm"
+                    govdeClassName="p-6 space-y-4"
+                >
+                    <input value={newTeacher.name} onChange={e=>setNewTeacher({...newTeacher, name:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Ad" />
+                    <input value={newTeacher.surname} onChange={e=>setNewTeacher({...newTeacher, surname:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Soyad" />
+                    <input value={newTeacher.branch} onChange={e=>setNewTeacher({...newTeacher, branch:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Branş" />
+                    <button onClick={addTeacher} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black">EKLE</button>
+                    <button onClick={()=>setIsAddingTeacher(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
+                </Modal>
             )}
 
             {isAddingStudent && (
-                 <div className="fixed inset-0 z-modal-base bg-surface-inv/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-surface p-10 rounded-[40px] shadow-2xl w-full max-w-sm space-y-6">
-                        <h3 className="text-xl font-black text-ink uppercase">Yeni Öğrenci</h3>
-                        <input value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Ad" />
-                        <input value={newStudent.surname} onChange={e=>setNewStudent({...newStudent, surname:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Soyad" />
-                        <input value={newStudent.grade} onChange={e=>setNewStudent({...newStudent, grade:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Sınıf" />
-                        <button onClick={addStudent} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black">KAYDET</button>
-                        <button onClick={()=>setIsAddingStudent(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
-                    </div>
-                </div>
+                 <Modal
+                     acik
+                     onClose={() => setIsAddingStudent(false)}
+                     baslik="Yeni Öğrenci"
+                     genislik="sm"
+                     govdeClassName="p-6 space-y-4"
+                 >
+                    <input value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Ad" />
+                    <input value={newStudent.surname} onChange={e=>setNewStudent({...newStudent, surname:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Soyad" />
+                    <input value={newStudent.grade} onChange={e=>setNewStudent({...newStudent, grade:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold text-sm" placeholder="Sınıf" />
+                    <button onClick={addStudent} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black">KAYDET</button>
+                    <button onClick={()=>setIsAddingStudent(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
+                 </Modal>
             )}
 
             {isAddingPair && (
-                 <div className="fixed inset-0 z-modal-base bg-surface-inv/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-surface p-10 rounded-[40px] shadow-2xl w-full max-w-sm space-y-6">
-                        <h3 className="text-xl font-black text-ink uppercase tracking-widest">Ders Eşleştir</h3>
-                        <select value={newPair.teacherId} onChange={e=>setNewPair({...newPair, teacherId:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none font-bold outline-none">
-                            <option value="">Öğretmen Seç...</option>
-                            {teachers.map(t=><option key={t.id} value={t.id}>{t.name} {t.surname}</option>)}
-                        </select>
-                        <select value={newPair.studentId} onChange={e=>setNewPair({...newPair, studentId:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none font-bold outline-none">
-                            <option value="">Öğrenci Seç...</option>
-                            {students.map(s=><option key={s.id} value={s.id}>{s.name} {s.surname}</option>)}
-                        </select>
-                        <input type="number" min="1" value={newPair.totalHours} onChange={e=>setNewPair({...newPair, totalHours:parseInt(e.target.value)})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold" placeholder="Saat" />
-                        <button onClick={addPairing} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black shadow-lg">EŞLEŞTİR</button>
-                        <button onClick={()=>setIsAddingPair(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
-                    </div>
-                </div>
+                 <Modal
+                     acik
+                     onClose={() => setIsAddingPair(false)}
+                     baslik="Ders Eşleştir"
+                     genislik="sm"
+                     govdeClassName="p-6 space-y-4"
+                 >
+                    <select value={newPair.teacherId} onChange={e=>setNewPair({...newPair, teacherId:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none font-bold outline-none">
+                        <option value="">Öğretmen Seç...</option>
+                        {teachers.map(t=><option key={t.id} value={t.id}>{t.name} {t.surname}</option>)}
+                    </select>
+                    <select value={newPair.studentId} onChange={e=>setNewPair({...newPair, studentId:e.target.value})} className="w-full p-4 bg-surface-2 rounded-2xl border-none font-bold outline-none">
+                        <option value="">Öğrenci Seç...</option>
+                        {students.map(s=><option key={s.id} value={s.id}>{s.name} {s.surname}</option>)}
+                    </select>
+                    <input type="number" min="1" value={newPair.totalHours} onChange={e=>setNewPair({...newPair, totalHours:parseInt(e.target.value)})} className="w-full p-4 bg-surface-2 rounded-2xl border-none outline-none font-bold" placeholder="Saat" />
+                    <button onClick={addPairing} className="w-full bg-surface-inv text-white py-4 rounded-2xl font-black shadow-lg">EŞLEŞTİR</button>
+                    <button onClick={()=>setIsAddingPair(false)} className="w-full text-ink-3 font-bold">Vazgeç</button>
+                 </Modal>
             )}
 
             {editingAvail && (
-                 <div className="fixed inset-0 z-modal-base bg-surface-inv/60 backdrop-blur-xl flex items-center justify-center p-4">
-                    <div className="bg-surface p-12 rounded-[50px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto space-y-8 scroll-thin">
-                        <div className="flex justify-between items-center border-b pb-6">
-                            <h3 className="text-2xl font-black text-ink uppercase tracking-tighter">Müsaitlik Ayarları</h3>
-                            <button onClick={()=>setEditingAvail(null)} className="p-4 bg-surface-2 rounded-3xl text-ink-3 hover:text-ink"><X size={24}/></button>
-                        </div>
-                        <div className="grid grid-cols-8 gap-4">
-                            <div className="h-12 flex items-center justify-center"></div>
-                            {DAYS.map(d=><div key={d} className="text-center text-[10px] font-black text-ink-3 uppercase">{d}</div>)}
-                            {HOURS.map((h, hIdx) => (
-                                <React.Fragment key={h}>
-                                    <div className="text-[10px] font-bold text-ink-3 flex items-center justify-center">{h.split(' - ')[0]}</div>
-                                    {DAYS.map((_, dIdx) => {
-                                        const key = `${dIdx}-${hIdx}`;
-                                        const isAvail = (teacherAvailability[editingAvail] || []).includes(key);
-                                        return (
-                                            <div key={key} onClick={()=>toggleTeacherAvail(editingAvail, dIdx, hIdx)} className={cn("h-12 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-center", isAvail ? "bg-brand border-indigo-600 text-ink shadow-md shadow-indigo-100" : "bg-surface-2 border-line text-transparent opacity-50")}>
-                                                <Check size={20}/>
-                                            </div>
-                                        );
-                                    })}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                        <button onClick={()=>setEditingAvail(null)} className="w-full bg-surface-inv text-white py-5 rounded-3xl font-black shadow-xl">KAYDET VE KAPAT</button>
+                 <Modal
+                     acik
+                     onClose={() => setEditingAvail(null)}
+                     baslikGizle
+                     genislik="xl"
+                     govdeClassName="p-6 sm:p-10 space-y-8"
+                 >
+                    <div className="flex justify-between items-center border-b pb-6">
+                        <h3 className="text-2xl font-black text-ink uppercase tracking-tighter">Müsaitlik Ayarları</h3>
+                        <button onClick={()=>setEditingAvail(null)} className="p-4 bg-surface-2 rounded-3xl text-ink-3 hover:text-ink"><X size={24}/></button>
                     </div>
-                </div>
+                    <div className="grid grid-cols-8 gap-4">
+                        <div className="h-12 flex items-center justify-center"></div>
+                        {DAYS.map(d=><div key={d} className="text-center text-[10px] font-black text-ink-3 uppercase">{d}</div>)}
+                        {HOURS.map((h, hIdx) => (
+                            <React.Fragment key={h}>
+                                <div className="text-[10px] font-bold text-ink-3 flex items-center justify-center">{h.split(' - ')[0]}</div>
+                                {DAYS.map((_, dIdx) => {
+                                    const key = `${dIdx}-${hIdx}`;
+                                    const isAvail = (teacherAvailability[editingAvail] || []).includes(key);
+                                    return (
+                                        <div key={key} onClick={()=>toggleTeacherAvail(editingAvail, dIdx, hIdx)} className={cn("h-12 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-center", isAvail ? "bg-brand border-indigo-600 text-ink shadow-md shadow-indigo-100" : "bg-surface-2 border-line text-transparent opacity-50")}>
+                                            <Check size={20}/>
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                    <button onClick={()=>setEditingAvail(null)} className="w-full bg-surface-inv text-white py-5 rounded-3xl font-black shadow-xl">KAYDET VE KAPAT</button>
+                 </Modal>
             )}
         </div>
     );

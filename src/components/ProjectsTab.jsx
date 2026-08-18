@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Rocket, Plus, X, Edit2, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
+import Modal from './ui/Modal';
 
 const ProjectsTab = ({ students, setToast }) => {
     const [projects, setProjects] = useState(() => {
@@ -174,99 +175,103 @@ const ProjectsTab = ({ students, setToast }) => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4">
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl">
-                        <div className="on-color bg-gradient-to-r from-c4 to-c5 p-6 rounded-t-2xl">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold">
-                                    {editingProject ? 'Projeyi Düzenle' : 'Yeni Proje'}
-                                </h2>
-                                <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
-                                    <X size={24} />
-                                </button>
-                            </div>
+                <Modal
+                    acik
+                    onClose={resetForm}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0"
+                >
+                    <div className="on-color bg-gradient-to-r from-c4 to-c5 p-6 rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">
+                                {editingProject ? 'Projeyi Düzenle' : 'Yeni Proje'}
+                            </h2>
+                            <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
+                                <X size={24} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Proje Başlığı</label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
+                                placeholder="Örn: Bilim Fuarı Projesi"
+                            />
                         </div>
 
-                        <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
+                                rows="3"
+                                placeholder="Proje detayları..."
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Proje Başlığı</label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
-                                    placeholder="Örn: Bilim Fuarı Projesi"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
-                                    rows="3"
-                                    placeholder="Proje detayları..."
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Öğrenci</label>
-                                    <select
-                                        value={formData.studentId}
-                                        onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
-                                    >
-                                        <option value="">Seçiniz...</option>
-                                        {students.map(student => (
-                                            <option key={student.id} value={student.id}>{student.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Son Tarih</label>
-                                    <input
-                                        type="date"
-                                        value={formData.deadline}
-                                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Durum</label>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Öğrenci</label>
                                 <select
-                                    value={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    value={formData.studentId}
+                                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                                     className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
                                 >
-                                    <option value="planning">Planlanıyor</option>
-                                    <option value="in-progress">Devam Ediyor</option>
-                                    <option value="completed">Tamamlandı</option>
-                                    <option value="cancelled">İptal Edildi</option>
+                                    <option value="">Seçiniz...</option>
+                                    {students.map(student => (
+                                        <option key={student.id} value={student.id}>{student.name}</option>
+                                    ))}
                                 </select>
                             </div>
 
-                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
-                                <button
-                                    onClick={resetForm}
-                                    className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-ink rounded-lg hover:shadow-lg font-medium transition"
-                                >
-                                    {editingProject ? 'Güncelle' : 'Oluştur'}
-                                </button>
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Son Tarih</label>
+                                <input
+                                    type="date"
+                                    value={formData.deadline}
+                                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
+                                />
                             </div>
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Durum</label>
+                            <select
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-violet-500"
+                            >
+                                <option value="planning">Planlanıyor</option>
+                                <option value="in-progress">Devam Ediyor</option>
+                                <option value="completed">Tamamlandı</option>
+                                <option value="cancelled">İptal Edildi</option>
+                            </select>
+                        </div>
+
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
+                            <button
+                                onClick={resetForm}
+                                className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-ink rounded-lg hover:shadow-lg font-medium transition"
+                            >
+                                {editingProject ? 'Güncelle' : 'Oluştur'}
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </Modal>
             )}
         </div>
     );

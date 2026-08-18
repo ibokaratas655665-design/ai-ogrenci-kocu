@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import { AYT_PROGRAMS, TYT_PROGRAMS, YDT_PROGRAMS, GELECEK_PROGRAMS } from '../../data/universityScoresData';
 import { AMBLEM_BASE64 } from '../../data/amblemBase64';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
+import Modal from '../ui/Modal';
 
 const STORAGE_KEY = 'university_scores_v2';
 const YEAR_KEY = 'university_scores_year';
@@ -352,42 +353,46 @@ const EditModal = ({ item, section, onSave, onClose, onSectionChange }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-modal-base flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface border border-line rounded-3xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-black text-ink syne uppercase flex items-center gap-2"><GraduationCap className="text-brand" size={20}/>{item?'DÜZENLE':'YENİ EKLE'}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-surface/10 rounded-xl text-ink-3 hover:text-ink"><X size={18}/></button>
-        </div>
-        {!item && (
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {[['ayt','AYT'],['tyt','TYT'],['ydt','YDT'],['gelecek','Gelecek']].map(([k,l])=>(
-              <button key={k} onClick={()=>{setS(k);onSectionChange(k)}} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${s===k?'bg-brand text-ink-on':'bg-surface/5 text-ink-3 hover:text-ink'}`}>{l}</button>
-            ))}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div><label className={lc}>Bölüm *</label><input value={f.bolum} onChange={e=>set('bolum',e.target.value)} className={ic}/></div>
-          <div><label className={lc}>Üniversite *</label><input value={f.uni} onChange={e=>set('uni',e.target.value)} className={ic}/></div>
-          <div><label className={lc}>Şehir</label><input value={f.sehir} onChange={e=>set('sehir',e.target.value)} className={ic}/></div>
-          <div className="flex gap-2">
-            <div className="flex-1"><label className={lc}>Puan</label><select value={f.puan} onChange={e=>set('puan',e.target.value)} className={ic}><option value="SAY">SAY</option><option value="EA">EA</option><option value="SÖZ">SÖZ</option><option value="TYT">TYT</option><option value="DİL">DİL</option></select></div>
-            <div className="flex-1"><label className={lc}>Kont.</label><input type="number" value={f.kontenjan} onChange={e=>set('kontenjan',e.target.value)} className={ic}/></div>
-          </div>
-          <div><label className={lc}>Taban Puan</label><input type="number" step="0.01" value={f.taban} onChange={e=>set('taban',e.target.value)} className={ic}/></div>
-          <div><label className={lc}>Sıralama</label><input type="number" value={f.siralama} onChange={e=>set('siralama',e.target.value)} className={ic}/></div>
-        </div>
-        <p className="text-[9px] font-black text-brand uppercase tracking-[0.15em] mb-2">SON YERLEŞENİN NETLERİ</p>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {[['tytTurkce','TYT Trk'],['tytMat','TYT Mat'],['tytFen','TYT Fen'],['tytSosyal','TYT Sos'],['aytMat','AYT Mat'],['aytFen','AYT Fen'],['aytEdebiyat','AYT Ed'],['aytTarih','AYT Tar'],['ydtNet','YDT'],['obp','OBP']].map(([k,l])=>(
-            <div key={k}><label className={lc}>{l}</label><input type="number" step="0.5" value={f[k]} onChange={e=>set(k,e.target.value)} placeholder="-" className={ic}/></div>
-          ))}
-        </div>
-        <div className="pencere-alt-cubuk bg-surface flex justify-end gap-3 pt-3 border-t border-line">
-          <button onClick={onClose} className="px-5 py-2.5 bg-surface/5 border border-line text-ink-2 rounded-2xl font-bold text-sm hover:text-ink transition">İptal</button>
-          <button onClick={submit} className="px-6 py-2.5 bg-brand text-ink-on rounded-2xl font-black text-sm hover:scale-105 transition flex items-center gap-2 shadow-lg shadow-e2"><Save size={14}/>{item?'GÜNCELLE':'KAYDET'}</button>
-        </div>
-      </div>
+    <Modal
+        acik
+        onClose={onClose}
+        baslikGizle
+        genislik="lg"
+        govdeClassName="p-6"
+    >
+    <div className="flex items-center justify-between mb-5">
+      <h3 className="text-lg font-black text-ink syne uppercase flex items-center gap-2"><GraduationCap className="text-brand" size={20}/>{item?'DÜZENLE':'YENİ EKLE'}</h3>
+      <button onClick={onClose} className="p-2 hover:bg-surface/10 rounded-xl text-ink-3 hover:text-ink"><X size={18}/></button>
     </div>
+    {!item && (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[['ayt','AYT'],['tyt','TYT'],['ydt','YDT'],['gelecek','Gelecek']].map(([k,l])=>(
+          <button key={k} onClick={()=>{setS(k);onSectionChange(k)}} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition ${s===k?'bg-brand text-ink-on':'bg-surface/5 text-ink-3 hover:text-ink'}`}>{l}</button>
+        ))}
+      </div>
+    )}
+    <div className="grid grid-cols-2 gap-3 mb-4">
+      <div><label className={lc}>Bölüm *</label><input value={f.bolum} onChange={e=>set('bolum',e.target.value)} className={ic}/></div>
+      <div><label className={lc}>Üniversite *</label><input value={f.uni} onChange={e=>set('uni',e.target.value)} className={ic}/></div>
+      <div><label className={lc}>Şehir</label><input value={f.sehir} onChange={e=>set('sehir',e.target.value)} className={ic}/></div>
+      <div className="flex gap-2">
+        <div className="flex-1"><label className={lc}>Puan</label><select value={f.puan} onChange={e=>set('puan',e.target.value)} className={ic}><option value="SAY">SAY</option><option value="EA">EA</option><option value="SÖZ">SÖZ</option><option value="TYT">TYT</option><option value="DİL">DİL</option></select></div>
+        <div className="flex-1"><label className={lc}>Kont.</label><input type="number" value={f.kontenjan} onChange={e=>set('kontenjan',e.target.value)} className={ic}/></div>
+      </div>
+      <div><label className={lc}>Taban Puan</label><input type="number" step="0.01" value={f.taban} onChange={e=>set('taban',e.target.value)} className={ic}/></div>
+      <div><label className={lc}>Sıralama</label><input type="number" value={f.siralama} onChange={e=>set('siralama',e.target.value)} className={ic}/></div>
+    </div>
+    <p className="text-[9px] font-black text-brand uppercase tracking-[0.15em] mb-2">SON YERLEŞENİN NETLERİ</p>
+    <div className="grid grid-cols-4 gap-2 mb-4">
+      {[['tytTurkce','TYT Trk'],['tytMat','TYT Mat'],['tytFen','TYT Fen'],['tytSosyal','TYT Sos'],['aytMat','AYT Mat'],['aytFen','AYT Fen'],['aytEdebiyat','AYT Ed'],['aytTarih','AYT Tar'],['ydtNet','YDT'],['obp','OBP']].map(([k,l])=>(
+        <div key={k}><label className={lc}>{l}</label><input type="number" step="0.5" value={f[k]} onChange={e=>set(k,e.target.value)} placeholder="-" className={ic}/></div>
+      ))}
+    </div>
+    <div className="pencere-alt-cubuk bg-surface flex justify-end gap-3 pt-3 border-t border-line">
+      <button onClick={onClose} className="px-5 py-2.5 bg-surface/5 border border-line text-ink-2 rounded-2xl font-bold text-sm hover:text-ink transition">İptal</button>
+      <button onClick={submit} className="px-6 py-2.5 bg-brand text-ink-on rounded-2xl font-black text-sm hover:scale-105 transition flex items-center gap-2 shadow-lg shadow-e2"><Save size={14}/>{item?'GÜNCELLE':'KAYDET'}</button>
+    </div>
+    </Modal>
   );
 };
 

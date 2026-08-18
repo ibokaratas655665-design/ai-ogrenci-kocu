@@ -550,6 +550,112 @@ export const loginStudent = async (schoolNumber, name) => {
 };
 
 /**
+ * 🏛️ SUNUCU KİMLİĞİYLE ÖĞRENCİ GİRİŞİ
+ *
+ * ═════════════════════════════════════════════════════════════════
+ * ÇÖZDÜĞÜ KİLİT
+ * ═════════════════════════════════════════════════════════════════
+ *
+ * `loginStudent` öğrenciyi localStorage'daki `coach_students` listesinde
+ * arıyor. O liste yeni bir cihazda BOŞTUR; dolması için `firebaseSync`
+ * çalışmalı, `firebaseSync` de hangi koçun veri havuzunu indireceğini
+ * bilmek için öğrencinin koç kimliğine ihtiyaç duyuyor — ki o bilgi de
+ * indirilmemiş listenin içinde. Kapalı bir döngü.
+ *
+ * Sonuç: davetle katılan öğrenci onaylansa bile KENDİ TELEFONUNDAN asla
+ * giriş yapamıyordu. Koçla aynı tarayıcıyı kullanmadıkça hiçbir öğrenci
+ * uygulamaya giremezdi.
+ *
+ * Döngü sunucudaki kimlik kaydıyla kırılır:
+ *   1. Şifreyi Firebase doğrular (tek doğrulama mercii; yerel özet yok).
+ *   2. `ogrenciKimlik/{uid}` → öğrenci hangi koçun havuzunda?
+ *   3. O havuz indirilir, öğrenci kaydı artık listede.
+ *
+ * Yerel giriş yolu KORUNUYOR: koçun elle eklediği, şifresi yerel özette
+ * duran öğrenciler eskisi gibi çalışır. Bu fonksiyon yalnızca yerel yol
+ * başarısız olduğunda devreye girer.
+ */
+export const sunucudanOgrenciGirisi = async (schoolNumber, password) => {
+    const okulNo = String(schoolNumber || '').trim();
+    if (!okulNo || !password) {
+        return { success: false, error: 'Okul numarası ve şifre gereklidir.' };
+    }
+
+    let uid;
+    try {
+        const { oturumDene } = await import('./firebaseOturum');
+        const fb = await oturumDene(okulNo, password, 'student');
+        if (!fb.basarili) {
+            return { success: false, error: 'Okul numarası veya şifre hatalı.' };
+        }
+        uid = fb.uid;
+    } catch {
+        return { success: false, error: 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.' };
+    }
+
+    const sunucu = (await import('./kayitSunucu')).default;
+
+    // ── Kimlik kaydı: onaylanmış mı, hangi koçta? ────────────
+    const kimlik = await sunucu.kimlikOku(uid);
+    if (!kimlik) {
+        /**
+         * Hesap var ama kimlik kaydı yok → koç henüz karar vermemiş ya da
+         * reddetmiş. Öğrenciye durumu net söylemek için talebe bakılır.
+         */
+        const talep = await sunucu.talebimiOku(uid);
+        const { oturumKapat } = await import('./firebaseOturum');
+        await oturumKapat();
+
+        if (talep?.durum === 'reddedildi') {
+            return { success: false, error: 'Katılım talebiniz onaylanmadı. Koçunuzla görüşün.' };
+        }
+        if (talep?.durum === 'bekliyor') {
+            return {
+                success: false,
+                error: `Kaydınız ${talep.kocAd || 'koçunuzun'} onayını bekliyor. Onaylandığında giriş yapabilirsiniz.`,
+            };
+        }
+        return { success: false, error: 'Kaydınız bulunamadı. Koçunuzdan yeni bir davet isteyin.' };
+    }
+
+    // ── Koçun veri havuzunu indir ────────────────────────────
+    try {
+        const { default: firebaseSync } = await import('./firebaseSync');
+        await firebaseSync.init({
+            id: kimlik.ogrenciId,
+            role: 'student',
+            coachId: kimlik.kocId,
+        });
+    } catch (e) {
+        console.warn('Öğrenci havuzu indirilemedi:', e?.message);
+    }
+
+    // ── Artık kayıt yerel listede olmalı ─────────────────────
+    const liste = safeParse('coach_students');
+    const kayit = liste.find((s) => String(s.id) === String(kimlik.ogrenciId));
+
+    /**
+     * Kayıt indirilememişse (koç henüz senkron etmemiş, bağlantı yavaş)
+     * giriş yine de açılır: kimlik kaydı sunucuda onaylı. Aksi hâlde
+     * öğrenci "onaylandınız" denip kapıda bırakılırdı.
+     */
+    const kullanici = kayit
+        ? { ...kayit, id: kayit.id, uid, role: 'student', approved: true }
+        : {
+            id: kimlik.ogrenciId,
+            uid,
+            name: kimlik.ad || '',
+            schoolNumber: kimlik.okulNo || okulNo,
+            role: 'student',
+            approved: true,
+            coachId: kimlik.kocId,
+            ownerCoachId: kimlik.kocId,
+        };
+
+    return { success: true, user: kullanici, sunucuGirisi: true };
+};
+
+/**
  * ✅ Koç kaydı
  */
 export const registerCoach = async (data) => {
@@ -876,6 +982,7 @@ export const bulkAddCoaches = async (coaches) => {
 export default {
     loginCoach,
     loginStudent,
+    sunucudanOgrenciGirisi,
     registerCoach,
     registerStudent,
     bulkAddStudents,

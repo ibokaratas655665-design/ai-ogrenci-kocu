@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Plus, X, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
+import Modal from './ui/Modal';
 
 const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
     const [groups, setGroups] = useState(() => {
@@ -162,82 +163,86 @@ const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4">
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="on-color sticky top-0 bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-ink">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold">
-                                    {editingGroup ? 'Grubu Düzenle' : 'Yeni Grup Oluştur'}
-                                </h2>
-                                <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
-                                    <X size={24} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Grup Adı</label>
-                                <input
-                                    type="text"
-                                    value={groupName}
-                                    onChange={(e) => setGroupName(e.target.value)}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-teal-500"
-                                    placeholder="Örn: 12. Sınıf MF"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama (Opsiyonel)</label>
-                                <textarea
-                                    value={groupDescription}
-                                    onChange={(e) => setGroupDescription(e.target.value)}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-teal-500"
-                                    rows="3"
-                                    placeholder="Grup hakkında kısa açıklama..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">
-                                    Öğrenciler ({selectedStudents.length} seçildi)
-                                </label>
-                                <div className="max-h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
-                                    {students.map(student => (
-                                        <label
-                                            key={student.id}
-                                            className="flex items-center gap-3 p-3 hover:bg-surface-2 rounded-lg cursor-pointer transition"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedStudents.includes(student.id)}
-                                                onChange={() => toggleStudent(student.id)}
-                                                className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-teal-500"
-                                            />
-                                            <span className="font-medium text-ink">{student.name}</span>
-                                            <span className="text-sm text-ink-2">{student.schoolNumber}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
-                                <button
-                                    onClick={resetForm}
-                                    className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    onClick={handleCreateGroup}
-                                    className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-ink rounded-lg hover:shadow-lg font-medium transition"
-                                >
-                                    {editingGroup ? 'Güncelle' : 'Oluştur'}
-                                </button>
-                            </div>
+                <Modal
+                    acik
+                    onClose={resetForm}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0"
+                >
+                    <div className="on-color sticky top-0 bg-gradient-to-r from-teal-600 to-teal-700 p-6 text-ink">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">
+                                {editingGroup ? 'Grubu Düzenle' : 'Yeni Grup Oluştur'}
+                            </h2>
+                            <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
+                                <X size={24} />
+                            </button>
                         </div>
                     </div>
-                </div>
+
+                    <div className="p-6 space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Grup Adı</label>
+                            <input
+                                type="text"
+                                value={groupName}
+                                onChange={(e) => setGroupName(e.target.value)}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-teal-500"
+                                placeholder="Örn: 12. Sınıf MF"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama (Opsiyonel)</label>
+                            <textarea
+                                value={groupDescription}
+                                onChange={(e) => setGroupDescription(e.target.value)}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-teal-500"
+                                rows="3"
+                                placeholder="Grup hakkında kısa açıklama..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">
+                                Öğrenciler ({selectedStudents.length} seçildi)
+                            </label>
+                            <div className="max-h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
+                                {students.map(student => (
+                                    <label
+                                        key={student.id}
+                                        className="flex items-center gap-3 p-3 hover:bg-surface-2 rounded-lg cursor-pointer transition"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedStudents.includes(student.id)}
+                                            onChange={() => toggleStudent(student.id)}
+                                            className="w-4 h-4 text-accent rounded focus:ring-2 focus:ring-teal-500"
+                                        />
+                                        <span className="font-medium text-ink">{student.name}</span>
+                                        <span className="text-sm text-ink-2">{student.schoolNumber}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
+                            <button
+                                onClick={resetForm}
+                                className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleCreateGroup}
+                                className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-700 text-ink rounded-lg hover:shadow-lg font-medium transition"
+                            >
+                                {editingGroup ? 'Güncelle' : 'Oluştur'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

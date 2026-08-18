@@ -18,6 +18,7 @@ import { jsPDF } from 'jspdf';
 import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
+import Modal from './ui/Modal';
 
 /* ── Yardımcı: options'u normalize et ────────────────────────── */
 function normalizeOptions(test, question) {
@@ -484,256 +485,261 @@ const StudentTestsTab = ({ user }) => {
 
             {/* ══════════ TEST MODAL ══════════ */}
             {activeTest && (
-                <div className="fixed inset-0 z-modal-top bg-black/70 backdrop-blur-sm flex items-center justify-center p-3">
-                    <div className="bg-surface w-full max-w-2xl max-h-[94vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+                <Modal
+                    acik
+                    onClose={closeTest}
+                    baslikGizle
+                    genislik="lg"
+                    katmanClassName="z-modal-top"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
 
-                        {/* Modal Header */}
-                        <div className="on-color bg-gradient-to-r from-brand to-purple-600 p-5 text-white flex-shrink-0">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex-1 pr-3">
-                                    <h2 className="text-lg font-bold leading-tight">{activeTest.title}</h2>
-                                    {!testResult && (
-                                        <p className="text-brand text-xs mt-1">
-                                            Soru {currentQuestion + 1} / {totalQ}
-                                            {(!isText && !isClassList) && ` • ${answeredCount} cevaplandı`}
-                                        </p>
-                                    )}
-                                </div>
-                                <button onClick={closeTest} className="bg-surface/10 hover:bg-surface/25 p-2 rounded-full transition flex-shrink-0">
-                                    <X size={18} />
-                                </button>
-                            </div>
-                            {!testResult && !isText && !isClassList && (
-                                <div className="w-full bg-surface/20 rounded-full h-1.5 mt-2">
-                                    <div className="h-full bg-surface rounded-full transition-all duration-yavas" style={{ width: `${progress}%` }} />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-5 bg-surface-2">
-                            {testResult ? (
-                                /* ── SONUÇ EKRANI ── */
-                                <div className="text-center py-8">
-                                    <div className="on-color w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-200">
-                                        <CheckCircle size={42} className="text-ink" />
-                                    </div>
-                                    <h3 className="text-2xl font-black text-ink mb-1">Test Tamamlandı!</h3>
-                                    <p className="text-ink-2 mb-5 text-sm">Harika iş çıkardın! İşte sonuçların:</p>
-                                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-5 rounded-2xl border border-brand-line max-w-sm mx-auto text-left">
-                                        <div className="flex justify-between items-center pb-3 border-b border-brand-line mb-3">
-                                            <span className="font-bold text-ink-2 text-xs uppercase tracking-wide">Değerlendirme</span>
-                                            <span className="font-black text-brand text-xl">{testResult.level}</span>
-                                        </div>
-                                        {testResult.comment && (
-                                            <p className="text-ink-2 text-sm italic">"{testResult.comment}"</p>
-                                        )}
-                                        <button onClick={() => downloadPDF(testResult)}
-                                            className="on-color w-full mt-4 bg-gradient-to-r from-brand to-purple-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition text-sm">
-                                            <Download size={16} /> Raporu PDF İndir
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : isText ? (
-                                /* ── AÇIK UÇLU (Beier tarzı) ── */
-                                <div className="space-y-4">
-                                    <p className="text-sm text-ink-2 bg-surface rounded-xl p-3 border border-line">
-                                        Aşağıdaki cümleleri içinizden geçen ilk düşünceyle tamamlayın. Yanlış cevap yoktur.
+                    {/* Modal Header */}
+                    <div className="on-color bg-gradient-to-r from-brand to-purple-600 p-5 text-white flex-shrink-0">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1 pr-3">
+                                <h2 className="text-lg font-bold leading-tight">{activeTest.title}</h2>
+                                {!testResult && (
+                                    <p className="text-brand text-xs mt-1">
+                                        Soru {currentQuestion + 1} / {totalQ}
+                                        {(!isText && !isClassList) && ` • ${answeredCount} cevaplandı`}
                                     </p>
-                                    {activeTest.questions.map((q, i) => {
-                                        const k = questionKey(q, i);
-                                        return (
-                                            <div key={k} className="bg-surface rounded-xl p-4 border border-line shadow-sm">
-                                                <p className="font-semibold text-ink mb-2 text-sm">
-                                                    <span className="text-brand font-bold mr-2">{i + 1}.</span>{q.text}
-                                                </p>
-                                                <input
-                                                    type="text"
-                                                    value={textAnswers[k] || ''}
-                                                    onChange={e => handleTextAnswer(k, e.target.value)}
-                                                    placeholder="Cevabınızı yazın..."
-                                                    className="w-full border-2 border-line rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none transition"
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : isClassList ? (
-                                /* ── SOSYOMETRİ (Sınıf Listesi - Tek Soru Görünümü) ── */
-                                <div className="space-y-4">
-                                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-info flex items-center justify-between mb-2">
-                                        <div>
-                                            <p className="text-sm font-bold text-ink">Sınıf Listesi Seçimi</p>
-                                            <p className="text-xs text-ink-2 mt-0.5">Mevcut sınıfınızdaki öğrencileri görebilirsiniz.</p>
-                                        </div>
-                                        <div className="px-3 py-1 bg-surface rounded-lg text-brand font-bold text-xs border border-brand-line shadow-sm">{user?.grade}/{user?.section}</div>
-                                    </div>
-
-                                    {/* Sadece aktif soruyu göster */}
-                                    {activeTest.questions.map((q, i) => {
-                                        if (i !== currentQuestion) return null;
-                                        const k = questionKey(q, i);
-                                        const getMaxSelect = (text) => {
-                                            const match = text.match(/en fazla (\d+)/i);
-                                            return match ? parseInt(match[1]) : 3;
-                                        };
-                                        const maxSelect = getMaxSelect(q.text);
-                                        const selectedArr = textAnswers[k] || [];
-                                        // Açık/kapalı durumu bileşen seviyesindeki haritadan okunur
-                                        const showList = Boolean(acikListeler[k]);
-                                        const setShowList = (v) => setAcikListeler(
-                                            (p) => ({ ...p, [k]: typeof v === 'boolean' ? v : !p[k] })
-                                        );
-
-                                        return (
-                                            <div key={k} className="bg-surface rounded-2xl border-2 border-brand-line shadow-lg overflow-hidden transition-all">
-                                                <div className="p-6 bg-surface border-b border-line">
-                                                    <div className="flex items-start gap-4 mb-4">
-                                                        <span className="bg-brand text-white font-bold w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                                            {i + 1}
-                                                        </span>
-                                                        <div>
-                                                            <p className="font-bold text-ink text-lg leading-snug">
-                                                                {q.text}
-                                                            </p>
-                                                            <p className="text-xs text-brand mt-2 font-black uppercase tracking-wider">
-                                                                Şu an {selectedArr.length} / {maxSelect} kişi seçildi
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Tek Şık Olarak Buton (User istediği için) */}
-                                                    <button
-                                                        onClick={() => setShowList(!showList)}
-                                                        className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all font-bold ${showList ? 'bg-brand text-white border-indigo-600' : 'bg-brand-soft text-brand border-brand-line hover:bg-brand-soft'}`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <CheckCircle size={20} />
-                                                            <span>{showList ? 'Listeyi Kapat' : 'Sınıf Listesini Görüntüle ve Seç'}</span>
-                                                        </div>
-                                                        <ChevronRight size={18} className={`transition-transform ${showList ? 'rotate-90' : ''}`} />
-                                                    </button>
-                                                </div>
-
-                                                {/* Açılan Sınıf Listesi */}
-                                                {showList && (
-                                                    <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-yavas">
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                            {classmates.length === 0 ? (
-                                                                <div className="col-span-1 sm:col-span-2 text-center text-ink-2 text-sm py-8 bg-surface rounded-2xl border-2 border-dashed border-line">
-                                                                    Sınıf arkadaşınız bulunamadı veya sistemde kayıtlı değil.
-                                                                </div>
-                                                            ) : classmates.map(c => {
-                                                                const isSelected = selectedArr.includes(c.name);
-                                                                const selectedIndex = selectedArr.indexOf(c.name);
-                                                                return (
-                                                                    <button
-                                                                        key={c.id}
-                                                                        onClick={() => handleClassmateSelect(k, c.name, maxSelect)}
-                                                                        className={`p-3 rounded-xl border-2 flex items-center justify-between transition-all text-sm font-bold ${isSelected ? 'bg-brand-soft border-indigo-400 text-brand shadow-md ring-2 ring-indigo-200 ring-opacity-50' : 'bg-surface border-line text-ink-2 hover:border-brand-line'}`}
-                                                                    >
-                                                                        <span className="truncate">{c.name}</span>
-                                                                        {isSelected && (
-                                                                            <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-normal">
-                                                                                {selectedIndex + 1}
-                                                                            </div>
-                                                                        )}
-                                                                    </button>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                /* ── ÇOKTAN SEÇMELİ ── */
-                                <div>
-                                    {activeTest.questions.map((q, i) => {
-                                        const k = questionKey(q, i);
-                                        const opts = normalizeOptions(activeTest, q);
-                                        return (
-                                            <div key={k} className={i === currentQuestion ? 'block' : 'hidden'}>
-                                                <div className="bg-surface p-5 rounded-2xl shadow-sm border border-line">
-                                                    <div className="flex items-start gap-3 mb-4">
-                                                        <span className="on-color bg-gradient-to-br from-indigo-500 to-purple-600 text-ink font-bold w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm">
-                                                            {i + 1}
-                                                        </span>
-                                                        <p className="font-bold text-ink leading-relaxed">{q.text}</p>
-                                                    </div>
-                                                    <div className="space-y-2.5">
-                                                        {opts.map((opt, oi) => {
-                                                            const selected = answers[k] === opt.value;
-                                                            return (
-                                                                <button key={oi} onClick={() => handleAnswer(k, opt.value)}
-                                                                    className={`w-full text-left p-3.5 rounded-xl text-sm font-medium transition-all border-2 flex items-center gap-3 ${selected
-                                                                        ? 'bg-gradient-to-r from-brand to-purple-600 text-white border-indigo-600 shadow scale-[1.01]'
-                                                                        : 'bg-surface text-ink-2 border-line hover:border-brand-line hover:bg-brand-soft'}`}
-                                                                >
-                                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selected ? 'border-white' : 'border-line-2'}`}>
-                                                                        {selected && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
-                                                                    </div>
-                                                                    <span className="flex-1">{opt.label}</span>
-                                                                    {selected && <CheckCircle size={16} className="flex-shrink-0" />}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        {!testResult && (
-                            <div className="p-4 border-t border-line bg-surface flex justify-between items-center flex-shrink-0">
-                                {/* Geri butonu */}
-                                <div>
-                                    {(!isText && !isClassList) && currentQuestion > 0 && (
-                                        <button onClick={() => setCurrentQuestion(q => q - 1)}
-                                            className="px-4 py-2 bg-surface-3 text-ink-2 rounded-xl font-bold hover:bg-surface-3 transition text-sm">
-                                            ← Önceki
-                                        </button>
-                                    )}
-                                </div>
-                                {/* İleri / Bitir */}
-                                <div className="flex items-center gap-3">
-                                    {(!isText && !isClassList) && currentQuestion < totalQ - 1 && (
-                                        <button
-                                            onClick={() => setCurrentQuestion(q => q + 1)}
-                                            disabled={answers[currentKey] === undefined}
-                                            className="on-color px-5 py-2 bg-gradient-to-r from-brand to-purple-600 text-white rounded-xl font-bold hover:shadow text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            Sonraki <ChevronRight size={15} />
-                                        </button>
-                                    )}
-                                    {(isText || isClassList || currentQuestion === totalQ - 1) && (
-                                        <button
-                                            onClick={submitTest}
-                                            disabled={submitting || (!isText && !isClassList && answeredCount < totalQ)}
-                                            className="on-color px-5 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-ink rounded-xl font-bold hover:shadow text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                                        >
-                                            {submitting ? '⏳ İşleniyor...' : <><CheckCircle size={15} /> Testi Tamamla</>}
-                                        </button>
-                                    )}
-                                </div>
+                                )}
                             </div>
-                        )}
-                        {testResult && (
-                            <div className="p-4 border-t border-line bg-surface flex justify-end flex-shrink-0">
-                                <button onClick={closeTest}
-                                    className="px-5 py-2 bg-surface-inv text-white rounded-xl font-bold hover:bg-surface-inv transition text-sm">
-                                    Kapat
-                                </button>
+                            <button onClick={closeTest} className="bg-surface/10 hover:bg-surface/25 p-2 rounded-full transition flex-shrink-0">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        {!testResult && !isText && !isClassList && (
+                            <div className="w-full bg-surface/20 rounded-full h-1.5 mt-2">
+                                <div className="h-full bg-surface rounded-full transition-all duration-yavas" style={{ width: `${progress}%` }} />
                             </div>
                         )}
                     </div>
-                </div>
+
+                    {/* Modal Body */}
+                    <div className="flex-1 min-h-0 overflow-y-auto p-5 bg-surface-2">
+                        {testResult ? (
+                            /* ── SONUÇ EKRANI ── */
+                            <div className="text-center py-8">
+                                <div className="on-color w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-200">
+                                    <CheckCircle size={42} className="text-ink" />
+                                </div>
+                                <h3 className="text-2xl font-black text-ink mb-1">Test Tamamlandı!</h3>
+                                <p className="text-ink-2 mb-5 text-sm">Harika iş çıkardın! İşte sonuçların:</p>
+                                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-5 rounded-2xl border border-brand-line max-w-sm mx-auto text-left">
+                                    <div className="flex justify-between items-center pb-3 border-b border-brand-line mb-3">
+                                        <span className="font-bold text-ink-2 text-xs uppercase tracking-wide">Değerlendirme</span>
+                                        <span className="font-black text-brand text-xl">{testResult.level}</span>
+                                    </div>
+                                    {testResult.comment && (
+                                        <p className="text-ink-2 text-sm italic">"{testResult.comment}"</p>
+                                    )}
+                                    <button onClick={() => downloadPDF(testResult)}
+                                        className="on-color w-full mt-4 bg-gradient-to-r from-brand to-purple-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition text-sm">
+                                        <Download size={16} /> Raporu PDF İndir
+                                    </button>
+                                </div>
+                            </div>
+                        ) : isText ? (
+                            /* ── AÇIK UÇLU (Beier tarzı) ── */
+                            <div className="space-y-4">
+                                <p className="text-sm text-ink-2 bg-surface rounded-xl p-3 border border-line">
+                                    Aşağıdaki cümleleri içinizden geçen ilk düşünceyle tamamlayın. Yanlış cevap yoktur.
+                                </p>
+                                {activeTest.questions.map((q, i) => {
+                                    const k = questionKey(q, i);
+                                    return (
+                                        <div key={k} className="bg-surface rounded-xl p-4 border border-line shadow-sm">
+                                            <p className="font-semibold text-ink mb-2 text-sm">
+                                                <span className="text-brand font-bold mr-2">{i + 1}.</span>{q.text}
+                                            </p>
+                                            <input
+                                                type="text"
+                                                value={textAnswers[k] || ''}
+                                                onChange={e => handleTextAnswer(k, e.target.value)}
+                                                placeholder="Cevabınızı yazın..."
+                                                className="w-full border-2 border-line rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none transition"
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : isClassList ? (
+                            /* ── SOSYOMETRİ (Sınıf Listesi - Tek Soru Görünümü) ── */
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-info flex items-center justify-between mb-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-ink">Sınıf Listesi Seçimi</p>
+                                        <p className="text-xs text-ink-2 mt-0.5">Mevcut sınıfınızdaki öğrencileri görebilirsiniz.</p>
+                                    </div>
+                                    <div className="px-3 py-1 bg-surface rounded-lg text-brand font-bold text-xs border border-brand-line shadow-sm">{user?.grade}/{user?.section}</div>
+                                </div>
+
+                                {/* Sadece aktif soruyu göster */}
+                                {activeTest.questions.map((q, i) => {
+                                    if (i !== currentQuestion) return null;
+                                    const k = questionKey(q, i);
+                                    const getMaxSelect = (text) => {
+                                        const match = text.match(/en fazla (\d+)/i);
+                                        return match ? parseInt(match[1]) : 3;
+                                    };
+                                    const maxSelect = getMaxSelect(q.text);
+                                    const selectedArr = textAnswers[k] || [];
+                                    // Açık/kapalı durumu bileşen seviyesindeki haritadan okunur
+                                    const showList = Boolean(acikListeler[k]);
+                                    const setShowList = (v) => setAcikListeler(
+                                        (p) => ({ ...p, [k]: typeof v === 'boolean' ? v : !p[k] })
+                                    );
+
+                                    return (
+                                        <div key={k} className="bg-surface rounded-2xl border-2 border-brand-line shadow-lg overflow-hidden transition-all">
+                                            <div className="p-6 bg-surface border-b border-line">
+                                                <div className="flex items-start gap-4 mb-4">
+                                                    <span className="bg-brand text-white font-bold w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                                        {i + 1}
+                                                    </span>
+                                                    <div>
+                                                        <p className="font-bold text-ink text-lg leading-snug">
+                                                            {q.text}
+                                                        </p>
+                                                        <p className="text-xs text-brand mt-2 font-black uppercase tracking-wider">
+                                                            Şu an {selectedArr.length} / {maxSelect} kişi seçildi
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Tek Şık Olarak Buton (User istediği için) */}
+                                                <button
+                                                    onClick={() => setShowList(!showList)}
+                                                    className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all font-bold ${showList ? 'bg-brand text-white border-indigo-600' : 'bg-brand-soft text-brand border-brand-line hover:bg-brand-soft'}`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <CheckCircle size={20} />
+                                                        <span>{showList ? 'Listeyi Kapat' : 'Sınıf Listesini Görüntüle ve Seç'}</span>
+                                                    </div>
+                                                    <ChevronRight size={18} className={`transition-transform ${showList ? 'rotate-90' : ''}`} />
+                                                </button>
+                                            </div>
+
+                                            {/* Açılan Sınıf Listesi */}
+                                            {showList && (
+                                                <div className="p-6 bg-surface-2 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-yavas">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        {classmates.length === 0 ? (
+                                                            <div className="col-span-1 sm:col-span-2 text-center text-ink-2 text-sm py-8 bg-surface rounded-2xl border-2 border-dashed border-line">
+                                                                Sınıf arkadaşınız bulunamadı veya sistemde kayıtlı değil.
+                                                            </div>
+                                                        ) : classmates.map(c => {
+                                                            const isSelected = selectedArr.includes(c.name);
+                                                            const selectedIndex = selectedArr.indexOf(c.name);
+                                                            return (
+                                                                <button
+                                                                    key={c.id}
+                                                                    onClick={() => handleClassmateSelect(k, c.name, maxSelect)}
+                                                                    className={`p-3 rounded-xl border-2 flex items-center justify-between transition-all text-sm font-bold ${isSelected ? 'bg-brand-soft border-indigo-400 text-brand shadow-md ring-2 ring-indigo-200 ring-opacity-50' : 'bg-surface border-line text-ink-2 hover:border-brand-line'}`}
+                                                                >
+                                                                    <span className="truncate">{c.name}</span>
+                                                                    {isSelected && (
+                                                                        <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-black text-sm flex-shrink-0 animate-in zoom-in-50 duration-normal">
+                                                                            {selectedIndex + 1}
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            /* ── ÇOKTAN SEÇMELİ ── */
+                            <div>
+                                {activeTest.questions.map((q, i) => {
+                                    const k = questionKey(q, i);
+                                    const opts = normalizeOptions(activeTest, q);
+                                    return (
+                                        <div key={k} className={i === currentQuestion ? 'block' : 'hidden'}>
+                                            <div className="bg-surface p-5 rounded-2xl shadow-sm border border-line">
+                                                <div className="flex items-start gap-3 mb-4">
+                                                    <span className="on-color bg-gradient-to-br from-indigo-500 to-purple-600 text-ink font-bold w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-sm">
+                                                        {i + 1}
+                                                    </span>
+                                                    <p className="font-bold text-ink leading-relaxed">{q.text}</p>
+                                                </div>
+                                                <div className="space-y-2.5">
+                                                    {opts.map((opt, oi) => {
+                                                        const selected = answers[k] === opt.value;
+                                                        return (
+                                                            <button key={oi} onClick={() => handleAnswer(k, opt.value)}
+                                                                className={`w-full text-left p-3.5 rounded-xl text-sm font-medium transition-all border-2 flex items-center gap-3 ${selected
+                                                                    ? 'bg-gradient-to-r from-brand to-purple-600 text-white border-indigo-600 shadow scale-[1.01]'
+                                                                    : 'bg-surface text-ink-2 border-line hover:border-brand-line hover:bg-brand-soft'}`}
+                                                            >
+                                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selected ? 'border-white' : 'border-line-2'}`}>
+                                                                    {selected && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
+                                                                </div>
+                                                                <span className="flex-1">{opt.label}</span>
+                                                                {selected && <CheckCircle size={16} className="flex-shrink-0" />}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    {!testResult && (
+                        <div className="p-4 border-t border-line bg-surface flex justify-between items-center flex-shrink-0">
+                            {/* Geri butonu */}
+                            <div>
+                                {(!isText && !isClassList) && currentQuestion > 0 && (
+                                    <button onClick={() => setCurrentQuestion(q => q - 1)}
+                                        className="px-4 py-2 bg-surface-3 text-ink-2 rounded-xl font-bold hover:bg-surface-3 transition text-sm">
+                                        ← Önceki
+                                    </button>
+                                )}
+                            </div>
+                            {/* İleri / Bitir */}
+                            <div className="flex items-center gap-3">
+                                {(!isText && !isClassList) && currentQuestion < totalQ - 1 && (
+                                    <button
+                                        onClick={() => setCurrentQuestion(q => q + 1)}
+                                        disabled={answers[currentKey] === undefined}
+                                        className="on-color px-5 py-2 bg-gradient-to-r from-brand to-purple-600 text-white rounded-xl font-bold hover:shadow text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        Sonraki <ChevronRight size={15} />
+                                    </button>
+                                )}
+                                {(isText || isClassList || currentQuestion === totalQ - 1) && (
+                                    <button
+                                        onClick={submitTest}
+                                        disabled={submitting || (!isText && !isClassList && answeredCount < totalQ)}
+                                        className="on-color px-5 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-ink rounded-xl font-bold hover:shadow text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {submitting ? '⏳ İşleniyor...' : <><CheckCircle size={15} /> Testi Tamamla</>}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {testResult && (
+                        <div className="p-4 border-t border-line bg-surface flex justify-end flex-shrink-0">
+                            <button onClick={closeTest}
+                                className="px-5 py-2 bg-surface-inv text-white rounded-xl font-bold hover:bg-surface-inv transition text-sm">
+                                Kapat
+                            </button>
+                        </div>
+                    )}
+                </Modal>
             )}
         </div>
     );

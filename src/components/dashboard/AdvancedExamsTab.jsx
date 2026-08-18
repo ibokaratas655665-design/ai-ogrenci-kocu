@@ -24,6 +24,7 @@ import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResour
 import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
+import Modal from '../ui/Modal';
 
 const CurriculumManager = () => {
     const [selectedExam, setSelectedExam] = useState('TYT');
@@ -853,58 +854,55 @@ const NewTrialModal = ({ onClose, onCreate, initialExamType }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-surface rounded-2xl w-full max-w-md shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
-                <div className="p-6 border-b border-line flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-ink flex items-center">
-                        <Plus size={20} className="mr-2 text-c4" />
-                        Yeni Deneme Sınavı Oluştur
-                    </h3>
-                    <button onClick={onClose} className="p-1.5 hover:bg-surface-3 rounded-full transition"><X size={20} className="text-ink-2" /></button>
+        <Modal
+            acik
+            onClose={onClose}
+            baslik={<span className="flex items-center"><Plus size={20} className="mr-2 text-c4" />Yeni Deneme Sınavı Oluştur</span>}
+            genislik="md"
+            govdeClassName="p-0"
+        >
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div>
+                    <label className="block text-sm font-semibold text-ink-2 mb-1.5">Deneme Adı *</label>
+                    <input
+                        autoFocus
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="örn: 1. Okul Denemesi, Kasım Branşman..."
+                        className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-ink"
+                    />
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-semibold text-ink-2 mb-1.5">Deneme Adı *</label>
+                        <label className="block text-sm font-semibold text-ink-2 mb-1.5">Sınav Türü</label>
+                        <select
+                            value={examType}
+                            onChange={e => setExamType(e.target.value)}
+                            className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-ink"
+                        >
+                            {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            <option value="Kazanım">Kazanım Testi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-ink-2 mb-1.5">Tarih</label>
                         <input
-                            autoFocus
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="örn: 1. Okul Denemesi, Kasım Branşman..."
-                            className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-ink"
+                            type="date"
+                            value={date}
+                            onChange={e => setDate(e.target.value)}
+                            className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-ink-2 mb-1.5">Sınav Türü</label>
-                            <select
-                                value={examType}
-                                onChange={e => setExamType(e.target.value)}
-                                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none text-ink"
-                            >
-                                {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                <option value="Kazanım">Kazanım Testi</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-ink-2 mb-1.5">Tarih</label>
-                            <input
-                                type="date"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                                className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink"
-                            />
-                        </div>
-                    </div>
-                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
-                        <button type="submit" className="on-color flex-1 bg-gradient-to-r from-purple-600 to-brand text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg shadow-purple-200">
-                            Deneme Oluştur
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                </div>
+                <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-2">
+                    <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
+                    <button type="submit" className="on-color flex-1 bg-gradient-to-r from-purple-600 to-brand text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition shadow-lg shadow-purple-200">
+                        Deneme Oluştur
+                    </button>
+                </div>
+            </form>
+        </Modal>
     );
 };
 
@@ -1172,242 +1170,246 @@ const ManualResultModal = ({ onClose, onSave, trials, initialData }) => {
     const groups = [...new Set(subjectList.map(s => s.group))];
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-sm flex items-start justify-center p-4" onClick={onClose}>
-            <div className="bg-surface rounded-2xl w-full max-w-2xl shadow-2xl animate-fade-in my-6 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                {/* Header — her zaman görünür */}
-                <div className="on-color p-5 border-b border-line flex justify-between items-center bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-2xl flex-shrink-0">
-                    <h3 className="text-base font-bold text-ink flex items-center gap-2">
-                        {isEdit ? <Edit2 size={18} /> : <FileText size={18} />}
-                        {isEdit ? 'Sonucu Düzenle' : 'Bireysel Sonuç Gir'}
-                    </h3>
-                    <button onClick={onClose} className="p-1.5 hover:bg-surface/20 rounded-full transition"><X size={18} className="text-ink" /></button>
-                </div>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="lg"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
+            {/* Header — her zaman görünür */}
+            <div className="on-color p-5 border-b border-line flex justify-between items-center bg-gradient-to-r from-indigo-500 to-purple-600 flex-shrink-0">
+                <h3 className="text-base font-bold text-ink flex items-center gap-2">
+                    {isEdit ? <Edit2 size={18} /> : <FileText size={18} />}
+                    {isEdit ? 'Sonucu Düzenle' : 'Bireysel Sonuç Gir'}
+                </h3>
+                <button onClick={onClose} className="p-1.5 hover:bg-surface/20 rounded-full transition"><X size={18} className="text-ink" /></button>
+            </div>
 
-                <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
-                    {/* ── Deneme Modu Seçici ── */}
-                    {!isEdit && (
-                        <div>
-                            <label className={labelCls}>Deneme Seçimi *</label>
-                            <div className="flex gap-2">
-                                <button type="button"
-                                    onClick={() => setTrialMode('existing')}
-                                    disabled={trials.length === 0}
-                                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
-                                        ${trialMode === 'existing'
-                                            ? 'bg-brand text-white border-indigo-600 shadow-md'
-                                            : 'bg-surface text-ink-2 border-line hover:bg-brand-soft disabled:opacity-40'}`}
-                                >
-                                    📋 Mevcut Denemeye Ekle
-                                    {trials.length === 0 && <span className="block text-[10px] opacity-60">Henüz deneme yok</span>}
-                                </button>
-                                <button type="button"
-                                    onClick={() => setTrialMode('new')}
-                                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
-                                        ${trialMode === 'new'
-                                            ? 'bg-ok text-white border-emerald-600 shadow-md'
-                                            : 'bg-surface text-ink-2 border-line hover:bg-ok-soft'}`}
-                                >
-                                    ✨ Yeni Deneme Oluştur
-                                </button>
-                            </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+                {/* ── Deneme Modu Seçici ── */}
+                {!isEdit && (
+                    <div>
+                        <label className={labelCls}>Deneme Seçimi *</label>
+                        <div className="flex gap-2">
+                            <button type="button"
+                                onClick={() => setTrialMode('existing')}
+                                disabled={trials.length === 0}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
+                                    ${trialMode === 'existing'
+                                        ? 'bg-brand text-white border-indigo-600 shadow-md'
+                                        : 'bg-surface text-ink-2 border-line hover:bg-brand-soft disabled:opacity-40'}`}
+                            >
+                                📋 Mevcut Denemeye Ekle
+                                {trials.length === 0 && <span className="block text-[10px] opacity-60">Henüz deneme yok</span>}
+                            </button>
+                            <button type="button"
+                                onClick={() => setTrialMode('new')}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
+                                    ${trialMode === 'new'
+                                        ? 'bg-ok text-white border-emerald-600 shadow-md'
+                                        : 'bg-surface text-ink-2 border-line hover:bg-ok-soft'}`}
+                            >
+                                ✨ Yeni Deneme Oluştur
+                            </button>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* ── Mevcut Deneme Seçici ── */}
-                    {(trialMode === 'existing' || isEdit) && (
-                        <div className="grid grid-cols-2 gap-3">
+                {/* ── Mevcut Deneme Seçici ── */}
+                {(trialMode === 'existing' || isEdit) && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelCls}>Deneme *</label>
+                            <select value={trialId} onChange={e => setTrialId(e.target.value)}
+                                className="w-full border-2 border-brand-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink bg-surface font-bold">
+                                {trials.map(t => <option key={t.id} value={t.id} className="text-ink">{t.name} ({t.examType})</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={labelCls}>Sınıf</label>
+                            <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)}
+                                className="w-full border-2 border-brand-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink bg-surface font-bold">
+                                {GRADE_LEVELS.map(g => <option key={g.id} value={g.id} className="text-ink">{g.label}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Yeni Deneme Oluşturma Alanları ── */}
+                {trialMode === 'new' && !isEdit && (
+                    <div className="bg-ok-soft border border-ok rounded-xl p-4 space-y-3">
+                        <p className="text-xs font-black text-ok uppercase tracking-wide">✨ Yeni Deneme Bilgileri</p>
+                        <div className="grid grid-cols-1 gap-3">
                             <div>
-                                <label className={labelCls}>Deneme *</label>
-                                <select value={trialId} onChange={e => setTrialId(e.target.value)}
-                                    className="w-full border-2 border-brand-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink bg-surface font-bold">
-                                    {trials.map(t => <option key={t.id} value={t.id} className="text-ink">{t.name} ({t.examType})</option>)}
-                                </select>
+                                <label className={labelCls}>Deneme Adı *</label>
+                                <input type="text" value={newTrialName}
+                                    onChange={e => setNewTrialName(e.target.value)}
+                                    placeholder="Örn: TYT Deneme 5, Nisan Denemesi..."
+                                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={labelCls}>Sınav Türü</label>
+                                    <select value={newTrialExamType} onChange={e => setNewTrialExamType(e.target.value)}
+                                        className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink">
+                                        {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Tarih</label>
+                                    <input type="date" value={newTrialDate}
+                                        onChange={e => setNewTrialDate(e.target.value)}
+                                        className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink" />
+                                </div>
                             </div>
                             <div>
                                 <label className={labelCls}>Sınıf</label>
                                 <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)}
-                                    className="w-full border-2 border-brand-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink bg-surface font-bold">
-                                    {GRADE_LEVELS.map(g => <option key={g.id} value={g.id} className="text-ink">{g.label}</option>)}
+                                    className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink">
+                                    {GRADE_LEVELS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                                 </select>
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* ── Yeni Deneme Oluşturma Alanları ── */}
-                    {trialMode === 'new' && !isEdit && (
-                        <div className="bg-ok-soft border border-ok rounded-xl p-4 space-y-3">
-                            <p className="text-xs font-black text-ok uppercase tracking-wide">✨ Yeni Deneme Bilgileri</p>
-                            <div className="grid grid-cols-1 gap-3">
-                                <div>
-                                    <label className={labelCls}>Deneme Adı *</label>
-                                    <input type="text" value={newTrialName}
-                                        onChange={e => setNewTrialName(e.target.value)}
-                                        placeholder="Örn: TYT Deneme 5, Nisan Denemesi..."
-                                        className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className={labelCls}>Sınav Türü</label>
-                                        <select value={newTrialExamType} onChange={e => setNewTrialExamType(e.target.value)}
-                                            className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink">
-                                            {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className={labelCls}>Tarih</label>
-                                        <input type="date" value={newTrialDate}
-                                            onChange={e => setNewTrialDate(e.target.value)}
-                                            className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Sınıf</label>
-                                    <select value={gradeLevel} onChange={e => setGradeLevel(e.target.value)}
-                                        className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-ink">
-                                        {GRADE_LEVELS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                {/* Öğrenci bilgisi */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className={labelCls}>Öğrenci Adı *</label>
+                        <input autoFocus type="text" value={student} onChange={e => setStudent(e.target.value)}
+                            placeholder="Ad Soyad"
+                            className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink" />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Numara</label>
+                        <input type="text" value={number} onChange={e => setNumber(e.target.value)}
+                            placeholder="okul no (opt.)"
+                            className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink" />
+                    </div>
+                </div>
 
-                    {/* Öğrenci bilgisi */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className={labelCls}>Öğrenci Adı *</label>
-                            <input autoFocus type="text" value={student} onChange={e => setStudent(e.target.value)}
-                                placeholder="Ad Soyad"
-                                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink" />
-                        </div>
-                        <div>
-                            <label className={labelCls}>Numara</label>
-                            <input type="text" value={number} onChange={e => setNumber(e.target.value)}
-                                placeholder="okul no (opt.)"
-                                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 text-ink" />
+                {/* OBP Manuel Giriş — Öğrenci bilgisinin hemen altında */}
+                <div className="bg-warn-soft border-2 border-warn rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-base">🎓</span>
+                        <label className="text-sm font-black text-warn">OBP (Diploma Notu) Ek Puanı</label>
+                        <span className="text-xs bg-amber-200 text-warn font-bold px-2 py-0.5 rounded-full">0 – 60</span>
+                    </div>
+                    <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        step="0.01"
+                        value={manualObp}
+                        onChange={e => setManualObp(e.target.value)}
+                        placeholder="Boş bırakırsanız sistem OBP verisinden otomatik alır"
+                        className="w-full border-2 border-warn rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface font-semibold text-ink"
+                    />
+                    <p className="text-xs text-warn mt-1.5">💡 Diploma notu sisteme OBP sekmesinden girilmişse boş bırakın — otomatik uygulanır. Buraya girdiğiniz değer önceliklidir.</p>
+                </div>
+
+
+                {/* Ders bazlı doğru/yanlış/net */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-ink-2 uppercase tracking-wide">{examType} — Ders Detayları</p>
+                        <div className="flex gap-4 text-xs font-bold text-ink-3 pr-1">
+                            <span className="w-20 text-center text-ok">Doğru</span>
+                            <span className="w-20 text-center text-danger">Yanlış</span>
+                            <span className="w-20 text-center text-brand">Net</span>
                         </div>
                     </div>
 
-                    {/* OBP Manuel Giriş — Öğrenci bilgisinin hemen altında */}
-                    <div className="bg-warn-soft border-2 border-warn rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-base">🎓</span>
-                            <label className="text-sm font-black text-warn">OBP (Diploma Notu) Ek Puanı</label>
-                            <span className="text-xs bg-amber-200 text-warn font-bold px-2 py-0.5 rounded-full">0 – 60</span>
-                        </div>
-                        <input
-                            type="number"
-                            min="0"
-                            max="60"
-                            step="0.01"
-                            value={manualObp}
-                            onChange={e => setManualObp(e.target.value)}
-                            placeholder="Boş bırakırsanız sistem OBP verisinden otomatik alır"
-                            className="w-full border-2 border-warn rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-surface font-semibold text-ink"
-                        />
-                        <p className="text-xs text-warn mt-1.5">💡 Diploma notu sisteme OBP sekmesinden girilmişse boş bırakın — otomatik uygulanır. Buraya girdiğiniz değer önceliklidir.</p>
-                    </div>
-
-
-                    {/* Ders bazlı doğru/yanlış/net */}
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <p className="text-xs font-bold text-ink-2 uppercase tracking-wide">{examType} — Ders Detayları</p>
-                            <div className="flex gap-4 text-xs font-bold text-ink-3 pr-1">
-                                <span className="w-20 text-center text-ok">Doğru</span>
-                                <span className="w-20 text-center text-danger">Yanlış</span>
-                                <span className="w-20 text-center text-brand">Net</span>
-                            </div>
-                        </div>
-
-                        {groups.map(group => (
-                            <div key={group} className={`rounded-xl border p-3 space-y-2 ${GROUP_COLORS[group] || 'bg-surface-2 border-line'}`}>
-                                <p className="text-xs font-black uppercase tracking-wider opacity-70">{group}</p>
-                                {subjectList.filter(s => s.group === group).map(({ key, label, maxD }) => {
-                                    const s = scores[key] || {};
-                                    const net = getSubjectNet(key);
-                                    return (
-                                        <div key={key} className="flex items-center gap-2">
-                                            <span className="text-xs font-semibold text-ink-2 w-28 shrink-0">{label}</span>
-                                            <span className="text-xs text-ink-3 shrink-0">/{maxD}</span>
-                                            <div className="flex gap-2 ml-auto">
-                                                <input
-                                                    type="number" min="0" max={maxD} step="1"
-                                                    value={s.d || ''}
-                                                    onChange={e => setScore(key, 'd', e.target.value)}
-                                                    placeholder="D"
-                                                    className={inputCls + " border-ok focus:ring-green-400"}
-                                                />
-                                                <input
-                                                    type="number" min="0" max={maxD} step="1"
-                                                    value={s.y || ''}
-                                                    onChange={e => setScore(key, 'y', e.target.value)}
-                                                    placeholder="Y"
-                                                    className={inputCls + " border-danger focus:ring-red-400"}
-                                                />
-                                                <div className={`w-20 text-center py-1.5 rounded-lg text-sm font-black ${net === null ? 'bg-surface-3 text-ink-3' :
-                                                    net >= 0 ? 'bg-brand-soft text-brand' : 'bg-danger-soft text-danger'
-                                                    }`}>
-                                                    {net !== null ? net.toFixed(2) : '—'}
-                                                </div>
+                    {groups.map(group => (
+                        <div key={group} className={`rounded-xl border p-3 space-y-2 ${GROUP_COLORS[group] || 'bg-surface-2 border-line'}`}>
+                            <p className="text-xs font-black uppercase tracking-wider opacity-70">{group}</p>
+                            {subjectList.filter(s => s.group === group).map(({ key, label, maxD }) => {
+                                const s = scores[key] || {};
+                                const net = getSubjectNet(key);
+                                return (
+                                    <div key={key} className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-ink-2 w-28 shrink-0">{label}</span>
+                                        <span className="text-xs text-ink-3 shrink-0">/{maxD}</span>
+                                        <div className="flex gap-2 ml-auto">
+                                            <input
+                                                type="number" min="0" max={maxD} step="1"
+                                                value={s.d || ''}
+                                                onChange={e => setScore(key, 'd', e.target.value)}
+                                                placeholder="D"
+                                                className={inputCls + " border-ok focus:ring-green-400"}
+                                            />
+                                            <input
+                                                type="number" min="0" max={maxD} step="1"
+                                                value={s.y || ''}
+                                                onChange={e => setScore(key, 'y', e.target.value)}
+                                                placeholder="Y"
+                                                className={inputCls + " border-danger focus:ring-red-400"}
+                                            />
+                                            <div className={`w-20 text-center py-1.5 rounded-lg text-sm font-black ${net === null ? 'bg-surface-3 text-ink-3' :
+                                                net >= 0 ? 'bg-brand-soft text-brand' : 'bg-danger-soft text-danger'
+                                                }`}>
+                                                {net !== null ? net.toFixed(2) : '—'}
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
-                    </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
 
-                    {/* Toplam net */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-brand-line rounded-xl px-4 py-3 flex items-center justify-between">
-                        <span className="text-sm font-bold text-brand">
-                            {examType === 'AYT' ? 'Hesaplanan Netler (SAY/EA/SÖZ)' : 'Toplam Net'}
-                        </span>
-                        {examType === 'AYT' ? (
-                            <div className="flex gap-3 text-xs font-bold">
-                                {['SAY', 'EA', 'SÖZ'].map(type => (
-                                    <span key={type} className="bg-surface border border-brand-line px-2 py-1 rounded-lg text-brand">
-                                        {type}: {
-                                            type === 'SAY' ? (
-                                                ((scores.ayt_matematik ? calcNet(scores.ayt_matematik.d, scores.ayt_matematik.y) : 0) +
-                                                    (scores.ayt_geometri ? calcNet(scores.ayt_geometri.d, scores.ayt_geometri.y) : 0) +
-                                                    (scores.ayt_fizik ? calcNet(scores.ayt_fizik.d, scores.ayt_fizik.y) : 0) +
-                                                    (scores.ayt_kimya ? calcNet(scores.ayt_kimya.d, scores.ayt_kimya.y) : 0) +
-                                                    (scores.ayt_biyoloji ? calcNet(scores.ayt_biyoloji.d, scores.ayt_biyoloji.y) : 0)
-                                                ).toFixed(2)
-                                            ) : type === 'EA' ? (
-                                                ((scores.ayt_edebiyat ? calcNet(scores.ayt_edebiyat.d, scores.ayt_edebiyat.y) : 0) +
-                                                    (scores.ayt_matematik ? calcNet(scores.ayt_matematik.d, scores.ayt_matematik.y) : 0) +
-                                                    (scores.ayt_geometri ? calcNet(scores.ayt_geometri.d, scores.ayt_geometri.y) : 0)
-                                                ).toFixed(2)
-                                            ) : (
-                                                ((scores.ayt_edebiyat ? calcNet(scores.ayt_edebiyat.d, scores.ayt_edebiyat.y) : 0) +
-                                                    (scores.ayt_tarih1 ? calcNet(scores.ayt_tarih1.d, scores.ayt_tarih1.y) : 0) +
-                                                    (scores.ayt_cografya1 ? calcNet(scores.ayt_cografya1.d, scores.ayt_cografya1.y) : 0) +
-                                                    (scores.ayt_tarih2 ? calcNet(scores.ayt_tarih2.d, scores.ayt_tarih2.y) : 0) +
-                                                    (scores.ayt_cografya2 ? calcNet(scores.ayt_cografya2.d, scores.ayt_cografya2.y) : 0) +
-                                                    (scores.ayt_felsefe ? calcNet(scores.ayt_felsefe.d, scores.ayt_felsefe.y) : 0) +
-                                                    (scores.ayt_din ? calcNet(scores.ayt_din.d, scores.ayt_din.y) : 0)
-                                                ).toFixed(2)
-                                            )
-                                        }
-                                    </span>
-                                ))}
-                            </div>
-                        ) : (
-                            <span className="text-xl font-black text-brand">{totalNet.toFixed(2)}</span>
-                        )}
-                    </div>
+                {/* Toplam net */}
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-brand-line rounded-xl px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm font-bold text-brand">
+                        {examType === 'AYT' ? 'Hesaplanan Netler (SAY/EA/SÖZ)' : 'Toplam Net'}
+                    </span>
+                    {examType === 'AYT' ? (
+                        <div className="flex gap-3 text-xs font-bold">
+                            {['SAY', 'EA', 'SÖZ'].map(type => (
+                                <span key={type} className="bg-surface border border-brand-line px-2 py-1 rounded-lg text-brand">
+                                    {type}: {
+                                        type === 'SAY' ? (
+                                            ((scores.ayt_matematik ? calcNet(scores.ayt_matematik.d, scores.ayt_matematik.y) : 0) +
+                                                (scores.ayt_geometri ? calcNet(scores.ayt_geometri.d, scores.ayt_geometri.y) : 0) +
+                                                (scores.ayt_fizik ? calcNet(scores.ayt_fizik.d, scores.ayt_fizik.y) : 0) +
+                                                (scores.ayt_kimya ? calcNet(scores.ayt_kimya.d, scores.ayt_kimya.y) : 0) +
+                                                (scores.ayt_biyoloji ? calcNet(scores.ayt_biyoloji.d, scores.ayt_biyoloji.y) : 0)
+                                            ).toFixed(2)
+                                        ) : type === 'EA' ? (
+                                            ((scores.ayt_edebiyat ? calcNet(scores.ayt_edebiyat.d, scores.ayt_edebiyat.y) : 0) +
+                                                (scores.ayt_matematik ? calcNet(scores.ayt_matematik.d, scores.ayt_matematik.y) : 0) +
+                                                (scores.ayt_geometri ? calcNet(scores.ayt_geometri.d, scores.ayt_geometri.y) : 0)
+                                            ).toFixed(2)
+                                        ) : (
+                                            ((scores.ayt_edebiyat ? calcNet(scores.ayt_edebiyat.d, scores.ayt_edebiyat.y) : 0) +
+                                                (scores.ayt_tarih1 ? calcNet(scores.ayt_tarih1.d, scores.ayt_tarih1.y) : 0) +
+                                                (scores.ayt_cografya1 ? calcNet(scores.ayt_cografya1.d, scores.ayt_cografya1.y) : 0) +
+                                                (scores.ayt_tarih2 ? calcNet(scores.ayt_tarih2.d, scores.ayt_tarih2.y) : 0) +
+                                                (scores.ayt_cografya2 ? calcNet(scores.ayt_cografya2.d, scores.ayt_cografya2.y) : 0) +
+                                                (scores.ayt_felsefe ? calcNet(scores.ayt_felsefe.d, scores.ayt_felsefe.y) : 0) +
+                                                (scores.ayt_din ? calcNet(scores.ayt_din.d, scores.ayt_din.y) : 0)
+                                            ).toFixed(2)
+                                        )
+                                    }
+                                </span>
+                            ))}
+                        </div>
+                    ) : (
+                        <span className="text-xl font-black text-brand">{totalNet.toFixed(2)}</span>
+                    )}
+                </div>
 
-                    <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
-                        <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
-                        <button type="submit" disabled={!student.trim() || !trialId}
-                            className="on-color flex-1 bg-gradient-to-r from-brand to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                            Kaydet
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-1">
+                    <button type="button" onClick={onClose} className="flex-1 border border-line text-ink-2 py-3 rounded-xl font-semibold hover:bg-surface-2 transition">İptal</button>
+                    <button type="submit" disabled={!student.trim() || !trialId}
+                        className="on-color flex-1 bg-gradient-to-r from-brand to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </Modal>
     );
 };
 
@@ -2005,28 +2007,32 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
 
             {/* Student Karne Modal */}
             {selectedStudent && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-modal-base flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedStudent(null)}>
-                    <div className="bg-surface rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in my-4" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-line flex justify-between items-center sticky top-0 bg-surface z-10">
-                            <div>
-                                <h3 className="text-xl font-bold text-ink">{selectedStudent.result.student}</h3>
-                                <p className="text-sm text-ink-2">{selectedStudent.trial.name} • {(() => { const g = GRADE_LEVELS.find(g => g.id === selectedStudent.result.gradeLevel); return g ? g.label : ''; })()}</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => { try { generateStudentReport(selectedStudent.result, selectedStudent.trial, allResults); } catch (e) { setToast && setToast('PDF oluşturulurken hata: ' + e.message); } }}
-                                    className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-hover transition text-sm font-semibold"
-                                >
-                                    <Download size={16} /> PDF Karne
-                                </button>
-                                <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-surface-3 rounded-full"><X size={20} className="text-ink-2" /></button>
-                            </div>
+                <Modal
+                    acik
+                    onClose={() => setSelectedStudent(null)}
+                    baslikGizle
+                    genislik="xl"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="p-6 border-b border-line flex justify-between items-center shrink-0 bg-surface">
+                        <div>
+                            <h3 className="text-xl font-bold text-ink">{selectedStudent.result.student}</h3>
+                            <p className="text-sm text-ink-2">{selectedStudent.trial.name} • {(() => { const g = GRADE_LEVELS.find(g => g.id === selectedStudent.result.gradeLevel); return g ? g.label : ''; })()}</p>
                         </div>
-                        <div className="p-6">
-                            <ReportCard studentResults={[selectedStudent.result]} userName={selectedStudent.result.student} />
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => { try { generateStudentReport(selectedStudent.result, selectedStudent.trial, allResults); } catch (e) { setToast && setToast('PDF oluşturulurken hata: ' + e.message); } }}
+                                className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-xl hover:bg-brand-hover transition text-sm font-semibold"
+                            >
+                                <Download size={16} /> PDF Karne
+                            </button>
+                            <button onClick={() => setSelectedStudent(null)} className="p-2 hover:bg-surface-3 rounded-full"><X size={20} className="text-ink-2" /></button>
                         </div>
                     </div>
-                </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6">
+                        <ReportCard studentResults={[selectedStudent.result]} userName={selectedStudent.result.student} />
+                    </div>
+                </Modal>
             )}
         </div>
     );

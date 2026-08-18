@@ -596,6 +596,19 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                                         )}
                                     </div>
                                 </button>
+
+                                {/* Mobil kartta düzenle/sil YOKTU: bu eylemler yalnızca
+                                    masaüstü tablosunun sağ sütununda vardı. */}
+                                <div className="flex gap-2 px-4 pb-3 -mt-1">
+                                    <button type="button" onClick={(e) => onEdit(e, s)}
+                                        className="flex-1 min-h-[44px] rounded-dmd border border-line text-ink-2 text-xs font-bold inline-flex items-center justify-center gap-1.5 hover:bg-surface-3 transition-colors duration-hizli">
+                                        <Edit2 size={14} /> Düzenle
+                                    </button>
+                                    <button type="button" onClick={(e) => onDelete(e, s)}
+                                        className="flex-1 min-h-[44px] rounded-dmd border border-danger/30 text-danger text-xs font-bold inline-flex items-center justify-center gap-1.5 hover:bg-danger-soft transition-colors duration-hizli">
+                                        <Trash2 size={14} /> Sil
+                                    </button>
+                                </div>
                             </li>
                         );
                     })}

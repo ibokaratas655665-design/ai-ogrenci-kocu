@@ -7,6 +7,7 @@ import { MATERYAL_TURLERI, turBul, satirlar } from '../../data/materialTemplates
 import { belgeUret, parca, kurumUyarisi } from '../../utils/mebDocument';
 import { klasorBul } from '../../data/pdrDecimalPlan';
 import arsiv from '../../services/pdrArchiveService';
+import Modal from '../ui/Modal';
 
 /**
  * 🎨 REHBERLİK MATERYAL ÜRETİCİ
@@ -392,54 +393,58 @@ const MaterialTab = ({ setToast }) => {
 
             {/* ── Önizleme penceresi ─────────────────────── */}
             {onizleme && (
-                <div className="fixed inset-0 z-modal-base bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="srf srf-4 w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden">
-                        <div className="flex items-start gap-3 p-5 border-b border-line">
-                            <span className="text-2xl leading-none">{onizleme.icon}</span>
-                            <div className="min-w-0 flex-1">
-                                <p className="eyebrow">{onizleme.turAd}</p>
-                                <h3 className="h2">{onizleme.baslik}</h3>
-                            </div>
-                            <button
-                                onClick={() => setOnizleme(null)}
-                                aria-label="Kapat"
-                                className="b b-bare b-icon shrink-0"
-                            >
-                                <X size={18} />
-                            </button>
+                <Modal
+                    acik
+                    onClose={() => setOnizleme(null)}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 flex items-start gap-3 p-5 border-b border-line">
+                        <span className="text-2xl leading-none">{onizleme.icon}</span>
+                        <div className="min-w-0 flex-1">
+                            <p className="eyebrow">{onizleme.turAd}</p>
+                            <h3 className="h2">{onizleme.baslik}</h3>
                         </div>
-
-                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                            {turBul(onizleme.turId).alanlar.map((a) => {
-                                const v = onizleme.veri?.[a.k];
-                                if (!String(v || '').trim()) return null;
-                                return (
-                                    <div key={a.k}>
-                                        <p className="eyebrow mb-1">{a.ad}</p>
-                                        {a.cokSatir ? (
-                                            <ul className="list-disc pl-5 space-y-0.5">
-                                                {satirlar(v).map((s, i) => (
-                                                    <li key={i} className="text-[12px] text-ink leading-snug">{s}</li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-[12px] text-ink leading-snug">{v}</p>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="flex items-center gap-2 p-4 border-t border-line">
-                            <button onClick={() => duzenlemeyeAl(onizleme)} className="b b-line flex-1">
-                                Düzenle
-                            </button>
-                            <button onClick={() => tekrarIndir(onizleme)} className="b b-fill b-brand flex-1">
-                                <Download size={14} /> PDF İndir
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setOnizleme(null)}
+                            aria-label="Kapat"
+                            className="b b-bare b-icon shrink-0"
+                        >
+                            <X size={18} />
+                        </button>
                     </div>
-                </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-3">
+                        {turBul(onizleme.turId).alanlar.map((a) => {
+                            const v = onizleme.veri?.[a.k];
+                            if (!String(v || '').trim()) return null;
+                            return (
+                                <div key={a.k}>
+                                    <p className="eyebrow mb-1">{a.ad}</p>
+                                    {a.cokSatir ? (
+                                        <ul className="list-disc pl-5 space-y-0.5">
+                                            {satirlar(v).map((s, i) => (
+                                                <li key={i} className="text-[12px] text-ink leading-snug">{s}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-[12px] text-ink leading-snug">{v}</p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex items-center gap-2 p-4 border-t border-line">
+                        <button onClick={() => duzenlemeyeAl(onizleme)} className="b b-line flex-1">
+                            Düzenle
+                        </button>
+                        <button onClick={() => tekrarIndir(onizleme)} className="b b-fill b-brand flex-1">
+                            <Download size={14} /> PDF İndir
+                        </button>
+                    </div>
+                </Modal>
             )}
         </div>
     );

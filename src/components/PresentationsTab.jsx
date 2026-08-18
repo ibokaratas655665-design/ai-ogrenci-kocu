@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Presentation, Plus, X, Eye, Share2, Download, Play } from 'lucide-react';
+import Modal from './ui/Modal';
 
 const PresentationsTab = ({ students, setToast }) => {
     const [presentations, setPresentations] = useState(() => {
@@ -143,98 +144,102 @@ const PresentationsTab = ({ students, setToast }) => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4">
-                    <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl">
-                        <div className="on-color bg-gradient-to-r from-fuchsia-600 to-pink-600 p-6 text-ink rounded-t-2xl">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-2xl font-bold">
-                                    {editingPresentation ? 'Sunumu Düzenle' : 'Yeni Sunum'}
-                                </h2>
-                                <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
-                                    <X size={24} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Başlık</label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
-                                    placeholder="Örn: YKS Motivasyon Sunumu"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
-                                    rows="3"
-                                    placeholder="Sunum hakkında..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-ink-2 mb-2">Sunum URL (Canva, Google Slides, vb.)</label>
-                                <input
-                                    type="url"
-                                    value={formData.url}
-                                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Hedef Kitle</label>
-                                    <select
-                                        value={formData.targetAudience}
-                                        onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
-                                    >
-                                        <option value="all">Tüm Öğrenciler</option>
-                                        <option value="9">9. Sınıf</option>
-                                        <option value="10">10. Sınıf</option>
-                                        <option value="11">11. Sınıf</option>
-                                        <option value="12">12. Sınıf</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-ink-2 mb-2">Etiketler (virgülle ayrılmış)</label>
-                                    <input
-                                        type="text"
-                                        value={formData.tags}
-                                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                                        className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
-                                        placeholder="motivasyon, yks, kariyer"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
-                                <button
-                                    onClick={resetForm}
-                                    className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
-                                >
-                                    İptal
-                                </button>
-                                <button
-                                    onClick={handleSubmit}
-                                    className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-ink rounded-lg hover:shadow-lg font-medium transition"
-                                >
-                                    {editingPresentation ? 'Güncelle' : 'Oluştur'}
-                                </button>
-                            </div>
+                <Modal
+                    acik
+                    onClose={resetForm}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0"
+                >
+                    <div className="on-color bg-gradient-to-r from-fuchsia-600 to-pink-600 p-6 text-ink rounded-t-2xl">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold">
+                                {editingPresentation ? 'Sunumu Düzenle' : 'Yeni Sunum'}
+                            </h2>
+                            <button onClick={resetForm} className="hover:bg-surface/20 p-2 rounded-lg transition">
+                                <X size={24} />
+                            </button>
                         </div>
                     </div>
-                </div>
+
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Başlık</label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
+                                placeholder="Örn: YKS Motivasyon Sunumu"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Açıklama</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
+                                rows="3"
+                                placeholder="Sunum hakkında..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-ink-2 mb-2">Sunum URL (Canva, Google Slides, vb.)</label>
+                            <input
+                                type="url"
+                                value={formData.url}
+                                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                                className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
+                                placeholder="https://..."
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Hedef Kitle</label>
+                                <select
+                                    value={formData.targetAudience}
+                                    onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
+                                >
+                                    <option value="all">Tüm Öğrenciler</option>
+                                    <option value="9">9. Sınıf</option>
+                                    <option value="10">10. Sınıf</option>
+                                    <option value="11">11. Sınıf</option>
+                                    <option value="12">12. Sınıf</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-ink-2 mb-2">Etiketler (virgülle ayrılmış)</label>
+                                <input
+                                    type="text"
+                                    value={formData.tags}
+                                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                                    className="w-full px-4 py-3 border border-line-2 rounded-lg focus:ring-2 focus:ring-fuchsia-500"
+                                    placeholder="motivasyon, yks, kariyer"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pencere-alt-cubuk bg-surface flex gap-3 pt-6 border-t">
+                            <button
+                                onClick={resetForm}
+                                className="flex-1 px-6 py-3 border border-line-2 rounded-lg hover:bg-surface-2 font-medium transition"
+                            >
+                                İptal
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="on-color flex-1 px-6 py-3 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-ink rounded-lg hover:shadow-lg font-medium transition"
+                            >
+                                {editingPresentation ? 'Güncelle' : 'Oluştur'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

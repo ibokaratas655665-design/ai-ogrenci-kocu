@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Volume2, VolumeX, BookOpen, BarChart2, ChevronDown, X } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
+import Modal from '../ui/Modal';
 
 const SUBJECTS = [
     'Türkçe', 'Matematik', 'Fen Bilimleri', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü',
@@ -79,47 +80,51 @@ const PomodoroStats = ({ userId, onClose }) => {
     const maxMin = sorted[0]?.[1] || 1;
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/40 flex items-center justify-center p-4">
-            <div className="bg-surface rounded-3xl shadow-2xl max-w-sm w-full p-6">
-                <div className="flex items-center justify-between mb-5">
-                    <h3 className="font-black text-ink text-lg flex items-center gap-2">
-                        <BarChart2 size={20} className="text-brand" /> Çalışma Analizi
-                    </h3>
-                    <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-xl transition"><X size={16} /></button>
-                </div>
-
-                {/* Bugün */}
-                <div className="bg-brand-soft rounded-2xl p-4 mb-4">
-                    <p className="text-xs font-bold text-brand uppercase tracking-wider mb-2">Bugün</p>
-                    <p className="text-3xl font-black text-brand">{todayLogs.reduce((s, l) => s + (l.minutes || 25), 0)} dk</p>
-                    <p className="text-xs text-brand">{todayLogs.length} pomodoro seansı</p>
-                </div>
-
-                {/* Ders bazlı (7 gün) */}
-                <p className="text-xs font-bold text-ink-2 uppercase tracking-wider mb-3">Son 7 Gün — Ders Bazlı</p>
-                {sorted.length === 0 ? (
-                    <p className="text-sm text-ink-3 text-center py-4">Henüz kayıtlı seans yok</p>
-                ) : (
-                    <div className="space-y-2">
-                        {sorted.map(([subject, minutes]) => (
-                            <div key={subject}>
-                                <div className="flex items-center justify-between text-xs mb-0.5">
-                                    <span className="font-bold text-ink-2">{subject}</span>
-                                    <span className="text-ink-2 font-mono">{minutes} dk</span>
-                                </div>
-                                <div className="w-full bg-surface-3 rounded-full h-2 overflow-hidden">
-                                    <div
-                                        className="on-color h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all"
-                                        style={{ width: `${(minutes / maxMin) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                <button onClick={onClose} className="mt-5 w-full py-3 bg-surface-3 text-ink-2 rounded-xl font-bold text-sm hover:bg-surface-3 transition">Kapat</button>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="sm"
+            govdeClassName="p-6"
+        >
+            <div className="flex items-center justify-between mb-5">
+                <h3 className="font-black text-ink text-lg flex items-center gap-2">
+                    <BarChart2 size={20} className="text-brand" /> Çalışma Analizi
+                </h3>
+                <button onClick={onClose} className="p-2 hover:bg-surface-3 rounded-xl transition"><X size={16} /></button>
             </div>
-        </div>
+
+            {/* Bugün */}
+            <div className="bg-brand-soft rounded-2xl p-4 mb-4">
+                <p className="text-xs font-bold text-brand uppercase tracking-wider mb-2">Bugün</p>
+                <p className="text-3xl font-black text-brand">{todayLogs.reduce((s, l) => s + (l.minutes || 25), 0)} dk</p>
+                <p className="text-xs text-brand">{todayLogs.length} pomodoro seansı</p>
+            </div>
+
+            {/* Ders bazlı (7 gün) */}
+            <p className="text-xs font-bold text-ink-2 uppercase tracking-wider mb-3">Son 7 Gün — Ders Bazlı</p>
+            {sorted.length === 0 ? (
+                <p className="text-sm text-ink-3 text-center py-4">Henüz kayıtlı seans yok</p>
+            ) : (
+                <div className="space-y-2">
+                    {sorted.map(([subject, minutes]) => (
+                        <div key={subject}>
+                            <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="font-bold text-ink-2">{subject}</span>
+                                <span className="text-ink-2 font-mono">{minutes} dk</span>
+                            </div>
+                            <div className="w-full bg-surface-3 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className="on-color h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full transition-all"
+                                    style={{ width: `${(minutes / maxMin) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <button onClick={onClose} className="mt-5 w-full py-3 bg-surface-3 text-ink-2 rounded-xl font-bold text-sm hover:bg-surface-3 transition">Kapat</button>
+        </Modal>
     );
 };
 

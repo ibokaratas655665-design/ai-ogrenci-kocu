@@ -10,6 +10,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import NotificationPanel from './components/NotificationPanel';
 import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 import useGlobalModalDismiss from './hooks/useGlobalModalDismiss';
+import Modal from './components/ui/Modal';
 
 // 🛡️ Oturum Zaman Aşımı Uyarı Banner'ı
 const SessionTimeoutBanner = () => {
@@ -33,18 +34,22 @@ const SessionTimeoutBanner = () => {
   if (show === 'timeout') return (
     // Oturum kapandı uyarısı bilinçli olarak kapatılamaz — kullanıcı
     // tekrar giriş yapmalı. ESC/perde kapatma bunu atlamamalı.
-    <div data-no-dismiss className="fixed inset-0 z-modal-base bg-black/60 flex items-center justify-center">
-      <div className="bg-surface rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-e4">
-        <div className="w-14 h-14 bg-danger-soft rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle size={28} className="text-danger" />
-        </div>
-        <h3 className="text-lg font-black text-ink mb-2">Oturum Sona Erdi</h3>
-        <p className="text-sm text-ink-2 mb-5">Uzun süre işlem yapılmadığı için güvenliğiniz için oturumunuz kapatıldı.</p>
-        <a href="#/login" className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 text-sm" onClick={() => setShow(null)}>
-          <ShieldCheck size={16} /> Tekrar Giriş Yap
-        </a>
-      </div>
+    <Modal
+        acik
+        onClose={() => setShow(null)}
+        baslikGizle
+        genislik="sm"
+        govdeClassName="p-8 text-center"
+    >
+    <div className="w-14 h-14 bg-danger-soft rounded-full flex items-center justify-center mx-auto mb-4">
+      <AlertTriangle size={28} className="text-danger" />
     </div>
+    <h3 className="text-lg font-black text-ink mb-2">Oturum Sona Erdi</h3>
+    <p className="text-sm text-ink-2 mb-5">Uzun süre işlem yapılmadığı için güvenliğiniz için oturumunuz kapatıldı.</p>
+    <a href="#/login" className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 text-sm" onClick={() => setShow(null)}>
+      <ShieldCheck size={16} /> Tekrar Giriş Yap
+    </a>
+    </Modal>
   );
 
   return (

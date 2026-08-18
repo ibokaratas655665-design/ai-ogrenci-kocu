@@ -112,48 +112,84 @@ const getOrCreateDeviceId = () => {
 };
 
 /**
- * Bu cihazın öğrenci için hatırlanıp hatırlanmadığını kontrol et
- * @param {string} studentId - Öğrenci ID'si
+ * Cihaz güveni denetimi — sebebiyle birlikte.
+ *
+ * ⚠️ ESKİ HÂLİ FIRESTORE HATASINDA `return true` DİYORDU:
+ *
+ *     } catch (fbErr) {
+ *         // Firebase ulaşılamazsa localStorage'a güven
+ *         return true;
+ *     }
+ *
+ * Yani "doğrulanamadı = güvenilir". Ölçülerek kanıtlandı: saldırgan
+ * kurbanın `studentId`'sini (okul numarasından türüyor) bilip kendi
+ * cihazına SAHTE bir token yazdığında, belge kurbana ait olduğu için
+ * kural `permission-denied` veriyor, catch çalışıyor ve fonksiyon
+ * "güvenilir" diyordu. Sunucu doğrulaması yapılamayan durum, güvenlik
+ * kararında ASLA olumlu sayılmamalı.
+ *
+ * Yeni davranış:
+ *   · yetki reddi / token uyuşmazlığı / kayıt yok → güvenilmez
+ *   · ağ gerçekten yoksa            → güvenilmez, ama sebep ayrı
+ *     (`dogrulanamadi-cevrimdisi`) — çağıran taraf kullanıcıyı
+ *     suçlamak yerine "bağlantı kurulamadı" diyebilsin.
+ *
+ * @returns {Promise<{guvenilir: boolean, sebep: string}>}
  */
-export const isDeviceTrusted = async (studentId) => {
+export const cihazGuveniniDenetle = async (studentId) => {
     try {
         const deviceId = getOrCreateDeviceId();
         const tokenKey = `trusted_device_${studentId}`;
         const stored = localStorage.getItem(tokenKey);
 
-        if (!stored) return false;
+        if (!stored) return { guvenilir: false, sebep: 'kayit-yok' };
 
         const { token, expiresAt } = JSON.parse(stored);
 
-        // Süresi dolmuş mu?
         if (Date.now() > expiresAt) {
             localStorage.removeItem(tokenKey);
-            return false;
+            return { guvenilir: false, sebep: 'suresi-doldu' };
         }
 
-        // Firestore'da doğrula
+        // Sunucu doğrulaması — yerel token tek başına yeterli değil
         try {
-            const docRef = doc(db, 'trusted_devices', `${studentId}_${deviceId}`);
-            const docSnap = await getDoc(docRef);
+            const docSnap = await getDoc(doc(db, 'trusted_devices', `${studentId}_${deviceId}`));
 
             if (!docSnap.exists()) {
                 localStorage.removeItem(tokenKey);
-                return false;
+                return { guvenilir: false, sebep: 'belge-yok' };
             }
 
             const data = docSnap.data();
-            return data.token === token && Date.now() < data.expiresAt;
+            const gecerli = data.token === token && Date.now() < data.expiresAt;
+            return gecerli
+                ? { guvenilir: true, sebep: 'gecerli' }
+                : { guvenilir: false, sebep: 'token-uyusmuyor' };
         } catch (fbErr) {
-            // Firebase ulaşılamazsa localStorage'a güven
-            console.warn('Firestore cihaz kontrolü başarısız, localStorage\'a güveniliyor');
-            return true;
+            const kod = fbErr?.code || '';
+            // Yetki reddi: belge başkasına ait ya da damgasız — kesinlikle güvenilmez
+            if (kod === 'permission-denied') {
+                console.warn('Cihaz güveni: sunucu yetki vermedi, güvenilmez sayıldı.');
+                return { guvenilir: false, sebep: 'yetkisiz' };
+            }
+            // Ağ yok: yine güvenilmez, ama kullanıcıya farklı anlatılabilsin
+            console.warn('Cihaz güveni doğrulanamadı (bağlantı yok), güvenilmez sayıldı.');
+            return { guvenilir: false, sebep: 'dogrulanamadi-cevrimdisi' };
         }
-
     } catch (err) {
         console.warn('Cihaz güven kontrolü hatası:', err);
-        return false;
+        return { guvenilir: false, sebep: 'hata' };
     }
 };
+
+/**
+ * Bu cihazın öğrenci için hatırlanıp hatırlanmadığını kontrol et.
+ * Geriye dönük uyumluluk için boolean döner; sebebe ihtiyaç duyan
+ * çağıran `cihazGuveniniDenetle` kullanır.
+ * @param {string} studentId - Öğrenci ID'si
+ */
+export const isDeviceTrusted = async (studentId) =>
+    (await cihazGuveniniDenetle(studentId)).guvenilir;
 
 /**
  * Bu cihazı öğrenci için güvenilir olarak kaydet (30 gün)
@@ -173,7 +209,15 @@ export const trustThisDevice = async (studentId, studentName) => {
         // Firestore'a kaydet (arka planda)
         try {
             const docId = `${studentId}_${deviceId}`;
+            /**
+             * ⚠️ `sahipUid` ZORUNLU: belge kimliği `<studentId>_<deviceId>`
+             * ve `studentId` uygulama kimliği — Firestore kuralı bundan
+             * sahiplik çıkaramıyordu, bu yüzden koleksiyon giriş yapan
+             * herkese açıktı ve `token` alanı okunabildiği için 2FA
+             * atlatılabiliyordu. Damga kuralın sahibi tanımasını sağlar.
+             */
             await setDoc(doc(db, 'trusted_devices', docId), {
+                sahipUid: auth?.currentUser?.uid || null,
                 studentId,
                 studentName: studentName || '',
                 deviceId,

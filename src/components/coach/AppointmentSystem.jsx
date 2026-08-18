@@ -5,6 +5,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, X, Plus, Trash2, User, Users, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { sendRealtimeNotification } from '../shared/RealtimeNotifications';
+import Modal from '../ui/Modal';
+import { listeOku, nesneOku, yaz } from '../../services/veriDeposu';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -28,11 +30,22 @@ const getWeekDates = (offset = 0) => {
  * altında birikmişti. O kayıtları çöpe atmamak için okurken ikisi de
  * birleştirilir, yazma her zaman doğru anahtara yapılır.
  */
+const ANAHTAR_RANDEVU = 'appointments';
 const SLOT_ANAHTAR = (coachId) => `appt_slots_${coachId || 'undefined'}`;
+
+/*
+ * Randevu yazımı `veriDeposu.yaz` üzerinden gider.
+ *
+ * ⚠️ Burası eskiden doğrudan localStorage'a yazıyordu ve senkronu HİÇ
+ * tetiklemiyordu. `appointments` SYNC_KEYS listesinde olduğu için veri
+ * er geç gidiyordu — ama yalnızca 2 dakikalık toplu turda. Öğrenci
+ * randevu alıp sekmeyi kapattığında randevu hiç gitmiyor, koç panelinde
+ * görünmüyordu. Ölçülerek doğrulandı: 6 saniye sonra bulutta yoktu.
+ */
 
 const slotOku = (coachId) => {
     const birlestir = (key) => {
-        try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch { return {}; }
+        return nesneOku(key);
     };
     const eski = birlestir('appt_slots_undefined');
     const kendi = coachId ? birlestir(SLOT_ANAHTAR(coachId)) : {};
@@ -58,12 +71,12 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
 
     const weekDates = getWeekDates(weekOffset);
     const [appointments, setAppointments] = useState(() => {
-        try { return JSON.parse(localStorage.getItem(`appointments`) || '[]'); } catch { return []; }
+        return listeOku(ANAHTAR_RANDEVU);
     });
 
     const saveSlots = (updated) => {
         setSlots(updated);
-        localStorage.setItem(SLOT_ANAHTAR(coachId), JSON.stringify(updated));
+        yaz(SLOT_ANAHTAR(coachId), updated);
     };
 
     const addSlot = () => {
@@ -173,7 +186,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                                 onClick={() => {
                                     const updated = appointments.filter((_, j) => j !== i);
                                     setAppointments(updated);
-                                    localStorage.setItem('appointments', JSON.stringify(updated));
+                                    yaz(ANAHTAR_RANDEVU, updated);
                                 }}
                                 className="text-danger hover:text-danger p-1"
                             >
@@ -186,65 +199,69 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
 
             {/* Slot Ekleme Modal */}
             {showAddModal && (
-                <div className="fixed inset-0 z-modal-base bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-surface rounded-3xl shadow-e4 max-w-sm w-full p-6 space-y-4">
-                        {/* Bu pencerede kapatma butonu yoktu; yalnızca alttaki
-                            "İptal" ile kapanıyordu ve ESC de çalışmıyordu. */}
-                        <div className="flex items-start justify-between gap-3">
-                            <h3 className="font-black text-ink text-lg">Müsait Saat Ekle</h3>
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                aria-label="Kapat"
-                                className="b b-bare b-icon -mt-1 -mr-1"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Gün</label>
-                            <div className="grid grid-cols-4 gap-1.5">
-                                {weekDates.map((d, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => setNewSlot(s => ({ ...s, dayIndex: i }))}
-                                        className={`text-xs py-2 rounded-xl font-bold transition ${newSlot.dayIndex === i ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
-                                    >
-                                        {DAYS[i].substring(0, 3)}<br />
-                                        <span className="text-[10px] opacity-70">{d.getDate()}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Saat</label>
-                            <select
-                                value={newSlot.hour}
-                                onChange={e => setNewSlot(s => ({ ...s, hour: e.target.value }))}
-                                className="w-full p-3 border border-line rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none bg-surface-2"
-                            >
-                                {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Süre</label>
-                            <div className="flex gap-2">
-                                {[15, 30, 45, 60].map(d => (
-                                    <button
-                                        key={d}
-                                        onClick={() => setNewSlot(s => ({ ...s, duration: d }))}
-                                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${newSlot.duration === d ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
-                                    >
-                                        {d} dk
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-2">
-                            <button onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-surface-3 text-ink-2 rounded-xl font-bold text-sm hover:bg-surface-3 transition">İptal</button>
-                            <button onClick={addSlot} className="flex-1 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-hover transition">Ekle</button>
+                <Modal
+                    acik
+                    onClose={() => setShowAddModal(false)}
+                    baslikGizle
+                    genislik="sm"
+                    govdeClassName="p-6 space-y-4"
+                >
+                    {/* Bu pencerede kapatma butonu yoktu; yalnızca alttaki
+                        "İptal" ile kapanıyordu ve ESC de çalışmıyordu. */}
+                    <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-black text-ink text-lg">Müsait Saat Ekle</h3>
+                        <button
+                            onClick={() => setShowAddModal(false)}
+                            aria-label="Kapat"
+                            className="b b-bare b-icon -mt-1 -mr-1"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Gün</label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                            {weekDates.map((d, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setNewSlot(s => ({ ...s, dayIndex: i }))}
+                                    className={`text-xs py-2 rounded-xl font-bold transition ${newSlot.dayIndex === i ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
+                                >
+                                    {DAYS[i].substring(0, 3)}<br />
+                                    <span className="text-[10px] opacity-70">{d.getDate()}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
-                </div>
+                    <div>
+                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Saat</label>
+                        <select
+                            value={newSlot.hour}
+                            onChange={e => setNewSlot(s => ({ ...s, hour: e.target.value }))}
+                            className="w-full p-3 border border-line rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none bg-surface-2"
+                        >
+                            {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-ink-2 uppercase tracking-wider block mb-2">Süre</label>
+                        <div className="flex gap-2">
+                            {[15, 30, 45, 60].map(d => (
+                                <button
+                                    key={d}
+                                    onClick={() => setNewSlot(s => ({ ...s, duration: d }))}
+                                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${newSlot.duration === d ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
+                                >
+                                    {d} dk
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="pencere-alt-cubuk bg-surface flex gap-2 pt-2">
+                        <button onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-surface-3 text-ink-2 rounded-xl font-bold text-sm hover:bg-surface-3 transition">İptal</button>
+                        <button onClick={addSlot} className="flex-1 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-hover transition">Ekle</button>
+                    </div>
+                </Modal>
             )}
         </div>
     );
@@ -262,7 +279,7 @@ export const StudentAppointmentBooker = ({ studentId, studentName, coachId, coac
     useEffect(() => {
         try {
             setSlots(slotOku(coachId));
-            setAppointments(JSON.parse(localStorage.getItem('appointments') || '[]'));
+            setAppointments(listeOku(ANAHTAR_RANDEVU));
         } catch { }
     }, [coachId]);
 
@@ -277,7 +294,7 @@ export const StudentAppointmentBooker = ({ studentId, studentName, coachId, coac
         };
         const updated = [...appointments, newAppt];
         setAppointments(updated);
-        localStorage.setItem('appointments', JSON.stringify(updated));
+        yaz(ANAHTAR_RANDEVU, updated);
         setBooked(true);
         setNote('');
 

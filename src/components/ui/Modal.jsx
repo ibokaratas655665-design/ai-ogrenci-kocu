@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/cn';
@@ -41,10 +41,13 @@ export default function Modal({
     genislik = 'md',
     altCubuk = null,
     kapatilamaz = false,
+    baslikGizle = false,
     className,
+    katmanClassName = 'z-modal-base',
     govdeClassName,
     children,
 }) {
+    const baslikId = useId();
     const panelRef = useRef(null);
     const oncekiOdakRef = useRef(null);
 
@@ -117,32 +120,42 @@ export default function Modal({
 
     return createPortal(
         <div
-            className="pencere-tam-ekran fixed inset-0 z-modal-base flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+            className={cn(
+                "pencere-tam-ekran fixed inset-0 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm",
+                // Katman merdiveni tailwind.config.js'te; twMerge bu özel z sınıflarını
+                // çakışan saymadığı için varsayılanın üstüne yazmak yerine yerine geçiyor
+                katmanClassName,
+                // Tam ekran pencere kenardan kenara oturur; diğerleri masaüstünde nefes payı alır
+                tamEkran ? "p-0" : "p-0 sm:p-4",
+            )}
             onMouseDown={(e) => { if (e.target === e.currentTarget) kapat(); }}
         >
             <div
                 ref={panelRef}
                 role="dialog"
                 aria-modal="true"
-                aria-label={typeof baslik === 'string' ? baslik : undefined}
+                /* Başlık JSX ise (ikonlu şerit) aria-label metne çevrilemez;
+                   h2 elemanına bağlanmak ikonlu başlıkları da okunur kılar */
+                aria-labelledby={baslik && !baslikGizle ? baslikId : undefined}
+                aria-label={baslik && !baslikGizle ? undefined : "Pencere"}
                 tabIndex={-1}
                 /* styles/mobil.css'teki genel pencere kuralı bu işareti
                    taşıyanlara uygulanmaz — düzeni burada yönetiliyor */
                 data-ui-pencere=""
                 className={cn(
                     // Yükseltilmiş yüzey + modal gölgesi: sayfadan kopuk okunur
-                    'bg-surface-e shadow-modal flex flex-col w-full outline-none',
-                    'rounded-t-dlg sm:rounded-dlg',
-                    tamEkran ? 'h-full sm:rounded-none' : 'max-h-[92dvh]',
+                    // overflow-hidden: renkli başlık şeritleri yuvarlak köşeden taşmasın
+                    'bg-surface-e shadow-modal flex flex-col w-full outline-none overflow-hidden',
+                    tamEkran ? 'h-full rounded-none' : 'rounded-t-dlg sm:rounded-dlg max-h-[92dvh]',
                     GENISLIKLER[genislik] || GENISLIKLER.md,
                     className
                 )}
             >
                 {/* Başlık — yapışık */}
-                {(baslik || !kapatilamaz) && (
+                {!baslikGizle && (baslik || !kapatilamaz) && (
                     <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-4 border-b border-line">
                         <div className="min-w-0">
-                            {baslik && <h2 className="tip-h4">{baslik}</h2>}
+                            {baslik && <h2 id={baslikId} className="tip-h4">{baslik}</h2>}
                             {aciklama && <p className="tip-caption mt-0.5">{aciklama}</p>}
                         </div>
                         {!kapatilamaz && (

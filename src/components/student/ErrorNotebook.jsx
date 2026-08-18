@@ -14,6 +14,7 @@ import {
     BookX, Plus, X, Search, Trash2, RotateCcw, CheckCircle2, Clock,
     AlertTriangle, Brain, Target, Zap, TrendingUp, Filter, ChevronDown,
 } from 'lucide-react';
+import Modal from '../ui/Modal';
 
 const LS_KEY = 'error_notebook';
 
@@ -520,119 +521,123 @@ const EntryForm = ({ onSave, onClose }) => {
     const valid = form.subject && form.topic.trim();
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-surface border border-line rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
-                <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-line">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-2xl bg-brand/15 border border-brand/30 flex items-center justify-center">
-                            <BookX size={17} className="text-brand" />
-                        </div>
-                        <h3 className="text-ink font-black text-base syne">Hata Kaydı Ekle</h3>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="lg"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
+            <div className="shrink-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-line">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-2xl bg-brand/15 border border-brand/30 flex items-center justify-center">
+                        <BookX size={17} className="text-brand" />
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface/10 transition">
-                        <X size={18} />
-                    </button>
+                    <h3 className="text-ink font-black text-base syne">Hata Kaydı Ekle</h3>
                 </div>
+                <button onClick={onClose} className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface/10 transition">
+                    <X size={18} />
+                </button>
+            </div>
 
-                <div className="p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <Label>Ders *</Label>
-                            <select
-                                value={form.subject}
-                                onChange={set('subject')}
-                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
-                            >
-                                {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <Label>Konu *</Label>
-                            <input
-                                value={form.topic}
-                                onChange={set('topic')}
-                                placeholder="Türev - Zincir kuralı"
-                                className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
-                            />
-                        </div>
-                    </div>
-
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <Label>Kaynak</Label>
+                        <Label>Ders *</Label>
+                        <select
+                            value={form.subject}
+                            onChange={set('subject')}
+                            className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink focus:outline-none focus:border-brand/40"
+                        >
+                            {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <Label>Konu *</Label>
                         <input
-                            value={form.source}
-                            onChange={set('source')}
-                            placeholder="3. TYT Denemesi - Soru 27"
+                            value={form.topic}
+                            onChange={set('topic')}
+                            placeholder="Türev - Zincir kuralı"
                             className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
                         />
                     </div>
+                </div>
 
-                    <div>
-                        <Label>Neden yanlış yaptın? *</Label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {ERROR_TYPES.map((t) => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setForm((p) => ({ ...p, errorType: t.id }))}
-                                    className={`flex items-start gap-2.5 p-3 rounded-2xl border text-left transition ${
-                                        form.errorType === t.id
-                                            ? 'bg-surface/[0.06] border-line-2'
-                                            : 'bg-surface/[0.02] border-line hover:border-white/12'
-                                    }`}
-                                >
-                                    <t.icon size={16} style={{ color: t.color }} className="shrink-0 mt-0.5" />
-                                    <div className="min-w-0">
-                                        <p className="text-ink text-xs font-bold">{t.label}</p>
-                                        <p className="text-ink-3 text-[10px] leading-snug">{t.hint}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                <div>
+                    <Label>Kaynak</Label>
+                    <input
+                        value={form.source}
+                        onChange={set('source')}
+                        placeholder="3. TYT Denemesi - Soru 27"
+                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40"
+                    />
+                </div>
 
-                    <div>
-                        <Label>Notun</Label>
-                        <textarea
-                            value={form.note}
-                            onChange={set('note')}
-                            rows={2}
-                            placeholder="Hangi adımda takıldın?"
-                            className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40 resize-none"
-                        />
-                    </div>
-
-                    <div>
-                        <Label>Doğru yaklaşım</Label>
-                        <textarea
-                            value={form.correctApproach}
-                            onChange={set('correctApproach')}
-                            rows={2}
-                            placeholder="Bu soruyu bir daha görsem nasıl çözerim?"
-                            className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40 resize-none"
-                        />
-                        <p className="text-ink-3 text-[11px] mt-1.5">
-                            Bunu yazmak, tekrar ettiğinde en çok işine yarayan kısım olacak.
-                        </p>
+                <div>
+                    <Label>Neden yanlış yaptın? *</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ERROR_TYPES.map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={() => setForm((p) => ({ ...p, errorType: t.id }))}
+                                className={`flex items-start gap-2.5 p-3 rounded-2xl border text-left transition ${
+                                    form.errorType === t.id
+                                        ? 'bg-surface/[0.06] border-line-2'
+                                        : 'bg-surface/[0.02] border-line hover:border-white/12'
+                                }`}
+                            >
+                                <t.icon size={16} style={{ color: t.color }} className="shrink-0 mt-0.5" />
+                                <div className="min-w-0">
+                                    <p className="text-ink text-xs font-bold">{t.label}</p>
+                                    <p className="text-ink-3 text-[10px] leading-snug">{t.hint}</p>
+                                </div>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                <div className="sticky bottom-0 bg-surface flex gap-2 px-5 py-4 border-t border-line">
-                    <button
-                        onClick={onClose}
-                        className="px-5 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:bg-surface/5 transition"
-                    >
-                        Vazgeç
-                    </button>
-                    <button
-                        onClick={() => valid && onSave(form)}
-                        disabled={!valid}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-ink-on font-black text-sm disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition"
-                    >
-                        <Plus size={16} /> Kaydet ve tekrar planına al
-                    </button>
+                <div>
+                    <Label>Notun</Label>
+                    <textarea
+                        value={form.note}
+                        onChange={set('note')}
+                        rows={2}
+                        placeholder="Hangi adımda takıldın?"
+                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40 resize-none"
+                    />
+                </div>
+
+                <div>
+                    <Label>Doğru yaklaşım</Label>
+                    <textarea
+                        value={form.correctApproach}
+                        onChange={set('correctApproach')}
+                        rows={2}
+                        placeholder="Bu soruyu bir daha görsem nasıl çözerim?"
+                        className="w-full bg-surface/[0.04] border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder-white/25 focus:outline-none focus:border-brand/40 resize-none"
+                    />
+                    <p className="text-ink-3 text-[11px] mt-1.5">
+                        Bunu yazmak, tekrar ettiğinde en çok işine yarayan kısım olacak.
+                    </p>
                 </div>
             </div>
-        </div>
+
+            <div className="sticky bottom-0 bg-surface flex gap-2 px-5 py-4 border-t border-line">
+                <button
+                    onClick={onClose}
+                    className="px-5 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:bg-surface/5 transition"
+                >
+                    Vazgeç
+                </button>
+                <button
+                    onClick={() => valid && onSave(form)}
+                    disabled={!valid}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-ink-on font-black text-sm disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition"
+                >
+                    <Plus size={16} /> Kaydet ve tekrar planına al
+                </button>
+            </div>
+        </Modal>
     );
 };
 

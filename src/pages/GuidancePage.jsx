@@ -11,6 +11,7 @@ import guidanceService from '../services/guidanceService';
 import { jsPDF } from 'jspdf';
 import { savePDF } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
+import Modal from '../components/ui/Modal';
 
 const GuidancePage = () => {
     const { user } = useAuth();
@@ -411,153 +412,157 @@ const GuidancePage = () => {
 
             {/* TEST MODAL */}
             {activeTest && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-modal-base flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-surface w-full max-w-3xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
-                        {/* Modal Header */}
-                        <div className="on-color bg-gradient-to-r from-brand to-purple-600 p-6 text-white">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1">
-                                    <h2 className="text-2xl font-bold mb-2">{activeTest.title}</h2>
-                                    <p className="text-brand">
-                                        Soru {currentQuestion + 1} / {activeTest.questions.length}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={closeTest}
-                                    className="bg-surface/10 hover:bg-surface/20 p-2 rounded-full transition"
-                                >
-                                    <X size={24} />
-                                </button>
+                <Modal
+                    acik
+                    onClose={closeTest}
+                    baslikGizle
+                    genislik="xl"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    {/* Modal Header */}
+                    <div className="shrink-0 on-color bg-gradient-to-r from-brand to-purple-600 p-6 text-white">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                                <h2 className="text-2xl font-bold mb-2">{activeTest.title}</h2>
+                                <p className="text-brand">
+                                    Soru {currentQuestion + 1} / {activeTest.questions.length}
+                                </p>
                             </div>
-                            {/* Progress Bar */}
-                            <div className="w-full bg-surface/20 rounded-full h-2 overflow-hidden">
-                                <div
-                                    className="h-full bg-surface rounded-full transition-all duration-yavas"
-                                    style={{ width: `${progress}%` }}
-                                />
-                            </div>
+                            <button
+                                onClick={closeTest}
+                                className="bg-surface/10 hover:bg-surface/20 p-2 rounded-full transition"
+                            >
+                                <X size={24} />
+                            </button>
                         </div>
-
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-8 bg-surface-2">
-                            {!testResult ? (
-                                <div className="space-y-6">
-                                    {activeTest.questions.map((q, idx) => (
-                                        <div
-                                            key={q.id}
-                                            className={`transition-all duration-yavas ${idx === currentQuestion ? 'opacity-100' : 'hidden'}`}
-                                        >
-                                            <div className="bg-surface p-8 rounded-2xl shadow-lg border border-line">
-                                                <div className="flex items-start mb-6">
-                                                    <span className="on-color bg-gradient-to-br from-indigo-500 to-purple-600 text-ink font-bold w-12 h-12 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 text-lg">
-                                                        {idx + 1}
-                                                    </span>
-                                                    <p className="font-bold text-ink text-xl leading-relaxed">
-                                                        {q.text}
-                                                    </p>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    {activeTest.options && activeTest.options.map((opt, optIdx) => (
-                                                        <button
-                                                            key={optIdx}
-                                                            onClick={() => handleAnswer(q.id, optIdx)}
-                                                            className={`w-full text-left p-5 rounded-xl text-base font-medium transition-all duration-yavas flex items-center border-2 ${answers[q.id] === optIdx
-                                                                ? 'bg-gradient-to-r from-brand to-purple-600 text-white border-indigo-600 shadow-lg scale-105'
-                                                                : 'bg-surface hover:bg-surface-2 text-ink-2 border-line hover:border-brand-line hover:shadow-md'
-                                                                }`}
-                                                        >
-                                                            <div className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 ${answers[q.id] === optIdx ? 'border-white bg-surface/20' : 'border-line-2'
-                                                                }`}>
-                                                                {answers[q.id] === optIdx && (
-                                                                    <div className="w-3 h-3 bg-surface rounded-full" />
-                                                                )}
-                                                            </div>
-                                                            <span className="flex-1">{opt}</span>
-                                                            {answers[q.id] === optIdx && (
-                                                                <CheckCircle size={20} className="ml-2" />
-                                                            )}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <div className="on-color w-32 h-32 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-green-200 animate-bounce-short">
-                                        <CheckCircle size={64} className="text-ink" />
-                                    </div>
-                                    <h3 className="text-4xl font-black text-ink mb-3">Test Tamamlandı!</h3>
-                                    <p className="text-ink-2 mb-8 text-lg">Harika performans, işte sonuçların:</p>
-
-                                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-10 rounded-3xl border-2 border-brand-line inline-block text-left max-w-lg mx-auto shadow-xl">
-                                        <div className="flex justify-between items-center mb-6 pb-6 border-b-2 border-brand-line">
-                                            <span className="font-bold text-ink-2 uppercase tracking-wider">Sonuç</span>
-                                            <span className="font-black text-brand text-3xl">{testResult.level}</span>
-                                        </div>
-                                        <div className="bg-surface p-6 rounded-2xl text-ink-2 leading-relaxed shadow-md text-center">
-                                            <p className="italic text-lg">"{testResult.comment}"</p>
-                                        </div>
-                                        <button
-                                            onClick={() => downloadTestReport(testResult)}
-                                            className="on-color w-full mt-6 bg-gradient-to-r from-brand to-purple-600 text-white py-4 rounded-xl font-bold flex items-center justify-center space-x-2 hover:shadow-lg transition"
-                                        >
-                                            <Download size={20} />
-                                            <span>Raporu İndir (PDF)</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="p-6 border-t border-line bg-surface flex justify-between items-center">
-                            <div className="flex space-x-2">
-                                {currentQuestion > 0 && !testResult && (
-                                    <button
-                                        onClick={() => setCurrentQuestion(currentQuestion - 1)}
-                                        className="px-6 py-3 bg-surface-3 text-ink-2 rounded-xl font-bold hover:bg-surface-3 transition"
-                                    >
-                                        Önceki
-                                    </button>
-                                )}
-                            </div>
-                            <div>
-                                {!testResult ? (
-                                    <>
-                                        {currentQuestion < activeTest.questions.length - 1 ? (
-                                            <button
-                                                onClick={() => setCurrentQuestion(currentQuestion + 1)}
-                                                disabled={!answers[activeTest.questions[currentQuestion].id]}
-                                                className="on-color px-8 py-3 bg-gradient-to-r from-brand to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                                            >
-                                                <span>Sonraki</span>
-                                                <ChevronRight size={20} />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={submitTest}
-                                                disabled={Object.keys(answers).length < activeTest.questions.length}
-                                                className="on-color px-10 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-ink rounded-xl font-bold shadow-xl hover:shadow-2xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                                            >
-                                                <CheckCircle size={20} />
-                                                <span>Testi Tamamla</span>
-                                            </button>
-                                        )}
-                                    </>
-                                ) : (
-                                    <button
-                                        onClick={closeTest}
-                                        className="px-10 py-4 bg-surface-inv text-white rounded-xl font-bold shadow-lg hover:bg-surface-inv transition"
-                                    >
-                                        Kapat
-                                    </button>
-                                )}
-                            </div>
+                        {/* Progress Bar */}
+                        <div className="w-full bg-surface/20 rounded-full h-2 overflow-hidden">
+                            <div
+                                className="h-full bg-surface rounded-full transition-all duration-yavas"
+                                style={{ width: `${progress}%` }}
+                            />
                         </div>
                     </div>
-                </div>
+
+                    {/* Modal Body */}
+                    <div className="min-h-0 flex-1 overflow-y-auto p-8 bg-surface-2">
+                        {!testResult ? (
+                            <div className="space-y-6">
+                                {activeTest.questions.map((q, idx) => (
+                                    <div
+                                        key={q.id}
+                                        className={`transition-all duration-yavas ${idx === currentQuestion ? 'opacity-100' : 'hidden'}`}
+                                    >
+                                        <div className="bg-surface p-8 rounded-2xl shadow-lg border border-line">
+                                            <div className="flex items-start mb-6">
+                                                <span className="on-color bg-gradient-to-br from-indigo-500 to-purple-600 text-ink font-bold w-12 h-12 rounded-xl flex items-center justify-center mr-4 flex-shrink-0 text-lg">
+                                                    {idx + 1}
+                                                </span>
+                                                <p className="font-bold text-ink text-xl leading-relaxed">
+                                                    {q.text}
+                                                </p>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {activeTest.options && activeTest.options.map((opt, optIdx) => (
+                                                    <button
+                                                        key={optIdx}
+                                                        onClick={() => handleAnswer(q.id, optIdx)}
+                                                        className={`w-full text-left p-5 rounded-xl text-base font-medium transition-all duration-yavas flex items-center border-2 ${answers[q.id] === optIdx
+                                                            ? 'bg-gradient-to-r from-brand to-purple-600 text-white border-indigo-600 shadow-lg scale-105'
+                                                            : 'bg-surface hover:bg-surface-2 text-ink-2 border-line hover:border-brand-line hover:shadow-md'
+                                                            }`}
+                                                    >
+                                                        <div className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center flex-shrink-0 ${answers[q.id] === optIdx ? 'border-white bg-surface/20' : 'border-line-2'
+                                                            }`}>
+                                                            {answers[q.id] === optIdx && (
+                                                                <div className="w-3 h-3 bg-surface rounded-full" />
+                                                            )}
+                                                        </div>
+                                                        <span className="flex-1">{opt}</span>
+                                                        {answers[q.id] === optIdx && (
+                                                            <CheckCircle size={20} className="ml-2" />
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <div className="on-color w-32 h-32 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-green-200 animate-bounce-short">
+                                    <CheckCircle size={64} className="text-ink" />
+                                </div>
+                                <h3 className="text-4xl font-black text-ink mb-3">Test Tamamlandı!</h3>
+                                <p className="text-ink-2 mb-8 text-lg">Harika performans, işte sonuçların:</p>
+
+                                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-10 rounded-3xl border-2 border-brand-line inline-block text-left max-w-lg mx-auto shadow-xl">
+                                    <div className="flex justify-between items-center mb-6 pb-6 border-b-2 border-brand-line">
+                                        <span className="font-bold text-ink-2 uppercase tracking-wider">Sonuç</span>
+                                        <span className="font-black text-brand text-3xl">{testResult.level}</span>
+                                    </div>
+                                    <div className="bg-surface p-6 rounded-2xl text-ink-2 leading-relaxed shadow-md text-center">
+                                        <p className="italic text-lg">"{testResult.comment}"</p>
+                                    </div>
+                                    <button
+                                        onClick={() => downloadTestReport(testResult)}
+                                        className="on-color w-full mt-6 bg-gradient-to-r from-brand to-purple-600 text-white py-4 rounded-xl font-bold flex items-center justify-center space-x-2 hover:shadow-lg transition"
+                                    >
+                                        <Download size={20} />
+                                        <span>Raporu İndir (PDF)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-6 border-t border-line bg-surface flex justify-between items-center">
+                        <div className="flex space-x-2">
+                            {currentQuestion > 0 && !testResult && (
+                                <button
+                                    onClick={() => setCurrentQuestion(currentQuestion - 1)}
+                                    className="px-6 py-3 bg-surface-3 text-ink-2 rounded-xl font-bold hover:bg-surface-3 transition"
+                                >
+                                    Önceki
+                                </button>
+                            )}
+                        </div>
+                        <div>
+                            {!testResult ? (
+                                <>
+                                    {currentQuestion < activeTest.questions.length - 1 ? (
+                                        <button
+                                            onClick={() => setCurrentQuestion(currentQuestion + 1)}
+                                            disabled={!answers[activeTest.questions[currentQuestion].id]}
+                                            className="on-color px-8 py-3 bg-gradient-to-r from-brand to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                                        >
+                                            <span>Sonraki</span>
+                                            <ChevronRight size={20} />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={submitTest}
+                                            disabled={Object.keys(answers).length < activeTest.questions.length}
+                                            className="on-color px-10 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-ink rounded-xl font-bold shadow-xl hover:shadow-2xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                                        >
+                                            <CheckCircle size={20} />
+                                            <span>Testi Tamamla</span>
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <button
+                                    onClick={closeTest}
+                                    className="px-10 py-4 bg-surface-inv text-white rounded-xl font-bold shadow-lg hover:bg-surface-inv transition"
+                                >
+                                    Kapat
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

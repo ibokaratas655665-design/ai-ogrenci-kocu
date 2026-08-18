@@ -20,6 +20,25 @@ export const AuthProvider = ({ children }) => {
                     const savedUser = JSON.parse(saved);
                     setUser(savedUser);
 
+                    /**
+                     * 🔗 Kimlik kaydı yenilemede de tazelenir.
+                     *
+                     * Kayıt yalnızca giriş anında yazılsaydı, bu değişiklikten
+                     * ÖNCE açılmış oturumlar profilsiz kalırdı; kural sahiplik
+                     * doğrulaması yapamayacağı için o kullanıcılar sayfayı
+                     * yenilediklerinde bütün verilerini kaybetmiş görürdü.
+                     */
+                    try {
+                        const { auth } = await import('../firebaseConfig');
+                        const uid = auth?.currentUser?.uid;
+                        if (uid && savedUser.role !== 'student') {
+                            const kimlik = await import('../services/kimlikKopru');
+                            await kimlik.kocKimligiYaz(savedUser, uid);
+                        }
+                    } catch (e) {
+                        console.warn('Kimlik kaydı tazelenemedi:', e?.message);
+                    }
+
                     // Firebase sync'i BEKLE - Arka planda değil, bloke edici şekilde yükle
                     // Böylece component'ler boş state ile render olup verileri ezmez!
                     try {
@@ -70,10 +89,24 @@ export const AuthProvider = ({ children }) => {
             let response;
 
             // Hybrid auth kullan
-            const { loginCoach, loginStudent } = await import('../services/hybridAuth');
+            const { loginCoach, loginStudent, sunucudanOgrenciGirisi } =
+                await import('../services/hybridAuth');
 
             if (role === 'student') {
                 response = await loginStudent(identifier, password);
+
+                /**
+                 * Yerel liste bu öğrenciyi tanımıyorsa SUNUCUYA sorulur.
+                 *
+                 * Davetle katılan öğrencinin kaydı koçun veri havuzunda;
+                 * kendi cihazında hiçbir şey yok. Yerel yol tek başına
+                 * bırakılınca bu öğrenciler onaylanmış olmalarına rağmen
+                 * "öğrenci bulunamadı" alıyorlardı.
+                 */
+                if (!response.success) {
+                    const sunucuYanit = await sunucudanOgrenciGirisi(identifier, password);
+                    if (sunucuYanit.success) response = sunucuYanit;
+                }
             } else if (role === 'coach') {
                 response = await loginCoach(identifier, password);
             } else {
@@ -102,6 +135,32 @@ export const AuthProvider = ({ children }) => {
                     const fb = await oturumAc(identifier, password, role);
                     if (!fb.basarili) {
                         console.warn('Firebase oturumu açılamadı, çevrimdışı mod:', fb.hata);
+                    } else {
+                        /**
+                         * 🔗 KİMLİK KÖPRÜSÜ
+                         *
+                         * Uygulama kimliği ile Firebase kimliğini eşleyen
+                         * kayıtlar burada yazılır. Bunlar olmadan Firestore
+                         * kuralları "bu belge bu kullanıcıya mı ait?"
+                         * sorusunu cevaplayamaz ve veri havuzu bütün
+                         * kullanıcılara açık kalmak zorunda kalır.
+                         */
+                        try {
+                            const kimlik = await import('../services/kimlikKopru');
+                            if (response.user.role === 'student') {
+                                const sunucu = (await import('../services/kayitSunucu')).default;
+                                const kayit = await sunucu.kimlikOku(fb.uid);
+                                if (kayit?.kocUid) {
+                                    await kimlik.ogrenciKimligiYaz(
+                                        fb.uid, kayit.kocUid, kayit.kocId, response.user.name
+                                    );
+                                }
+                            } else {
+                                await kimlik.kocKimligiYaz(response.user, fb.uid);
+                            }
+                        } catch (e) {
+                            console.warn('Kimlik köprüsü yazılamadı:', e?.message);
+                        }
                     }
                 } catch (e) {
                     console.warn('Firebase oturum modülü yüklenemedi:', e);
@@ -114,6 +173,15 @@ export const AuthProvider = ({ children }) => {
                 } catch (e) {
                     console.warn('Login during offline sync:', e);
                 }
+
+                /**
+                 * ⚠️ ESKİ HAVUZ TAŞIMA BİLİNÇLİ OLARAK BAĞLI DEĞİL.
+                 *
+                 * `services/eskiHavuzTasima.js` hazır ama çağrılmıyor:
+                 * 17.08 öncesi 'global' havuzunda kalan 11 belgenin
+                 * taşınması Faz 2 kapsamındadır ve kullanıcı onayı
+                 * beklemektedir. Doğrulama aşamasında veri taşınmaz.
+                 */
 
                 return { success: true };
             }
@@ -179,10 +247,18 @@ export const AuthProvider = ({ children }) => {
             import('../services/firebaseOturum').then(({ oturumKapat }) => oturumKapat());
         } catch { /* modül yoksa yapacak bir şey yok */ }
 
-        // Firebase sync'i güvenli şekilde durdur (asenkron - React render'ı etkilemesin)
+        /**
+         * Senkronu durdur ve CİHAZDAKİ VERİYİ TEMİZLE.
+         *
+         * Temizlik olmadan, ardından giren kullanıcı önceki kullanıcının
+         * öğrenci listesini, denemelerini ve rehberlik kayıtlarını
+         * görüyordu. Temizlikten önce bekleyen yazımlar buluta gönderilir,
+         * böylece veri kaybı olmaz.
+         */
         setTimeout(() => {
             try {
-                import('../services/firebaseSync').then(({ default: firebaseSync }) => {
+                import('../services/firebaseSync').then(async ({ default: firebaseSync }) => {
+                    try { await firebaseSync.oturumOnbelleginiTemizle(); } catch { /* ignore */ }
                     firebaseSync.destroy();
                 }).catch(() => { });
             } catch (e) { /* ignore */ }

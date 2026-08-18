@@ -7,6 +7,7 @@ import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, Tex
 import { EXAM_TOPICS, EXAM_INFO, SUBJECT_COLORS, EXAM_COLORS, generateStudyPlan, getTopicName } from '../data/curriculum';
 import { checkPermission } from '../utils/permissions';
 import { useNavigate } from 'react-router-dom';
+import Modal from '../components/ui/Modal';
 
 const StudyPlanner = () => {
     const navigate = useNavigate();
@@ -668,64 +669,68 @@ const StudyPlanner = () => {
 
             {/* Sınav Bilgi Modalı */}
             {showInfoModal && examType && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-modal-base p-4">
-                    <div className="bg-surface rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl animate-fade-in">
-                        <div className="p-6 border-b border-line flex justify-between items-center sticky top-0 bg-surface z-10">
-                            <h3 className="text-xl font-bold text-brand flex items-center">
-                                <Info className="mr-2" />
-                                {EXAM_INFO[examType].title}
-                            </h3>
-                            <button onClick={() => setShowInfoModal(false)} className="p-2 hover:bg-surface-3 rounded-full transition">
-                                <X size={24} className="text-ink-2" />
-                            </button>
+                <Modal
+                    acik
+                    onClose={() => setShowInfoModal(false)}
+                    baslikGizle
+                    genislik="lg"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 p-6 border-b border-line flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-brand flex items-center">
+                            <Info className="mr-2" />
+                            {EXAM_INFO[examType].title}
+                        </h3>
+                        <button onClick={() => setShowInfoModal(false)} className="p-2 hover:bg-surface-3 rounded-full transition">
+                            <X size={24} className="text-ink-2" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
+                        <div className="bg-brand-soft p-4 rounded-xl border border-brand-line">
+                            <p className="text-brand font-medium">{EXAM_INFO[examType].desc}</p>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            <div className="bg-brand-soft p-4 rounded-xl border border-brand-line">
-                                <p className="text-brand font-medium">{EXAM_INFO[examType].desc}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-surface-2 p-4 rounded-xl">
+                                <span className="text-xs font-bold text-ink-2 uppercase tracking-wider">Sınav Süresi</span>
+                                <p className="text-2xl font-bold text-ink mt-1">{EXAM_INFO[examType].duration}</p>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-surface-2 p-4 rounded-xl">
-                                    <span className="text-xs font-bold text-ink-2 uppercase tracking-wider">Sınav Süresi</span>
-                                    <p className="text-2xl font-bold text-ink mt-1">{EXAM_INFO[examType].duration}</p>
-                                </div>
-                                <div className="bg-surface-2 p-4 rounded-xl">
-                                    <span className="text-xs font-bold text-ink-2 uppercase tracking-wider">Soru Sayısı</span>
-                                    <p className="text-2xl font-bold text-ink mt-1">{EXAM_INFO[examType].questionCount} Soru</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="font-bold text-ink mb-2">Soru Dağılımı</h4>
-                                <p className="text-ink-2 bg-surface border border-line p-3 rounded-lg text-sm">
-                                    {EXAM_INFO[examType].distribution}
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 className="font-bold text-ink mb-3 flex items-center">
-                                    <span className="w-2 h-2 bg-danger rounded-full mr-2"></span>
-                                    Son Değişiklikler ve Güncellemeler
-                                </h4>
-                                <ul className="space-y-3">
-                                    {EXAM_INFO[examType].updates.map((update, idx) => (
-                                        <li key={idx} className="flex items-start text-sm text-ink-2 bg-danger-soft p-3 rounded-lg border border-red-50">
-                                            <span className="font-bold text-danger mr-2 min-w-[40px]">{update.year}:</span>
-                                            {update.text}
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="bg-surface-2 p-4 rounded-xl">
+                                <span className="text-xs font-bold text-ink-2 uppercase tracking-wider">Soru Sayısı</span>
+                                <p className="text-2xl font-bold text-ink mt-1">{EXAM_INFO[examType].questionCount} Soru</p>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-surface-2 border-t border-line text-center">
-                            <button onClick={() => setShowInfoModal(false)} className="text-brand font-bold hover:underline">
-                                Kapat
-                            </button>
+                        <div>
+                            <h4 className="font-bold text-ink mb-2">Soru Dağılımı</h4>
+                            <p className="text-ink-2 bg-surface border border-line p-3 rounded-lg text-sm">
+                                {EXAM_INFO[examType].distribution}
+                            </p>
+                        </div>
+
+                        <div>
+                            <h4 className="font-bold text-ink mb-3 flex items-center">
+                                <span className="w-2 h-2 bg-danger rounded-full mr-2"></span>
+                                Son Değişiklikler ve Güncellemeler
+                            </h4>
+                            <ul className="space-y-3">
+                                {EXAM_INFO[examType].updates.map((update, idx) => (
+                                    <li key={idx} className="flex items-start text-sm text-ink-2 bg-danger-soft p-3 rounded-lg border border-red-50">
+                                        <span className="font-bold text-danger mr-2 min-w-[40px]">{update.year}:</span>
+                                        {update.text}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
-                </div>
+
+                    <div className="p-6 bg-surface-2 border-t border-line text-center">
+                        <button onClick={() => setShowInfoModal(false)} className="text-brand font-bold hover:underline">
+                            Kapat
+                        </button>
+                    </div>
+                </Modal>
             )
             }
         </div >

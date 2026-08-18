@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import gorevler, { DURUMLAR, ONCELIKLER } from '../../services/coachTaskService';
 import { BOLUMLER, BOLUM_LISTESI, isAnaKoc, erisilenBolumler } from '../../services/accessControl';
+import Modal from '../ui/Modal';
 
 /**
  * 🧑‍🏫 KOÇ GÖREV MERKEZİ
@@ -263,168 +264,172 @@ const GorevFormu = ({ koclar, sekmeler, user, onKapat, onKaydet }) => {
     const gecerli = form.baslik.trim() && secili.size > 0;
 
     return (
-        <div className="fixed inset-0 z-modal-base bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="srf srf-4 w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden">
+        <Modal
+            acik
+            onClose={onKapat}
+            baslikGizle
+            genislik="lg"
+            govdeClassName="p-0 flex flex-col overflow-hidden"
+        >
 
-                <div className="flex items-start gap-3 p-5 border-b border-line">
-                    <span className="sec-icon" style={{ '--acc': 'var(--brand)' }}>
-                        <ClipboardList size={16} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                        <h3 className="h2">Koça Görev Ata</h3>
-                        <p className="text-[11px] text-ink-3 mt-0.5 leading-snug">
-                            Görevi bir bölüm ve sekmeye bağlayın; koç işi nerede yapacağını görsün.
-                        </p>
-                    </div>
-                    <button onClick={onKapat} aria-label="Kapat" className="b b-bare b-icon shrink-0">
-                        <X size={18} />
-                    </button>
+            <div className="shrink-0 flex items-start gap-3 p-5 border-b border-line">
+                <span className="sec-icon" style={{ '--acc': 'var(--brand)' }}>
+                    <ClipboardList size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <h3 className="h2">Koça Görev Ata</h3>
+                    <p className="text-[11px] text-ink-3 mt-0.5 leading-snug">
+                        Görevi bir bölüm ve sekmeye bağlayın; koç işi nerede yapacağını görsün.
+                    </p>
+                </div>
+                <button onClick={onKapat} aria-label="Kapat" className="b b-bare b-icon shrink-0">
+                    <X size={18} />
+                </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
+
+                <label className="block">
+                    <span className="eyebrow block mb-1">Görev Başlığı *</span>
+                    <input
+                        className="fld w-full"
+                        value={form.baslik}
+                        onChange={(e) => yaz('baslik', e.target.value)}
+                        placeholder="Örn. 9. sınıf risk haritalarını tamamla"
+                    />
+                </label>
+
+                <label className="block">
+                    <span className="eyebrow block mb-1">Açıklama</span>
+                    <textarea
+                        className="fld w-full min-h-[70px]"
+                        value={form.aciklama}
+                        onChange={(e) => yaz('aciklama', e.target.value)}
+                        placeholder="Ne yapılacak, nelere dikkat edilecek?"
+                    />
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block">
+                        <span className="eyebrow block mb-1">Bölüm</span>
+                        <select
+                            className="fld w-full"
+                            value={form.bolum}
+                            onChange={(e) => { yaz('bolum', e.target.value); yaz('sekme', ''); }}
+                        >
+                            {BOLUM_LISTESI.filter((b) => bolumler.includes(b.id)).map((b) => (
+                                <option key={b.id} value={b.id}>{b.ad}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="eyebrow block mb-1">Sekme (isteğe bağlı)</span>
+                        <select
+                            className="fld w-full"
+                            value={form.sekme}
+                            onChange={(e) => yaz('sekme', e.target.value)}
+                        >
+                            <option value="">Sekmeye bağlama</option>
+                            {bolumSekmeleri.map((s) => (
+                                <option key={s.id} value={s.id}>{s.label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="eyebrow block mb-1">Son Tarih</span>
+                        <input
+                            type="date"
+                            className="fld w-full"
+                            value={form.sonTarih}
+                            onChange={(e) => yaz('sonTarih', e.target.value)}
+                        />
+                    </label>
+
+                    <label className="block">
+                        <span className="eyebrow block mb-1">Öncelik</span>
+                        <select
+                            className="fld w-full"
+                            value={form.oncelik}
+                            onChange={(e) => yaz('oncelik', e.target.value)}
+                        >
+                            {Object.values(ONCELIKLER).map((o) => (
+                                <option key={o.id} value={o.id}>{o.ad}</option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-5 space-y-4">
-
-                    <label className="block">
-                        <span className="eyebrow block mb-1">Görev Başlığı *</span>
-                        <input
-                            className="fld w-full"
-                            value={form.baslik}
-                            onChange={(e) => yaz('baslik', e.target.value)}
-                            placeholder="Örn. 9. sınıf risk haritalarını tamamla"
-                        />
-                    </label>
-
-                    <label className="block">
-                        <span className="eyebrow block mb-1">Açıklama</span>
-                        <textarea
-                            className="fld w-full min-h-[70px]"
-                            value={form.aciklama}
-                            onChange={(e) => yaz('aciklama', e.target.value)}
-                            placeholder="Ne yapılacak, nelere dikkat edilecek?"
-                        />
-                    </label>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label className="block">
-                            <span className="eyebrow block mb-1">Bölüm</span>
-                            <select
-                                className="fld w-full"
-                                value={form.bolum}
-                                onChange={(e) => { yaz('bolum', e.target.value); yaz('sekme', ''); }}
-                            >
-                                {BOLUM_LISTESI.filter((b) => bolumler.includes(b.id)).map((b) => (
-                                    <option key={b.id} value={b.id}>{b.ad}</option>
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="eyebrow">Görevi Alacak Koçlar *</span>
+                        {koclar.length > 0 && (
+                            <button
+                                onClick={() => setSecili((s) => (
+                                    s.size === koclar.length ? new Set() : new Set(koclar.map((c) => String(c.id)))
                                 ))}
-                            </select>
-                        </label>
-
-                        <label className="block">
-                            <span className="eyebrow block mb-1">Sekme (isteğe bağlı)</span>
-                            <select
-                                className="fld w-full"
-                                value={form.sekme}
-                                onChange={(e) => yaz('sekme', e.target.value)}
+                                className="text-[11px] font-bold text-brand hover:underline"
                             >
-                                <option value="">Sekmeye bağlama</option>
-                                {bolumSekmeleri.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.label}</option>
-                                ))}
-                            </select>
-                        </label>
-
-                        <label className="block">
-                            <span className="eyebrow block mb-1">Son Tarih</span>
-                            <input
-                                type="date"
-                                className="fld w-full"
-                                value={form.sonTarih}
-                                onChange={(e) => yaz('sonTarih', e.target.value)}
-                            />
-                        </label>
-
-                        <label className="block">
-                            <span className="eyebrow block mb-1">Öncelik</span>
-                            <select
-                                className="fld w-full"
-                                value={form.oncelik}
-                                onChange={(e) => yaz('oncelik', e.target.value)}
-                            >
-                                {Object.values(ONCELIKLER).map((o) => (
-                                    <option key={o.id} value={o.id}>{o.ad}</option>
-                                ))}
-                            </select>
-                        </label>
-                    </div>
-
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="eyebrow">Görevi Alacak Koçlar *</span>
-                            {koclar.length > 0 && (
-                                <button
-                                    onClick={() => setSecili((s) => (
-                                        s.size === koclar.length ? new Set() : new Set(koclar.map((c) => String(c.id)))
-                                    ))}
-                                    className="text-[11px] font-bold text-brand hover:underline"
-                                >
-                                    {secili.size === koclar.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
-                                </button>
-                            )}
-                        </div>
-
-                        {koclar.length === 0 ? (
-                            <div className="srf-in p-6 text-center">
-                                <p className="text-xs text-ink-3">
-                                    Henüz koç eklenmemiş. Koç Yönetimi sekmesinden koç ekleyin.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                                {koclar.map((c) => {
-                                    const on = secili.has(String(c.id));
-                                    // Koçun bu bölüme erişimi yoksa görev anlamsız olur
-                                    const kocBolumleri = c.sections || ['kocluk'];
-                                    const erisimVar = kocBolumleri.includes(form.bolum);
-                                    return (
-                                        <label
-                                            key={c.id}
-                                            className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition ${on ? 'bg-brand-soft border-brand-line' : 'bg-surface-2 border-line hover:bg-surface-3'}`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={on}
-                                                onChange={() => kocSec(c.id)}
-                                                className="accent-indigo-600 mt-0.5"
-                                            />
-                                            <span className="min-w-0">
-                                                <span className="font-bold text-ink block truncate">{c.name}</span>
-                                                <span className="text-ink-3 block truncate">
-                                                    {c.coachRole === 'masterCoach' ? 'Yönetici Koç' : 'Standart Koç'}
-                                                </span>
-                                                {!erisimVar && (
-                                                    <span className="text-warn block mt-0.5 leading-snug">
-                                                        ⚠️ Bu koçun {BOLUMLER[form.bolum]?.kisa} bölümüne erişimi yok
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
+                                {secili.size === koclar.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+                            </button>
                         )}
                     </div>
-                </div>
 
-                <div className="pencere-alt-cubuk bg-surface flex items-center gap-2 p-4 border-t border-line">
-                    <button onClick={onKapat} className="b b-line flex-1">İptal</button>
-                    <button
-                        onClick={kaydet}
-                        disabled={!gecerli}
-                        className="b b-fill b-brand flex-1 disabled:opacity-50"
-                    >
-                        Görevi Ata ({secili.size})
-                    </button>
+                    {koclar.length === 0 ? (
+                        <div className="srf-in p-6 text-center">
+                            <p className="text-xs text-ink-3">
+                                Henüz koç eklenmemiş. Koç Yönetimi sekmesinden koç ekleyin.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+                            {koclar.map((c) => {
+                                const on = secili.has(String(c.id));
+                                // Koçun bu bölüme erişimi yoksa görev anlamsız olur
+                                const kocBolumleri = c.sections || ['kocluk'];
+                                const erisimVar = kocBolumleri.includes(form.bolum);
+                                return (
+                                    <label
+                                        key={c.id}
+                                        className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer text-xs transition ${on ? 'bg-brand-soft border-brand-line' : 'bg-surface-2 border-line hover:bg-surface-3'}`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={on}
+                                            onChange={() => kocSec(c.id)}
+                                            className="accent-indigo-600 mt-0.5"
+                                        />
+                                        <span className="min-w-0">
+                                            <span className="font-bold text-ink block truncate">{c.name}</span>
+                                            <span className="text-ink-3 block truncate">
+                                                {c.coachRole === 'masterCoach' ? 'Yönetici Koç' : 'Standart Koç'}
+                                            </span>
+                                            {!erisimVar && (
+                                                <span className="text-warn block mt-0.5 leading-snug">
+                                                    ⚠️ Bu koçun {BOLUMLER[form.bolum]?.kisa} bölümüne erişimi yok
+                                                </span>
+                                            )}
+                                        </span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
+
+            <div className="pencere-alt-cubuk bg-surface flex items-center gap-2 p-4 border-t border-line">
+                <button onClick={onKapat} className="b b-line flex-1">İptal</button>
+                <button
+                    onClick={kaydet}
+                    disabled={!gecerli}
+                    className="b b-fill b-brand flex-1 disabled:opacity-50"
+                >
+                    Görevi Ata ({secili.size})
+                </button>
+            </div>
+        </Modal>
     );
 };
 

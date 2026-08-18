@@ -4,6 +4,8 @@ import {
     Flame, ClipboardList, BarChart2, ChevronDown, ChevronUp,
     Bell, MessageSquare, Target, Zap, X, Send
 } from 'lucide-react';
+import Modal from '../ui/Modal';
+import { yaz } from '../../services/veriDeposu';
 
 // ─── Risk Hesaplayıcı ───────────────────────────────────────
 const calcStudentRisk = (student) => {
@@ -169,45 +171,49 @@ const QuickMessageModal = ({ student, onClose, onSend }) => {
     ];
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-modal-base flex items-center justify-center p-4">
-            <div className="bg-surface w-full max-w-md rounded-2xl shadow-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-black text-ink flex items-center gap-2">
-                        <MessageSquare size={18} className="text-brand" />
-                        {student.name}'e Mesaj
-                    </h3>
-                    <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
-                </div>
-
-                <p className="text-xs text-ink-2 mb-3 font-medium">Hızlı Şablonlar:</p>
-                <div className="space-y-2 mb-4">
-                    {templates.map((t, i) => (
-                        <button key={i} onClick={() => setMsg(t)}
-                            className="w-full text-left text-xs p-2.5 bg-surface-2 hover:bg-brand-soft hover:text-brand rounded-lg border border-line hover:border-brand-line transition">
-                            {t}
-                        </button>
-                    ))}
-                </div>
-
-                <textarea
-                    value={msg}
-                    onChange={e => setMsg(e.target.value)}
-                    placeholder="Mesajınızı yazın..."
-                    rows={3}
-                    className="w-full p-3 border border-line rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none resize-none"
-                />
-                <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-3">
-                    <button onClick={onClose} className="flex-1 py-2 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
-                    <button
-                        onClick={() => { onSend(student, msg); onClose(); }}
-                        disabled={!msg.trim()}
-                        className="flex-1 py-2 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-hover disabled:opacity-50 flex items-center justify-center gap-1.5 transition"
-                    >
-                        <Send size={14} /> Gönder
-                    </button>
-                </div>
+        <Modal
+            acik
+            onClose={onClose}
+            baslikGizle
+            genislik="md"
+            govdeClassName="p-6"
+        >
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-ink flex items-center gap-2">
+                    <MessageSquare size={18} className="text-brand" />
+                    {student.name}'e Mesaj
+                </h3>
+                <button onClick={onClose} className="text-ink-3 hover:text-ink-2"><X size={18} /></button>
             </div>
-        </div>
+
+            <p className="text-xs text-ink-2 mb-3 font-medium">Hızlı Şablonlar:</p>
+            <div className="space-y-2 mb-4">
+                {templates.map((t, i) => (
+                    <button key={i} onClick={() => setMsg(t)}
+                        className="w-full text-left text-xs p-2.5 bg-surface-2 hover:bg-brand-soft hover:text-brand rounded-lg border border-line hover:border-brand-line transition">
+                        {t}
+                    </button>
+                ))}
+            </div>
+
+            <textarea
+                value={msg}
+                onChange={e => setMsg(e.target.value)}
+                placeholder="Mesajınızı yazın..."
+                rows={3}
+                className="w-full p-3 border border-line rounded-xl text-sm focus:ring-2 focus:ring-brand outline-none resize-none"
+            />
+            <div className="pencere-alt-cubuk bg-surface flex gap-2 mt-3">
+                <button onClick={onClose} className="flex-1 py-2 border border-line rounded-xl text-sm font-bold text-ink-2 hover:bg-surface-2">İptal</button>
+                <button
+                    onClick={() => { onSend(student, msg); onClose(); }}
+                    disabled={!msg.trim()}
+                    className="flex-1 py-2 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-hover disabled:opacity-50 flex items-center justify-center gap-1.5 transition"
+                >
+                    <Send size={14} /> Gönder
+                </button>
+            </div>
+        </Modal>
     );
 };
 
@@ -243,7 +249,7 @@ const RiskAlarmPanel = ({ students = [], setToast }) => {
                 senderName: 'Koçunuz',
                 timestamp: new Date().toISOString(),
             });
-            localStorage.setItem('student_messages', JSON.stringify(allMsgs));
+            yaz('student_messages', allMsgs);
             setToast?.(`✅ ${student.name}'e mesaj gönderildi`);
         } catch { setToast?.('Mesaj gönderilemedi', 'error'); }
     };

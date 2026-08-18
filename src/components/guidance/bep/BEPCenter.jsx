@@ -18,6 +18,7 @@ import bepPdf from '../../../utils/bepPdf';
 import { SCHOOL_TYPES, coursesForSchoolType, BEP_TEAM_ROLES, roleTeaches, DEVELOPMENT_AREAS, suggestedAreas, PERFORMANCE_LEVELS, TEACHING_METHODS, TEACHING_MATERIALS, EVALUATION_METHODS, SUPPORT_PROGRAMS } from '../../../data/bepCurriculum';
 import BEPGenerator from '../../BEPGenerator';
 import { onayla } from '../../../services/uiGeriBildirim';
+import Modal from '../../ui/Modal';
 
 const STAGES = [
     { id: 'students', icon: Users, label: 'Öğrenciler' },
@@ -298,7 +299,7 @@ const BulkStudentForm = ({ schoolStudents, existing = [], onClose, onSave }) => 
     };
 
     return (
-        <Modal
+        <BepPencere
             title={`Toplu BEP Öğrencisi Ekle${picked.length ? ` (${picked.length})` : ''}`}
             onClose={onClose}
             onSave={submit}
@@ -370,7 +371,7 @@ const BulkStudentForm = ({ schoolStudents, existing = [], onClose, onSave }) => 
                     );
                 })}
             </div>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -393,7 +394,7 @@ const StudentForm = ({ schoolStudents, onClose, onSave }) => {
     };
 
     return (
-        <Modal title="BEP Öğrencisi Ekle" onClose={onClose} onSave={() => f.name && onSave(f)} canSave={!!f.name}>
+        <BepPencere title="BEP Öğrencisi Ekle" onClose={onClose} onSave={() => f.name && onSave(f)} canSave={!!f.name}>
             <Field label="Okul listesinden seç">
                 <select value={f.studentId} onChange={pickStudent} className={inputCls}>
                     <option value="">— Elle gireceğim —</option>
@@ -460,7 +461,7 @@ const StudentForm = ({ schoolStudents, onClose, onSave }) => {
             </div>
             <Field label="BEP Başlangıç Tarihi"><input type="date" value={f.iepStartDate} onChange={set('iepStartDate')} className={inputCls} /></Field>
             <Field label="Notlar"><textarea value={f.notes} onChange={set('notes')} rows={2} className={inputCls} /></Field>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -564,7 +565,7 @@ const TeacherForm = ({ student, onClose, onSave }) => {
     };
 
     return (
-        <Modal
+        <BepPencere
             title={`Birim Üyesi Ekle${valid.length > 1 ? ` (${valid.length})` : ''}`}
             onClose={onClose}
             onSave={submit}
@@ -575,7 +576,7 @@ const TeacherForm = ({ student, onClose, onSave }) => {
                 Ders alanı yalnızca derse giren roller için açılır.
             </p>
 
-            <div className="space-y-3 max-h-[46vh] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[46dvh] overflow-y-auto pr-1">
                 {rows.map((r, i) => {
                     const teaches = roleTeaches(r.roleId);
                     const role = BEP_TEAM_ROLES.find((x) => x.id === r.roleId);
@@ -643,7 +644,7 @@ const TeacherForm = ({ student, onClose, onSave }) => {
             >
                 <Plus size={14} /> Satır Ekle
             </button>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -786,7 +787,7 @@ const PerformanceForm = ({ student, onClose, onSave }) => {
     };
 
     return (
-        <Modal
+        <BepPencere
             title={`Performans Kaydı${skills.length ? ` · ${skills.length} beceri` : ''}`}
             onClose={onClose}
             onSave={submit}
@@ -893,7 +894,7 @@ const PerformanceForm = ({ student, onClose, onSave }) => {
                 <Field label="Değerlendiren"><input value={f.assessedBy} onChange={set('assessedBy')} className={inputCls} /></Field>
                 <Field label="Tarih"><input type="date" value={f.date} onChange={set('date')} className={inputCls} /></Field>
             </div>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -1061,7 +1062,7 @@ const MeetingForm = ({ teachers, onClose, onSave }) => {
     }));
 
     return (
-        <Modal title="Toplantı Kaydı" onClose={onClose} onSave={() => onSave(f)} canSave>
+        <BepPencere title="Toplantı Kaydı" onClose={onClose} onSave={() => onSave(f)} canSave>
             <Field label="Toplantı Türü">
                 <select value={f.type} onChange={set('type')} className={inputCls}>
                     {bep.MEETING_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1095,7 +1096,7 @@ const MeetingForm = ({ teachers, onClose, onSave }) => {
             </Field>
             <Field label="Gündem"><textarea value={f.agenda} onChange={set('agenda')} rows={3} className={inputCls} /></Field>
             <Field label="Alınan Kararlar"><textarea value={f.decisions} onChange={set('decisions')} rows={4} className={inputCls} /></Field>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -1199,7 +1200,7 @@ const ProgressForm = ({ goals, onClose, onSave }) => {
     const color = { pending: 'var(--ink-3)', partial: 'var(--warn)', achieved: 'var(--ok)' };
 
     return (
-        <Modal title="Gelişim Raporu" onClose={onClose} onSave={() => onSave(f)} canSave>
+        <BepPencere title="Gelişim Raporu" onClose={onClose} onSave={() => onSave(f)} canSave>
             <div className="grid grid-cols-2 gap-3">
                 <Field label="Dönem">
                     <select value={f.term} onChange={set('term')} className={inputCls}>
@@ -1242,7 +1243,7 @@ const ProgressForm = ({ goals, onClose, onSave }) => {
             <Field label="Öneriler ve Sonraki Dönem Planı">
                 <textarea value={f.recommendation} onChange={set('recommendation')} rows={3} className={inputCls} />
             </Field>
-        </Modal>
+        </BepPencere>
     );
 };
 
@@ -1298,30 +1299,30 @@ const Row = ({ title, subtitle, extra, onDelete }) => (
     </div>
 );
 
-const Modal = ({ title, children, onClose, onSave, canSave }) => (
-    <div className="fixed inset-0 z-modal-base bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-surface border border-line rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
-            <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-line">
-                <h3 className="text-ink font-black text-base syne">{title}</h3>
-                <button onClick={onClose} className="p-2 rounded-xl text-ink-3 hover:text-ink hover:bg-surface/10 transition">
-                    <X size={18} />
-                </button>
-            </div>
-            <div className="p-5 space-y-4">{children}</div>
-            <div className="sticky bottom-0 bg-surface flex gap-2 px-5 py-4 border-t border-line">
+/** BEP formları için ortak pencere kabuğu — başlık, gövde ve kaydet çubuğu. */
+const BepPencere = ({ title, children, onClose, onSave, canSave }) => (
+    <Modal
+        acik
+        onClose={onClose}
+        baslik={title}
+        genislik="lg"
+        altCubuk={
+            <>
                 <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-ink-3 font-bold text-sm hover:bg-surface/5 transition">
                     Vazgeç
                 </button>
                 <button
                     onClick={onSave}
                     disabled={!canSave}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent text-white font-black text-sm disabled:opacity-30 active:scale-95 transition"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-white font-black text-sm disabled:opacity-30 active:scale-95 transition"
                 >
                     <CheckCircle2 size={16} /> Kaydet
                 </button>
-            </div>
-        </div>
-    </div>
+            </>
+        }
+    >
+        <div className="space-y-4">{children}</div>
+    </Modal>
 );
 
 export default BEPCenter;

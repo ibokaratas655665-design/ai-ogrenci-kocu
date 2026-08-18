@@ -2,8 +2,31 @@ import {
     doc, getDoc, setDoc, collection, getDocs, onSnapshot, serverTimestamp, deleteDoc,
     query, where
 } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../firebaseConfig';
+import { havuzSahibiUid } from './kimlikKopru';
 import LZString from 'lz-string';
+
+/**
+ * Firebase oturumunun geri yüklenmesini bekler.
+ *
+ * ⚠️ SAYFA YENİLENDİĞİNDE `auth.currentUser` HEMEN DOLMUYOR: oturum
+ * IndexedDB'den asenkron okunuyor. `AuthContext` ise oturumu
+ * localStorage'dan anında geri yükleyip `init()` çağırıyor. Doğrudan
+ * `auth.currentUser` okunsaydı yenilemeden sonra hep `null` görülür,
+ * sahiplik damgası yazılamaz ve senkron sessizce kapanırdı.
+ *
+ * @returns {Promise<string|null>} Firebase kimliği
+ */
+const authHazir = () => new Promise((coz) => {
+    if (auth?.currentUser) { coz(auth.currentUser.uid); return; }
+    let bitti = false;
+    const bitir = (uid) => { if (!bitti) { bitti = true; coz(uid); } };
+    const dur = onAuthStateChanged(auth, (k) => { dur(); bitir(k?.uid || null); });
+    // Oturum hiç yoksa onAuthStateChanged null ile tetiklenir; yine de
+    // takılı kalmamak için üst sınır konur.
+    setTimeout(() => bitir(auth?.currentUser?.uid || null), 8000);
+});
 
 const SYNC_KEYS = [
     'coach_students', 'users_db', 'student_tasks', 'exams_data', 'trials_data',
@@ -15,6 +38,22 @@ const SYNC_KEYS = [
     'leaderboard_data', 'managed_coaches', 'custom_curriculum', 'exam_resources',
     'whatsapp_custom_templates', 'whatsapp_settings', 'whatsapp_message_log',
     'error_notebook', 'program_progress', 'study_log', 'bep_data',
+    /**
+     * ⚠️ BU DÖRT ANAHTAR SENKRON LİSTESİNDE YOKTU ve her biri gerçek bir
+     * ürün hatasına yol açıyordu:
+     *
+     *   parent_links       → veli portalı VELİNİN CİHAZINDA HİÇ AÇILMIYORDU.
+     *                        Belirteç→öğrenci eşlemesi yalnızca koçun
+     *                        tarayıcısındaydı; veli bağlantıya tıklayınca
+     *                        her koşulda "Öğrenci Bulunamadı" görüyordu.
+     *   messages           → koçun gönderdiği TOPLU MESAJ öğrenciye hiç
+     *                        ulaşmıyordu. Koç panelinde "gönderildi"
+     *                        görünüyor, öğrenci hiçbir şey almıyordu.
+     *   appointments       → randevular koçun cihazına hapsti.
+     *   coach_subscriptions→ paket/kontenjan bilgisi cihaz başına ayrıydı;
+     *                        koç başka cihazda farklı limit görüyordu.
+     */
+    'parent_links', 'messages', 'appointments', 'coach_subscriptions',
     'tp_name', 'tp_teachers', 'tp_students', 'tp_pairings', 'tp_schedule', 'tp_blocked', 'tp_avail'
 ];
 
@@ -46,7 +85,7 @@ const PROTECTED_KEYS = ['coach_students', 'users_db', 'student_tasks', 'v2_trial
  */
 const HAVUZ_YOK = null;
 
-const havuzKimligi = (kullanici) => {
+export const havuzKimligi = (kullanici) => {
     if (!kullanici) return HAVUZ_YOK;
 
     // Öğrenci, kendisini ekleyen koçun havuzunu kullanır
@@ -87,6 +126,14 @@ const DYNAMIC_KEY_PATTERNS = [
     /^completed_topics_/,
     /^student_goals_/,
     /^coach_notes_/,
+    /**
+     * ⚠️ BU DESEN EKSİKTİ. StudentDetailPage koç notunu `koc_notu_<id>`
+     * anahtarına yazıyor ama desen listesinde yalnızca `coach_notes_`
+     * vardı. Açık `syncKey` çağrısı sayesinde not buluta gidiyordu; ancak
+     * TOPLU senkron (`saveToFirebase`) ve ÇIKIŞ TEMİZLİĞİ bu anahtarı
+     * atlıyordu — yani not bazen gitmiyor, çıkışta da cihazda kalıyordu.
+     */
+    /^koc_notu_/,
     /^notebook_/,
     /^calendar_events_/,
     /^ai_plan_(config|schedule)_/,
@@ -143,6 +190,14 @@ class FirebaseSync {
         this.userId = null;
         /** Bu oturumun veri havuzu — `koc_<kimlik>` (bkz. havuzKimligi). */
         this.havuz = null;
+        /**
+         * Havuzun SAHİBİ olan Firebase kimliği.
+         *
+         * Firestore kuralları yalnızca `request.auth.uid` görür; havuz adı
+         * (`koc_<uygulamaKimligi>`) ise uygulama kimliğinden türüyor. Bu alan
+         * ikisini belgede buluşturur ve sahiplik kontrolünü mümkün kılar.
+         */
+        this.sahipUid = null;
         this.isInitialized = false;
         this.isInitializing = false; // 🛰️ Initializing guard
         this.autoSyncInterval = null;
@@ -193,6 +248,18 @@ class FirebaseSync {
         console.log(`🔌 Initializing Firebase Sync for User: ${userId}`);
 
         try {
+            /**
+             * Sahiplik kimliği ÖNCE çözülür — bundan sonraki her yazım
+             * belgeye bu damgayı basar ve kural bununla karar verir.
+             * Çözülemezse yazma yapılmaz: yanlış havuza yazmaktansa
+             * hiç yazmamak doğrudur.
+             */
+            await authHazir();
+            this.sahipUid = await havuzSahibiUid(kul);
+            if (!this.sahipUid) {
+                console.warn('🔑 Havuz sahibi kimliği çözülemedi; bulut yazımı kapalı (çevrimdışı mod).');
+            }
+
             this.lastSyncHashes.clear();
             
             // 🛡️ Safety: Wrap loadAll in a race to prevent hanging the whole app
@@ -205,6 +272,9 @@ class FirebaseSync {
                 console.warn('Firebase individual load partial failure/timeout:', e.message);
                 // We proceed anyway to show the UI
             });
+
+            // Eski belgelerde sahiplik damgası yok; koç kendi havuzunu sahiplenir
+            await this.havuzuSahiplen();
 
             this.startRealtimeListener();
             this.startAutoSync();
@@ -335,9 +405,52 @@ class FirebaseSync {
         } catch (e) { console.warn('Load all error:', e.message); }
     }
 
+    /**
+     * 🏷️ HAVUZU SAHİPLENME (geriye uyumlu geçiş)
+     *
+     * Sahiplik alanı sonradan eklendi; mevcut belgelerde yok. Kural
+     * sıkılaştırıldığında damgasız belgeler okunamaz hâle gelirdi — yani
+     * koçlar bütün verilerini kaybetmiş gibi görürdü.
+     *
+     * Koç girişte kendi havuzundaki damgasız belgeleri sahiplenir. İşlem
+     * tek seferliktir, veriye dokunmaz, yalnızca alan ekler.
+     *
+     * ⚠️ Yalnızca KOÇ sahiplenir. Öğrenci kendi koçunun havuzunu
+     * sahiplenseydi, havuzun sahibi öğrenci olurdu.
+     */
+    async havuzuSahiplen() {
+        if (this.paused) return;
+        if (!this.sahipUid || !this.havuz) return;
+        if (auth?.currentUser?.uid !== this.sahipUid) return;  // öğrenci ise atla
+
+        try {
+            const q = query(collection(db, 'syncData'), where('bucketId', '==', this.havuz));
+            const anlik = await getDocs(q);
+            let sahiplenilen = 0;
+
+            for (const belge of anlik.docs) {
+                if (belge.data()?.sahipUid) continue;           // zaten damgalı
+                try {
+                    await setDoc(doc(db, 'syncData', belge.id), { sahipUid: this.sahipUid }, { merge: true });
+                    sahiplenilen += 1;
+                } catch (e) {
+                    console.warn(`Belge sahiplenilemedi (${belge.id}):`, e?.code || e?.message);
+                }
+            }
+            if (sahiplenilen > 0) console.log(`🏷️ ${sahiplenilen} belge sahiplenildi.`);
+        } catch (e) {
+            console.warn('Havuz sahiplenme atlandı:', e?.code || e?.message);
+        }
+    }
+
     async writeKeyToFirebase(key, force = false) {
         if (this.paused) return;
         if (!this.userId) return;
+        /**
+         * Sahiplik damgası olmadan yazım YAPILMAZ. Damgasız belge, kural
+         * sıkılaştırıldıktan sonra kimsenin okuyamayacağı ölü bir kayıt olur.
+         */
+        if (!this.sahipUid) return;
         if (NEVER_SYNC.some(ns => key === ns || key.startsWith(ns))) return;
         
         const value = localStorage.getItem(key);
@@ -354,7 +467,10 @@ class FirebaseSync {
             const bucketId = this.havuz;
             const saveValue = prepareFirebaseValue(value);
             await setDoc(doc(db, 'syncData', keyToDocId(this.havuz, key)), {
-                key, value: saveValue, updatedAt: serverTimestamp(), updatedBy: this.userId, bucketId: bucketId
+                key, value: saveValue, updatedAt: serverTimestamp(), updatedBy: this.userId,
+                bucketId,
+                // Kuralın sahiplik kontrolü yaptığı alan
+                sahipUid: this.sahipUid,
             }, { merge: true });
             
             // Update tracking state
@@ -428,6 +544,182 @@ class FirebaseSync {
 
     async syncKey(key) { await this.writeKeyToFirebase(key, true); }
 
+    /**
+     * 🔬 TANI — canlı ortamda kimlik zinciri ve veri envanteri
+     *
+     * SALT OKUNUR. Hiçbir belge yazmaz, silmez, taşımaz.
+     *
+     * Faz 1'in gerçek kullanıcı verisi üzerinde doğrulanabilmesi için
+     * eklendi: kimlik köprüsünün doğru kurulduğu, havuzun doğru açıldığı
+     * ve yerel veriyle bulut verisinin örtüştüğü ancak çalışan sistemde
+     * ölçülerek kanıtlanabilir.
+     *
+     * Konsoldan: `await firebaseSync.tani()`
+     */
+    async tani() {
+        const sayim = (metin) => {
+            if (metin == null) return null;
+            try {
+                const v = JSON.parse(metin);
+                if (Array.isArray(v)) return v.length;
+                if (v && typeof v === 'object') return Object.keys(v).length;
+                return 1;
+            } catch { return `${metin.length}b`; }
+        };
+
+        const rapor = {
+            kimlik: {
+                firebaseUid: auth?.currentUser?.uid || null,
+                epostaTakma: auth?.currentUser?.email || null,
+                saglayici: auth?.currentUser?.providerData?.[0]?.providerId || null,
+            },
+            oturum: {},
+            senkron: {
+                havuz: this.havuz,
+                sahipUid: this.sahipUid,
+                baslatildi: this.isInitialized,
+                duraklatildi: this.paused,
+            },
+            sunucuKayitlari: {},
+            yerel: {},
+            bulut: {},
+            karsilastirma: { yalnizcaBulutta: [], yalnizcaYerelde: [], farkli: [] },
+            ogrenciler: { toplam: 0, sunucuKimligiOlan: 0, sunucuKimligiOlmayan: [] },
+            uyarilar: [],
+        };
+
+        // ── Oturum ───────────────────────────────────────────
+        try {
+            const o = JSON.parse(localStorage.getItem('user_session') || 'null');
+            rapor.oturum = o ? { id: o.id, uid: o.uid, rol: o.role, ad: o.name, kocId: o.coachId ?? o.ownerCoachId ?? null } : null;
+        } catch { rapor.oturum = null; }
+
+        // ── Sunucudaki kimlik kayıtları ──────────────────────
+        const uid = rapor.kimlik.firebaseUid;
+        if (uid) {
+            try {
+                const p = await getDoc(doc(db, 'kullaniciProfil', uid));
+                rapor.sunucuKayitlari.kullaniciProfil = p.exists() ? p.data() : 'YOK';
+            } catch (e) { rapor.sunucuKayitlari.kullaniciProfil = `HATA: ${e.code || e.message}`; }
+
+            const kocId = rapor.oturum?.id;
+            if (kocId) {
+                try {
+                    const dz = await getDoc(doc(db, 'kocDizin', String(kocId).replace(/[^a-zA-Z0-9_-]/g, '_')));
+                    rapor.sunucuKayitlari.kocDizin = dz.exists() ? dz.data() : 'YOK';
+                } catch (e) { rapor.sunucuKayitlari.kocDizin = `HATA: ${e.code || e.message}`; }
+            }
+        }
+
+        // ── Yerel envanter ───────────────────────────────────
+        const ilgili = [...new Set([...SYNC_KEYS, ...getDynamicKeys()])];
+        ilgili.forEach((k) => {
+            const v = localStorage.getItem(k);
+            if (v != null) rapor.yerel[k] = sayim(v);
+        });
+
+        // ── Bulut envanteri ──────────────────────────────────
+        if (this.havuz) {
+            try {
+                const s = await getDocs(query(collection(db, 'syncData'), where('bucketId', '==', this.havuz)));
+                s.forEach((d) => {
+                    const v = d.data();
+                    const deger = processFirebaseValue(v.value);
+                    rapor.bulut[v.key || d.id] = {
+                        adet: sayim(deger),
+                        damgali: Boolean(v.sahipUid),
+                        guncelleme: v.updatedAt?.toDate?.()?.toISOString?.()?.slice(0, 16) || null,
+                    };
+                    if (!v.sahipUid) rapor.uyarilar.push(`DAMGASIZ: ${v.key || d.id}`);
+                });
+            } catch (e) {
+                rapor.uyarilar.push(`Bulut okunamadı: ${e.code || e.message}`);
+            }
+        }
+
+        // ── Karşılaştırma ────────────────────────────────────
+        const yerelAnahtarlar = new Set(Object.keys(rapor.yerel));
+        const bulutAnahtarlar = new Set(Object.keys(rapor.bulut));
+        bulutAnahtarlar.forEach((k) => { if (!yerelAnahtarlar.has(k)) rapor.karsilastirma.yalnizcaBulutta.push(k); });
+        yerelAnahtarlar.forEach((k) => { if (!bulutAnahtarlar.has(k)) rapor.karsilastirma.yalnizcaYerelde.push(k); });
+        bulutAnahtarlar.forEach((k) => {
+            if (!yerelAnahtarlar.has(k)) return;
+            if (rapor.yerel[k] !== rapor.bulut[k].adet) {
+                rapor.karsilastirma.farkli.push({ anahtar: k, yerel: rapor.yerel[k], bulut: rapor.bulut[k].adet });
+            }
+        });
+
+        // ── Öğrencilerin sunucu kimliği var mı? ──────────────
+        try {
+            const liste = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            rapor.ogrenciler.toplam = liste.length;
+            if (uid) {
+                const s = await getDocs(query(collection(db, 'ogrenciKimlik'), where('kocUid', '==', uid)));
+                const bagli = new Set(s.docs.map((d) => String(d.data().ogrenciId)));
+                liste.forEach((o) => {
+                    if (bagli.has(String(o.id))) rapor.ogrenciler.sunucuKimligiOlan += 1;
+                    else rapor.ogrenciler.sunucuKimligiOlmayan.push({ ad: o.name, no: o.schoolNumber, id: o.id });
+                });
+            }
+        } catch (e) { rapor.uyarilar.push(`Öğrenci kimlikleri okunamadı: ${e.code || e.message}`); }
+
+        // ── Davetler ve katılım talepleri ────────────────────
+        if (uid) {
+            rapor.davetler = [];
+            rapor.talepler = [];
+            try {
+                const s = await getDocs(query(collection(db, 'davetler'), where('kocUid', '==', uid)));
+                s.forEach((d) => {
+                    const v = d.data();
+                    rapor.davetler.push({
+                        kod: d.id,
+                        bagliOgrenciId: v.ogrenciId ?? null,
+                        bagliOgrenciAd: v.ogrenciAd ?? null,
+                        kullanilan: v.kullanilan,
+                        hakki: v.kullanimHakki,
+                        aktif: v.aktif,
+                        sonZaman: v.sonZaman?.toDate?.()?.toISOString?.()?.slice(0, 16) || null,
+                    });
+                });
+            } catch (e) { rapor.uyarilar.push(`Davetler okunamadı: ${e.code || e.message}`); }
+
+            try {
+                const s = await getDocs(query(collection(db, 'katilimTalepleri'), where('kocUid', '==', uid)));
+                s.forEach((d) => {
+                    const v = d.data();
+                    rapor.talepler.push({
+                        uid: d.id.slice(0, 10),
+                        ad: v.ad,
+                        okulNo: v.okulNo,
+                        kod: v.kod,
+                        durum: v.durum,
+                        bagliOgrenciId: v.ogrenciId ?? null,
+                        olusturma: v.olusturma?.toDate?.()?.toISOString?.()?.slice(0, 16) || null,
+                    });
+                });
+                if (rapor.talepler.length === 0) {
+                    rapor.uyarilar.push('Sunucuda bu koça ait HİÇ katılım talebi yok.');
+                }
+            } catch (e) { rapor.uyarilar.push(`Talepler okunamadı: ${e.code || e.message}`); }
+        }
+
+        // ── Tutarlılık kontrolleri ───────────────────────────
+        if (!rapor.kimlik.firebaseUid) rapor.uyarilar.push('KRİTİK: Firebase oturumu yok — bulut yazımı kapalı.');
+        if (!rapor.senkron.sahipUid) rapor.uyarilar.push('KRİTİK: sahipUid çözülemedi — bulut yazımı kapalı.');
+        if (rapor.oturum?.rol !== 'student' && rapor.kimlik.firebaseUid !== rapor.senkron.sahipUid) {
+            rapor.uyarilar.push('KRİTİK: Koç için firebaseUid ile sahipUid eşleşmiyor.');
+        }
+        if (rapor.sunucuKayitlari.kullaniciProfil === 'YOK') rapor.uyarilar.push('KRİTİK: kullaniciProfil kaydı yok.');
+        if (rapor.sunucuKayitlari.kocDizin === 'YOK') rapor.uyarilar.push('UYARI: kocDizin kaydı yok — öğrenciler koçu çözemeyebilir.');
+        if (rapor.senkron.havuz && rapor.oturum?.id && rapor.senkron.havuz !== `koc_${rapor.oturum.id}`) {
+            rapor.uyarilar.push(`UYARI: havuz (${rapor.senkron.havuz}) oturum kimliğiyle (${rapor.oturum.id}) örtüşmüyor.`);
+        }
+
+        console.log('%c🔬 FAZ 1 TANI RAPORU', 'font-weight:bold;font-size:14px');
+        console.log(JSON.stringify(rapor, null, 2));
+        return rapor;
+    }
+
     debouncedSync() {
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
         this.debounceTimer = setTimeout(() => this.saveToFirebase(), 5000); // 5 sec debounce
@@ -440,10 +732,58 @@ class FirebaseSync {
         this.autoSyncInterval = setInterval(() => this.saveToFirebase(), 120000); // 2 min interval
     }
 
+    /**
+     * 🧹 ÇIKIŞTA ÖNBELLEĞİ TEMİZLE
+     *
+     * ⚠️ ÇIKIŞ YAPMAK VERİYİ CİHAZDA BIRAKIYORDU. `logout` yalnızca
+     * `user_session` anahtarını siliyordu; koçun bütün öğrenci listesi,
+     * deneme sonuçları, rehberlik dosyaları ve veli bağlantıları
+     * localStorage'da duruyordu. Ortak kullanılan bir bilgisayarda
+     * ARDINDAN GİREN KULLANICI, önceki kullanıcının verisini görüyordu —
+     * kendi verisi buluttan inene kadar, hatta bazı anahtarlarda hiç
+     * inmediği için kalıcı olarak.
+     *
+     * Temizlemeden önce bekleyen değişiklikler buluta gönderilir; aksi
+     * hâlde senkronlanmamış bir yazım silinmiş olurdu.
+     *
+     * Tema, dil, kurulum tercihi gibi kullanıcıya özel olmayan ayarlar
+     * KORUNUR — bunlar veri değil, cihaz tercihidir.
+     */
+    async oturumOnbelleginiTemizle() {
+        const KORUNACAK = new Set([
+            'theme_mode', 'veri_donemi', 'device_id',
+            'pwa_install_dismissed', 'gemini_api_key',
+        ]);
+
+        // Bekleyen yazımları önce buluta gönder — veri kaybetmemek için
+        try { await this.saveToFirebase(); } catch { /* çevrimdışıysa devam */ }
+
+        try {
+            const dinamik = getDynamicKeys();
+            const silinecek = [...new Set([...SYNC_KEYS, ...dinamik])]
+                .filter((k) => !KORUNACAK.has(k));
+
+            silinecek.forEach((k) => {
+                try {
+                    localStorage.removeItem(k);
+                    localStorage.removeItem(`_fbtime_${k}`);
+                } catch { /* ignore */ }
+            });
+            console.log(`🧹 Çıkış: ${silinecek.length} veri anahtarı cihazdan temizlendi.`);
+        } catch (e) {
+            console.warn('Oturum önbelleği temizlenemedi:', e?.message);
+        }
+    }
+
     destroy() {
         if (this.autoSyncInterval) clearInterval(this.autoSyncInterval);
         if (this.realtimeUnsubscribe) this.realtimeUnsubscribe();
         this.userId = null;
+        this.havuz = null;
+        // Çıkışta sahiplik kimliği de temizlenmeli; kalırsa bir sonraki
+        // kullanıcı önceki kullanıcının havuzuna yazabilir.
+        this.sahipUid = null;
+        this.lastSyncHashes.clear();
         this.isInitialized = false;
     }
 }

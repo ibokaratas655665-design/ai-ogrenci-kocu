@@ -68,7 +68,6 @@ import TabBadge from '../components/shared/TabBadge';
 import TopicTracker from '../components/student/TopicTracker';
 import useTabBadges from '../hooks/useTabBadges';
 import SubjectPomodoro from '../components/student/SubjectPomodoro';
-import EnhancedParentQRModal from '../components/student/EnhancedParentPortal';
 import StudentPortfolio from '../components/student/StudentPortfolio';
 import SmartScheduleSuggestion from '../components/student/SmartScheduleSuggestion';
 import ExamComparisonMatrix from '../components/student/ExamComparisonMatrix';
@@ -78,6 +77,8 @@ import VividKpi from '../components/shared/VividKpi';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
+import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 
 // ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
@@ -338,134 +339,136 @@ const ExamDetailSection = ({ examData, permissions, user }) => {
 
             {/* Detay Modal - Premium Glass */}
             {selectedExam && (
-                <div className="fixed inset-0 z-modal-base flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-page/90 backdrop-blur-md" onClick={() => setSelectedExam(null)} />
-                    
-                    <div className="relative premium-card w-full max-w-3xl max-h-[90vh] overflow-y-auto border-line shadow-2xl animate-scale-in">
-                        {/* Header */}
-                        <div className="p-8 border-b border-line flex items-center justify-between sticky top-0 bg-surface/80 backdrop-blur-xl z-10">
-                            <div className="flex items-center gap-5">
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-sm font-black border ${
-                                    selectedExam.examType === 'AYT' 
-                                    ? 'bg-c4/20 text-c4 border-c4/30' 
-                                    : 'bg-accent/20 text-accent border-accent/30'
-                                }`}>
-                                    {selectedExam.examType || 'TYT'}
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-ink syne leading-tight">{selectedExam.name || 'Deneme'}</h3>
-                                    <div className="flex items-center gap-3 mt-1.5">
-                                        <span className="text-xs font-bold text-ink-3 uppercase tracking-widest flex items-center gap-2">
-                                            <Calendar size={14} className="text-brand" />
-                                            {selectedExam.date ? new Date(selectedExam.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                                        </span>
-                                    </div>
-                                </div>
+                <Modal
+                    acik
+                    onClose={() => setSelectedExam(null)}
+                    baslikGizle
+                    genislik="xl"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    {/* Header */}
+                    <div className="p-8 border-b border-line flex items-center justify-between shrink-0 bg-surface/80 backdrop-blur-xl">
+                        <div className="flex items-center gap-5">
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-sm font-black border ${
+                                selectedExam.examType === 'AYT' 
+                                ? 'bg-c4/20 text-c4 border-c4/30' 
+                                : 'bg-accent/20 text-accent border-accent/30'
+                            }`}>
+                                {selectedExam.examType || 'TYT'}
                             </div>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => handlePDF(selectedExam)}
-                                    className="premium-button px-5 h-12 text-xs flex items-center gap-2"
-                                >
-                                    <Download size={16} /> PDF KARNE
-                                </button>
-                                <button 
-                                    onClick={() => setSelectedExam(null)} 
-                                    className="w-12 h-12 bg-surface/5 hover:bg-danger/10 text-ink-3 hover:text-danger rounded-xl border border-line transition-all flex items-center justify-center"
-                                >
-                                    <X size={24} />
-                                </button>
+                            <div>
+                                <h3 className="text-2xl font-black text-ink syne leading-tight">{selectedExam.name || 'Deneme'}</h3>
+                                <div className="flex items-center gap-3 mt-1.5">
+                                    <span className="text-xs font-bold text-ink-3 uppercase tracking-widest flex items-center gap-2">
+                                        <Calendar size={14} className="text-brand" />
+                                        {selectedExam.date ? new Date(selectedExam.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                                    </span>
+                                </div>
                             </div>
                         </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => handlePDF(selectedExam)}
+                                className="premium-button px-5 h-12 text-xs flex items-center gap-2"
+                            >
+                                <Download size={16} /> PDF KARNE
+                            </button>
+                            <button 
+                                onClick={() => setSelectedExam(null)} 
+                                className="w-12 h-12 bg-surface/5 hover:bg-danger/10 text-ink-3 hover:text-danger rounded-xl border border-line transition-all flex items-center justify-center"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+                    </div>
 
-                        <div className="p-8 space-y-8 text-ink">
-                            {/* Özet Kartları */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center group hover:bg-brand/5 transition-all">
-                                    <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 group-hover:text-brand">TOPLAM NET</div>
-                                    <div className="text-3xl font-black text-ink syne">{(selectedExam.totalNet || 0).toFixed(2)}</div>
-                                </div>
-                                {selectedExam.examType === 'AYT' ? (
-                                    <>
-                                        {selectedExam.sayNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#a78bfa]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SAY NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sayNet).toFixed(1)}</div></div>}
-                                        {selectedExam.eaNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-accent/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">EA NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.eaNet).toFixed(1)}</div></div>}
-                                        {selectedExam.sozNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#32a852]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SÖZ NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sozNet).toFixed(1)}</div></div>}
-                                    </>
-                                ) : (
-                                    <>
-                                        {[['Türkçe', getSubjectNet(selectedExam, 'turkce'), 'var(--highlight)'], ['Matematik', getSubjectNet(selectedExam, 'mat'), 'var(--accent)'], ['Fen', getSubjectNet(selectedExam, 'fen'), 'var(--warn)'], ['Sosyal', getSubjectNet(selectedExam, 'sosyal'), 'var(--danger)']].filter(([, v]) => v != null).map(([lbl, net, color]) => (
-                                            <div key={lbl} className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-surface/10 transition-all">
-                                                <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2" style={{ color }}>{lbl.toUpperCase()}</div>
-                                                <div className="text-3xl font-black text-ink syne">{Number(net).toFixed(1)}</div>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
+                    <div className="flex-1 min-h-0 overflow-y-auto p-8 space-y-8 text-ink">
+                        {/* Özet Kartları */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center group hover:bg-brand/5 transition-all">
+                                <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 group-hover:text-brand">TOPLAM NET</div>
+                                <div className="text-3xl font-black text-ink syne">{(selectedExam.totalNet || 0).toFixed(2)}</div>
                             </div>
+                            {selectedExam.examType === 'AYT' ? (
+                                <>
+                                    {selectedExam.sayNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#a78bfa]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SAY NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sayNet).toFixed(1)}</div></div>}
+                                    {selectedExam.eaNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-accent/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">EA NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.eaNet).toFixed(1)}</div></div>}
+                                    {selectedExam.sozNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#32a852]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SÖZ NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sozNet).toFixed(1)}</div></div>}
+                                </>
+                            ) : (
+                                <>
+                                    {[['Türkçe', getSubjectNet(selectedExam, 'turkce'), 'var(--highlight)'], ['Matematik', getSubjectNet(selectedExam, 'mat'), 'var(--accent)'], ['Fen', getSubjectNet(selectedExam, 'fen'), 'var(--warn)'], ['Sosyal', getSubjectNet(selectedExam, 'sosyal'), 'var(--danger)']].filter(([, v]) => v != null).map(([lbl, net, color]) => (
+                                        <div key={lbl} className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-surface/10 transition-all">
+                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2" style={{ color }}>{lbl.toUpperCase()}</div>
+                                            <div className="text-3xl font-black text-ink syne">{Number(net).toFixed(1)}</div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
 
-                            {/* Detaylı Liste */}
-                            <div className="bg-surface/5 border border-line rounded-3xl overflow-hidden p-6">
-                                <h4 className="text-sm font-black text-ink syne tracking-widest uppercase mb-6 flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                                    DERS BAZLI AYRINTILI ANALİZ
-                                </h4>
-                                
-                                <div className="space-y-3">
-                                    {selectedExam.examType === 'AYT' ? (
-                                        [
-                                            ['EDEBIYAT', selectedExam.edebiyat],
-                                            ['AYT MATEMATIK', selectedExam.aytMat],
-                                            ['FIZIK', selectedExam.fizik],
-                                            ['KIMYA', selectedExam.kimya],
-                                            ['BIYOLOJI', selectedExam.biyoloji],
-                                            ['SOSYAL AYT', selectedExam.sosyalAYT],
-                                            ['DIL', selectedExam.dilNet],
-                                        ].filter(([, v]) => v != null && v > 0).map(([lbl, net]) => (
-                                            <div key={lbl} className="flex justify-between items-center bg-surface/5 px-6 py-4 rounded-2xl border border-line group hover:border-line transition-all">
-                                                <span className="text-xs font-bold text-ink-3 tracking-wider group-hover:text-ink transition-colors">{lbl}</span>
-                                                <span className="text-lg font-black text-accent syne">{Number(net).toFixed(2)}</span>
-                                            </div>
-                                        ))
-                                    ) : selectedExam.subjects && Object.keys(selectedExam.subjects).length > 0 ? (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full">
-                                                <thead>
-                                                    <tr className="border-b border-line">
-                                                        <th className="px-4 py-3 text-left text-[10px] font-black text-ink-2 uppercase tracking-widest">Ders</th>
-                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-accent uppercase tracking-widest">Doğru</th>
-                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-danger uppercase tracking-widest">Yanlış</th>
-                                                        <th className="px-4 py-3 text-center text-[10px] font-black text-brand uppercase tracking-widest">Net</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-white/5">
-                                                    {Object.entries(selectedExam.subjects).map(([key, subj]) => {
-                                                        if (!subj) return null;
-                                                        const d = typeof subj === 'object' ? (subj.d ?? subj.dogru ?? '-') : '-';
-                                                        const y = typeof subj === 'object' ? (subj.y ?? subj.yanlis ?? '-') : '-';
-                                                        const net = typeof subj === 'object' ? (parseFloat(subj.net) || 0) : (parseFloat(subj) || 0);
-                                                        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                                        return (
-                                                            <tr key={key} className="hover:bg-surface/5 transition-all">
-                                                                <td className="px-4 py-4 text-xs font-bold text-ink-3">{label}</td>
-                                                                <td className="px-4 py-4 text-center text-sm font-black text-ink">{d}</td>
-                                                                <td className="px-4 py-4 text-center text-sm font-black text-ink">{y}</td>
-                                                                <td className="px-4 py-4 text-center text-sm font-black text-brand syne">{net.toFixed(2)}</td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
+                        {/* Detaylı Liste */}
+                        <div className="bg-surface/5 border border-line rounded-3xl overflow-hidden p-6">
+                            <h4 className="text-sm font-black text-ink syne tracking-widest uppercase mb-6 flex items-center gap-3">
+                                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                                DERS BAZLI AYRINTILI ANALİZ
+                            </h4>
+                        
+                            <div className="space-y-3">
+                                {selectedExam.examType === 'AYT' ? (
+                                    [
+                                        ['EDEBIYAT', selectedExam.edebiyat],
+                                        ['AYT MATEMATIK', selectedExam.aytMat],
+                                        ['FIZIK', selectedExam.fizik],
+                                        ['KIMYA', selectedExam.kimya],
+                                        ['BIYOLOJI', selectedExam.biyoloji],
+                                        ['SOSYAL AYT', selectedExam.sosyalAYT],
+                                        ['DIL', selectedExam.dilNet],
+                                    ].filter(([, v]) => v != null && v > 0).map(([lbl, net]) => (
+                                        <div key={lbl} className="flex justify-between items-center bg-surface/5 px-6 py-4 rounded-2xl border border-line group hover:border-line transition-all">
+                                            <span className="text-xs font-bold text-ink-3 tracking-wider group-hover:text-ink transition-colors">{lbl}</span>
+                                            <span className="text-lg font-black text-accent syne">{Number(net).toFixed(2)}</span>
                                         </div>
-                                    ) : (
-                                        <div className="text-center py-10">
-                                            <p className="text-ink-2 text-xs font-bold tracking-widest uppercase">DETAYLI DERS VERİSİ BULUNAMADI</p>
-                                        </div>
-                                    )}
-                                </div>
+                                    ))
+                                ) : selectedExam.subjects && Object.keys(selectedExam.subjects).length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-line">
+                                                    <th className="px-4 py-3 text-left text-[10px] font-black text-ink-2 uppercase tracking-widest">Ders</th>
+                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-accent uppercase tracking-widest">Doğru</th>
+                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-danger uppercase tracking-widest">Yanlış</th>
+                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-brand uppercase tracking-widest">Net</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                                {Object.entries(selectedExam.subjects).map(([key, subj]) => {
+                                                    if (!subj) return null;
+                                                    const d = typeof subj === 'object' ? (subj.d ?? subj.dogru ?? '-') : '-';
+                                                    const y = typeof subj === 'object' ? (subj.y ?? subj.yanlis ?? '-') : '-';
+                                                    const net = typeof subj === 'object' ? (parseFloat(subj.net) || 0) : (parseFloat(subj) || 0);
+                                                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                                    return (
+                                                        <tr key={key} className="hover:bg-surface/5 transition-all">
+                                                            <td className="px-4 py-4 text-xs font-bold text-ink-3">{label}</td>
+                                                            <td className="px-4 py-4 text-center text-sm font-black text-ink">{d}</td>
+                                                            <td className="px-4 py-4 text-center text-sm font-black text-ink">{y}</td>
+                                                            <td className="px-4 py-4 text-center text-sm font-black text-brand syne">{net.toFixed(2)}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-10">
+                                        <p className="text-ink-2 text-xs font-bold tracking-widest uppercase">DETAYLI DERS VERİSİ BULUNAMADI</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
-                </div>
+                </Modal>
             )}
         </div>
     );
@@ -1279,7 +1282,7 @@ const StudentDashboard = () => {
                                     ? { ...m, read: true }
                                     : m
                             );
-                            localStorage.setItem('messages', JSON.stringify(updated));
+                            yaz('messages', updated);
                         } catch { /* ignore */ }
                     };
 
@@ -1626,64 +1629,68 @@ const StudentDashboard = () => {
             </dialog>
             {/* ── Mesaj Modalı (Premium) ── */}
             {isMessageModalOpen && (
-                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 icerik-gecis">
-                    <div className="premium-card w-full max-w-md h-[650px] flex flex-col overflow-hidden border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                        <div className="p-6 bg-surface border-b border-line flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-                                    <MessageSquare size={20} className="text-brand" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-ink syne uppercase">KOÇUNLA KONUŞ</h3>
-                                    <p className="text-[10px] text-accent font-bold tracking-widest uppercase">ÇEVRİMİÇİ</p>
+                <Modal
+                    acik
+                    onClose={() => setIsMessageModalOpen(false)}
+                    baslikGizle
+                    genislik="md"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
+                >
+                    <div className="shrink-0 p-6 bg-surface border-b border-line flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                <MessageSquare size={20} className="text-brand" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-ink syne uppercase">KOÇUNLA KONUŞ</h3>
+                                <p className="text-[10px] text-accent font-bold tracking-widest uppercase">ÇEVRİMİÇİ</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsMessageModalOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-black/20">
+                        {messages.length === 0 ? (
+                            <div className="text-center mt-20 opacity-20">
+                                <MessageSquare size={60} className="mx-auto mb-4" />
+                                <p className="text-ink text-xs font-bold uppercase tracking-widest">HENÜZ MESAJ YOK</p>
+                            </div>
+                        ) : messages.map((msg, idx) => (
+                            <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[85%] group`}>
+                                    <div className={`p-4 rounded-2xl text-[13px] leading-relaxed shadow-lg ${
+                                        msg.sender === 'student' 
+                                        ? 'bg-gradient-to-br from-accent to-[#145d52] text-white rounded-tr-none' 
+                                        : 'bg-surface/5 border border-line text-ink-2 rounded-tl-none'
+                                    }`}>
+                                        <p>{msg.text}</p>
+                                    </div>
+                                    <span className={`text-[9px] font-black text-ink-3 uppercase mt-2 block ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
+                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                 </div>
                             </div>
-                            <button onClick={() => setIsMessageModalOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-black/20">
-                            {messages.length === 0 ? (
-                                <div className="text-center mt-20 opacity-20">
-                                    <MessageSquare size={60} className="mx-auto mb-4" />
-                                    <p className="text-ink text-xs font-bold uppercase tracking-widest">HENÜZ MESAJ YOK</p>
-                                </div>
-                            ) : messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] group`}>
-                                        <div className={`p-4 rounded-2xl text-[13px] leading-relaxed shadow-lg ${
-                                            msg.sender === 'student' 
-                                            ? 'bg-gradient-to-br from-accent to-[#145d52] text-white rounded-tr-none' 
-                                            : 'bg-surface/5 border border-line text-ink-2 rounded-tl-none'
-                                        }`}>
-                                            <p>{msg.text}</p>
-                                        </div>
-                                        <span className={`text-[9px] font-black text-ink-3 uppercase mt-2 block ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
-                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <form onSubmit={handleSendMessage} className="p-6 bg-surface/5 border-t border-line flex gap-4">
-                            <input 
-                                value={newMessage} 
-                                onChange={e => setNewMessage(e.target.value)} 
-                                placeholder="Mesajınızı buraya yazın..." 
-                                className="flex-1 bg-surface/5 border border-line rounded-xl px-6 py-4 text-sm text-ink outline-none focus:border-brand/50 transition-all" 
-                            />
-                            <button 
-                                type="submit" 
-                                className="on-color w-14 h-14 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50"
-                                disabled={!newMessage.trim()}
-                            >
-                                <Send size={20} />
-                            </button>
-                        </form>
+                        ))}
                     </div>
-                </div>
+
+                    <form onSubmit={handleSendMessage} className="p-6 bg-surface/5 border-t border-line flex gap-4">
+                        <input 
+                            value={newMessage} 
+                            onChange={e => setNewMessage(e.target.value)} 
+                            placeholder="Mesajınızı buraya yazın..." 
+                            className="flex-1 bg-surface/5 border border-line rounded-xl px-6 py-4 text-sm text-ink outline-none focus:border-brand/50 transition-all" 
+                        />
+                        <button 
+                            type="submit" 
+                            className="on-color w-14 h-14 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50"
+                            disabled={!newMessage.trim()}
+                        >
+                            <Send size={20} />
+                        </button>
+                    </form>
+                </Modal>
             )}
 
             {/* ═══════════════ ROZETLERİM ═══════════════ */}
@@ -2007,55 +2014,58 @@ const StudentDashboard = () => {
 
             {/* ── Ayarlar Modalı (Premium) ── */}
             {isSettingsOpen && (
-                <div className="fixed inset-0 z-modal-base bg-black/60 backdrop-blur-md flex items-center justify-center p-4 icerik-gecis">
-                    <div className="premium-card w-full max-w-md p-8 border-brand/20 bg-surface shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                        <div className="flex justify-between items-center mb-8">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-                                    <Key size={20} className="text-brand" />
-                                </div>
-                                <h2 className="text-xl font-bold text-ink syne uppercase">AI AYARLARI</h2>
+                <Modal
+                    acik
+                    onClose={() => setIsSettingsOpen(false)}
+                    baslikGizle
+                    genislik="md"
+                >
+                    <div className="flex justify-between items-center mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                <Key size={20} className="text-brand" />
                             </div>
-                            <button onClick={() => setIsSettingsOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
-                                <X size={24} />
+                            <h2 className="text-xl font-bold text-ink syne uppercase">AI AYARLARI</h2>
+                        </div>
+                        <button onClick={() => setIsSettingsOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-[10px] font-black text-brand uppercase tracking-[0.2em] mb-3">GOOGLE GEMINI API ANAHTARI</label>
+                            <div className="relative">
+                                <input 
+                                    type="password" 
+                                    value={apiKey} 
+                                    onChange={e => setApiKey(e.target.value)} 
+                                    placeholder="AIzSy..." 
+                                    className="w-full bg-surface/5 border border-line rounded-xl px-4 py-4 text-ink outline-none focus:border-brand/50 transition-all font-mono text-xs" 
+                                />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-brand opacity-50 shadow-[0_0_10px_#c9a84c]" />
+                            </div>
+                            <p className="text-[10px] text-ink-2 mt-3 leading-relaxed">
+                                Anahtarınız sadece bu cihazda saklanır. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline font-bold">API KEY ALMAK İÇİN TIKLAYIN</a>
+                            </p>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button 
+                                onClick={() => setIsSettingsOpen(false)} 
+                                className="flex-1 h-12 border border-line rounded-xl text-[10px] font-black text-ink-2 hover:bg-surface/5 transition-all uppercase tracking-widest"
+                            >
+                                İPTAL
+                            </button>
+                            <button 
+                                onClick={() => { localStorage.setItem('gemini_api_key', apiKey); setIsSettingsOpen(false); }} 
+                                className="on-color flex-1 h-12 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl text-[10px] font-black transition-all hover:scale-105 active:scale-95 uppercase tracking-widest shadow-xl"
+                            >
+                                KAYDET
                             </button>
                         </div>
-                        
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-[10px] font-black text-brand uppercase tracking-[0.2em] mb-3">GOOGLE GEMINI API ANAHTARI</label>
-                                <div className="relative">
-                                    <input 
-                                        type="password" 
-                                        value={apiKey} 
-                                        onChange={e => setApiKey(e.target.value)} 
-                                        placeholder="AIzSy..." 
-                                        className="w-full bg-surface/5 border border-line rounded-xl px-4 py-4 text-ink outline-none focus:border-brand/50 transition-all font-mono text-xs" 
-                                    />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-brand opacity-50 shadow-[0_0_10px_#c9a84c]" />
-                                </div>
-                                <p className="text-[10px] text-ink-2 mt-3 leading-relaxed">
-                                    Anahtarınız sadece bu cihazda saklanır. <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline font-bold">API KEY ALMAK İÇİN TIKLAYIN</a>
-                                </p>
-                            </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <button 
-                                    onClick={() => setIsSettingsOpen(false)} 
-                                    className="flex-1 h-12 border border-line rounded-xl text-[10px] font-black text-ink-2 hover:bg-surface/5 transition-all uppercase tracking-widest"
-                                >
-                                    İPTAL
-                                </button>
-                                <button 
-                                    onClick={() => { localStorage.setItem('gemini_api_key', apiKey); setIsSettingsOpen(false); }} 
-                                    className="on-color flex-1 h-12 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl text-[10px] font-black transition-all hover:scale-105 active:scale-95 uppercase tracking-widest shadow-xl"
-                                >
-                                    KAYDET
-                                </button>
-                            </div>
-                        </div>
                     </div>
-                </div>
+                </Modal>
             )}
                 </BolumHataSiniri>
             </main>

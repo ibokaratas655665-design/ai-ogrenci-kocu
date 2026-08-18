@@ -6,14 +6,15 @@ import {
     Laptop, CheckCircle, RefreshCw, Lock, AlertTriangle, Timer,
     ChevronLeft, ChevronRight, Star, Zap, BookOpen, BarChart2,
     ClipboardList, MessageSquare, Trophy, Target, Calendar,
-    FileText, TrendingUp, Activity, Shield, Package, Check, X, PlayCircle
+    FileText, TrendingUp, Activity, Shield, Package, Check, X, PlayCircle,
+    Eye, EyeOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StudentRegisterModal from '../components/StudentRegisterModal';
 import {
     sendMagicLinkToCoach,
     completeMagicLinkSignIn,
-    isDeviceTrusted,
+    cihazGuveniniDenetle,
     trustThisDevice,
     saveCoachEmail,
     getCoachEmail,
@@ -143,6 +144,7 @@ const LoginPage = () => {
     const [schoolName, setSchoolName] = useState('');
     const [email, setEmail] = useState('');
     const [rememberDevice, setRememberDevice] = useState(true);
+    const [ogrenciSifreAcik, setOgrenciSifreAcik] = useState(false);
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -264,10 +266,40 @@ const LoginPage = () => {
             return false;
         }
         resetLoginAttempts(cleanSchoolNo); setAttemptsLeft(null);
+
+        /**
+         * ⚠️ CİHAZ GÜVENİ SONUCU ESKİDEN HİÇBİR ŞEYİ DEĞİŞTİRMİYORDU:
+         *
+         *     const trusted = await isDeviceTrusted(studentId);
+         *     if (trusted) { if (rememberDevice) await trustThisDevice(…); }
+         *     else if (rememberDevice) { await trustThisDevice(…); }
+         *
+         * İki dal da aynı işi yapıyordu; `trusted` okunuyor ama hiçbir
+         * karara girmiyordu. Yani 2FA altyapısı kurulu ama BAĞLI DEĞİLDİ.
+         *
+         * Öğrenci akışında ikinci faktör adımı bulunmadığı için burada
+         * giriş ENGELLENMİYOR (engellemek yeni bir ekran/akış demek olurdu).
+         * Bunun yerine sonuç, sistemde zaten var olan güvenlik günlüğüne
+         * bağlandı: tanınmayan cihazdan yapılan girişler artık iz bırakıyor
+         * ve yönetici güvenlik kayıtlarında görünüyor.
+         */
         const studentId = `student_${schoolNumber}`;
-        const trusted = await isDeviceTrusted(studentId);
-        if (trusted) { if (rememberDevice) await trustThisDevice(studentId, name); }
-        else if (rememberDevice) { await trustThisDevice(studentId, name); }
+        const guven = await cihazGuveniniDenetle(studentId);
+
+        if (!guven.guvenilir && guven.sebep !== 'kayit-yok') {
+            // 'kayit-yok' = bu cihazdan ilk giriş; olağan durum, iz bırakmaz.
+            logSuspiciousActivity(
+                'taninmayan_cihaz',
+                `Öğrenci: ${cleanSchoolNo} · sebep: ${guven.sebep}`,
+            );
+        }
+
+        if (guven.sebep === 'dogrulanamadi-cevrimdisi') {
+            // Güvenlik sessizce devre dışı kalmasın: kullanıcı da bilsin.
+            setSuccessMsg('Bağlantı kurulamadığı için cihaz doğrulaması yapılamadı.');
+        }
+
+        if (rememberDevice) await trustThisDevice(studentId, name);
         return true;
     };
 
@@ -721,19 +753,25 @@ const LoginPage = () => {
 
                         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                             {role === 'student' && (
+                                /**
+                                 * ⚠️ BU FORMDA ŞİFRE ALANI HİÇ YOKTU.
+                                 *
+                                 * Alanlar "Ad Soyad" + "Okul Numarası" idi ve giriş
+                                 * çağrısı `login(okulNo, ad)` biçiminde yapılıyordu:
+                                 * ikinci argüman aslında ŞİFRE olarak doğrulanıyor.
+                                 * Yani şifresini belirlemiş bir öğrencinin, şifresini
+                                 * "Ad Soyad" yazan kutuya yazması gerekiyordu —
+                                 * kimsenin tahmin edemeyeceği bir davranış.
+                                 *
+                                 * Davetle katılan öğrenci katılırken şifre belirlediği
+                                 * için bu akış onlar açısından tamamen kapalıydı:
+                                 * adını yazıyor, "İsim veya şifre hatalı" alıyordu.
+                                 *
+                                 * Alan artık ne olduğunu söylüyor. Koçun elle eklediği,
+                                 * henüz şifresi olmayan öğrenciler için ad-soyad yolu
+                                 * geçerliliğini koruyor; açıklama satırı bunu belirtiyor.
+                                 */
                                 <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-ink-3 uppercase tracking-widest ml-1">Ad Soyad</label>
-                                        <div className="relative group">
-                                            <User className="absolute left-4 top-4 text-ink-3 group-focus-within:text-brand transition-colors" size={18} />
-                                            <input
-                                                type="text" required value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                className="w-full pl-12 pr-4 py-4 bg-surface border border-line rounded-[18px] text-ink placeholder-[#4e4c48] focus:border-brand/40 focus:ring-4 focus:ring-[#c9a84c]/5 focus:outline-none transition-all"
-                                                placeholder="Örn: Ahmet Yılmaz"
-                                            />
-                                        </div>
-                                    </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-ink-3 uppercase tracking-widest ml-1">Okul Numarası</label>
                                         <div className="relative group">
@@ -741,10 +779,37 @@ const LoginPage = () => {
                                             <input
                                                 type="text" required value={schoolNumber}
                                                 onChange={(e) => setSchoolNumber(e.target.value)}
+                                                autoComplete="username"
                                                 className="w-full pl-12 pr-4 py-4 bg-surface border border-line rounded-[18px] text-ink placeholder-[#4e4c48] focus:border-brand/40 focus:ring-4 focus:ring-[#c9a84c]/5 focus:outline-none transition-all"
                                                 placeholder="Örn: 105"
                                             />
                                         </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-ink-3 uppercase tracking-widest ml-1">Şifre</label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-4 text-ink-3 group-focus-within:text-brand transition-colors" size={18} />
+                                            <input
+                                                type={ogrenciSifreAcik ? 'text' : 'password'}
+                                                required value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                autoComplete="current-password"
+                                                className="w-full pl-12 pr-12 py-4 bg-surface border border-line rounded-[18px] text-ink placeholder-[#4e4c48] focus:border-brand/40 focus:ring-4 focus:ring-[#c9a84c]/5 focus:outline-none transition-all"
+                                                placeholder="Belirlediğiniz şifre"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setOgrenciSifreAcik((v) => !v)}
+                                                aria-label={ogrenciSifreAcik ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-ink-3 hover:text-ink transition-colors"
+                                            >
+                                                {ogrenciSifreAcik ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-ink-3 leading-snug ml-1">
+                                            Koçunuz sizi elle eklediyse ve henüz şifre belirlemediyseniz
+                                            buraya <strong className="text-ink-2">ad soyadınızı</strong> yazın.
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-4 bg-surface-2 p-4 rounded-2xl border border-[#ffffff05]">
                                         <div 

@@ -52,30 +52,447 @@ service cloud.firestore {
       return girisYapmis() && request.auth.uid == userId;
     }
 
+    /**
+     * ⚠️ ROL BEYANI ÇAPASIZDI.
+     *
+     * `kullaniciProfil` kuralı `rol in ['coach','student','admin']`
+     * diyordu ve öğrenci kaydı olmayan herkes kendini 'admin' ilan
+     * edebiliyordu. Yönetici rolü paket/abonelik yazma yetkisi taşıdığı
+     * için bu, "herkes kendi paketini yükseltebilir" demekti.
+     *
+     * Yönetici kimliği artık burada sabit. Tek yöneticili bir üründe
+     * doğru çapa budur; yeni yönetici eklenecekse bu liste güncellenir.
+     */
+    function yoneticiUidleri() {
+      return ['qWoMqVSu6iV8FbVgdUVcYdkHgOV2'];
+    }
+    function yoneticiMi() {
+      return girisYapmis() && request.auth.uid in yoneticiUidleri();
+    }
+
     // Şişkin/bozuk belge yazımını engeller
     function makulBoyut() {
       return request.resource.size() < 1000000;
     }
 
-    // ── syncData: uygulamanın localStorage yedeği ────────────
+    // ══════════════════════════════════════════════════════════
+    //  KİMLİK KÖPRÜSÜ  (services/kimlikKopru.js)
     //
-    // Belge kimliği `global_<anahtar>` biçiminde; kullanıcı kimliği
-    // taşımıyor. Bu yüzden sahiplik kontrolü YAPILAMAZ — yalnızca
-    // kimlik doğrulaması aranır. (Bkz. yukarıdaki "BİLİNEN SINIR".)
-    match /syncData/{belge} {
-      allow read: if girisYapmis();
-      allow write: if girisYapmis() && makulBoyut();
+    //  Uygulama iki kimlik taşıyor: `coach_<zaman>` (uygulama içi) ve
+    //  `request.auth.uid` (Firebase). Kurallar yalnızca ikincisini görür.
+    //  Bu iki koleksiyon ikisini eşler; sahiplik kontrolü buna dayanır.
+    // ══════════════════════════════════════════════════════════
 
-      match /{alt=**} {
-        allow read, write: if girisYapmis();
+    function profilYolu() {
+      return /databases/$(database)/documents/kullaniciProfil/$(request.auth.uid);
+    }
+    function profilVar() { return girisYapmis() && exists(profilYolu()); }
+    function profil()    { return get(profilYolu()).data; }
+
+    // ── kullaniciProfil: kim, hangi havuzun kullanıcısı? ─────
+    match /kullaniciProfil/{uid} {
+      allow get: if girisYapmis() && request.auth.uid == uid;
+
+      /**
+       * ⚠️ ÖĞRENCİNİN `kocUid` ALANI KENDİ BEYANINA BIRAKILAMAZ.
+       *
+       * Bırakılsaydı öğrenci, profiline başka bir koçun kimliğini yazıp
+       * o koçun BÜTÜN veri havuzunu (öğrenci listesi, veli telefonları,
+       * rehberlik görüşme dosyaları) okuyabilirdi. Alan bu yüzden
+       * `ogrenciKimlik/{uid}` kaydından doğrulanır — o kaydı yalnızca
+       * öğrencinin koçu yazabilir.
+       */
+      /**
+       * ⚠️ İLK HÂLİ ÖĞRENCİNİN KENDİNİ KOÇ İLAN ETMESİNE İZİN VERİYORDU —
+       * izolasyon testi yakaladı. İki dal `||` ile bağlıydı; öğrenci
+       * ikinci dalı atlayıp `rol: 'coach'` + `kocUid: kendi uid'i`
+       * yazarak birinci dalı sağlıyordu. Böylece kendi havuzunun sahibi
+       * olup damgasız belge sahiplenme yetkisini de kazanıyordu.
+       *
+       * Artık dallar birbirini dışlıyor: öğrenci kaydı VARSA rol öğrenci
+       * olmak ZORUNDA. `ogrenciKimlik` kaydını yalnızca koç yazabildiği
+       * için bu, rolün sunucuda belirlendiği anlamına gelir.
+       */
+      allow create, update: if girisYapmis()
+        && request.auth.uid == uid
+        && request.resource.data.rol in ['coach', 'student', 'admin']
+        && (request.resource.data.rol != 'admin' || yoneticiMi())
+        && (
+          exists(/databases/$(database)/documents/ogrenciKimlik/$(uid))
+            ? (request.resource.data.rol == 'student'
+               && request.resource.data.kocUid
+                  == get(/databases/$(database)/documents/ogrenciKimlik/$(uid)).data.kocUid)
+            : (request.resource.data.rol != 'student'
+               && request.resource.data.kocUid == request.auth.uid)
+        );
+
+      allow delete: if girisYapmis() && request.auth.uid == uid;
+    }
+
+    // ── kocDizin: uygulama koç kimliği → Firebase kimliği ────
+    match /kocDizin/{kocId} {
+      // Öğrenci, koçunun havuz sahibini bu dizinden çözer.
+      allow get: if girisYapmis();
+
+      /**
+       * İlk yazan sahiplenir, sonra DEĞİŞTİRİLEMEZ. Devir açık
+       * bırakılsaydı bir koç, başka bir koçun uygulama kimliğini kendi
+       * Firebase kimliğine bağlayıp o havuzu ele geçirebilirdi.
+       */
+      allow create: if girisYapmis()
+        && request.resource.data.kocUid == request.auth.uid;
+      allow update: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid
+        && request.resource.data.kocUid == resource.data.kocUid;
+
+      // Koç kendi dizin kaydını kaldırabilir (hesap silme / temizlik)
+      allow delete: if girisYapmis() && resource.data.kocUid == request.auth.uid;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  syncData: uygulamanın veri havuzu
+    //
+    //  ⚠️ ÖNCEKİ HÂLİ TÜM VERİYİ HERKESE AÇIYORDU:
+    //
+    //      allow read:  if girisYapmis();
+    //      allow write: if girisYapmis() && makulBoyut();
+    //
+    //  Yani kimliği doğrulanmış HERHANGİ bir kullanıcı — herhangi bir
+    //  koç, herhangi bir öğrenci — bütün kurumların öğrenci listelerini,
+    //  veli telefonlarını ve rehberlik görüşme dosyalarını okuyabiliyor,
+    //  hatta silebiliyordu. Uygulamanın bütün verisi bu koleksiyonda.
+    //
+    //  Sahiplik kontrolü yapılamıyordu çünkü belge uygulama kimliği
+    //  (`koc_<kocId>`) taşıyor, kural ise yalnızca Firebase kimliğini
+    //  görüyor. Kimlik köprüsü bu boşluğu kapattı.
+    // ══════════════════════════════════════════════════════════
+    match /syncData/{belge} {
+
+      /** Belge bu kullanıcının havuzuna mı ait? */
+      function havuzumMu() {
+        return profilVar() && resource.data.sahipUid == profil().kocUid;
       }
+
+      /**
+       * Sahiplik alanı sonradan eklendi; eski belgelerde yok. Geçiş
+       * sırasında koçun kendi havuzundaki damgasız belgeleri bulup
+       * sahiplenebilmesi gerekiyor — aksi hâlde kural sıkılaştığı anda
+       * bütün eski veri okunamaz hâle gelir.
+       */
+      function damgasizKendiHavuzum() {
+        return profilVar()
+          && !('sahipUid' in resource.data)
+          && resource.data.bucketId == 'koc_' + profil().kocId;
+      }
+
+      allow get, list: if havuzumMu() || damgasizKendiHavuzum();
+
+      // Yeni belge: damga kendi havuzunu göstermek zorunda
+      allow create: if girisYapmis() && makulBoyut() && profilVar()
+        && request.resource.data.sahipUid == profil().kocUid;
+
+      /**
+       * ⚠️ İLK HÂLİ `create, update` BİRLEŞİKTİ VE YALNIZCA YENİ DEĞERE
+       * BAKIYORDU — izolasyon testi bir YETKİ ELE GEÇİRME açığı buldu:
+       *
+       *     request.resource.data.sahipUid == profil().kocUid
+       *
+       * Koç B, Koç A'nın belgesindeki `sahipUid` alanını KENDİ kimliğine
+       * çevirerek bu koşulu sağlıyor ve belgeyi devralıyordu. Bir sonraki
+       * adımda A kendi verisini okuyamaz, B okuyabilir hâle geliyordu.
+       *
+       * Artık MEVCUT sahiplik de aranıyor ve sahiplik alanı
+       * DEĞİŞTİRİLEMİYOR. (Aynı hata sınıfı `ogrenciKimlik` kuralında da
+       * çıkmıştı; kural yazarken `resource` ile `request.resource`
+       * ayrımına dikkat edilmeli.)
+       */
+      allow update: if girisYapmis() && makulBoyut() && profilVar()
+        && resource.data.sahipUid == profil().kocUid
+        && request.resource.data.sahipUid == resource.data.sahipUid;
+
+      /**
+       * Tek seferlik sahiplenme. Yalnızca damgasız belgeye, yalnızca
+       * kendi havuzuna, yalnızca KOÇ tarafından. Öğrenci sahiplenebilseydi
+       * koçunun havuzunun sahibi öğrenci olurdu.
+       */
+      allow update: if girisYapmis() && profilVar()
+        && profil().rol != 'student'
+        && !('sahipUid' in resource.data)
+        && resource.data.bucketId == 'koc_' + profil().kocId
+        && request.resource.data.sahipUid == request.auth.uid;
+
+      /**
+       * Silme yalnızca havuzun SAHİBİNE açıktır.
+       *
+       * `havuzumMu()` öğrenci için de doğru döner (öğrenci koçunun
+       * havuzunu okur ve yazar); silmeyi de ona açsaydık bir öğrenci
+       * koçunun bütün öğrenci listesini silebilirdi.
+       */
+      allow delete: if profilVar() && resource.data.sahipUid == request.auth.uid;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  KAYIT SUNUCUSU — davet / katılım / öğrenci kimliği
+    //  (services/kayitSunucu.js)
+    //
+    //  Bu üç koleksiyon uygulamanın localStorage aynası DEĞİLDİR.
+    //  İşlemi yapan taraf doğrudan buraya yazar, yetkiyi bu kurallar
+    //  belirler. Onboarding'in sunucuda doğrulanan tek yeri burasıdır.
+    // ══════════════════════════════════════════════════════════
+
+    function davet(kod) {
+      return get(/databases/$(database)/documents/davetler/$(kod)).data;
+    }
+
+    function davetVar(kod) {
+      return exists(/databases/$(database)/documents/davetler/$(kod));
+    }
+
+    /**
+     * Davet katılıma açık mı? Kapalı, süresi geçmiş ya da hakkı dolmuş
+     * bir davetle katılım talebi OLUŞTURULAMAZ — bu kontrol istemcide
+     * de var ama orada olması bir şey ifade etmez, asıl kapı burasıdır.
+     */
+    function davetKatilimaAcik(kod) {
+      let d = davet(kod);
+      return davetVar(kod)
+        && d.aktif == true
+        && d.sonZaman > request.time
+        && d.kullanilan < d.kullanimHakki;
+    }
+
+    // ── davetler: koçun ürettiği katılım kodları ─────────────
+    match /davetler/{kod} {
+      /**
+       * Okuma herkese açık — KODUN KENDİSİ sırdır.
+       *
+       * Öğrenci daveti açtığında henüz hesabı yoktur; kimlik doğrulaması
+       * şart koşulsaydı davet linki hiç çalışmazdı. Belge kimliği 6
+       * haneli koddur (31^6 ≈ 887 milyon), listeleme kapalıdır: kodu
+       * bilmeyen hiçbir daveti okuyamaz. Kodu ele geçiren de yalnızca
+       * koçun adını görür ve KOÇ ONAYINA düşen bir talep oluşturabilir.
+       */
+      allow get: if true;
+
+      /**
+       * Listeleme yalnızca kendi davetleri için.
+       *
+       * ⚠️ BURASI ÖNCE `request.query.limit <= 200` DİYORDU VE KOÇ
+       * PANELİNDEKİ DAVET LİSTESİNİ TAMAMEN KIRIYORDU: uygulama sorguya
+       * limit koymuyor, limitsiz sorguda bu koşul sağlanmıyor ve dinleyici
+       * `permission-denied` alıyordu. Davet sunucuda oluşuyor ama koç
+       * "Henüz davet oluşturmadınız" görüyordu — arayüz testinde yakalandı.
+       *
+       * Doğru kalıp sahipliği belge başına aramaktır: sorgu kendi
+       * davetleriyle sınırlı değilse Firestore sorgunun TAMAMINI reddeder.
+       * Hem hatayı giderir hem de limit koşulundan daha sıkıdır.
+       */
+      allow list: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+
+      allow create: if girisYapmis()
+        && request.resource.data.kocUid == request.auth.uid
+        && request.resource.data.kullanilan == 0
+        && request.resource.data.kullanimHakki is int
+        && request.resource.data.kullanimHakki > 0
+        && request.resource.data.kullanimHakki <= 500;
+
+      // Sahibi koç her alanı değiştirebilir — SAHİPLİK HARİÇ.
+      // Sahiplik devri açık bırakılırsa davet başka bir koça
+      // aktarılabilir; devir diye bir özellik yok, kapalı olmalı.
+      allow update: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid
+        && request.resource.data.kocUid == resource.data.kocUid;
+
+      /**
+       * Katılan öğrenci YALNIZCA sayacı bir artırabilir. Başka hiçbir
+       * alana dokunamaz; hak dolmuşsa artıramaz. Böylece kullanım
+       * limiti istemciye değil sunucuya bağlanır.
+       */
+      allow update: if girisYapmis()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kullanilan'])
+        && request.resource.data.kullanilan == resource.data.kullanilan + 1
+        && resource.data.kullanilan < resource.data.kullanimHakki
+        && resource.data.aktif == true;
+
+      allow delete: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+    }
+
+    // ── katilimTalepleri: öğrencinin koça katılma talebi ─────
+    match /katilimTalepleri/{ogrenciUid} {
+      /**
+       * Talebi öğrenci oluşturur ama koçu SEÇEMEZ: kocUid davetten
+       * okunur ve eşleşmesi şart koşulur. Belge kimliği öğrencinin
+       * kendi Firebase kimliğidir; başkası adına talep açılamaz.
+       */
+      allow create: if girisYapmis()
+        && request.auth.uid == ogrenciUid
+        && request.resource.data.durum == 'bekliyor'
+        && davetKatilimaAcik(request.resource.data.kod)
+        && request.resource.data.kocUid == davet(request.resource.data.kod).kocUid
+        && request.resource.data.kocId == davet(request.resource.data.kod).kocId
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() > 0
+        && request.resource.data.ad.size() <= 120
+        && request.resource.data.okulNo is string
+        && request.resource.data.okulNo.size() <= 32
+        /**
+         * BAĞLI DAVET DOĞRULAMASI
+         *
+         * Davet mevcut bir öğrenci kaydına bağlıysa (koçun elle eklediği
+         * öğrenciye giriş açması), talep AYNI kaydı göstermek zorundadır.
+         *
+         * Bu kontrol olmasaydı öğrenci, sıradan bir davetle katılırken
+         * talebe istediği `ogrenciId`'yi yazıp koçun BAŞKA bir öğrencisinin
+         * kaydına kendi kimliğini bağlayabilirdi — yani o öğrencinin
+         * hesabını devralırdı.
+         */
+        && (
+          ('ogrenciId' in davet(request.resource.data.kod))
+            ? request.resource.data.ogrenciId == davet(request.resource.data.kod).ogrenciId
+            : !('ogrenciId' in request.resource.data)
+        );
+
+      // Öğrenci kendi talebinin durumunu görebilir; koç kendine
+      // gelen talepleri görür ve karara bağlar.
+      allow get: if girisYapmis()
+        && (request.auth.uid == ogrenciUid || resource.data.kocUid == request.auth.uid);
+
+      // Koç yalnızca KENDİNE gelen talepleri listeleyebilir.
+      allow list: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+
+      // Kararı yalnızca talebin sahibi koç verir; talebi başka bir
+      // koçun gelen kutusuna itemez.
+      allow update: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid
+        && request.resource.data.kocUid == resource.data.kocUid;
+
+      allow delete: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+    }
+
+    // ── ogrenciKimlik: öğrenci hangi koçun havuzunda? ────────
+    match /ogrenciKimlik/{ogrenciUid} {
+      // Öğrenci yalnızca KENDİ kaydını okur — başka öğrencinin
+      // hangi koçta olduğunu göremez.
+      allow get: if girisYapmis()
+        && (request.auth.uid == ogrenciUid || resource.data.kocUid == request.auth.uid);
+
+      allow list: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+
+      // Kaydı YALNIZCA koç yazar. Öğrenci kendi kimliğini yazabilseydi
+      // istediği koçun veri havuzuna geçebilirdi.
+      allow create: if girisYapmis()
+        && request.resource.data.kocUid == request.auth.uid;
+
+      /**
+       * ⚠️ BURADA AÇIK VARDI — akış testi yakaladı.
+       *
+       * Kural `create, update` olarak birleşikti ve yalnızca YENİ
+       * değerin sahibine bakıyordu:
+       *
+       *     request.resource.data.kocUid == request.auth.uid
+       *
+       * Güncellemede bu koşulu sağlamak için saldırganın tek yapması
+       * gereken `kocUid`'i KENDİSİ yapmaktı. Yani herhangi bir koç,
+       * kimliğini bildiği bir öğrencinin kaydını üzerine yazıp o
+       * öğrenciyi kendi veri havuzuna çekebiliyordu — öğrenci bir
+       * sonraki girişinde başka bir koçun panelinde uyanırdı.
+       *
+       * Artık MEVCUT sahiplik de aranıyor: kaydı yalnızca şu anki
+       * sahibi koç güncelleyebilir ve sahipliği devredemez.
+       */
+      allow update: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid
+        && request.resource.data.kocUid == resource.data.kocUid;
+
+      allow delete: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid;
+    }
+
+
+    // ── veliBaglantilari: veli portalı erişimi ───────────────
+    //
+    // Veli portalı OTURUM İSTEMEZ (ürün kararı: veliye şifre vermek
+    // pratikte kimsenin kullanmadığı bir adım). Güvenlik "yetki taşıyan
+    // adres" modelidir: 128 bitlik belirteci bilen görür.
+    //
+    // ⚠️ ÖNCEDEN BU KOLEKSİYON YOKTU ve portal veriyi koçun cihazındaki
+    // localStorage'dan okumaya çalışıyordu. Veli hiçbir zaman veri
+    // göremedi. Artık portal yalnızca BU belgeyi okur; koçun veri havuzu
+    // veliye asla açılmaz.
+    match /veliBaglantilari/{belirtec} {
+
+      /**
+       * Veli okuması: kimlik doğrulaması YOK, ama iki şart SUNUCUDA
+       * zorlanır — iptal edilmemiş ve süresi dolmamış olmalı. Bunlar
+       * istemciye bırakılsaydı, sızan bir bağlantı sonsuza dek açık
+       * kalırdı ve koçun iptali hiçbir şey ifade etmezdi.
+       */
+      allow get: if resource.data.iptal == false
+        && resource.data.sonKullanma > request.time;
+
+      // Belirteçler ASLA listelenemez — listeleme, tahmin gerektirmeden
+      // bütün veli bağlantılarını ele geçirmek demek olurdu.
+      allow list: if girisYapmis() && resource.data.kocUid == request.auth.uid;
+
+      allow create: if girisYapmis()
+        && request.resource.data.kocUid == request.auth.uid
+        && request.resource.data.iptal == false;
+
+      // Sahiplik devredilemez (aynı hata sınıfı diğer koleksiyonlarda da çıktı)
+      allow update: if girisYapmis()
+        && resource.data.kocUid == request.auth.uid
+        && request.resource.data.kocUid == resource.data.kocUid;
+
+      allow delete: if girisYapmis() && resource.data.kocUid == request.auth.uid;
+    }
+
+    // ── abonelikler: paket ve kontenjan (KOÇ YAZAMAZ) ───────
+    //
+    // ⚠️ PAKET BİLGİSİ İSTEMCİDEYDİ. `coach_subscriptions` anahtarı
+    // localStorage'da tutuluyor ve kontenjan yalnızca tarayıcıda
+    // kontrol ediliyordu; konsolu açan koç paketini "sınırsız" yapıp
+    // istediği kadar öğrenci ekleyebiliyordu. Gelir modelinin tek
+    // koruması istemciydi.
+    //
+    // Paket artık sunucuda ve koç ona YAZAMAZ: yalnızca okur.
+    // Yükseltme/onay yalnızca yöneticiden gelir.
+    match /abonelikler/{kocUid} {
+      allow get: if girisYapmis()
+        && (request.auth.uid == kocUid || yoneticiMi());
+
+      allow list: if yoneticiMi();
+
+      // Koç kendi paketini DEĞİŞTİREMEZ — kasıtlı.
+      allow create, update, delete: if yoneticiMi();
     }
 
     // ── users: kullanıcı profilleri ──────────────────────────
+    //
+    // ⚠️ ÖNCEKİ HÂLİ `allow read: if girisYapmis();` İDİ.
+    //
+    // Yorumu "giriş akışı telefon/okul numarasıyla ARIYOR, dolayısıyla
+    // okuma herkese açık olmalı" diyordu. Ama o sorgular (hybridAuth.js
+    // satır 230 ve 456) giriş YAPILMADAN ÖNCE çalışıyor; `girisYapmis()`
+    // o anda zaten false olduğu için sorgu hiçbir zaman başarılı olmadı.
+    // İkisi de try/catch içinde "fallback" olarak duruyor, asıl giriş
+    // yerel `users_db` üzerinden gidiyor. Yani kural bir işe yaramadan
+    // açık kalıyordu.
+    //
+    // Bedeli: giriş yapan HERHANGİ biri — herhangi bir öğrenci —
+    // bütün kullanıcıların e-postasını, telefonunu, okul numarasını ve
+    // adını okuyabiliyordu. Kullanıcıların çoğu reşit değil.
     match /users/{userId} {
-      // Giriş akışı telefon/okul numarasıyla kullanıcı ARIYOR,
-      // dolayısıyla okuma kimliği doğrulanmış herkese açık olmalı.
-      allow read: if girisYapmis();
+      // Kendi profilini herkes okur; yönetici onay ekranı için hepsini.
+      allow get: if sahibi(userId) || yoneticiMi();
+
+      // Listeleme yalnızca yönetici: AdminDashboard "onay bekleyenler"
+      // sorgusu (approved == false) buna dayanıyor.
+      allow list: if yoneticiMi();
 
       // Yazma yalnızca kendi belgesine
       allow update, delete: if sahibi(userId);
@@ -87,8 +504,35 @@ service cloud.firestore {
     }
 
     // ── trusted_devices: iki adımlı giriş cihaz kayıtları ────
+    //
+    // ⚠️ ÖNCEKİ HÂLİ `allow read, write: if girisYapmis();` İDİ —
+    // SAHİPLİK KONTROLÜ YOKTU. Belge `token` alanını taşıyor ve
+    // `twoFactorAuth.js:145` doğrulamayı `data.token === token`
+    // karşılaştırmasıyla yapıyor. Yani giriş yapan herhangi biri:
+    //   · başka bir öğrencinin belgesini okuyup token'ı öğrenir ve
+    //     o cihazı "güvenilir" göstererek 2FA'yı ATLAR,
+    //   · başkasının kaydını siler (mağduru 2FA'ya takar),
+    //   · sahte kayıt yazar.
+    //
+    // Belge kimliği `<studentId>_<deviceId>` biçiminde ve `studentId`
+    // uygulama kimliği — Firebase kimliği değil. Bu yüzden sahiplik
+    // belge kimliğinden okunamıyor; belgeye `sahipUid` damgası eklendi
+    // (twoFactorAuth.js). Damgasız ESKİ kayıtlar okunamaz: cihaz güveni
+    // düşer ve kullanıcıdan 2FA yeniden istenir — güvenli taraf budur.
     match /trusted_devices/{belge} {
-      allow read, write: if girisYapmis();
+      allow get: if girisYapmis() && resource.data.sahipUid == request.auth.uid;
+
+      allow create: if girisYapmis()
+        && request.resource.data.sahipUid == request.auth.uid
+        && makulBoyut();
+
+      // Sahiplik damgası değiştirilemez — devralma kapalı.
+      allow update: if girisYapmis()
+        && resource.data.sahipUid == request.auth.uid
+        && request.resource.data.sahipUid == resource.data.sahipUid
+        && makulBoyut();
+
+      allow delete: if girisYapmis() && resource.data.sahipUid == request.auth.uid;
     }
 
     // ── messages: koç ↔ öğrenci yazışması ────────────────────

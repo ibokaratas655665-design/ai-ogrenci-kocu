@@ -12,7 +12,6 @@
  */
 
 import { DEFAULT_TEMPLATES } from '../data/whatsappTemplates';
-import parentLinks from './parentLinkService';
 
 const LOG_KEY = 'whatsapp_message_log';
 const CUSTOM_TEMPLATES_KEY = 'whatsapp_custom_templates';
@@ -138,16 +137,23 @@ const MOTIVATION_LINES = {
  * olduğu için bu, "sayıyı artır, başka öğrencinin raporunu oku" demekti.
  * Artık tahmin edilemez bir belirteç kullanılıyor (parentLinkService).
  */
-export const buildParentPortalLink = (studentId) => {
-    if (typeof window === 'undefined' || !studentId) return '';
-    try {
-        const belirtec = parentLinks.baglantiAl(studentId);
-        return parentLinks.baglantiAdresi(belirtec) || '';
-    } catch {
-        // Belirteç üretilemezse (WebCrypto yok) tahmin edilebilir bir
-        // bağlantı üretmektense hiç üretmeyiz.
-        return '';
-    }
+export const buildParentPortalLink = () => {
+    /**
+     * ⚠️ ARTIK BOŞ DÖNER — BİLEREK.
+     *
+     * Bu fonksiyon belirteci koçun localStorage'ındaki `parent_links`
+     * anahtarından üretiyordu. O kayıt koçun cihazından hiç çıkmadığı için
+     * veli bağlantıya tıkladığında portal onu çözemiyor ve her koşulda
+     * "Öğrenci Bulunamadı" gösteriyordu. Yani üretilen her bağlantı ölüydü.
+     *
+     * Bağlantı artık SUNUCUDA üretiliyor (services/veliBaglanti.js) ve
+     * asenkron olduğu için buradan çağrılamıyor. Çağıran taraf gerçek
+     * bağlantıyı `extra.veliLinki` ile geçmelidir.
+     *
+     * Çalışmayan bir bağlantı üretmektense HİÇ üretmemek doğrudur:
+     * veliye ölü bağlantı gitmesi, hiç gitmemesinden kötüdür.
+     */
+    return '';
 };
 
 /**

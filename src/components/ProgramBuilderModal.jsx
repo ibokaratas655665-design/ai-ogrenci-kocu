@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import {
     Calendar, Clock, Settings, Download, Save, CheckCircle, X,
     Layers, Minus, Plus, Shuffle, Book, Trash2, Share2, RefreshCw,
@@ -15,6 +14,7 @@ import { distributeToSlots, DEFAULT_PLAN_OPTIONS } from '../utils/scheduleDistri
 import programProgress from '../services/programProgressService';
 import firebaseSync from '../services/firebaseSync';
 import { bildir, onayla } from '../services/uiGeriBildirim';
+import Modal from './ui/Modal';
 
 /** Hazır aktivite fırçalarına tıklanınca hücreye yazılacak varsayılan açıklama. */
 const DEFAULT_ACTIVITY_TOPIC = {
@@ -731,7 +731,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
             {/* `pencere-kendi-duzeni`: bu pencere başlığı sabit tutup yalnızca
                 gövdesini kaydırır; mobil.css'teki genel dıştan-kaydırma kuralı
                 burada devre dışı bırakılır (bkz. styles/mobil.css). */}
-            <div className="pencere-kendi-duzeni bg-surface w-full h-full max-w-full lg:max-w-[95vw] max-h-full lg:max-h-[95vh] rounded-none lg:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="pencere-kendi-duzeni bg-surface w-full h-full max-w-full lg:max-w-[95vw] max-h-full lg:max-h-[95dvh] rounded-none lg:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
                 {/* 1. Header & Toolbar */}
                 <div className="on-color bg-gradient-to-r from-indigo-900 to-indigo-800 text-ink p-4 shrink-0 shadow-md">
                     <div className="flex justify-between items-center mb-2 gap-2">
@@ -987,7 +987,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 </span>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 max-h-[30vh]">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 max-h-[30dvh]">
                                 {distributionQueue.length === 0 && <p className="text-xs text-brand italic text-center mt-4">Henüz ders eklenmedi.</p>}
 
                                 {distributionQueue.map((item, idx) => (
@@ -1882,32 +1882,28 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
 };
 
 // --- Main Wrapper Component (Exports as ProgramBuilderModal) ---
-const ProgramBuilderModal = ({ studentId, studentName, onClose }) => {
-    if (typeof document === 'undefined') return null; // SSR safety check
-
-    return createPortal(
-        <div
-            className="pencere-tam-ekran fixed inset-0 z-program-builder flex items-center justify-center bg-black/80 backdrop-blur-sm notranslate"
-            translate="no"
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: '100vw',
-                zIndex: 1300, // katman merdiveni: program-builder (bkz. tailwind.config.js)
-                pointerEvents: 'auto'
-            }}
-        >
-            <div className="pencere-kendi-duzeni bg-surface w-full h-full flex flex-col overflow-hidden relative notranslate" translate="no">
-                <ErrorBoundary onClose={onClose}>
-                    <ProgramBuilderContent studentId={studentId} studentName={studentName} onClose={onClose} />
-                </ErrorBoundary>
-            </div>
-        </div>,
-        document.body
-    );
-};
+const ProgramBuilderModal = ({ studentId, studentName, onClose }) => (
+    /*
+     * Ortak Modal bileşenine taşındı — Escape, odak tuzağı, arka sayfa
+     * kilidi ve dvh yüksekliği artık orada bir kez çözülüyor.
+     * Kendi başlığı (ve kapatma düğmesi) içerikte olduğu için
+     * Modal'ın başlık çubuğu gizlendi.
+     */
+    <Modal
+        acik
+        onClose={onClose}
+        genislik="tam"
+        baslikGizle
+        katmanClassName="z-program-builder"
+        className="notranslate"
+        govdeClassName="p-0 flex flex-col overflow-hidden"
+    >
+        <div className="w-full h-full flex flex-col overflow-hidden relative notranslate" translate="no">
+            <ErrorBoundary onClose={onClose}>
+                <ProgramBuilderContent studentId={studentId} studentName={studentName} onClose={onClose} />
+            </ErrorBoundary>
+        </div>
+    </Modal>
+);
 
 export default ProgramBuilderModal;

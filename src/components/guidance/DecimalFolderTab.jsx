@@ -10,6 +10,7 @@ import {
 import arsiv from '../../services/pdrArchiveService';
 import { belgeUret, parca, kurumUyarisi } from '../../utils/mebDocument';
 import { kurumBilgisi } from '../../data/mebStandards';
+import Modal from '../ui/Modal';
 
 /**
  * 🗂️ DESİMAL DOSYA ÇALIŞMA EKRANI
@@ -426,69 +427,74 @@ const KayitFormu = ({ klasor, yil, hazirBaslik = '', onKapat, onKaydet }) => {
     const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
 
     return (
-        <div className="fixed inset-0 z-modal-high bg-black/55 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="srf srf-4 w-full max-w-md max-h-[88vh] overflow-y-auto p-5 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <p className="eyebrow">{klasor.no}. Dosya · {yil}</p>
-                        <h3 className="h3">{klasor.ad}</h3>
-                    </div>
-                    <button onClick={onKapat} aria-label="Kapat" className="b b-bare b-icon shrink-0">
-                        <X size={17} />
-                    </button>
+        <Modal
+            acik
+            onClose={onKapat}
+            baslikGizle
+            genislik="md"
+            katmanClassName="z-modal-high"
+            govdeClassName="p-5 space-y-3"
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="eyebrow">{klasor.no}. Dosya · {yil}</p>
+                    <h3 className="h3">{klasor.ad}</h3>
                 </div>
+                <button onClick={onKapat} aria-label="Kapat" className="b b-bare b-icon shrink-0">
+                    <X size={17} />
+                </button>
+            </div>
 
-                <div>
-                    <label className="eyebrow block mb-1">Belge / Çalışma Adı *</label>
-                    <input value={f.baslik} onChange={set('baslik')} className="fld" placeholder="Örn: I. dönem faaliyet raporu" />
-                    {/* Hazır etiketler: eksik denetimi ad eşleşmesine baktığı için
-                        buradan seçmek en güvenli yol */}
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                        {klasor.belgeler.slice(0, 8).map((b) => (
-                            <button
-                                key={b.ad}
-                                onClick={() => setF((p) => ({ ...p, baslik: b.ad }))}
-                                className="text-[10px] font-bold px-2 py-1 rounded-lg border border-line text-ink-2 hover:border-brand hover:text-brand transition"
-                            >
-                                {b.ad.length > 28 ? `${b.ad.slice(0, 28)}…` : b.ad}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="eyebrow block mb-1">Açıklama</label>
-                    <textarea value={f.aciklama} onChange={set('aciklama')} rows={2} className="fld" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="eyebrow block mb-1">İlgili Öğrenci</label>
-                        <input value={f.ogrenci} onChange={set('ogrenci')} className="fld" />
-                    </div>
-                    <div>
-                        <label className="eyebrow block mb-1">Sınıf / Şube</label>
-                        <input value={f.sinif} onChange={set('sinif')} className="fld" placeholder="9/A" />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="eyebrow block mb-1">Tarih</label>
-                    <input type="date" value={f.tarih} onChange={set('tarih')} className="fld" />
-                </div>
-
-                <div className="pencere-alt-cubuk bg-surface flex justify-end gap-2 pt-1">
-                    <button onClick={onKapat} className="b b-line">İptal</button>
-                    <button
-                        onClick={() => f.baslik.trim() && onKaydet(f)}
-                        disabled={!f.baslik.trim()}
-                        className="b b-fill b-brand"
-                    >
-                        Kaydet
-                    </button>
+            <div>
+                <label className="eyebrow block mb-1">Belge / Çalışma Adı *</label>
+                <input value={f.baslik} onChange={set('baslik')} className="fld" placeholder="Örn: I. dönem faaliyet raporu" />
+                {/* Hazır etiketler: eksik denetimi ad eşleşmesine baktığı için
+                    buradan seçmek en güvenli yol */}
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                    {klasor.belgeler.slice(0, 8).map((b) => (
+                        <button
+                            key={b.ad}
+                            onClick={() => setF((p) => ({ ...p, baslik: b.ad }))}
+                            className="text-[10px] font-bold px-2 py-1 rounded-lg border border-line text-ink-2 hover:border-brand hover:text-brand transition"
+                        >
+                            {b.ad.length > 28 ? `${b.ad.slice(0, 28)}…` : b.ad}
+                        </button>
+                    ))}
                 </div>
             </div>
-        </div>
+
+            <div>
+                <label className="eyebrow block mb-1">Açıklama</label>
+                <textarea value={f.aciklama} onChange={set('aciklama')} rows={2} className="fld" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="eyebrow block mb-1">İlgili Öğrenci</label>
+                    <input value={f.ogrenci} onChange={set('ogrenci')} className="fld" />
+                </div>
+                <div>
+                    <label className="eyebrow block mb-1">Sınıf / Şube</label>
+                    <input value={f.sinif} onChange={set('sinif')} className="fld" placeholder="9/A" />
+                </div>
+            </div>
+
+            <div>
+                <label className="eyebrow block mb-1">Tarih</label>
+                <input type="date" value={f.tarih} onChange={set('tarih')} className="fld" />
+            </div>
+
+            <div className="pencere-alt-cubuk bg-surface flex justify-end gap-2 pt-1">
+                <button onClick={onKapat} className="b b-line">İptal</button>
+                <button
+                    onClick={() => f.baslik.trim() && onKaydet(f)}
+                    disabled={!f.baslik.trim()}
+                    className="b b-fill b-brand"
+                >
+                    Kaydet
+                </button>
+            </div>
+        </Modal>
     );
 };
 

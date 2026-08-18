@@ -21,6 +21,7 @@ import React, { useState, useEffect } from 'react';
 import { MoreHorizontal, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { Sayac } from '../ui/Badge';
+import Modal from '../ui/Modal';
 
 /** Alt çubuk en çok 5 hedef taşır — 4 birincil + "Daha Fazla". */
 const BIRINCIL_SAYISI = 4;
@@ -112,11 +113,13 @@ export default function MobilGezinme({ ogeler = [], gruplar = [], aktif, onDegis
                 Küçük bir açılır kutuda 11 hedef okunmuyordu; dokunma
                 hedefleri de birbirine giriyordu. */}
             {dahaFazla && (
-                <div
-                    className="pencere-tam-ekran fixed inset-0 z-modal-base bg-page lg:hidden flex flex-col"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Tüm bölümler"
+                <Modal
+                    acik
+                    onClose={() => setDahaFazla(false)}
+                    baslikGizle
+                    genislik="tam"
+                    katmanClassName="z-modal-base lg:hidden"
+                    govdeClassName="p-0 flex flex-col overflow-hidden"
                 >
                     <div className="shrink-0 flex items-center justify-between px-4 h-14 border-b border-line">
                         <h2 className="tip-h4">Tüm Bölümler</h2>
@@ -163,7 +166,7 @@ export default function MobilGezinme({ ogeler = [], gruplar = [], aktif, onDegis
                             </section>
                         ))}
                     </div>
-                </div>
+                </Modal>
             )}
 
             {/* ── Alt çubuk ───────────────────────────────────────────── */}

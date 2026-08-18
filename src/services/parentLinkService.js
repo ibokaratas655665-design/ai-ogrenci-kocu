@@ -23,27 +23,14 @@
  */
 
 const KEY = 'parent_links';
+import { nesneOku, yaz as depoYaz } from './veriDeposu';
 
 // ══════════════════════════════════════════════════════════════
 //  DEPO
 // ══════════════════════════════════════════════════════════════
 
-const oku = () => {
-    try {
-        const raw = localStorage.getItem(KEY);
-        if (!raw || !raw.trim()) return {};
-        const v = JSON.parse(raw);
-        return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
-    } catch {
-        return {};
-    }
-};
-
-const yaz = (depo) => {
-    localStorage.setItem(KEY, JSON.stringify(depo));
-    try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* ignore */ }
-    try { window.firebaseSync?.syncKey?.(KEY); } catch { /* senkron yoksa sorun değil */ }
-};
+const oku = () => nesneOku(KEY);
+const yaz = (depo) => depoYaz(KEY, depo);
 
 // ══════════════════════════════════════════════════════════════
 //  BELİRTEÇ ÜRETİMİ

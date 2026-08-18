@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
+import Modal from '../ui/Modal';
+import { yaz } from '../../services/veriDeposu';
 
 // ─── Mesaj Şablonları ─────────────────────────────────────────────────
 const TEMPLATES = [
@@ -165,7 +167,9 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
                 type: selectedTemplate.id,
             }));
 
-            localStorage.setItem('messages', JSON.stringify([...existingMessages, ...newMessages]));
+            // Toplu mesaj buluta ANINDA gitmeli; aksi hâlde koç panelinde
+            // "gönderildi" görünürken öğrenci hiçbir şey almıyor.
+            yaz('messages', [...existingMessages, ...newMessages]);
 
             // Custom event ile bildirim sistemini tetikle
             window.dispatchEvent(new CustomEvent('new_bulk_message', {
@@ -191,11 +195,19 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
     const pc = priorityColors[priority];
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-modal-base flex items-center justify-center p-4" onClick={onClose}>
-            <div
-                className="bg-surface rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-                onClick={e => e.stopPropagation()}
-            >
+        /**
+         * ⚠️ BU PENCERE ELLE KURULMUŞTU.
+         *
+         * Escape ile kapanmıyordu, odak pencerenin dışına kaçıyordu, arka
+         * sayfa kayıyordu ve yükseklik `90vh` ile ölçülüyordu — mobilde
+         * adres çubuğu sayılmadığı için pencerenin altı, yani GÖNDER
+         * düğmesi ekran dışında kalıyordu.
+         *
+         * Ortak Modal bileşenine taşındı; bunların hepsi orada bir kez
+         * çözülmüş durumda. Özel başlık şeridi korundu.
+         */
+        <Modal acik onClose={onClose} genislik="lg" govdeClassName="p-0">
+            <div className="flex flex-col">
                 {/* ── HEADER ────────────────────────────────────────── */}
                 <div className="on-color bg-gradient-to-r from-brand to-purple-700 p-5 flex-shrink-0">
                     <div className="flex items-center justify-between">
@@ -503,7 +515,7 @@ const BulkMessageModal = ({ onClose, students = [], coachName = 'Koçunuz' }) =>
                     </div>
                 )}
             </div>
-        </div>
+        </Modal>
     );
 };
 
