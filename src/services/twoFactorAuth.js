@@ -9,6 +9,7 @@ import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailL
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import app from '../firebaseConfig';
+import { yaz } from './veriDeposu';
 
 const auth = getAuth(app);
 
@@ -269,7 +270,7 @@ export const saveCoachEmail = (phone, email) => {
         const idx = users.findIndex(u => u.phone === phone);
         if (idx !== -1) {
             users[idx].email = email;
-            localStorage.setItem('users_db', JSON.stringify(users));
+            yaz('users_db', users);
         }
     } catch (e) {
         console.warn('Koç e-posta kaydetme hatası:', e);

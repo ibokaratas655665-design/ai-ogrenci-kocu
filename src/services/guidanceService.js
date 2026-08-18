@@ -4,6 +4,7 @@
  */
 
 import { TEST_DATA, calculateResult } from '../data/tests.js';
+import { yaz } from './veriDeposu';
 
 // Rehberlik Yazıları
 const GUIDANCE_ARTICLES = [
@@ -170,7 +171,7 @@ const guidanceService = {
             const allResults = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
             if (!allResults[studentId]) allResults[studentId] = [];
             allResults[studentId].push(savedResult);
-            localStorage.setItem('student_guidance_results', JSON.stringify(allResults));
+            yaz('student_guidance_results', allResults);
 
             return savedResult;
         } catch (error) {
@@ -197,7 +198,7 @@ const guidanceService = {
         }));
 
         allResults[studentId] = [...allResults[studentId], ...newResults];
-        localStorage.setItem('student_guidance_results', JSON.stringify(allResults));
+        yaz('student_guidance_results', allResults);
         return newResults;
     },
 

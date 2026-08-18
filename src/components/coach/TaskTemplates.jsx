@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Save, Trash2, Send, ClipboardList, X, Check, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { yaz } from '../../services/veriDeposu';
 
 const LS_KEY = 'task_templates';
 const DEFAULT_TEMPLATES = [
@@ -74,7 +75,7 @@ const TaskTemplates = ({ students = [], setToast }) => {
                 existing[key].push({ id: `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, studentId: key, title: task.title, priority: task.priority, dueDate: due.toISOString().split('T')[0], status: 'pending', completed: false, assignedAt: now.toISOString(), templateName: tpl.name });
             });
         });
-        localStorage.setItem('student_tasks', JSON.stringify(existing));
+        yaz('student_tasks', existing);
         window.dispatchEvent(new StorageEvent('storage', { key: 'student_tasks' }));
         setToast?.(`✅ "${tpl.name}" ${selectedStudents.length} öğrenciye atandı!`);
         setAssigningId(null); setSelectedStudents([]);

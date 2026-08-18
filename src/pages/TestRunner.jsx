@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ChevronRight, CheckCircle } from 'lucide-react';
 import { calculateResult } from '../data/tests';
 import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const TestRunner = ({ test, onClose }) => {
     const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -47,7 +48,7 @@ const TestRunner = ({ test, onClose }) => {
                 testId: test.id // Ensure ID is saved
             };
 
-            localStorage.setItem('student_guidance_results', JSON.stringify(results));
+            yaz('student_guidance_results', results);
 
             // Also try to save to api.tests if available (for sync)
             // if (window.api && window.api.tests && window.api.tests.saveResult) {

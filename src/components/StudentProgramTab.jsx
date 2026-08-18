@@ -12,6 +12,7 @@ import ProgramCell from './program/ProgramCell';
 import { getCellColor, getSubjectLabel, ACTIVITY_TYPES } from '../data/programColors';
 import programProgress from '../services/programProgressService';
 import { bildir } from '../services/uiGeriBildirim';
+import { yaz } from '../services/veriDeposu';
 
 // ─── Sabitler ──────────────────────────────────────────────────
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -527,8 +528,8 @@ const AIPlannerView = ({ userId }) => {
     const handleSave = () => {
         if (!generatedSchedule || !userId) return;
         try {
-            localStorage.setItem(`ai_plan_schedule_${userId}`, JSON.stringify(generatedSchedule));
-            localStorage.setItem(`ai_plan_config_${userId}`, JSON.stringify({ months, slotsPerDay, exam: selectedExam, note: customNote }));
+            yaz(`ai_plan_schedule_${userId}`, generatedSchedule);
+            yaz(`ai_plan_config_${userId}`, { months, slotsPerDay, exam: selectedExam, note: customNote });
             setSavedOk(true);
             setTimeout(() => setSavedOk(false), 3000);
         } catch (e) { console.error(e); }

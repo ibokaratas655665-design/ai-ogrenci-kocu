@@ -4,6 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, BookOpen, Plus, X, Check } from 'lucide-react';
+import { yaz } from '../../services/veriDeposu';
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const DAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -41,7 +42,7 @@ const ExamCalendar = ({ userId }) => {
 
     const saveCustomEvents = (events) => {
         setCustomEvents(events);
-        localStorage.setItem(`calendar_events_${userId || 'student'}`, JSON.stringify(events));
+        yaz(`calendar_events_${userId || 'student'}`, events);
     };
 
     const handleAddEvent = () => {

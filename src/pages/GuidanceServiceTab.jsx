@@ -11,6 +11,7 @@ import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { analyzeSociometry } from '../utils/sociometryAnalysis';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const GuidanceServiceTab = ({ students = [] }) => {
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'tests', 'students', 'analytics'
@@ -103,7 +104,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
             const unifiedData = JSON.parse(localStorage.getItem('student_guidance_results') || '{}');
             if (unifiedData[result.studentId]) {
                 unifiedData[result.studentId] = unifiedData[result.studentId].filter(r => !(r.testId === result.testId && r.date === result.date));
-                localStorage.setItem('student_guidance_results', JSON.stringify(unifiedData));
+                yaz('student_guidance_results', unifiedData);
             }
         }
 

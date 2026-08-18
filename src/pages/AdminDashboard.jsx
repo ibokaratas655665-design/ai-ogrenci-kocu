@@ -13,6 +13,7 @@ import firebaseSync from '../services/firebaseSync';
 import { bildir } from '../services/uiGeriBildirim';
 import { DataTable, Badge, Button, Avatar } from '../components/ui';
 import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 // ── Onay Dialogu ─────────────────────────────────────────────
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
@@ -238,7 +239,7 @@ const AddCoachModal = ({ onClose, onSuccess }) => {
             };
 
             localUsers.push(newCoach);
-            localStorage.setItem('users_db', JSON.stringify(localUsers));
+            yaz('users_db', localUsers);
 
             if (email.trim()) {
                 localStorage.setItem(`coach_email_${phone.trim()}`, email.trim());
@@ -452,13 +453,13 @@ export default function AdminDashboard() {
         const filtered = localUsers.filter(u =>
             u.id !== user.id && u.phone !== user.phone
         );
-        localStorage.setItem('users_db', JSON.stringify(filtered));
+        yaz('users_db', filtered);
 
         const coachStudents = JSON.parse(localStorage.getItem('coach_students') || '[]');
         const filteredStudents = coachStudents.filter(s =>
             s.id !== user.id && s.name !== user.name
         );
-        localStorage.setItem('coach_students', JSON.stringify(filteredStudents));
+        yaz('coach_students', filteredStudents);
 
         try {
             if (user.id) await api.admin.deleteUser(user.id);

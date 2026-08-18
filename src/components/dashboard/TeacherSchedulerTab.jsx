@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { bildir, onayla } from '../../services/uiGeriBildirim';
 import Modal from '../ui/Modal';
+import { yaz } from '../../services/veriDeposu';
 
 // Utility for Tailwind classes
 const cn = (...inputs) => twMerge(clsx(inputs));
@@ -46,11 +47,11 @@ const TeacherSchedulerTab = () => {
 
     // --- Persistence ---
     useEffect(() => {
-        localStorage.setItem('tp_teachers', JSON.stringify(teachers));
-        localStorage.setItem('tp_students', JSON.stringify(students));
-        localStorage.setItem('tp_pairings', JSON.stringify(pairings));
-        localStorage.setItem('tp_schedule', JSON.stringify(schedule));
-        localStorage.setItem('tp_avail', JSON.stringify(teacherAvailability));
+        yaz('tp_teachers', teachers);
+        yaz('tp_students', students);
+        yaz('tp_pairings', pairings);
+        yaz('tp_schedule', schedule);
+        yaz('tp_avail', teacherAvailability);
     }, [teachers, students, pairings, schedule, teacherAvailability]);
 
     // --- Helpers ---

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Video, Plus, X, Calendar, Clock, User, Link as LinkIcon, CheckCircle } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
 import Modal from './ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const RemoteCoachingTab = ({ students, setToast }) => {
     const [sessions, setSessions] = useState(() => {
@@ -23,7 +24,7 @@ const RemoteCoachingTab = ({ students, setToast }) => {
     });
 
     React.useEffect(() => {
-        localStorage.setItem('remote_sessions', JSON.stringify(sessions));
+        yaz('remote_sessions', sessions);
     }, [sessions]);
 
     const handleSubmit = () => {

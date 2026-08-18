@@ -285,7 +285,7 @@ const TestsTab = ({ students, setToast, onAssignTask }) => {
         if (await onayla({ mesaj: 'Bu test sonucunu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             const results = safeParse(`test_results_${studentId}`, []);
             const filtered = results.filter(r => r.id !== resultId);
-            localStorage.setItem(`test_results_${studentId}`, JSON.stringify(filtered));
+            yaz(`test_results_${studentId}`, filtered);
             setToast('Test sonucu silindi.');
         }
     };
@@ -957,8 +957,8 @@ const ExamsTab = ({ students, setToast }) => {
         setExamsState(prev => {
             const next = typeof updater === 'function' ? updater(prev) : updater;
             try {
-                localStorage.setItem('v2_results_data', JSON.stringify(next));
-                localStorage.setItem('exams_data', JSON.stringify(next));
+                yaz('v2_results_data', next);
+                yaz('exams_data', next);
                 // Diğer sekmelere haber ver
                 window.dispatchEvent(new StorageEvent('storage', { key: 'v2_results_data' }));
             } catch (e) { console.warn('Exam veri kaydı:', e); }

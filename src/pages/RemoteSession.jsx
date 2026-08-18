@@ -3,6 +3,7 @@ import { Calendar, Clock, Video, Link, User, CheckCircle, XCircle, Plus, Trash2,
 import { useAuth } from '../context/AuthContext';
 import { onayla } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const RemoteSession = () => {
     const { user } = useAuth();
@@ -41,7 +42,7 @@ const RemoteSession = () => {
         };
         const updatedSessions = [...sessions, session];
         setSessions(updatedSessions);
-        localStorage.setItem('remote_sessions', JSON.stringify(updatedSessions));
+        yaz('remote_sessions', updatedSessions);
         setIsModalOpen(false);
         setNewSession({ studentName: '', date: '', time: '', topic: '', link: '' });
     };
@@ -50,7 +51,7 @@ const RemoteSession = () => {
         if (await onayla({ mesaj: 'Bu randevuyu silmek istediğinize emin misiniz?', tehlikeli: true })) {
             const updatedSessions = sessions.filter(s => s.id !== id);
             setSessions(updatedSessions);
-            localStorage.setItem('remote_sessions', JSON.stringify(updatedSessions));
+            yaz('remote_sessions', updatedSessions);
         }
     };
 

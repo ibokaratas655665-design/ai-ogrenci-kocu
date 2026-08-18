@@ -13,6 +13,7 @@ import subscription from './subscriptionService';
 import { planBul, DENEME_GUN } from '../data/pricingPlans';
 import { yoneticiHesabiMi } from '../data/yoneticiHesabi';
 import { hataAnlat } from './hataMesaji';
+import { yaz } from './veriDeposu';
 
 /**
  * Doğru şifreyle giriş yapan eski (düz metin) kaydı özete çevirir.
@@ -970,7 +971,7 @@ export const bulkAddCoaches = async (coaches) => {
             }
         }
 
-        localStorage.setItem('users_db', JSON.stringify(localUsers));
+        yaz('users_db', localUsers);
         return { success: true, results };
 
     } catch (error) {

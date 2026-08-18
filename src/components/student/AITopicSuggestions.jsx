@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Zap, RefreshCw, ChevronRight, Target, Brain, Star, CheckCircle, BookOpen, Clock } from 'lucide-react';
+import { yaz } from '../../services/veriDeposu';
 
 const SUBJECT_TOPICS = {
     turkce: ['Paragraf Anlama', 'Sözcük Anlamı', 'Dil Bilgisi', 'Ses Bilgisi', 'Yazım Kuralları', 'Noktalama', 'Anlam İlişkileri', 'Sözcük Türleri', 'Cümle Bilgisi', 'Metin Türleri'],
@@ -108,7 +109,7 @@ const AITopicSuggestions = ({ examData = [], userId }) => {
     const toggleComplete = (id) => {
         const updated = completedIds.includes(id) ? completedIds.filter(c => c !== id) : [...completedIds, id];
         setCompletedIds(updated);
-        localStorage.setItem(`completed_topics_${userId || 'student'}_${new Date().toDateString()}`, JSON.stringify(updated));
+        yaz(`completed_topics_${userId || 'student'}_${new Date().toDateString()}`, updated);
     };
 
     const completedCount = suggestions.filter(s => completedIds.includes(s.id)).length;
