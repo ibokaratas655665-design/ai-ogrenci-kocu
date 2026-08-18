@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Briefcase, Plus, X, Calendar, Clock, User, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
 import Modal from './ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const WorkflowTab = ({ students, setToast }) => {
     const [cases, setCases] = useState(() => {
@@ -23,7 +24,7 @@ const WorkflowTab = ({ students, setToast }) => {
     });
 
     React.useEffect(() => {
-        localStorage.setItem('pdr_cases', JSON.stringify(cases));
+        yaz('pdr_cases', cases);
     }, [cases]);
 
     const handleSubmit = () => {

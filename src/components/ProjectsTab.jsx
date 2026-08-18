@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Rocket, Plus, X, Edit2, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
 import Modal from './ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const ProjectsTab = ({ students, setToast }) => {
     const [projects, setProjects] = useState(() => {
@@ -20,7 +21,7 @@ const ProjectsTab = ({ students, setToast }) => {
     });
 
     React.useEffect(() => {
-        localStorage.setItem('student_projects', JSON.stringify(projects));
+        yaz('student_projects', projects);
     }, [projects]);
 
     const handleSubmit = () => {

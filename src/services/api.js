@@ -1,3 +1,4 @@
+import { yaz } from './veriDeposu';
 // Mock Service Layer - Gelecekte gerçek API'ye dönüşecek yapı
 // Tüm veri işlemleri buradan yönetilir. Şu an localStorage kullanıyor.
 
@@ -88,7 +89,7 @@ const api = {
                 };
 
                 users.push(newUser);
-                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+                yaz(DB_KEYS.USERS, users);
 
                 return { success: true, requireApproval: true, message: 'Kayıt başarılı. Ana koç onayı bekleniyor.' };
             }
@@ -114,7 +115,7 @@ const api = {
                 };
 
                 users.push(newStudent);
-                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+                yaz(DB_KEYS.USERS, users);
 
                 return { success: true, requireApproval: true, message: 'Kayıt başarılı. Koç onayı bekleniyor.' };
             }
@@ -216,7 +217,7 @@ const api = {
                 }
             });
 
-            localStorage.setItem('student_messages', JSON.stringify(allMessages));
+            yaz('student_messages', allMessages);
 
             // StorageEvent tetikle
             try {
@@ -243,7 +244,7 @@ const api = {
                         const aiMsg = { id: Date.now() + 1, sender: 'coach', text: replyText, senderName: 'Koç', timestamp: new Date().toISOString() };
                         const cur = safeParse('student_messages', {});
                         uniqueKeys.forEach(k => { if (!cur[k]) cur[k] = []; cur[k].push(aiMsg); });
-                        localStorage.setItem('student_messages', JSON.stringify(cur));
+                        yaz('student_messages', cur);
                     }, 1500);
                 }
             }
@@ -287,7 +288,7 @@ const api = {
             try {
                 const allExams = safeParse('exams_data');
                 const updated = [...allExams, { ...examData, studentId, id: Date.now() }];
-                localStorage.setItem('exams_data', JSON.stringify(updated));
+                yaz('exams_data', updated);
                 return true;
             } catch (e) { return false; }
         }
@@ -308,7 +309,7 @@ const api = {
                 const all = safeParse('student_guidance_results', {});
                 if (!all[studentId]) all[studentId] = [];
                 all[studentId].push({ ...result, id: Date.now(), date: new Date().toISOString() });
-                localStorage.setItem('student_guidance_results', JSON.stringify(all));
+                yaz('student_guidance_results', all);
                 return true;
             } catch (e) { return false; }
         }
@@ -339,7 +340,7 @@ const api = {
             const index = users.findIndex(u => u.id === userId || u.uid === userId);
             if (index !== -1) {
                 users[index].approved = true;
-                localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+                yaz(DB_KEYS.USERS, users);
                 return true;
             }
             return false;
@@ -394,10 +395,10 @@ const api = {
             await delay(300);
             let users = safeParse(DB_KEYS.USERS);
             users = users.filter(u => u.id !== userId && u.uid !== userId);
-            localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+            yaz(DB_KEYS.USERS, users);
             let coachStudents = safeParse('coach_students');
             coachStudents = coachStudents.filter(s => s.id !== userId && s.uid !== userId);
-            localStorage.setItem('coach_students', JSON.stringify(coachStudents));
+            yaz('coach_students', coachStudents);
             return true;
         },
 

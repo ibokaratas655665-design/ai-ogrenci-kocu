@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Plus, X, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { onayla } from '../services/uiGeriBildirim';
 import Modal from './ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
     const [groups, setGroups] = useState(() => {
@@ -16,7 +17,7 @@ const GroupsTab = ({ students, setToast, bolum = 'kocluk' }) => {
     const [selectedStudents, setSelectedStudents] = useState([]);
 
     React.useEffect(() => {
-        localStorage.setItem('student_groups', JSON.stringify(groups));
+        yaz('student_groups', groups);
     }, [groups]);
 
     const handleCreateGroup = () => {

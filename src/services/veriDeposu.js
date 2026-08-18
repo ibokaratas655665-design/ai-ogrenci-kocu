@@ -54,8 +54,29 @@ const olayYay = (anahtar, deger) => {
     } catch { /* eski tarayıcı */ }
 };
 
-/** Buluta yaz. Senkron kapalıysa sessizce geçilir — çevrimdışı çalışır. */
-const buluta = (anahtar) => {
+/**
+ * Buluta yaz. Senkron kapalıysa sessizce geçilir — çevrimdışı çalışır.
+ *
+ * ⚠️ BOŞ DEĞER ZORLA YAZILMAZ.
+ *
+ * `firebaseSync.syncKey` içeride `writeKeyToFirebase(key, force=true)`
+ * çağırıyor ve `force` iki korumayı birden atlıyor:
+ *   · "boş dizi/nesne bulutu silmesin" koruması
+ *   · değişmedi-yazma (hash) kontrolü
+ *
+ * Bu, kullanıcı eylemleri için doğru (randevu/görev anında gitmeli) ama
+ * `useEffect(() => yaz(k, state), [state])` deseninde tehlikeli: ilk
+ * render'da state henüz boşken bulut kaydı SİLİNİR. Bu yüzden boş değer
+ * zorlanmaz; olağan senkron turuna bırakılır.
+ */
+const bosMu = (deger) => {
+    if (Array.isArray(deger)) return deger.length === 0;
+    if (deger && typeof deger === 'object') return Object.keys(deger).length === 0;
+    return deger == null || deger === '';
+};
+
+const buluta = (anahtar, deger) => {
+    if (bosMu(deger)) return;
     try { window.firebaseSync?.syncKey?.(anahtar); } catch { /* senkron yoksa sorun değil */ }
 };
 
@@ -102,7 +123,7 @@ export const yaz = (anahtar, deger) => {
         const metin = JSON.stringify(deger);
         localStorage.setItem(anahtar, metin);
         olayYay(anahtar, metin);
-        buluta(anahtar);
+        buluta(anahtar, deger);
         return true;
     } catch (e) {
         console.error(`veriDeposu: ${anahtar} yazılamadı`, e?.message);

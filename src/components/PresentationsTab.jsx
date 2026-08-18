@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Presentation, Plus, X, Eye, Share2, Download, Play } from 'lucide-react';
 import Modal from './ui/Modal';
+import { yaz } from '../services/veriDeposu';
 
 const PresentationsTab = ({ students, setToast }) => {
     const [presentations, setPresentations] = useState(() => {
@@ -20,7 +21,7 @@ const PresentationsTab = ({ students, setToast }) => {
     });
 
     React.useEffect(() => {
-        localStorage.setItem('presentations', JSON.stringify(presentations));
+        yaz('presentations', presentations);
     }, [presentations]);
 
     const handleSubmit = () => {
