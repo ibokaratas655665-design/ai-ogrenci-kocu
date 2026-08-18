@@ -159,6 +159,16 @@ const NAV_BY_SECTION = {
                 { id: 'bugun', icon: MODULE_ICONS.analysis, label: 'Bugün' },
                 { id: 'analysis', icon: MODULE_ICONS.analysis, label: 'Analiz', perm: 'analysis' },
                 { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
+                /* Bu ikisi (ve aşağıdaki leaderboard/task-templates/
+                   presentations/remote) 18.08.2026'ya kadar YALNIZCA render
+                   bloğu olarak vardı — hiçbir menüde girişleri yoktu, koç
+                   hiç göremiyordu. Menüye bağlanırken veri döngüleri de
+                   onarıldı: öğrenci yazmaları (öz değerlendirme, pomodoro,
+                   konu ilerleme, test sonuçları, hedefler) buluta hiç
+                   gitmiyordu — ham setItem'lar yaz()'a çevrildi. */
+                { id: 'self-assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
+                { id: 'pomodoro-tracker', icon: MODULE_ICONS.pomodoro, label: 'Pomodoro Takip' },
+                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
             ],
         },
         {
@@ -167,6 +177,8 @@ const NAV_BY_SECTION = {
             items: [
                 { id: 'programs', icon: MODULE_ICONS.programs, label: 'Programlar', perm: 'programs' },
                 { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
+                { id: 'task-templates', icon: MODULE_ICONS.tasks, label: 'Görev Şablonları' },
+                { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
                 { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
             ],
         },
@@ -177,6 +189,7 @@ const NAV_BY_SECTION = {
                 { id: 'groups', icon: MODULE_ICONS.groups, label: 'Gruplar', perm: 'groups', ortak: true },
                 { id: 'whatsapp', icon: MODULE_ICONS.whatsapp, label: 'WhatsApp', perm: 'whatsapp', ortak: true },
                 { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevular', perm: 'appointments', ortak: true },
+                { id: 'remote', icon: MODULE_ICONS.overview, label: 'Uzaktan Koçluk' },
                 { id: 'coaches', icon: MODULE_ICONS.coaches, label: 'Koç Yön.', boss: true },
                 { id: 'approvals', icon: MODULE_ICONS.coaches, label: 'Onaylar', boss: true, ortak: true },
                 { id: 'coach-tasks', icon: MODULE_ICONS.projects, label: 'Görevler', ortak: true },

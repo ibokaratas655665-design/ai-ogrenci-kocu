@@ -19,7 +19,7 @@ import { savePDF, sanitizeForPDF as s } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import Modal from './ui/Modal';
-import { listeOku } from '../services/veriDeposu';
+import { listeOku, yaz } from '../services/veriDeposu';
 
 /* ── Yardımcı: options'u normalize et ────────────────────────── */
 function normalizeOptions(test, question) {
@@ -164,7 +164,7 @@ const StudentTestsTab = ({ user }) => {
             const key = `test_results_${user.id}`;
             const existing = listeOku(key);
             existing.unshift(entry);
-            localStorage.setItem(key, JSON.stringify(existing));
+            yaz(key, existing);
 
             // assigned_tests'te 'completed' yap
             const assignedKey = `assigned_tests_${user.id}`;
@@ -174,7 +174,7 @@ const StudentTestsTab = ({ user }) => {
                     ? { ...t, status: 'completed', completedDate: new Date().toISOString() }
                     : t
             );
-            localStorage.setItem(assignedKey, JSON.stringify(updated));
+            yaz(assignedKey, updated);
 
             setTestResult(entry);
             loadContent(); // listede 'tamamlandı' badge'ini güncelle

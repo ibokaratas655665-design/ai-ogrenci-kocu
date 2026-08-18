@@ -38,6 +38,8 @@ const SYNC_KEYS = [
     'student_projects', 'pdr_cases', 'presentations', 'remote_sessions',
     'leaderboard_data', 'managed_coaches', 'custom_curriculum', 'exam_resources',
     'whatsapp_custom_templates', 'whatsapp_settings', 'whatsapp_message_log',
+    // Koçun görev şablonları — sablon sekmesi menüye bağlanınca kapsama alındı
+    'task_templates',
     'error_notebook', 'program_progress', 'study_log', 'bep_data',
     /**
      * ⚠️ BU DÖRT ANAHTAR SENKRON LİSTESİNDE YOKTU ve her biri gerçek bir
@@ -149,6 +151,9 @@ const DYNAMIC_KEY_PATTERNS = [
     /^self_assessment_/,
     /^completed_topics_/,
     /^student_goals_/,
+    // GoalSettingModule 'goals_<id>_*' yazar (student_goals_ değil!) —
+    // koç GoalComparisonPanel bu anahtarları okur, kapsamda olmalı
+    /^goals_/,
     /^coach_notes_/,
     /**
      * ⚠️ BU DESEN EKSİKTİ. StudentDetailPage koç notunu `koc_notu_<id>`

@@ -40,7 +40,7 @@ const TaskTemplates = ({ students = [], setToast }) => {
     const saveTemplates = (updated) => {
         setTemplates(updated);
         const custom = updated.filter(t => !DEFAULT_TEMPLATES.find(d => d.id === t.id));
-        localStorage.setItem(LS_KEY, JSON.stringify(custom));
+        yaz(LS_KEY, custom);
     };
 
     const handleSaveTemplate = () => {

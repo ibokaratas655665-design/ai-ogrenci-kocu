@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Volume2, VolumeX, BookOpen, BarChart2, ChevronDown, X } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
 import Modal from '../ui/Modal';
-import { listeOku } from '../../services/veriDeposu';
+import { listeOku, yaz } from '../../services/veriDeposu';
 
 const SUBJECTS = [
     'Türkçe', 'Matematik', 'Fen Bilimleri', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü',
@@ -25,7 +25,7 @@ const savePomodoroLog = (userId, session) => {
     try {
         const logs = listeOku(LOG_KEY(userId));
         logs.push(session);
-        localStorage.setItem(LOG_KEY(userId), JSON.stringify(logs));
+        yaz(LOG_KEY(userId), logs);
     } catch { }
 };
 

@@ -8,7 +8,7 @@ import {
     BookOpen, Star, Info, Flame, Edit3, CheckCircle,
     Award, AlertTriangle, Zap, BarChart2
 } from 'lucide-react';
-import { oku } from '../../services/veriDeposu';
+import { oku, yaz } from '../../services/veriDeposu';
 
 // ─── TYT Ders Hedefleri ───────────────────────────────────────────────
 const TYT_SUBJECTS = [
@@ -189,10 +189,13 @@ const GoalSettingModule = ({ user, examData = [] }) => {
     const estScore = calcYKSScore(tytGoals, aytGoals, aytType);
 
     const handleSave = () => {
-        localStorage.setItem(LS_KEY + '_tyt', JSON.stringify(tytGoals));
-        localStorage.setItem(LS_KEY + '_ayt', JSON.stringify(aytGoals));
+        yaz(LS_KEY + '_tyt', tytGoals);
+        yaz(LS_KEY + '_ayt', aytGoals);
         localStorage.setItem(LS_KEY + '_ayttype', aytType);
         localStorage.setItem(LS_KEY + '_univ', targetUniv);
+        /* _ayttype ve _univ HAM dize saklanir (okuyanlar raw getItem
+           kullaniyor) — JSON'a cevirme, yalnizca senkronu tetikle */
+        try { window.firebaseSync?.syncKey?.(LS_KEY + '_ayttype'); window.firebaseSync?.syncKey?.(LS_KEY + '_univ'); } catch { /* senkron yoksa sorun degil */ }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };

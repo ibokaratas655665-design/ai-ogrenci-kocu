@@ -172,7 +172,7 @@ const GuidanceServiceTab = ({ students = [] }) => {
                 }
             });
 
-            localStorage.setItem(assignedTestsKey, JSON.stringify(currentTests));
+            yaz(assignedTestsKey, currentTests);
         });
 
         bildir(`${selectedTests.length} test, ${selectedStudents.length} öğrenciye başarıyla atandı!`, 'basari');

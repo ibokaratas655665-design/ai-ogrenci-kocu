@@ -387,7 +387,7 @@ const api = {
         setSystemLockStatus(locked) {
             const settings = safeParse(DB_KEYS.APP_SETTINGS, {});
             settings.systemLocked = locked;
-            localStorage.setItem(DB_KEYS.APP_SETTINGS, JSON.stringify(settings));
+            yaz(DB_KEYS.APP_SETTINGS, settings);
             return true;
         },
 
@@ -432,7 +432,7 @@ const api = {
             const approvals = safeParse(DB_KEYS.STUDENT_APPROVALS, {});
             if (!approvals[studentId]) approvals[studentId] = {};
             approvals[studentId][feature] = approved;
-            localStorage.setItem(DB_KEYS.STUDENT_APPROVALS, JSON.stringify(approvals));
+            yaz(DB_KEYS.STUDENT_APPROVALS, approvals);
             return { success: true };
         },
 

@@ -36,6 +36,8 @@ const yaz = (liste) => {
         window.dispatchEvent(new Event(OLAY));
         // Aynı sekmede StorageEvent tetiklenmez; diğer bileşenler için yayınla
         window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
+        // user_notifications SYNC_KEYS'te; yerel yaz buluta da göndersin
+        try { window.firebaseSync?.syncKey?.(KEY); } catch { /* senkron yoksa sorun degil */ }
     } catch { /* kota dolduysa sessiz geç */ }
 };
 

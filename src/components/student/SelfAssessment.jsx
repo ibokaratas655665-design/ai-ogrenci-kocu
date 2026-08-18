@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Send, CheckCircle, TrendingUp, Brain, Heart, Zap, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
 import { bildir } from '../../services/uiGeriBildirim';
-import { listeOku } from '../../services/veriDeposu';
+import { listeOku, yaz } from '../../services/veriDeposu';
 
 const QUESTIONS = [
     { id: 'motivation',  label: 'Bu hafta motivasyonumu nasıl değerlendiriyorum?', icon: Zap,       color: 'amber' },
@@ -83,14 +83,14 @@ export const SelfAssessmentForm = ({ userId, userName, onClose }) => {
         }
         setLoading(true);
         const data = { userId, userName, scores, note, submittedAt: new Date().toISOString(), week: key };
-        localStorage.setItem(`${key}_${userId}`, JSON.stringify(data));
+        yaz(`${key}_${userId}`, data);
 
         // Tüm öz-değerlendirmeler için koç indeksi
         const allKey = 'all_self_assessments';
         try {
             const all = listeOku(allKey);
             const filtered = all.filter(a => !(a.userId === userId && a.week === key));
-            localStorage.setItem(allKey, JSON.stringify([...filtered, data]));
+            yaz(allKey, [...filtered, data]);
         } catch { }
 
         setTimeout(() => { setLoading(false); setSubmitted(true); setExisting(data); }, 500);

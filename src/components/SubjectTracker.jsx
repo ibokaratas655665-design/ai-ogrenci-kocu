@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CURRICULUM, SUBJECT_COLORS, EXAM_TYPES } from '../data/curriculum';
 import { CheckCircle, Circle, AlertCircle, ChevronRight, BookOpen, PieChart } from 'lucide-react';
+import { yaz } from '../services/veriDeposu';
 
 const SubjectTracker = ({ user }) => {
     const [activeExam, setActiveExam] = useState('TYT');
@@ -59,7 +60,7 @@ const SubjectTracker = ({ user }) => {
         setProgressData(newProgress);
 
         if (user?.id) {
-            localStorage.setItem(`tracker_${user.id}_progress`, JSON.stringify(newProgress));
+            yaz(`tracker_${user.id}_progress`, newProgress);
         }
     };
 

@@ -12,7 +12,7 @@ import { jsPDF } from 'jspdf';
 import { savePDF } from '../utils/pdfSave';
 import { bildir } from '../services/uiGeriBildirim';
 import Modal from '../components/ui/Modal';
-import { listeOku } from '../services/veriDeposu';
+import { listeOku, yaz } from '../services/veriDeposu';
 
 const GuidancePage = () => {
     const { user } = useAuth();
@@ -122,7 +122,7 @@ const GuidancePage = () => {
             totalQuestions: activeTest.questions.length
         };
         currentResults.unshift(newResult);
-        localStorage.setItem(resultsKey, JSON.stringify(currentResults));
+        yaz(resultsKey, currentResults);
 
         setTestResult(newResult);
         loadTestResults();
