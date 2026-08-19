@@ -302,3 +302,46 @@ export default {
     gucluZayifAnalizi, konuHatalari, calismaOncelikleri, gunlukSeri,
     birlesikDenemeler, nedenTrendi, sureSerisi, kocOzeti,
 };
+
+/* ══════════════════════════════════════════════════════════════
+ *  KOÇ DEĞERLENDİRME EKLERİ — günlük kayıt ve hata defteri için
+ *  zaman serisi. Kaynaklar mevcut anahtarlar; veri üretilmez.
+ * ══════════════════════════════════════════════════════════════ */
+
+/** Haftalık hata sayısı serisi — "hatalar artıyor mu azalıyor mu?" */
+export const hataTrendi = (hatalar) => {
+    const haftalar = new Map();
+    (hatalar || []).forEach((h) => {
+        const t = new Date(h.createdAt || 0);
+        if (Number.isNaN(t.getTime())) return;
+        const gun = (t.getDay() + 6) % 7;
+        const pazartesi = new Date(t); pazartesi.setDate(t.getDate() - gun);
+        const anahtar = pazartesi.toISOString().slice(0, 10);
+        if (!haftalar.has(anahtar)) haftalar.set(anahtar, { hafta: anahtar, adet: 0, cozulen: 0 });
+        const k = haftalar.get(anahtar);
+        k.adet += 1;
+        if (h.mastered) k.cozulen += 1;
+    });
+    return [...haftalar.values()]
+        .sort((a, b) => a.hafta.localeCompare(b.hafta))
+        .map((k) => ({
+            ...k,
+            etiket: new Date(k.hafta).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
+        }));
+};
+
+/** Günlük kayıtlardan ders dağılımı: ders başına soru/doğru/yanlış/isabet. */
+export const gunlukDersDagilimi = (gunlukler) => {
+    const dersler = new Map();
+    (gunlukler || []).filter((g) => g.kind === 'soru').forEach((g) => {
+        const ders = String(g.subject || '').trim();
+        if (!ders) return;
+        if (!dersler.has(ders)) dersler.set(ders, { ders, cozulen: 0, dogru: 0, yanlis: 0 });
+        const k = dersler.get(ders);
+        k.dogru += sayi(g.correct); k.yanlis += sayi(g.wrong);
+        k.cozulen += sayi(g.correct) + sayi(g.wrong) + sayi(g.blank);
+    });
+    return [...dersler.values()]
+        .map((k) => ({ ...k, isabet: k.dogru + k.yanlis ? Math.round((k.dogru / (k.dogru + k.yanlis)) * 100) : null }))
+        .sort((a, b) => b.cozulen - a.cozulen);
+};

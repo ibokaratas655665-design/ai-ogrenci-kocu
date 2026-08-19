@@ -209,3 +209,32 @@ describe('kocOzeti', () => {
         expect(o.find((x) => x.tur === 'takip')).toBeTruthy();
     });
 });
+
+import { hataTrendi, gunlukDersDagilimi } from './denemeAnalizi';
+
+describe('hataTrendi', () => {
+    it('hataları haftaya toplar, azalış görünür', () => {
+        const h = [
+            { createdAt: '2026-01-05', mastered: false },
+            { createdAt: '2026-01-06', mastered: true },
+            { createdAt: '2026-01-13', mastered: false },
+        ];
+        const t = hataTrendi(h);
+        expect(t.map((x) => x.adet)).toEqual([2, 1]);
+        expect(t[0].cozulen).toBe(1);
+    });
+});
+
+describe('gunlukDersDagilimi', () => {
+    it('ders başına toplar, isabet hesaplar, kitap kayıtlarını saymaz', () => {
+        const g = [
+            { kind: 'soru', subject: 'Matematik', correct: 16, wrong: 4, blank: 0 },
+            { kind: 'soru', subject: 'Matematik', correct: 8, wrong: 2, blank: 2 },
+            { kind: 'soru', subject: 'Türkçe', correct: 10, wrong: 0, blank: 0 },
+            { kind: 'kitap', subject: 'Roman', pages: 40 },
+        ];
+        const d = gunlukDersDagilimi(g);
+        expect(d[0]).toMatchObject({ ders: 'Matematik', cozulen: 32, isabet: 80 });
+        expect(d.find((x) => x.ders === 'Roman')).toBeUndefined();
+    });
+});

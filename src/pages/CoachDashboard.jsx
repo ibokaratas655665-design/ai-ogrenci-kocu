@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import GuidanceServiceTab from './GuidanceServiceTab';
 import PdrOgrenciHavuzu from '../components/guidance/PdrOgrenciHavuzu';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
+import KocDegerlendirme from '../components/coach/KocDegerlendirme';
 import pdrHavuz from '../services/pdrOgrencileri';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
@@ -171,6 +172,12 @@ const NAV_BY_SECTION = {
                    gitmiyordu — ham setItem'lar yaz()'a çevrildi. */
                 { id: 'self-assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
                 { id: 'pomodoro-tracker', icon: MODULE_ICONS.pomodoro, label: 'Pomodoro Takip' },
+                /* Öğrencinin telefonda girdiği üç kayıt türünün KOÇ
+                   değerlendirme ekranları — öğrenci ekranının kopyası
+                   değil, zaman içi değişim analizi (KocDegerlendirme). */
+                { id: 'degerlendirme-gunluk', icon: MODULE_ICONS.tasks, label: 'Günlük Kayıt' },
+                { id: 'degerlendirme-hata', icon: MODULE_ICONS.analysis, label: 'Hata Defteri' },
+                { id: 'degerlendirme-deneme', icon: MODULE_ICONS.exams, label: 'Deneme Analizi' },
             ],
         },
         {
@@ -3829,6 +3836,9 @@ const CoachDashboard = () => {
                         {/* 🌟 PREMIUM MODÜLLER */}
                         {activeTab === 'self-assessment' && <CoachSelfAssessmentView students={students} />}
                         {activeTab === 'pomodoro-tracker' && <CoachPomodoroView students={students} />}
+                        {activeTab === 'degerlendirme-gunluk' && <KocDegerlendirme students={students} tur="gunluk" />}
+                        {activeTab === 'degerlendirme-hata' && <KocDegerlendirme students={students} tur="hata" />}
+                        {activeTab === 'degerlendirme-deneme' && <KocDegerlendirme students={students} tur="deneme" />}
                         {/* Randevu ortak sekme: aynı bileşen iki bölümde de var,
                             ama saatler bölüme etiketlenip ayrı gösteriliyor. */}
                         {activeTab === 'appointments' && (

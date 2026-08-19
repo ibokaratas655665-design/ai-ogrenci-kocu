@@ -337,6 +337,23 @@ export default function KocBugun({
                 </Bolum>
             )}
 
+            {/* ══ ÖĞRENCİLERİM — tam liste, tıklayınca karneye gider ═══
+                Talimat: Bugün tabında öğrenci listesi bulunmalı ve her
+                satır öğrenci detayına (karne) götürmeli. Kaynak, panelin
+                MEVCUT students listesi — ikinci veri kaynağı yok. */}
+            <Bolum baslik="Öğrencilerim" sayi={ogrenciler.length} tumuEtiketi="Analiz" onTumu={() => onGit?.('analysis')}>
+                {ogrenciler.length === 0 ? null : ogrenciler.map((s) => (
+                    <IsSatiri
+                        key={s.id}
+                        onTikla={() => onOgrenciAc?.(s)}
+                        sol={<span className="w-8 h-8 rounded-lg bg-brand-soft text-brand inline-flex items-center justify-center font-black text-xs">{(s.name || '?').charAt(0).toLocaleUpperCase('tr-TR')}</span>}
+                        baslik={s.name}
+                        altBaslik={[s.grade && `${s.grade}. sınıf`, s.alan || s.field].filter(Boolean).join(' · ') || 'Karneyi aç'}
+                        sag={<span className="tip-caption text-ink-3">Karne →</span>}
+                    />
+                ))}
+            </Bolum>
+
             {/* ══ 6. YÜKSELENLER — koç yalnızca sorunları görmesin ═══ */}
             {yukselenler.length > 0 && (
                 <Card>

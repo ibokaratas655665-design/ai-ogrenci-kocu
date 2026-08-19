@@ -14,6 +14,7 @@ import SmartNotificationBell from '../components/shared/SmartNotifications';
 import PWAInstallBanner from '../components/shared/PWAInstallBanner';
 import { StudentDashboardSkeleton } from '../components/shared/SkeletonLoaders';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
+import DenemeAnalizi from '../components/student/DenemeAnalizi';
 import DailyGoalCard from '../components/student/DailyGoalCard';
 import {
     MessageSquare, LogOut, Settings, Key, Video,
@@ -496,7 +497,7 @@ const StudentDashboard = () => {
      * oraya eklenip buraya eklenmezse çökme olmaz, yalnızca o sekmenin
      * derin bağlantısı ana sekmeye düşer.
      */
-    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests'];
+    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'deneme-analizi', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests'];
     const [activeTab, setActiveTab] = useState(() => {
         try {
             const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
@@ -963,6 +964,10 @@ const StudentDashboard = () => {
             label: 'Gelişimim',
             items: [
                 { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
+                /* Deneme Analizi artık birinci sınıf sekme — Hata
+                   Defteri'nin içine gömülü görünüm de duruyor ama
+                   öğrenci buradan doğrudan ulaşır. */
+                { id: 'deneme-analizi', icon: MODULE_ICONS.analysis, label: 'Deneme Analizi' },
                 { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
                 { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
                 { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
@@ -1324,6 +1329,12 @@ const StudentDashboard = () => {
                 )}
 
                 {/* ═══════════════ MESAJLAR ═══════════════ */}
+                {activeTab === 'deneme-analizi' && (
+                    <div className="icerik-gecis pb-10">
+                        <DenemeAnalizi ogrenci={user} studentId={user?.id} bakis="ogrenci" />
+                    </div>
+                )}
+
                 {activeTab === 'messages' && (() => {
                     // Tab açıldığında okunmamış mesajları okundu yap
                     const markAllRead = () => {
