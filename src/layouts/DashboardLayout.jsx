@@ -7,6 +7,7 @@ import MARKA from '../data/marka';
 import { useTheme } from '../context/ThemeContext';
 import { NotificationBell } from '../components/NotificationPanel';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
+import MarkaFiligran from '../components/ui/MarkaFiligran';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
@@ -23,6 +24,8 @@ const DashboardLayout = () => {
     return (
         <div className="min-h-screen transition-colors duration-yavas"
             style={{ backgroundColor: 'var(--bg-primary)' }}>
+            {/* Zemin filigranı (bkz. ui/MarkaFiligran) */}
+            <MarkaFiligran />
 
             {/* ── Modern Topbar ─────────────────────────────────────── */}
             <header

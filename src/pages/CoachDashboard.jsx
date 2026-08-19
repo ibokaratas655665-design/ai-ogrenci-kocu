@@ -10,6 +10,7 @@ import SmartNotificationBell from '../components/shared/SmartNotifications';
 import { useNavigate } from 'react-router-dom';
 import GuidanceServiceTab from './GuidanceServiceTab';
 import PdrOgrenciHavuzu from '../components/guidance/PdrOgrenciHavuzu';
+import MarkaFiligran from '../components/ui/MarkaFiligran';
 import pdrHavuz from '../services/pdrOgrencileri';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
@@ -3430,6 +3431,8 @@ const CoachDashboard = () => {
             {toast && <Toast message={toast} onClose={handleCloseToast} />}
 
             {/* ── PREMIUM HEADER ───────────────────────────────────────────── */}
+            {/* Zemin filigranı — her koç/PDR tabında (bkz. ui/MarkaFiligran) */}
+            <MarkaFiligran />
             <header className="topbar fixed top-0 left-0 right-0 z-40">
                 {/* Yükseklik 72 → 96: ad yazısı logodaki el yazısı stiliyle
                     ve alt başlıkla aynı genişlikte duruyor; bu logo "Kampı"yı

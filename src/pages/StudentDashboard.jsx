@@ -13,6 +13,7 @@ import { bildir } from '../services/uiGeriBildirim';
 import SmartNotificationBell from '../components/shared/SmartNotifications';
 import PWAInstallBanner from '../components/shared/PWAInstallBanner';
 import { StudentDashboardSkeleton } from '../components/shared/SkeletonLoaders';
+import MarkaFiligran from '../components/ui/MarkaFiligran';
 import DailyGoalCard from '../components/student/DailyGoalCard';
 import {
     MessageSquare, LogOut, Settings, Key, Video,
@@ -995,6 +996,9 @@ const StudentDashboard = () => {
 
     return (
         <div className="min-h-screen bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden flex flex-col">
+            {/* Zemin filigranı: içerik kartları üstünü örter, boş zeminde
+                marka görünür — her tabda (bkz. ui/MarkaFiligran) */}
+            <MarkaFiligran />
 
             {/* ── HEADER ───────────────────────────────────────────── */}
             <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-line transition-all duration-yavas">
@@ -1010,6 +1014,16 @@ const StudentDashboard = () => {
                             piksellik ekranda dışarı itiyordu; öğrenci
                             telefondan çıkış yapamıyordu. Uygulama adı zaten
                             sekme başlığında ve ana ekran kısayolunda yazılı. */}
+                        {/* Mobil: YALNIZ amblem (yazısız, ayraçsız) —
+                            eski taşma ayraç+yazıdan geliyordu; tek 28px
+                            amblem çıkış düğmesini itmiyor (375px'te ölçüldü). */}
+                        <MarkaGorsel
+                            src={MARKA.amblem}
+                            alt=""
+                            width="28"
+                            height="28"
+                            className="w-7 h-7 object-contain flex-none sm:hidden"
+                        />
                         <div className="hidden sm:flex items-center gap-2 pr-3 md:pr-4 border-r border-line">
                             <MarkaGorsel
                                 src={MARKA.amblem}

@@ -36,6 +36,7 @@ import coupons from '../services/couponService';
 import { girisDemo, demoyuTemizle, DEMO_KULLANICI } from '../services/demoService';
 import credential from '../services/credentialService';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
+import MarkaFiligran from '../components/ui/MarkaFiligran';
 
 const SEZON = sezonBilgisi();
 
@@ -554,6 +555,7 @@ const LoginPage = () => {
                 <div className="absolute top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%] w-[250px] h-[250px] bg-brand rounded-full blur-[120px] opacity-[0.08]" />
             </div>
 
+            <MarkaFiligran />
             <div className="relative z-10">
                 {/* ── HERO & SHOWCASE SECTION ── */}
                 <div className="max-w-6xl mx-auto px-6 pt-16 pb-12">
@@ -565,11 +567,19 @@ const LoginPage = () => {
                         <MarkaGorsel
                             tembel={false}
                             src={MARKA.logo}
-                            alt={MARKA.ad}
+                            alt={MARKA.tamAd}
                             width="640"
                             height="640"
-                            className="w-56 md:w-72 h-auto mx-auto mb-5 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
+                            className="w-56 md:w-72 h-auto mx-auto mb-3 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
                         />
+                        {/* Resmî adın tamamlayıcısı: logo "Başarı Kampı"yı
+                            zaten taşıyor; bu satırla birlikte giriş ekranı
+                            tam adı — Başarı Kampı Koçluk Platformu — okur.
+                            Koç ve öğrenci AYNI girişten girer: iki rol de
+                            aynı marka kimliğini görür. */}
+                        <p className="text-sm md:text-base font-black uppercase tracking-[0.3em] text-brand mb-5">
+                            Koçluk Platformu
+                        </p>
                         <p className="text-lg text-ink-2 max-w-2xl mx-auto font-medium leading-relaxed">
                             Özel öğrenci koçluğu ve okul rehberlik servisi tek uygulamada.
                             Program, deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.
