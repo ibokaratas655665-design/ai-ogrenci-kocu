@@ -25,9 +25,10 @@
 
 :root {
     /* ── Zeminler ve yüzeyler ─────────────────────────────────
-       Sayfa zemini çok açık; kartlar saf beyaz olduğu için ayrım
-       renk farkından değil, kenar çizgisi ve gölgeden gelir. */
-    --bg: #F7F9FC;          /* sayfa zemini — neredeyse beyaz */
+       Sayfa zemini çok açık, hafif mavi; kartlar saf beyaz olduğu
+       için ayrım renk farkından değil, kenar ve gölgeden gelir.
+       (23.08.2026 yeniden tasarım: referans görselin zemini.) */
+    --bg: #F3F6FC;          /* sayfa zemini — buz mavisi */
     --surface: #FFFFFF;     /* kart / panel */
     --surface-2: #F4F7FB;   /* kart içi girinti, tablo başlığı */
     --surface-3: #EAF0F8;   /* hover, seçili satır */
@@ -57,17 +58,21 @@
     --ink-3: #5B6779;       /* soluk  —  5.1:1 */
     --ink-on: #FFFFFF;      /* renkli zemin üstündeki yazı */
 
-    /* ── Kimlik renkleri ──────────────────────────────────── */
-    --brand: #1E3A8A;
-    --brand-soft: #E4EAF7;  /* lacivertin çok açık zemini */
-    --brand-line: #C3D0EC;
-    --brand-hover: #1B3379;
+    /* ── Kimlik renkleri ──────────────────────────────────────
+       23.08.2026 yeniden tasarım: birincil renk lacivertten canlı
+       indigoya taşındı (referans görsel); lacivert #16294A koç
+       kenar çubuğu ve logo zemini olarak yaşıyor (--lacivert).
+       İkincil renk marka turuncusu — beyaz yazıyla 4.9:1. */
+    --brand: #4F46E5;
+    --brand-soft: #EEF0FE;
+    --brand-line: #C9CDF9;
+    --brand-hover: #4338CA;
 
-    /* Turkuaz #0D9488 hem yazı olarak (3.4:1) hem de üstünde beyaz
-       yazıyla (3.3:1) AA'nın altında kalıyordu — bir ton koyultuldu. */
-    --accent: #0F766E;
-    --accent-soft: #D7EFEC;
-    --accent-line: #93D3CB;
+    --lacivert: #16294A;    /* koç kenar çubuğu, logo zemini */
+
+    --accent: #C2570A;      /* marka turuncusu, yazı/dolgu güvenli */
+    --accent-soft: #FDEEDF;
+    --accent-line: #F6CBA2;
 
     --highlight: #B45309;   /* amber — açık zeminde okunur koyuluk */
     --highlight-soft: #FEF3C7;
@@ -86,11 +91,20 @@
     /* ── Grafik serileri (5 ayırt edilebilir ton) ───────────
        Bu renkler grafik dolgusu olduğu kadar efsane ve etiket
        YAZISI olarak da kullanılıyor; hepsi açık zeminde AA üstü. */
-    --c1: #1E3A8A;
-    --c2: #0F766E;
-    --c3: #B45309;
+    --c1: #4F46E5;
+    --c2: #C2570A;
+    --c3: #15803D;
     --c4: #7C3AED;
-    --c5: #BE185D;
+    --c5: #0E7490;
+
+    /* ── Gelişim kartı degradeleri (referans görsel) ────────
+       Üstlerinde her zaman beyaz yazı; koyu temada .on-color
+       kuralı zemini otomatik karartır. */
+    --grad-mor:     linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    --grad-turuncu: linear-gradient(135deg, #F59E0B 0%, #F97316 100%);
+    --grad-yesil:   linear-gradient(135deg, #10B981 0%, #059669 100%);
+    --grad-mavi:    linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
+    --grad-lacivert:linear-gradient(160deg, #1D3461 0%, #16294A 100%);
 
     /* ── Gölgeler ─────────────────────────────────────────── */
     --sh-1: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 3px rgba(15, 23, 42, .08);
@@ -138,14 +152,16 @@
     --ink-3: #8892A6;       /*  5.4:1 */
     --ink-on: #FFFFFF;
 
-    --brand: #6E93E8;
-    --brand-soft: #1A2440;
-    --brand-line: #2E4478;
-    --brand-hover: #86A6EF;
+    --brand: #8B93F8;
+    --brand-soft: #232748;
+    --brand-line: #3A4180;
+    --brand-hover: #A5ABFA;
 
-    --accent: #3FC7B4;
-    --accent-soft: #10302E;
-    --accent-line: #1B5A53;
+    --lacivert: #0D1A33;
+
+    --accent: #F5A05E;
+    --accent-soft: #33230F;
+    --accent-line: #6B4A22;
 
     --highlight: #F0AB3C;
     --highlight-soft: #33260F;
@@ -162,11 +178,14 @@
 
     /* Seri renkleri grafik efsanesinde YAZI olarak da kullanılıyor;
        koyu zeminde AA'yı geçecek kadar açık tutuldu. */
-    --c1: #6E93E8;
-    --c2: #3FC7B4;
-    --c3: #F0AB3C;
+    --c1: #8B93F8;
+    --c2: #F5A05E;
+    --c3: #4ADE80;
     --c4: #BFA8FF;
-    --c5: #F78FC5;
+    --c5: #67D3E0;
+
+    /* Degradeler koyu temada da aynı; .on-color kuralı üstlerine
+       hafif karartma bindirir, beyaz yazı okunur kalır. */
 
     --sh-1: 0 1px 2px rgba(0, 0, 0, .5);
     --sh-2: 0 6px 16px -8px rgba(0, 0, 0, .7);

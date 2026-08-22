@@ -13,6 +13,9 @@ import './styles/vivid.css'
 import './styles/form.css'
 // Etkilesim katmani: tek hareket dili (giris, basma, onay, iskelet)
 import './styles/etkilesim.css'
+// Tasarim 2.0 (23.08.2026): degrade gelisim kartlari, segment secici,
+// istatistik cipleri, koc kenar cubugu
+import './styles/tasarim2.css'
 // Mobil uyum en sonda: pencere ve dokunma hedefi kurallarını ezmesin diye
 import './styles/mobil.css'
 import App from './App.jsx'

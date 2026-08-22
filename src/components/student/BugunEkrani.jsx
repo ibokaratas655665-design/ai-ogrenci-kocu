@@ -1,17 +1,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-    Play, Check, ArrowRight, MessageSquare, Flame,
+    Play, ArrowRight, MessageSquare, Flame,
     CalendarCheck, Sparkles, Target, ChevronRight,
+    PencilLine, BookX, BarChart3,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import Progress, { HalkaProgress } from '../ui/Progress';
-import { BosDurum } from '../ui/Durumlar';
+import Progress from '../ui/Progress';
 import OnayKutusu from '../ui/OnayKutusu';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
-import { getSummary } from '../../services/studyLogService';
+import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
 /**
@@ -38,11 +38,30 @@ import { bildir } from '../../services/uiGeriBildirim';
 
 const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-/** Saate göre selam — sabah 6'da "iyi akşamlar" demesin. */
-const selamla = (ad) => {
-    const s = new Date().getHours();
-    const bas = s < 6 ? 'İyi geceler' : s < 12 ? 'Günaydın' : s < 18 ? 'İyi çalışmalar' : 'İyi akşamlar';
-    return ad ? `${bas}, ${ad}` : bas;
+/**
+ * Günlük motivasyon — tarihe bağlı döner; aynı gün hep aynı cümle,
+ * ertesi gün yenisi. Suçlayıcı değil, ileri bakan bir dil.
+ */
+const MOTIVASYONLAR = [
+    'Bugün harika bir gün olacak!',
+    'Küçük adımlar, büyük başarıların anahtarıdır.',
+    'Dün yaptığından bir soru fazlası bile ilerlemektir.',
+    'Zor soru, güçlenen zihin demektir.',
+    'Bugün yaptığın çalışma, yarınki netindir.',
+    'Düzenli çalışan, sınav günü rahat olur.',
+    'Hata, öğrenmenin ham maddesidir — kaydet, çöz, geç.',
+    'Hedefine bir gün daha yaklaşıyorsun.',
+    'Odaklandığın 25 dakika, dağınık 2 saatten değerlidir.',
+    'Seri bozulmaz, sen bozdurmazsan.',
+    'En iyi zaman şimdi; ikinci en iyi zaman yine şimdi.',
+    'Netler tesadüf değil, alışkanlık işidir.',
+    'Bir konu daha, bir adım daha.',
+    'Bugünü kazan; hafta kendiliğinden gelir.',
+];
+const gunlukMotivasyonSec = () => {
+    const simdi = new Date();
+    const yilinGunu = Math.floor((simdi - new Date(simdi.getFullYear(), 0, 0)) / 86400000);
+    return MOTIVASYONLAR[yilinGunu % MOTIVASYONLAR.length];
 };
 
 export default function BugunEkrani({
@@ -145,9 +164,27 @@ export default function BugunEkrani({
      * "Bu sistem benim gelişimimi takip ediyor" hissinin veri ayağı:
      * öğrenci kayıt girdikçe burası aynı gün değişir.
      */
+    /* Kayıt girildiği anda kartlar tazelensin (studyLogService her
+       yazımda 'storage' olayı yayar). */
+    const [kayitSurumu, setKayitSurumu] = useState(0);
+    useEffect(() => {
+        const tetik = (e) => { if (!e?.key || e.key === 'study_log') setKayitSurumu((v) => v + 1); };
+        window.addEventListener('storage', tetik);
+        return () => window.removeEventListener('storage', tetik);
+    }, []);
+
     const hafta = useMemo(() => {
         try { return getSummary(kullanici?.id, 7); } catch { return null; }
-    }, [kullanici?.id]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
+    }, [kullanici?.id, kayitSurumu]);
+
+    /** Bugünün toplamları (soru/dakika) — "Bugünkü Hedefin" kartı. */
+    const bugunToplam = useMemo(() => {
+        try { return getToday(kullanici?.id); } catch { return { questions: 0, minutes: 0 }; }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
+    }, [kullanici?.id, ilerleme, kayitSurumu]);
+
+    const gunlukMotivasyon = useMemo(() => gunlukMotivasyonSec(), []);
 
     /** Gelişim mesajı — son iki denemenin net farkından, yapıcı dille. */
     const gelisim = useMemo(() => {
@@ -191,118 +228,128 @@ export default function BugunEkrani({
     };
 
     return (
-        <div className="space-y-5 lg:space-y-6">
+        <div className="space-y-4 lg:space-y-5">
 
-            {/* ══ 1. SIRADAKİ ADIM — ekranın en görünür yeri ══════════
-                Öğrencinin "şimdi ne yapmalıyım?" sorusu burada, tek
-                cümleyle ve tek düğmeyle cevaplanır. */}
-            <Card ton="duz" dolgu="yok" className="overflow-hidden">
-                <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-                    <p className="tip-label text-ink-3">{selamla(kullanici?.name?.split(' ')[0])}</p>
+            {/* ══ 1. SELAMLAMA + GÜNLÜK MOTİVASYON ════════════════════ */}
+            <div className="px-1">
+                <p className="tip-label text-ink-3">Merhaba 👋</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight mt-0.5">
+                    {kullanici?.name?.split(' ')[0] || 'Öğrenci'}!
+                </h2>
+                <p className="tip-small text-ink-2 mt-1">{gunlukMotivasyon}</p>
+            </div>
 
-                    {sonraki ? (
-                        <>
-                            <div className="mt-2 flex items-start gap-3">
-                                <span className="mt-0.5 shrink-0 w-9 h-9 rounded-dmd bg-brand-soft text-brand inline-flex items-center justify-center tip-h4">
-                                    {sonraki.sira + 1}
-                                </span>
-                                <div className="min-w-0">
-                                    <p className="tip-label text-brand">SIRADAKİ ETÜT</p>
-                                    <h2 className="tip-h3 mt-0.5 break-words">{sonraki.konu}</h2>
-                                    {sonraki.ders && sonraki.ders !== sonraki.konu && (
-                                        <p className="tip-caption mt-0.5">{sonraki.ders}</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                                <Button
-                                    simge={Play}
-                                    onClick={() => onGit?.('pomodoro')}
-                                    className="sm:w-auto"
-                                    tamGenislik
-                                >
-                                    Bu etüde başla
-                                </Button>
-                                <Button
-                                    varyant="ghost"
-                                    simge={Check}
-                                    onClick={() => etutIsaretle(sonraki)}
-                                    className="sm:w-auto"
-                                    tamGenislik
-                                >
-                                    Tamamladım
-                                </Button>
-                            </div>
-                        </>
-                    ) : toplam > 0 ? (
-                        <div className="mt-2 flex items-start gap-3">
-                            <span className="shrink-0 w-9 h-9 rounded-dmd bg-ok-soft text-ok inline-flex items-center justify-center">
-                                <Sparkles size={18} />
-                            </span>
-                            <div>
-                                <h2 className="tip-h3">Bugünün programı tamam</h2>
-                                <p className="tip-small mt-1">
-                                    {toplam} etüdün hepsini bitirdin. İstersen yarının konularına göz atabilirsin.
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        /* Tek boş durum: neden boş + ne yapabilirsin + eylem.
-                           Önce burada ve sayfanın altında İKİ ayrı boş mesaj
-                           birden çıkıyordu; aynı şeyi iki kez söylüyorlardı. */
-                        <div className="mt-2 flex items-start gap-3">
-                            <span className="shrink-0 w-9 h-9 rounded-dmd bg-surface-3 text-ink-3 inline-flex items-center justify-center">
-                                <CalendarCheck size={18} />
-                            </span>
-                            <div className="min-w-0">
-                                <h2 className="tip-h3">Bugün için planlı etüt yok</h2>
-                                <p className="tip-small mt-1">
-                                    {hicVeriYok
-                                        ? 'Koçun sana program ve görev atadığında günün burada görünecek. O zamana kadar deneme sonuçlarını inceleyebilir, kendi çalışmanı kaydedebilirsin.'
-                                        : 'Koçun program yüklediğinde günün burada görünür. O zamana kadar açık görevlerinle ilerleyebilirsin.'}
-                                </p>
-                                {hicVeriYok && (
-                                    <div className="mt-4 flex flex-wrap gap-2">
-                                        <Button varyant="outline" onClick={() => onGit?.('exams')}>
-                                            Denemelerime bak
-                                        </Button>
-                                        <Button varyant="ghost" onClick={() => onGit?.('daily-log')}>
-                                            Çalışmamı kaydet
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Günün ilerlemesi — hedefin ne kadarı bitti */}
-                {hedefToplam > 0 && (
-                    <div className="px-5 py-4 sm:px-6 border-t border-line bg-surface-2 flex items-center gap-4">
-                        <HalkaProgress
-                            deger={hedefBiten}
-                            enFazla={hedefToplam}
-                            boyut={54}
-                            kalinlik={5}
-                            ton={gunYuzde >= 100 ? 'basari' : 'marka'}
-                        />
-                        <div className="min-w-0 flex-1">
-                            <p className="tip-small font-bold text-ink">
-                                Bugünün hedefi: {hedefBiten}/{hedefToplam} tamam
-                            </p>
-                            <p className="tip-caption mt-0.5">
-                                {toplam > 0 && `${toplam} etüt`}
-                                {toplam > 0 && acikGorevler.length > 0 && ' · '}
-                                {acikGorevler.length > 0 && `${acikGorevler.length} görev`}
-                            </p>
-                        </div>
-                        {seri > 0 && (
-                            <Badge ton="uyari" hap simge={Flame}>{seri} gün</Badge>
-                        )}
+            {/* ══ 2. ÇALIŞMA SERİSİ ═══════════════════════════════════ */}
+            {seri > 0 && (
+                <Card dolgu="md" className="flex items-center gap-4">
+                    <span className="shrink-0 w-11 h-11 rounded-2xl bg-warn-soft text-warn flex items-center justify-center">
+                        <Flame size={22} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <p className="tip-small font-black text-ink">Çalışma Serin · {seri} gün</p>
+                        <p className="tip-caption mt-0.5">Devam et, hedefine ulaş!</p>
                     </div>
+                </Card>
+            )}
+
+            {/* ══ 3. BUGÜNKÜ HEDEFİN — sayılar ve ilerleme ═══════════ */}
+            <Card dolgu="yok">
+                <div className="px-5 pt-4 pb-3 sm:px-6 flex items-center justify-between">
+                    <h3 className="tip-h4">Bugünkü Hedefin</h3>
+                    {seri > 0 && <Badge ton="uyari" hap simge={Flame}>{seri} gün</Badge>}
+                </div>
+                <div className="px-5 sm:px-6 pb-3 grid grid-cols-4 gap-2">
+                    {[
+                        { deger: bugunToplam.questions, etiket: 'Soru' },
+                        { deger: hedefBiten, etiket: 'Tamamlanan' },
+                        { deger: bugunToplam.minutes ? `${bugunToplam.minutes}dk` : '0dk', etiket: 'Dakika' },
+                        { deger: `%${gunYuzde}`, etiket: 'İlerleme' },
+                    ].map((s) => (
+                        <div key={s.etiket} className="text-center">
+                            <p className="text-lg sm:text-xl font-black text-ink syne rakam">{s.deger}</p>
+                            <p className="tip-mini text-ink-3 uppercase tracking-wider mt-0.5">{s.etiket}</p>
+                        </div>
+                    ))}
+                </div>
+                {hedefToplam > 0 && (
+                    <Progress deger={hedefBiten} enFazla={hedefToplam}
+                        ton={gunYuzde >= 100 ? 'basari' : 'marka'} kalinlik="sm"
+                        className="px-5 sm:px-6 pb-4" />
                 )}
             </Card>
+
+            {/* ══ 4. BUGÜNÜ BAŞLAT — tek büyük eylem ═════════════════ */}
+            {sonraki ? (
+                <button
+                    type="button"
+                    onClick={() => onGit?.('pomodoro')}
+                    className="on-color w-full rounded-2xl px-5 py-4 flex items-center justify-between gap-3 text-left shadow-yuzen transition-transform duration-hizli active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                    style={{ background: 'var(--grad-mor)' }}
+                >
+                    <span className="min-w-0">
+                        <span className="block text-[15px] font-black">Bugünü Başlat</span>
+                        <span className="block text-xs font-semibold opacity-85 truncate mt-0.5">
+                            Sıradaki: {sonraki.konu}{sonraki.ders && sonraki.ders !== sonraki.konu ? ` · ${sonraki.ders}` : ''}
+                        </span>
+                    </span>
+                    <span className="shrink-0 w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <Play size={18} />
+                    </span>
+                </button>
+            ) : toplam > 0 ? (
+                <Card dolgu="md" className="flex items-center gap-3">
+                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-ok-soft text-ok inline-flex items-center justify-center">
+                        <Sparkles size={18} />
+                    </span>
+                    <div>
+                        <p className="tip-small font-black text-ink">Bugünün programı tamam 🎉</p>
+                        <p className="tip-caption mt-0.5">{toplam} etüdün hepsini bitirdin.</p>
+                    </div>
+                </Card>
+            ) : (
+                <Card dolgu="md" className="flex items-start gap-3">
+                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-surface-3 text-ink-3 inline-flex items-center justify-center">
+                        <CalendarCheck size={18} />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="tip-small font-black text-ink">Bugün için planlı etüt yok</p>
+                        <p className="tip-caption mt-1">
+                            {hicVeriYok
+                                ? 'Koçun program atadığında günün burada görünecek. O zamana kadar kendi çalışmanı kaydedebilirsin.'
+                                : 'Koçun program yüklediğinde günün burada görünür. Açık görevlerinle ilerleyebilirsin.'}
+                        </p>
+                        {hicVeriYok && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <Button varyant="outline" onClick={() => onGit?.('daily-log')}>Çalışmamı kaydet</Button>
+                                <Button varyant="ghost" onClick={() => onGit?.('exams')}>Denemelerime bak</Button>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            )}
+
+            {/* ══ 5. KISAYOLLAR — dört renkli hedef ══════════════════ */}
+            <div>
+                <p className="tip-label text-ink-3 mb-2 px-1">Kısayollar</p>
+                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                    {[
+                        { id: 'daily-log', etiket: 'Günlük Kayıt', simge: PencilLine, ton: 'cip-yesil' },
+                        { id: 'error-notebook', etiket: 'Hata Defteri', simge: BookX, ton: 'cip-turuncu' },
+                        { id: 'deneme-analizi', etiket: 'Deneme Analizi', simge: BarChart3, ton: 'cip-mor' },
+                        { id: 'program', etiket: 'Programım', simge: CalendarCheck, ton: 'cip-mavi' },
+                    ].map((k) => (
+                        <button
+                            key={k.id}
+                            type="button"
+                            onClick={() => onGit?.(k.id)}
+                            className="cipp min-h-[86px] transition-transform duration-hizli active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        >
+                            <span className={cn('cip-ikon', k.ton)}><k.simge size={16} /></span>
+                            <span className="cip-etiket normal-case tracking-normal text-[10px]">{k.etiket}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* ══ 1c. BU HAFTA — günlük kayıtlardan gerçek gelişim ════
                 Referans tasarımdaki "Bu Hafta" şeridi: soru, süre,

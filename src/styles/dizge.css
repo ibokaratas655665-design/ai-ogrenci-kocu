@@ -116,7 +116,7 @@
        ══════════════════════════════════════════════════════════ */
     --yaricap-sm: 6px;      /* rozet, küçük etiket, giriş alanı içi */
     --yaricap-md: 10px;     /* düğme, giriş alanı, açılır liste öğesi */
-    --yaricap-lg: 16px;     /* kart, panel, modal */
+    --yaricap-lg: 20px;     /* kart, panel, modal (23.08 tasarım: 16→20) */
     --yaricap-pill: 999px;  /* sekme hapı, avatar, sayaç rozeti */
 
     /* ══════════════════════════════════════════════════════════

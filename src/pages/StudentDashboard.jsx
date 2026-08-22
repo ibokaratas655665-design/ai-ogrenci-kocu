@@ -22,9 +22,17 @@ import {
     CheckCircle, Clock, AlertCircle, Star, Target,
     TrendingUp, Award, Zap, Send, X, ChevronRight,
     PlayCircle, Flame, Trophy, Plus, Check, XCircle,
-    Download, FileText, Eye, Moon, Sun, BookX, PencilLine, User
+    Download, FileText, Eye, Moon, Sun, BookX, PencilLine, User,
+    MoreHorizontal, Timer, NotebookPen, Medal
 } from 'lucide-react';
 import { generateStudentReport } from '../utils/pdfGenerator';
+// 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
+import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
+import { getSummary } from '../services/studyLogService';
+import {
+    ResponsiveContainer, LineChart, Line, AreaChart, Area,
+    XAxis, YAxis, CartesianGrid, Tooltip as GrafikTooltip,
+} from 'recharts';
 import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
 import { api } from '../services/api';
 import MARKA from '../data/marka';
@@ -497,14 +505,55 @@ const StudentDashboard = () => {
      * oraya eklenip buraya eklenmezse çökme olmaz, yalnızca o sekmenin
      * derin bağlantısı ana sekmeye düşer.
      */
-    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'deneme-analizi', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests', 'stats', 'badges'];
-    const [activeTab, setActiveTab] = useState(() => {
+    /**
+     * 23.08.2026 yeniden tasarım — navigasyon 5 alana indi:
+     * BUGÜN · PROGRAM · ÇALIŞMALARIM · GELİŞİMİM · DAHA FAZLA.
+     * Eski 15 sekmenin bir kısmı iki merkezin (hub) İÇİNDE segment
+     * oldu; eski derin bağlantılar kırılmasın diye burada eşlenir.
+     */
+    const HUB_ESLEME = {
+        'daily-log': ['calismalarim', 'gunluk'],
+        'error-notebook': ['calismalarim', 'hata'],
+        'deneme-analizi': ['calismalarim', 'deneme'],
+        'exams': ['gelisimim', 'netlerim'],
+        'matrix': ['gelisimim', 'netlerim'],
+        'topics': ['gelisimim', 'konularim'],
+        'badges': ['gelisimim', 'rozetlerim'],
+        'stats': ['gelisimim', 'genel'],
+    };
+    const GECERLI_SEKMELER = [
+        'home', 'program', 'calismalarim', 'gelisimim', 'daha-fazla',
+        'tasks', 'smart-plan', 'pomodoro', 'assessment',
+        'messages', 'appointments', 'tests', 'portfolio',
+    ];
+    const urlSekme = (() => {
         try {
-            const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
-            if (h && GECERLI_SEKMELER.includes(h)) return h;
-        } catch { /* hash okunamazsa varsayılana düş */ }
+            return new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
+        } catch { return null; }
+    })();
+    const [activeTab, setActiveTab] = useState(() => {
+        if (urlSekme && HUB_ESLEME[urlSekme]) return HUB_ESLEME[urlSekme][0];
+        if (urlSekme && GECERLI_SEKMELER.includes(urlSekme)) return urlSekme;
         return 'home';
     });
+    /* Merkezlerin içindeki aktif segment; eski sekme adresi geldiyse
+       oradaki karşılığıyla açılır. */
+    const [calisSegment, setCalisSegment] = useState(() =>
+        (HUB_ESLEME[urlSekme]?.[0] === 'calismalarim' ? HUB_ESLEME[urlSekme][1] : 'gunluk'));
+    const [gelisimSegment, setGelisimSegment] = useState(() =>
+        (HUB_ESLEME[urlSekme]?.[0] === 'gelisimim' ? HUB_ESLEME[urlSekme][1] : 'genel'));
+
+    /** Tek geçiş noktası: eski kimlikler merkez+segmente çevrilir. */
+    const sekmeyeGit = (id) => {
+        const hedef = HUB_ESLEME[id];
+        if (hedef) {
+            setActiveTab(hedef[0]);
+            if (hedef[0] === 'calismalarim') setCalisSegment(hedef[1]);
+            else setGelisimSegment(hedef[1]);
+        } else {
+            setActiveTab(id);
+        }
+    };
     useEffect(() => {
         try {
             const [yol] = window.location.hash.split('?');
@@ -956,6 +1005,83 @@ const StudentDashboard = () => {
         }).filter(Boolean);
     }, [examData]);
 
+    /**
+     * ÇALIŞMALARIM ve GELİŞİMİM merkezlerinin özet verisi — tamamı
+     * gerçek kayıtlardan (study_log, error_notebook, denemeler).
+     * Hook olduğu için aşağıdaki erken return'den ÖNCE durur.
+     */
+    /* Kayıt girildiği anda merkez özetleri tazelensin — studyLogService
+       ve hata defteri her yazımda 'storage' olayı yayar. */
+    const [kayitSurumu, setKayitSurumu] = useState(0);
+    useEffect(() => {
+        const tetik = (e) => {
+            if (!e?.key || ['study_log', 'error_notebook', 'deneme_analizleri'].includes(e.key)) {
+                setKayitSurumu((v) => v + 1);
+            }
+        };
+        window.addEventListener('storage', tetik);
+        return () => window.removeEventListener('storage', tetik);
+    }, []);
+
+    const denemelerSirali = useMemo(() => (
+        [...examData]
+            .filter((e) => Number.isFinite(parseFloat(e.totalNet)))
+            .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt))
+    ), [examData]);
+
+    const merkezOzet = useMemo(() => {
+        let o14 = null, o30 = null;
+        try { o14 = getSummary(user?.id, 14); o30 = getSummary(user?.id, 30); } catch { /* kayıt yoksa boş */ }
+        const gunler = o14?.byDay || [];
+        const son7 = gunler.slice(-7);
+        const onceki7 = gunler.slice(0, Math.max(0, gunler.length - 7));
+        const topla = (dizi) => dizi.reduce((a, g) => a + g.questions, 0);
+        const soru7 = topla(son7);
+        const soruOnceki = topla(onceki7);
+
+        // Hata defteri — bu haftaki yeni kayıtlar
+        let hatalar7 = 0;
+        try {
+            const esik = Date.now() - 7 * 86400000;
+            hatalar7 = listeOku('error_notebook').filter((h) =>
+                String(h.studentId) === String(user?.id) &&
+                new Date(h.date || h.createdAt || 0).getTime() >= esik
+            ).length;
+        } catch { /* yok say */ }
+
+        // Net değişimi — son iki deneme
+        const sonNet = denemelerSirali.length ? parseFloat(denemelerSirali[denemelerSirali.length - 1].totalNet) : null;
+        const oncekiNet = denemelerSirali.length > 1 ? parseFloat(denemelerSirali[denemelerSirali.length - 2].totalNet) : null;
+        const netFark = sonNet != null && oncekiNet != null ? Math.round((sonNet - oncekiNet) * 100) / 100 : null;
+
+        // Son 5 deneme — net değişim grafiği
+        const netSerisi = denemelerSirali.slice(-5).map((e, i) => ({
+            ad: e.name || e.trialName || `Deneme ${i + 1}`,
+            net: Math.round(parseFloat(e.totalNet) * 100) / 100,
+        }));
+
+        // Ders bazlı güçlü / gelişecek alan (14 günlük isabetten)
+        const dersler = (o14?.bySubject || []).filter((s) => s.correct + s.wrong >= 10);
+        const guclu = dersler.length ? [...dersler].sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0))[0] : null;
+        const gelisecek = dersler.length > 1 ? [...dersler].sort((a, b) => (a.accuracy ?? 101) - (b.accuracy ?? 101))[0] : null;
+
+        let o7 = null;
+        try { o7 = getSummary(user?.id, 7); } catch { /* kayıt yoksa boş */ }
+
+        return {
+            soru7, soruFark: soruOnceki > 0 ? soru7 - soruOnceki : null,
+            dakika7: o7?.minutes ?? 0,
+            isabet7: o7?.accuracy ?? null,
+            hatalar7,
+            deneme7: examData.filter((e) => new Date(e.date || e.uploadedAt || 0).getTime() >= Date.now() - 7 * 86400000).length,
+            sonNet, netFark, netSerisi,
+            gunSerisi: son7.map((g) => ({ gun: g.date.slice(5), soru: g.questions })),
+            soru30: o30?.questions ?? 0,
+            guclu, gelisecek,
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli: storage olayı yerel kayıtları tazeler
+    }, [user?.id, examData, denemelerSirali, kayitSurumu]);
+
     if (loading) return <StudentDashboardSkeleton />;
 
     const safeSlotCount = Number(programConfig?.dailySlotCount) || 6;
@@ -979,55 +1105,39 @@ const StudentDashboard = () => {
      * Sekme listeleri TEK yerde; mobil alt çubuk da bunu okur, böylece
      * eskisi gibi uyuşmayan kimlikler oluşamaz.
      */
+    /* 23.08.2026 yeniden tasarım: 5 ana alan. Kalan araçlar "Daha
+       Fazla" sayfasında; 15 sekme artık doğrudan gösterilmiyor. */
     const SEKME_GRUPLARI = [
         {
-            label: 'Bugün',
+            label: 'Ana',
             items: [
                 { id: 'home', icon: MODULE_ICONS.home, label: 'Bugün' },
-                { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
                 { id: 'program', icon: MODULE_ICONS.program, label: 'Program' },
-                { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
+                { id: 'calismalarim', icon: MODULE_ICONS['daily-log'], label: 'Çalışmalarım' },
+                { id: 'gelisimim', icon: MODULE_ICONS.analysis, label: 'Gelişimim' },
             ],
         },
         {
-            /* Talimat (22.08.2026): Günlük Kayıt + Hata Defteri + Deneme
-               Analizi tek gelişim alanında toplanır — adı ÇALIŞMALARIM. */
-            label: 'Çalışmalarım',
+            label: 'Daha Fazla',
             items: [
-                { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
-                { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
-                { id: 'deneme-analizi', icon: MODULE_ICONS.analysis, label: 'Deneme Analizi' },
-                { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
-                { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
-            ],
-        },
-        {
-            label: 'Gelişimim',
-            items: [
-                /* 'stats' ve 'badges' ekranları yazılmış ama menüye hiç
-                   bağlanmamıştı — 22.08.2026'da bağlandı. */
-                { id: 'stats', icon: MODULE_ICONS.analysis, label: 'İstatistikler' },
-                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
-                { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
-                { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
-                { id: 'badges', icon: MODULE_ICONS.portfolio, label: 'Rozetler' },
-                { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
-            ],
-        },
-        {
-            label: 'Koçumla',
-            items: [
+                { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
                 { id: 'messages', icon: MODULE_ICONS.messages, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'coach').length },
+                { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
+                { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
+                { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
                 { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
                 { id: 'tests', icon: MODULE_ICONS.tests, label: 'Envanter', badge: assignedTests.filter(t => t.status === 'pending').length },
+                { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
             ],
         },
     ];
 
     const TABS = SEKME_GRUPLARI.flatMap((g) => g.items);
+    const ARAC_GRUBU = SEKME_GRUPLARI[1];
+    const aracRozetToplami = ARAC_GRUBU.items.reduce((s, t) => s + (t.badge || 0), 0);
 
-    /** Telefonda alt çubuğa çıkan dört hedef — en sık kullanılanlar. */
-    const MOBIL_BIRINCIL = ['home', 'tasks', 'program', 'messages']
+    /** Telefonda alt çubuk: 4 ana alan + "Menü" (= Daha Fazla). */
+    const MOBIL_BIRINCIL = ['home', 'program', 'calismalarim', 'gelisimim']
         .map((id) => TABS.find((t) => t.id === id))
         .filter(Boolean);
 
@@ -1147,41 +1257,50 @@ const StudentDashboard = () => {
                     göstermek hem 56 piksel yer yiyor hem de kafa karıştırıyor.
                     Masaüstünde gruplar ince ayraçla ayrılır; 15 sekme düz bir
                     sıra yerine anlamlı öbekler hâlinde okunur. */}
+                {/* 23.08 tasarım: masaüstünde de yalnızca 5 ana hedef —
+                    BUGÜN · PROGRAM · ÇALIŞMALARIM · GELİŞİMİM · DAHA FAZLA.
+                    Araçlar "Daha Fazla" sayfasında gruplanır. */}
                 <div className="hidden lg:block border-t border-line bg-page/50 backdrop-blur-md">
                     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center overflow-x-auto no-scrollbar gap-1 py-1.5 h-14">
-                        {SEKME_GRUPLARI.map((grup, gi) => (
-                            <React.Fragment key={grup.label}>
-                                {gi > 0 && (
-                                    <span className="shrink-0 w-px h-6 bg-line mx-2" aria-hidden="true" />
-                                )}
-                                {grup.items.map(tab => {
-                                    const secili = activeTab === tab.id;
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
-                                            aria-current={secili ? 'page' : undefined}
-                                            title={`${grup.label} · ${tab.label}`}
-                                            className={cn(
-                                                'relative shrink-0 flex items-center gap-2 px-3.5 min-h-[44px] rounded-dmd tip-tab whitespace-nowrap',
-                                                'transition-colors duration-hizli',
-                                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                                                secili
-                                                    ? 'bg-brand-soft text-brand font-bold'
-                                                    : 'text-ink-3 hover:text-ink hover:bg-surface-3'
-                                            )}
-                                        >
-                                            <tab.icon size={16} strokeWidth={secili ? 2.2 : 1.75} />
-                                            <span>{tab.label}</span>
-                                            {/* Koçtan gelen yeni çalışma sayacı — sekmeye
-                                                girilince sıfırlanır */}
-                                            <TabBadge sayi={rozetler[tab.id] || 0} />
-                                            {tab.badge > 0 && <Sayac deger={tab.badge} ton={secili ? 'marka' : 'hata'} />}
-                                        </button>
-                                    );
-                                })}
-                            </React.Fragment>
-                        ))}
+                        {SEKME_GRUPLARI[0].items.map(tab => {
+                            const secili = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => { sekmeyeGit(tab.id); okundu(tab.id); }}
+                                    aria-current={secili ? 'page' : undefined}
+                                    className={cn(
+                                        'relative shrink-0 flex items-center gap-2 px-4 min-h-[44px] rounded-pill tip-tab whitespace-nowrap',
+                                        'transition-colors duration-hizli',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                        secili
+                                            ? 'bg-brand text-white font-bold shadow-kart'
+                                            : 'text-ink-3 hover:text-ink hover:bg-surface-3'
+                                    )}
+                                >
+                                    <tab.icon size={16} strokeWidth={secili ? 2.2 : 1.75} />
+                                    <span>{tab.label}</span>
+                                    <TabBadge sayi={rozetler[tab.id] || 0} />
+                                </button>
+                            );
+                        })}
+                        <span className="shrink-0 w-px h-6 bg-line mx-2" aria-hidden="true" />
+                        <button
+                            onClick={() => sekmeyeGit('daha-fazla')}
+                            aria-current={activeTab === 'daha-fazla' ? 'page' : undefined}
+                            className={cn(
+                                'relative shrink-0 flex items-center gap-2 px-4 min-h-[44px] rounded-pill tip-tab whitespace-nowrap',
+                                'transition-colors duration-hizli',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                activeTab === 'daha-fazla' || ARAC_GRUBU.items.some((t) => t.id === activeTab)
+                                    ? 'bg-brand text-white font-bold shadow-kart'
+                                    : 'text-ink-3 hover:text-ink hover:bg-surface-3'
+                            )}
+                        >
+                            <MoreHorizontal size={16} />
+                            <span>Daha Fazla</span>
+                            {aracRozetToplami > 0 && <Sayac deger={aracRozetToplami} ton="hata" />}
+                        </button>
                     </div>
                 </div>
             </header>
@@ -1339,12 +1458,220 @@ const StudentDashboard = () => {
                 )}
 
                 {/* ═══════════════ DENEMELERİM ═══════════════ */}
-                {activeTab === 'exams' && (
-                    <ExamDetailSection
-                        examData={examData}
-                        permissions={permissions}
-                        user={user}
-                    />
+                {/* ═══════════ ÇALIŞMALARIM MERKEZİ — başlık + özet ═══════════
+                    Segment içerikleri (Günlük Kayıt / Hata Defteri / Deneme
+                    Analizi) dosyanın ilerisindeki bloklarda; aralarındaki her
+                    şey gizli olduğu için ekranda peş peşe görünürler. */}
+                {activeTab === 'calismalarim' && (
+                    <div className="icerik-gecis space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Çalışmalarım</h1>
+                                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GÜNLÜK KAYIT · HATA DEFTERİ · DENEME ANALİZİ</p>
+                            </div>
+                            <SegmentliSecim
+                                etiket="Çalışma aracı seç"
+                                deger={calisSegment}
+                                onSec={setCalisSegment}
+                                ogeler={[
+                                    { id: 'gunluk', etiket: 'Günlük Kayıt' },
+                                    { id: 'hata', etiket: 'Hata Defteri' },
+                                    { id: 'deneme', etiket: 'Deneme Analizi' },
+                                ]}
+                            />
+                        </div>
+
+                        {/* Bu Hafta — dört mini istatistik (gerçek kayıtlardan) */}
+                        <div>
+                            <p className="tip-label text-ink-3 mb-2">Bu Hafta</p>
+                            <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                                <IstatistikCipi simge={ClipboardList} deger={merkezOzet.soru7} etiket="Soru Çözüldü" ton="mor" />
+                                <IstatistikCipi simge={Timer} deger={merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}d` : `${merkezOzet.dakika7}d`} etiket="Çalışma Süresi" ton="turuncu" />
+                                <IstatistikCipi simge={BookX} deger={merkezOzet.hatalar7} etiket="Hata Kaydı" ton="kirmizi" />
+                                <IstatistikCipi simge={BarChart2} deger={merkezOzet.deneme7} etiket="Deneme" ton="yesil" />
+                            </div>
+                        </div>
+
+                        {/* Gelişimim (Son 7 Gün) — delta + çizgi */}
+                        {(merkezOzet.gunSerisi.some((g) => g.soru > 0) || merkezOzet.netFark != null) && (
+                            <div className="card p-4 sm:p-5">
+                                <p className="tip-label text-ink-3">Gelişimim (Son 7 Gün)</p>
+                                <div className="flex items-end gap-6 mt-2">
+                                    {merkezOzet.netFark != null && (
+                                        <div>
+                                            <p className={cn('text-xl font-black syne', merkezOzet.netFark >= 0 ? 'text-ok' : 'text-danger')}>
+                                                {merkezOzet.netFark >= 0 ? '+' : ''}{merkezOzet.netFark}
+                                            </p>
+                                            <p className="tip-mini text-ink-3 uppercase tracking-wider">Net Değişimi</p>
+                                        </div>
+                                    )}
+                                    {merkezOzet.soruFark != null && (
+                                        <div>
+                                            <p className={cn('text-xl font-black syne', merkezOzet.soruFark >= 0 ? 'text-brand' : 'text-warn')}>
+                                                {merkezOzet.soruFark >= 0 ? '+' : ''}{merkezOzet.soruFark}
+                                            </p>
+                                            <p className="tip-mini text-ink-3 uppercase tracking-wider">Soru Artışı</p>
+                                        </div>
+                                    )}
+                                </div>
+                                {merkezOzet.gunSerisi.some((g) => g.soru > 0) && (
+                                    <div className="h-36 mt-3">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={merkezOzet.gunSerisi} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
+                                                <defs>
+                                                    <linearGradient id="calisGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.25} />
+                                                        <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                                                <XAxis dataKey="gun" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                                                <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
+                                                <Area type="monotone" dataKey="soru" name="Soru" stroke="var(--brand)" strokeWidth={2.5} fill="url(#calisGrad)" dot={{ r: 3 }} animationDuration={300} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Güçlü alan / çalışılacak alan */}
+                        {(merkezOzet.guclu || merkezOzet.gelisecek) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {merkezOzet.guclu && (
+                                    <div className="card p-4 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="tip-label text-ink-3">En Çok Geliştiğim Alan</p>
+                                            <p className="text-base font-black text-ink mt-0.5">{merkezOzet.guclu.subject}</p>
+                                        </div>
+                                        <span className="badge badge-ok">%{merkezOzet.guclu.accuracy} isabet</span>
+                                    </div>
+                                )}
+                                {merkezOzet.gelisecek && merkezOzet.gelisecek !== merkezOzet.guclu && (
+                                    <div className="card p-4 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="tip-label text-ink-3">Üzerine Çalışmam Gereken</p>
+                                            <p className="text-base font-black text-ink mt-0.5">{merkezOzet.gelisecek.subject}</p>
+                                        </div>
+                                        <span className="badge badge-warn">%{merkezOzet.gelisecek.accuracy} isabet</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══════════ GELİŞİMİM MERKEZİ — başlık + segmentler ═══════ */}
+                {activeTab === 'gelisimim' && (
+                    <div className="icerik-gecis space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Gelişimim</h1>
+                                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİMİN GERÇEK VERİLERLE TAKİPTE</p>
+                            </div>
+                            <SegmentliSecim
+                                etiket="Gelişim görünümü seç"
+                                deger={gelisimSegment}
+                                onSec={setGelisimSegment}
+                                ogeler={[
+                                    { id: 'genel', etiket: 'Genel' },
+                                    { id: 'netlerim', etiket: 'Netlerim' },
+                                    { id: 'konularim', etiket: 'Konularım' },
+                                    { id: 'rozetlerim', etiket: 'Rozetlerim' },
+                                ]}
+                            />
+                        </div>
+
+                        {gelisimSegment === 'genel' && (
+                            <>
+                                {/* Gelişim kartları — referans tasarımın 2x2 degrade dörtlüsü */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                                    <GelisimKarti
+                                        ton="mor" etiket="Netim" simge={TrendingUp}
+                                        deger={merkezOzet.sonNet != null ? merkezOzet.sonNet : '—'}
+                                        alt={merkezOzet.netFark != null
+                                            ? `${merkezOzet.netFark >= 0 ? '+' : ''}${merkezOzet.netFark} net · son deneme`
+                                            : 'Deneme girildikçe dolar'}
+                                    />
+                                    <GelisimKarti
+                                        ton="turuncu" etiket="Soru Çözümüm" simge={ClipboardList}
+                                        deger={merkezOzet.soru30}
+                                        alt="Son 30 gün"
+                                    />
+                                    <GelisimKarti
+                                        ton="yesil" etiket="İsabetim" simge={Target}
+                                        deger={merkezOzet.isabet7 != null ? `%${merkezOzet.isabet7}` : '—'}
+                                        alt="Son 7 gün doğruluk"
+                                    />
+                                    <GelisimKarti
+                                        ton="mavi" etiket="Çalışma Sürem" simge={Clock}
+                                        deger={merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}d` : `${merkezOzet.dakika7}d`}
+                                        alt="Son 7 gün"
+                                    />
+                                </div>
+
+                                {/* Net Değişim Grafiği (Son 5 Deneme) */}
+                                {merkezOzet.netSerisi.length >= 2 && (
+                                    <div className="card p-4 sm:p-5">
+                                        <p className="tip-label text-ink-3 mb-3">Net Değişim Grafiği (Son {merkezOzet.netSerisi.length} Deneme)</p>
+                                        <div className="h-52">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={merkezOzet.netSerisi} margin={{ top: 6, right: 12, bottom: 0, left: -18 }}>
+                                                    <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                                                    <XAxis dataKey="ad" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                    <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                    <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
+                                                    <Line type="monotone" dataKey="net" name="Net" stroke="var(--brand)" strokeWidth={3} dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} animationDuration={300} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {gelisimSegment === 'netlerim' && (
+                            <div className="space-y-8">
+                                <ExamDetailSection examData={examData} permissions={permissions} user={user} />
+                                {examData.length >= 2 && (
+                                    <div className="card p-4 sm:p-6">
+                                        <ExamComparisonMatrix examResults={examData} studentName={user?.name} />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {gelisimSegment === 'konularim' && <TopicTracker user={user} />}
+                    </div>
+                )}
+
+                {/* ═══════════ DAHA FAZLA — araç sayfası ═══════════ */}
+                {activeTab === 'daha-fazla' && (
+                    <div className="icerik-gecis space-y-5">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Daha Fazla</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">TÜM ARAÇLARIN</p>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {ARAC_GRUBU.items.map((arac) => (
+                                <button
+                                    key={arac.id}
+                                    type="button"
+                                    onClick={() => { sekmeyeGit(arac.id); okundu(arac.id); }}
+                                    className="card card-hover p-4 flex flex-col items-center gap-3 text-center min-h-[104px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                >
+                                    <span className="relative w-11 h-11 rounded-2xl bg-brand-soft text-brand flex items-center justify-center">
+                                        <arac.icon size={20} />
+                                        {arac.badge > 0 && (
+                                            <span className="absolute -top-1.5 -right-1.5"><Sayac deger={arac.badge} ton="hata" /></span>
+                                        )}
+                                    </span>
+                                    <span className="tip-small font-bold text-ink">{arac.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 )}
 
                 {/* ═══════════════ TESTLERİM + REHBERLİK ═══════════════ */}
@@ -1360,8 +1687,8 @@ const StudentDashboard = () => {
                     </div>
                 )}
 
-                {/* ═══════════════ MESAJLAR ═══════════════ */}
-                {activeTab === 'deneme-analizi' && (
+                {/* ÇALIŞMALARIM → Deneme Analizi segmenti */}
+                {activeTab === 'calismalarim' && calisSegment === 'deneme' && (
                     <div className="icerik-gecis pb-10">
                         <DenemeAnalizi ogrenci={user} studentId={user?.id} bakis="ogrenci" />
                     </div>
@@ -1581,30 +1908,8 @@ const StudentDashboard = () => {
                 {/* ═══════════════ KONU TAKİBİ ═══════════════
                     Sınav konu listesi; durumlar ders programı ve günlük
                     soru kaydından otomatik hesaplanır. */}
-                {activeTab === 'topics' && (
-                    <div className="icerik-gecis space-y-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KONU TAKİBİ</h1>
-                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
-                                ÇÖZDÜKÇE YEŞİL TİK — PROGRAM VE SORU KAYDIYLA BAĞLANTILI
-                            </p>
-                        </div>
-                        <TopicTracker user={user} />
-                    </div>
-                )}
-
-                {/* ═══════════════ MATRIX (Trend Analizi) ═══════════════ */}
-                {activeTab === 'matrix' && (
-                    <div className="icerik-gecis space-y-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">SINAV ANALİZ MATRİXİ</h1>
-                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">VERİ TABANLI BAŞARI VE TREND ANALİZİ</p>
-                        </div>
-                        <div className="premium-card p-4 sm:p-8 border-line">
-                            <ExamComparisonMatrix examResults={examData} studentName={user?.name} />
-                        </div>
-                    </div>
-                )}
+                {/* Konu Takibi ve Trend Matrix, GELİŞİMİM merkezinin
+                    Konularım / Netlerim segmentlerine taşındı (23.08). */}
 
                 {/* ═══════════════ AKILLI PLAN (AI Program) ═══════════════ */}
                 {activeTab === 'smart-plan' && (
@@ -1819,8 +2124,8 @@ const StudentDashboard = () => {
                 </Modal>
             )}
 
-            {/* ═══════════════ ROZETLERİM ═══════════════ */}
-            {activeTab === 'badges' && (
+            {/* ═══════════ GELİŞİMİM → Rozetlerim segmenti ═══════════ */}
+            {activeTab === 'gelisimim' && gelisimSegment === 'rozetlerim' && (
                 <div className="icerik-gecis space-y-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
@@ -1951,97 +2256,18 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* ═══════════════ İSTATİSTİKLER ═══════════════ */}
-            {activeTab === 'stats' && (
-                <div className="icerik-gecis space-y-10">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">İSTATİSTİKLER</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİREYSEL BAŞARI VE HEDEF TAKİBİ</p>
-                    </div>
-
-                    {/* Özet İstatistik Kartları */}
-                    {examData.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {[
-                                { label: 'Toplam Deneme', value: examData.length, color: 'var(--highlight)', icon: ClipboardList },
-                                { label: 'En Yüksek Net', value: Math.max(...examData.map(e => parseFloat(e.totalNet || 0))).toFixed(1), color: 'var(--accent)', icon: Trophy },
-                                { label: 'Ortalama Net', value: (examData.reduce((s, e) => s + parseFloat(e.totalNet || 0), 0) / examData.length).toFixed(1), color: 'var(--c1)', icon: TrendingUp },
-                                {
-                                    label: 'Son Deneme', color: 'var(--c4)', icon: Target,
-                                    value: (() => {
-                                        const last = [...examData].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-                                        return last ? parseFloat(last.totalNet || 0).toFixed(1) : '-';
-                                    })()
-                                },
-                            ].map((s, i) => (
-                                <div key={i} className="premium-card p-6 group hover:border-brand/30 transition-all">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-surface/5 flex items-center justify-center group-hover:bg-brand/10 transition-colors">
-                                            <s.icon size={24} style={{ color: s.color }} />
-                                        </div>
-                                        <div className="text-[10px] font-black text-ink-3 uppercase tracking-widest">{s.label}</div>
-                                    </div>
-                                    <div className="text-4xl font-black text-ink syne">{s.value}</div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[
-                                { icon: Flame, label: 'GÜNLÜK SERİ', value: `${userStats.currentStreak || 0} GÜN`, color: 'var(--highlight)' },
-                                { icon: Star, label: 'TOPLAM XP', value: userStats.totalXP || 0, color: 'var(--accent)' },
-                                { icon: Trophy, label: 'EN UZUN SERİ', value: `${userStats.maxStreak || 0} GÜN`, color: 'var(--c1)' },
-                                { icon: Clock, label: 'ÇALIŞMA SAATİ', value: `${Math.floor((totalStudyTime || 0) / 60)}S ${(totalStudyTime || 0) % 60}DK`, color: 'var(--c4)' },
-                                { icon: Target, label: 'TAMAMLANAN GÖREV', value: completedTasks.length, color: 'var(--c5)' },
-                                { icon: Award, label: 'POMODORO', value: dailyPomodoros, color: 'var(--warn)' },
-                            ].map((card, i) => (
-                                <div key={i} className="premium-card p-6 flex items-center gap-6 group hover:bg-surface/5 transition-all">
-                                    <div className="w-16 h-16 rounded-2xl bg-surface/5 flex items-center justify-center transition-transform group-hover:scale-110">
-                                        <card.icon size={32} style={{ color: card.color }} />
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] font-black text-ink-3 uppercase tracking-[0.2em] mb-1">{card.label}</div>
-                                        <div className="text-2xl font-black text-ink syne">{card.value}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Konu Performans Radarı — yalnız gerçek deneme verisi
-                        varsa çizilir (örnek veriye düşme kaldırıldı). */}
+            {/* ═══════════ GELİŞİMİM → Genel segmentinin devamı ═══════════
+                Degrade kartlar ve net grafiği merkez başlığının altında;
+                radar ve hedef yönetimi burada devam eder. */}
+            {activeTab === 'gelisimim' && gelisimSegment === 'genel' && (
+                <div className="icerik-gecis space-y-8">
                     {radarVerisi.length > 0 && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🎯 PERFORMANS RADARI</h2>
-                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                            </div>
-                            <div className="premium-card p-8 border-line">
-                                <PerformanceRadar performanceData={radarVerisi} />
-                            </div>
+                        <div className="card p-4 sm:p-6">
+                            <PerformanceRadar performanceData={radarVerisi} />
                         </div>
                     )}
-
-                    {/* Hedef Belirleme Modülü */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🎯 HEDEF YÖNETİMİ</h2>
-                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                        </div>
-                        <div className="premium-card p-8 border-line">
-                            <GoalSettingModule user={user} examData={examData} />
-                        </div>
-                    </div>
-
-                    {/* Haftalık Program Özeti (Stats içindeki) */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🗓️ HAFTALIK PROGRAM</h2>
-                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                        </div>
-                        <div className="premium-card p-8 border-line">
-                            <WeeklyScheduleBuilder user={user} />
-                        </div>
+                    <div className="card p-4 sm:p-6">
+                        <GoalSettingModule user={user} examData={examData} />
                     </div>
                 </div>
             )}
@@ -2080,28 +2306,16 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* ═══════════════ GÜNLÜK ÇALIŞMA KAYDI ═══════════════ */}
-            {activeTab === 'daily-log' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">GÜNLÜK KAYIT</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
-                            ÇÖZDÜĞÜN SORU VE OKUDUĞUN SAYFA · KOÇUNA ANINDA DÜŞER
-                        </p>
-                    </div>
+            {/* ÇALIŞMALARIM → Günlük Kayıt segmenti */}
+            {activeTab === 'calismalarim' && calisSegment === 'gunluk' && (
+                <div className="icerik-gecis">
                     <DailyStudyLog studentId={user?.id} ogrenci={user} />
                 </div>
             )}
 
-            {/* ═══════════════ E-HATA DEFTERİ ═══════════════ */}
-            {activeTab === 'error-notebook' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">HATA DEFTERİ</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
-                            YANLIŞLARINI KAYDET · SİSTEM SANA TEKRAR GETİRSİN
-                        </p>
-                    </div>
+            {/* ÇALIŞMALARIM → Hata Defteri segmenti */}
+            {activeTab === 'calismalarim' && calisSegment === 'hata' && (
+                <div className="icerik-gecis">
                     <ErrorNotebook studentId={user?.id} ogrenci={user} />
                 </div>
             )}
@@ -2193,7 +2407,7 @@ const StudentDashboard = () => {
                 ogeler={MOBIL_BIRINCIL}
                 gruplar={SEKME_GRUPLARI}
                 aktif={activeTab}
-                onDegis={(id) => { setActiveTab(id); okundu(id); }}
+                onDegis={(id) => { sekmeyeGit(id); okundu(id); }}
             />
 
             {/* 📲 PWA Yükleme Önerisi */}

@@ -1,0 +1,213 @@
+/* ══════════════════════════════════════════════════════════════════════
+   🎨 TASARIM 2.0 — 23.08.2026 yeniden tasarım bileşen sınıfları
+
+   Referans görselin dört yapı taşı:
+     1. .gkart      — degrade gelişim kartı (beyaz yazı, mini grafik)
+     2. .segmentli  — hap biçimli bölüm seçici (Günlük Kayıt | Hata ...)
+     3. .cipp       — renkli ikon baloncuklu mini istatistik çipi
+     4. .koc-yan    — koç panelinin lacivert kenar çubuğu (masaüstü)
+
+   Renkler theme.css belirteçlerinden gelir; burada yalnızca biçim var.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Degrade gelişim kartı ─────────────────────────────── */
+.gkart {
+    position: relative;
+    border-radius: 20px;
+    padding: 18px;
+    color: #fff;
+    overflow: hidden;
+    box-shadow: var(--sh-2);
+    isolation: isolate;
+}
+.gkart::after {           /* sağ üstte yumuşak ışık lekesi */
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    pointer-events: none;
+}
+.gkart-mor     { background: var(--grad-mor); }
+.gkart-turuncu { background: var(--grad-turuncu); }
+.gkart-yesil   { background: var(--grad-yesil); }
+.gkart-mavi    { background: var(--grad-mavi); }
+.gkart-lacivert{ background: var(--grad-lacivert); }
+
+:root[data-theme="dark"] .gkart {
+    box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .25), var(--sh-2);
+}
+
+.gkart .gk-etiket {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .78);
+}
+.gkart .gk-deger {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-top: 4px;
+}
+.gkart .gk-alt {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, .82);
+    margin-top: 2px;
+}
+
+/* ── 2. Hap segment seçici ────────────────────────────────── */
+.segmentli {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.segmentli::-webkit-scrollbar { display: none; }
+
+.seg-dugme {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-3);
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    min-height: 36px;
+    transition: background-color var(--sure-hizli) ease, color var(--sure-hizli) ease,
+                box-shadow var(--sure-hizli) ease;
+}
+.seg-dugme:hover { color: var(--ink); }
+.seg-dugme:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.seg-dugme.seg-on {
+    background: var(--brand);
+    color: #fff;
+    box-shadow: var(--sh-1);
+}
+
+/* ── 3. Mini istatistik çipi (Bu Hafta şeridi) ────────────── */
+.cipp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    text-align: center;
+}
+.cipp .cip-ikon {
+    width: 34px; height: 34px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cipp .cip-deger {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.cipp .cip-etiket {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    line-height: 1.2;
+}
+
+/* İkon baloncuğu ton varyantları */
+.cip-mor     { background: var(--brand-soft);  color: var(--brand); }
+.cip-turuncu { background: var(--accent-soft); color: var(--accent); }
+.cip-yesil   { background: var(--ok-soft);     color: var(--ok); }
+.cip-mavi    { background: var(--info-soft);   color: var(--info); }
+.cip-kirmizi { background: var(--danger-soft); color: var(--danger); }
+
+/* ── 4. Koç kenar çubuğu (masaüstü) ───────────────────────── */
+.koc-yan {
+    background: var(--grad-lacivert);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    width: 248px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 20px 14px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.2) transparent;
+}
+.koc-yan .yan-grup {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .38);
+    padding: 16px 12px 6px;
+}
+.koc-yan .yan-oge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, .72);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--sure-hizli) ease, color var(--sure-hizli) ease;
+}
+.koc-yan .yan-oge:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.koc-yan .yan-oge:focus-visible { outline: 2px solid rgba(255,255,255,.6); outline-offset: -2px; }
+.koc-yan .yan-oge.yan-on {
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+    box-shadow: inset 3px 0 0 0 var(--accent, #F47B20);
+}
+.koc-yan .yan-rozet {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #F47B20;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Ortak: yumuşak giriş animasyonu (reduced-motion saygılı) ── */
+@media (prefers-reduced-motion: no-preference) {
+    .gkart, .cipp { animation: gk-gir .35s ease both; }
+    @keyframes gk-gir {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: none; }
+    }
+}
