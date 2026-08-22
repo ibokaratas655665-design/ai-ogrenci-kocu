@@ -1,7 +1,7 @@
 {
     "short_name": "Başarı Kampı",
     "name": "Başarı Kampı Koçluk Platformu",
-    "description": "Özel öğrenci koçluğu ve okul rehberlik servisi için program, deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.",
+    "description": "Özel öğrenci koçluğu için program, deneme analizi, görev takibi ve öğrenci gelişim raporları.",
     "icons": [
         {
             "src": "favicon-32.png",

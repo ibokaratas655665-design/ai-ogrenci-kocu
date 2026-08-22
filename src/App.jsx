@@ -145,18 +145,14 @@ const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
 const CoachDashboard = lazy(() => import('./pages/CoachDashboard'));
 const StudentDetailPage = lazy(() => import('./pages/StudentDetailPage'));
 const StudyPlanner = lazy(() => import('./pages/StudyPlanner'));
-const GuidancePage = lazy(() => import('./pages/GuidancePage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const JoinPage = lazy(() => import('./pages/JoinPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const ResearchPage = lazy(() => import('./pages/ResearchPage'));
 const FocusTimer = lazy(() => import('./pages/FocusTimer'));
 const AICoachWidget = lazy(() => import('./pages/AICoachWidget'));
 const RemoteSession = lazy(() => import('./pages/RemoteSession'));
 const TrialsPage = lazy(() => import('./pages/TrialsPage'));
 const DownloadPage = lazy(() => import('./pages/DownloadPage'));
-const PublicTestEntry = lazy(() => import('./pages/PublicTestEntry'));
-const PublicResultView = lazy(() => import('./pages/PublicResultView'));
 const PublicOBPEntry = lazy(() => import('./pages/PublicOBPEntry'));
 const ParentPortal = lazy(() => import('./pages/ParentPortal'));
 
@@ -193,8 +189,6 @@ function App() {
                   {/* Koçun davet linki/QR kodu bu sayfayı açar */}
                   <Route path="/katil" element={<JoinPage />} />
                   <Route path="/obp-girisi" element={<PublicOBPEntry />} />
-                  <Route path="/envanter/:testId" element={<PublicTestEntry />} />
-                  <Route path="/share/result/:shareData" element={<PublicResultView />} />
 
                   {/* 👨‍👩‍👧 Veli Portalı - QR/link ile açılır, oturum gerektirmez */}
                   <Route path="/veli/:studentId" element={<ParentPortal />} />
@@ -231,11 +225,6 @@ function App() {
                         <TrialsPage />
                       </RouteGuard>
                     } />
-                    <Route path="/student/guidance" element={
-                      <RouteGuard allowedRoles={['student']}>
-                        <GuidancePage />
-                      </RouteGuard>
-                    } />
                     <Route path="/student/remote-session" element={
                       <RouteGuard allowedRoles={['student']}>
                         <RemoteSession />
@@ -259,11 +248,6 @@ function App() {
                     <Route path="/coach/student/:id" element={
                       <RouteGuard allowedRoles={['coach', 'admin']}>
                         <StudentDetailPage />
-                      </RouteGuard>
-                    } />
-                    <Route path="/coach/research" element={
-                      <RouteGuard allowedRoles={['coach', 'admin']}>
-                        <ResearchPage />
                       </RouteGuard>
                     } />
                     <Route path="/coach/remote-session" element={

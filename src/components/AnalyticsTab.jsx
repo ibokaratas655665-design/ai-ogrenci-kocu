@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Activity, TrendingUp, Users, BookOpen, Target, Award, BrainCircuit, Zap, Shield, Radar as RadarIcon } from 'lucide-react';
 import { 
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -8,8 +8,6 @@ import {
 import { listeOku, nesneOku } from '../services/veriDeposu';
 
 const AnalyticsTab = ({ students = [] }) => {
-    const [activeView, setActiveView] = useState('overall');
-
     const analytics = useMemo(() => {
         const v2Results = listeOku('v2_results_data');
         const tasks = nesneOku('student_tasks');
@@ -26,12 +24,15 @@ const AnalyticsTab = ({ students = [] }) => {
 
         const subjects = ['tyt_turkce', 'tyt_matematik', 'tyt_fen', 'tyt_sosyal'];
         const subjectLabels = { tyt_turkce: 'Türkçe', tyt_matematik: 'Matematik', tyt_fen: 'Fen Bil.', tyt_sosyal: 'Sosyal Bil.' };
-        
+
+        /* Veri olmayan ders radar'a girmez — eski sürüm Math.random ile
+           uyduruyordu, koç sahte ortalama görüyordu. */
         const radarData = subjects.map(s => {
             const vals = v2Results.map(r => parseFloat(r.subjects?.[s] || r[s.replace('tyt_', '')]) || 0).filter(v => v > 0);
-            const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : (Math.random() * 10 + 20);
+            if (!vals.length) return null;
+            const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
             return { subject: subjectLabels[s], A: parseFloat(avg.toFixed(1)), fullMark: 40 };
-        });
+        }).filter(Boolean);
 
         const trendData = v2Results.slice(-8).map((r, i) => ({
             name: r.trialName?.substring(0, 10) || `Deneme ${i+1}`,
@@ -39,7 +40,23 @@ const AnalyticsTab = ({ students = [] }) => {
             avg: parseFloat(avgNet)
         }));
 
-        return { totalStudents, activeStudents, avgNet, maxNet, radarData, trendData };
+        /* Kazanım / risk sinyalleri — sabit metin değil, veriden. */
+        const sinyaller = { kazanimlar: [], riskler: [] };
+        if (trendData.length >= 2) {
+            const fark = Math.round((trendData[trendData.length - 1].net - trendData[0].net) * 10) / 10;
+            if (fark > 0) sinyaller.kazanimlar.push(`Net ortalaması son ${trendData.length} denemede ${fark} net yükseldi.`);
+            else if (fark < 0) sinyaller.riskler.push(`Net ortalaması son ${trendData.length} denemede ${Math.abs(fark)} net geriledi.`);
+        }
+        if (radarData.length >= 2) {
+            const sirali = [...radarData].sort((a, b) => a.A - b.A);
+            sinyaller.riskler.push(`En düşük ders ortalaması: ${sirali[0].subject} (${sirali[0].A} net).`);
+            sinyaller.kazanimlar.push(`En güçlü ders: ${sirali[sirali.length - 1].subject} (${sirali[sirali.length - 1].A} net).`);
+        }
+        if (totalStudents > 0 && activeStudents < totalStudents) {
+            sinyaller.riskler.push(`${totalStudents - activeStudents} öğrencinin hiç görev kaydı yok.`);
+        }
+
+        return { totalStudents, activeStudents, avgNet, maxNet, examCount: v2Results.length, radarData, trendData, sinyaller };
     }, [students]);
 
     return (
@@ -56,17 +73,6 @@ const AnalyticsTab = ({ students = [] }) => {
                         Sistem Performans Raporu
                     </p>
                 </div>
-                <div className="flex bg-surface-3 dark:bg-surface-inv p-1 rounded-2xl border border-line dark:border-line-2">
-                    {['overall', 'cognitive'].map((v) => (
-                        <button
-                            key={v}
-                            onClick={() => setActiveView(v)}
-                            className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${activeView === v ? 'bg-surface dark:bg-surface-inv text-brand shadow-sm' : 'text-ink-3'}`}
-                        >
-                            {v === 'overall' ? 'Analiz' : 'Bilişsel'}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -74,7 +80,7 @@ const AnalyticsTab = ({ students = [] }) => {
                     { label: 'Genel Ortalaması', value: `${analytics.avgNet} Net`, icon: TrendingUp, color: 'from-blue-600 to-brand', sub: 'Sınıf geneli' },
                     { label: 'Zirve Skoru', value: `${analytics.maxNet} Net`, icon: Award, color: 'from-amber-400 to-orange-600', sub: 'En yüksek net' },
                     { label: 'Bağlılık Oranı', value: `%${Math.round((analytics.activeStudents/analytics.totalStudents)*100) || 0}`, icon: Users, color: 'from-emerald-500 to-teal-600', sub: 'Aktif katılım' },
-                    { label: 'Sistem Durumu', value: 'OPTIMAL', icon: Zap, color: 'from-purple-600 to-pink-600', sub: 'Motor aktif' }
+                    { label: 'Deneme Sayısı', value: analytics.examCount, icon: Zap, color: 'from-purple-600 to-pink-600', sub: 'Yüklenen sonuç' }
                 ].map((kpi, i) => (
                     <div key={i} className="group relative bg-surface dark:bg-surface-inv rounded-[2rem] p-4 sm:p-6 shadow-xl border border-slate-50 dark:border-line-2 overflow-hidden hover:-translate-y-1 transition-all">
                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center text-ink shadow-lg mb-4`}>
@@ -114,11 +120,13 @@ const AnalyticsTab = ({ students = [] }) => {
                         <TrendingUp className="text-ok" size={16} /> Gelişim İvmelenmesi
                     </h3>
                     <div className="h-full w-full pb-10">
+                        {analytics.trendData.length === 0 ? (
+                            <div className="h-full flex items-center justify-center text-sm text-ink-3">
+                                Henüz deneme sonucu yüklenmedi — grafik veri geldikçe oluşur.
+                            </div>
+                        ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={analytics.trendData.length > 0 ? analytics.trendData : [
-                                { name: 'D1', net: 42 }, { name: 'D2', net: 48 }, { name: 'D3', net: 45 }, 
-                                { name: 'D4', net: 52 }, { name: 'D5', net: 58 }, { name: 'D6', net: 56 }
-                            ]}>
+                            <AreaChart data={analytics.trendData}>
                                 <defs>
                                     <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="var(--c1)" stopOpacity={0.3} />
@@ -132,34 +140,41 @@ const AnalyticsTab = ({ students = [] }) => {
                                 <Area type="monotone" dataKey="net" stroke="var(--c1)" strokeWidth={3} fillOpacity={1} fill="url(#colorNet)"  animationDuration={300} />
                             </AreaChart>
                         </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <div className="relative bg-surface-inv rounded-[2.5rem] p-8 overflow-hidden shadow-2xl">
-                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="w-2 h-2 rounded-full bg-ok animate-pulse" />
-                            <span className="text-[10px] font-black text-ok uppercase tracking-widest">Kazanımlar</span>
+            {/* Sinyaller veriden türetilir; veri yoksa blok görünmez.
+                (Eski sürümde burada sabit, uydurma cümleler vardı.) */}
+            {(analytics.sinyaller.kazanimlar.length > 0 || analytics.sinyaller.riskler.length > 0) && (
+                <div className="relative bg-surface-inv rounded-[2.5rem] p-8 overflow-hidden shadow-2xl">
+                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="w-2 h-2 rounded-full bg-ok animate-pulse" />
+                                <span className="text-[10px] font-black text-ok uppercase tracking-widest">Kazanımlar</span>
+                            </div>
+                            <ul className="space-y-3">
+                                {analytics.sinyaller.kazanimlar.map((m) => (
+                                    <li key={m} className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">{m}</li>
+                                ))}
+                            </ul>
                         </div>
-                        <ul className="space-y-3">
-                            <li className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">Genel net ortalaması stabil bir yükseliş sergiliyor.</li>
-                            <li className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">Sayısal branşlardaki boş bırakma oranı %12 azaldı.</li>
-                        </ul>
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-                            <span className="text-[10px] font-black text-danger uppercase tracking-widest">Risk Sinyalleri</span>
+                        <div>
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />
+                                <span className="text-[10px] font-black text-danger uppercase tracking-widest">Risk Sinyalleri</span>
+                            </div>
+                            <ul className="space-y-3">
+                                {analytics.sinyaller.riskler.map((m) => (
+                                    <li key={m} className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">{m}</li>
+                                ))}
+                            </ul>
                         </div>
-                        <ul className="space-y-3">
-                            <li className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">Sosyometri haritasında kopukluk yaşayan 3 öğrenci saptandı.</li>
-                            <li className="text-xs text-ink-3 font-medium bg-surface/5 p-3 rounded-xl border border-line">Türkçe branşında süre yönetimi problemi gözleniyor.</li>
-                        </ul>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

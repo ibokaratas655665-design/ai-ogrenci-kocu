@@ -11,11 +11,10 @@ export default function AppSettingsPanel() {
     const [students, setStudents] = useState([]);
     const [studentApprovals, setStudentApprovals] = useState({});
 
+    // 'bep' ve 'guidance' modülleri PDR ile birlikte arşivlendi.
     const modules = [
-        { id: 'bep', name: 'BEP (Bireyselleştirilmiş Eğitim Programı)', icon: FileText },
         { id: 'tests', name: 'Testler & Envanterler', icon: ClipboardList },
         { id: 'planner', name: 'Çalışma Planlayıcı', icon: Calendar },
-        { id: 'guidance', name: 'Rehberlik Yazıları', icon: BookOpen },
         { id: 'exams', name: 'Deneme Sınavları', icon: Brain }
     ];
 

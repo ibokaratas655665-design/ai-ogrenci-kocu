@@ -11,6 +11,7 @@ import Progress, { HalkaProgress } from '../ui/Progress';
 import { BosDurum } from '../ui/Durumlar';
 import OnayKutusu from '../ui/OnayKutusu';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
+import { getSummary } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
 /**
@@ -137,6 +138,29 @@ export default function BugunEkrani({
             .filter(Boolean);
         if (ortalamalar.length < 2) return null;
         return ortalamalar.sort((a, b) => a.ort - b.ort)[0];
+    }, [examData]);
+
+    /**
+     * BU HAFTA şeridi — günlük kayıtlardan (study_log) gerçek toplamlar.
+     * "Bu sistem benim gelişimimi takip ediyor" hissinin veri ayağı:
+     * öğrenci kayıt girdikçe burası aynı gün değişir.
+     */
+    const hafta = useMemo(() => {
+        try { return getSummary(kullanici?.id, 7); } catch { return null; }
+    }, [kullanici?.id]);
+
+    /** Gelişim mesajı — son iki denemenin net farkından, yapıcı dille. */
+    const gelisim = useMemo(() => {
+        const sirali = [...examData]
+            .filter((e) => Number.isFinite(parseFloat(e.totalNet)))
+            .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt));
+        if (sirali.length < 2) return null;
+        const son = parseFloat(sirali[sirali.length - 1].totalNet);
+        const onceki = parseFloat(sirali[sirali.length - 2].totalNet);
+        const fark = Math.round((son - onceki) * 100) / 100;
+        if (fark > 0) return { fark, mesaj: `Son denemende ${fark} net artış var — bu tempo seni taşır! 🚀` };
+        if (fark === 0) return { fark, mesaj: 'Son iki denemen başa baş — küçük bir hamle seni öne geçirir.' };
+        return { fark, mesaj: `Son denemende ${Math.abs(fark)} net düşüş var — birlikte toparlanacak yeriniz belli.` };
     }, [examData]);
 
     /** Günün hedefi: etüt + görev. Tek sayı, tek cümle. */
@@ -279,6 +303,63 @@ export default function BugunEkrani({
                     </div>
                 )}
             </Card>
+
+            {/* ══ 1c. BU HAFTA — günlük kayıtlardan gerçek gelişim ════
+                Referans tasarımdaki "Bu Hafta" şeridi: soru, süre,
+                isabet ve gün gün mini çubuklar. Kayıt yoksa kart
+                görünmez — sahte sayı basılmaz. */}
+            {hafta && hafta.entries > 0 && (
+                <Card dolgu="yok">
+                    <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
+                        <div>
+                            <h3 className="tip-h4">Bu Hafta</h3>
+                            <p className="tip-caption mt-0.5">Son 7 günün çalışma özeti</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => onGit?.('daily-log')}
+                            className="tip-caption text-brand hover:underline shrink-0 min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        >
+                            Günlük Kayıt
+                        </button>
+                    </div>
+                    <div className="px-5 sm:px-6 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                            { etiket: 'Soru', deger: hafta.questions },
+                            { etiket: 'Süre', deger: hafta.minutes >= 60 ? `${Math.floor(hafta.minutes / 60)}s ${hafta.minutes % 60}d` : `${hafta.minutes}d` },
+                            { etiket: 'İsabet', deger: hafta.accuracy != null ? `%${hafta.accuracy}` : '—' },
+                            { etiket: 'Aktif Gün', deger: `${hafta.activeDays}/7` },
+                        ].map((s) => (
+                            <div key={s.etiket} className="rounded-dmd bg-surface-2 border border-line px-3 py-2.5">
+                                <p className="tip-mini text-ink-3 uppercase tracking-wider">{s.etiket}</p>
+                                <p className="tip-h4 text-ink rakam mt-0.5">{s.deger}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="px-5 sm:px-6 pb-4 flex items-end gap-1.5 h-14" aria-hidden="true">
+                        {hafta.byDay.map((g) => {
+                            const tavan = Math.max(...hafta.byDay.map((x) => x.questions), 1);
+                            return (
+                                <div key={g.date} className="flex-1 flex flex-col justify-end">
+                                    <div
+                                        className="rounded-t-sm bg-brand/70 min-h-[3px] transition-all"
+                                        style={{ height: `${Math.round((g.questions / tavan) * 100)}%` }}
+                                        title={`${g.date}: ${g.questions} soru`}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {gelisim && (
+                        <div className={cn(
+                            'px-5 sm:px-6 py-3 border-t border-line tip-small font-semibold',
+                            gelisim.fark > 0 ? 'text-ok bg-ok-soft/40' : gelisim.fark < 0 ? 'text-warn bg-warn-soft/30' : 'text-ink-2 bg-surface-2'
+                        )}>
+                            {gelisim.mesaj}
+                        </div>
+                    )}
+                </Card>
+            )}
 
             {/* ══ 2. BUGÜNÜN ETÜTLERİ — tek dokunuşla işaretlenir ═════ */}
             {toplam > 0 && (

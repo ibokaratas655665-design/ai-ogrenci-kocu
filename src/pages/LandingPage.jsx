@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    ArrowRight, Check, X as XIcon, Target, TrendingUp, Users, FolderOpen,
-    ClipboardList, MessageSquare, ShieldCheck, Sparkles, PlayCircle,
+    ArrowRight, Check, X as XIcon, Target, TrendingUp, Users,
+    ClipboardList, MessageSquare, PlayCircle,
     GraduationCap, UserCog, Home, Download, Smartphone, Monitor, Apple,
     MessageCircle,
 } from 'lucide-react';
@@ -22,8 +22,8 @@ import MarkaGorsel from '../components/ui/MarkaGorsel';
  *     vaadi.
  *
  * Yerlerine uygulamanın GERÇEKTEN yaptığı işler ve gerçek paket
- * yapısı kondu. Uygulamanın iki tarafı var — özel koçluk ve okul
- * rehberlik servisi — sayfa da bu ikisini ayrı ayrı anlatıyor.
+ * yapısı kondu. Uygulama tek iş yapar: özel öğrenci koçluğu.
+ * (PDR/rehberlik bölümü 22.08.2026'da arşivlendi.)
  */
 
 const KOCLUK = [
@@ -33,16 +33,9 @@ const KOCLUK = [
     { icon: MessageSquare, ad: 'Veli İletişimi', not: 'Veli portalı ve WhatsApp toplu mesaj.' },
 ];
 
-const REHBERLIK = [
-    { icon: FolderOpen, ad: '10 Resmî Dosya', not: 'Rehberlik servisinin desimal dosya düzeni ekranda.' },
-    { icon: ShieldCheck, ad: 'MEB Formatlı Belge', not: 'T.C. başlıklı, imza bloklu, evrak sayılı PDF çıktısı.' },
-    { icon: Users, ad: 'Envanter ve Sosyometri', not: 'Uygula, sonucu dosyaya otomatik bağla.' },
-    { icon: Sparkles, ad: 'BEP ve Materyal', not: 'Kaynaştırma dosyası, broşür ve etkinlik planı üretici.' },
-];
-
 const ROLLER = [
     {
-        id: 'coach', icon: UserCog, ad: 'Koç / Rehber Öğretmen',
+        id: 'coach', icon: UserCog, ad: 'Koç',
         not: 'Öğrenci ekle, program yaz, dosya tut. Ücreti yalnızca siz ödersiniz.',
     },
     {
@@ -69,7 +62,6 @@ const ROLLER = [
 
 const LandingPage = () => {
     const navigate = useNavigate();
-    const [taraf, setTaraf] = useState('kocluk');
     const sezon = sezonBilgisi();
 
     const girisAc = (rol) => navigate(`/login?rol=${rol}`);
@@ -120,13 +112,12 @@ const LandingPage = () => {
                         {sezon.etiket} sezonu · Öğrenci ve veli hesapları ücretsiz
                     </span>
                     <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-[1.08] mb-5">
-                        Koçluk çalışmanız ve rehberlik dosyanız
+                        Öğrenci koçluğunuzun tamamı
                         <span className="text-brand"> tek uygulamada</span>
                     </h1>
                     <p className="text-lg text-ink-2 max-w-2xl mx-auto leading-relaxed mb-8">
-                        Özel öğrenci koçluğu için program, deneme analizi ve görev takibi;
-                        okul rehberlik servisi için MEB düzenine uygun dosya ve belge yönetimi.
-                        İkisi ayrı bölüm, aynı sistem.
+                        Program yazın, deneme ve hata analizini takip edin, görev atayın;
+                        öğrencinizin gelişimini gerçek verilerle izleyin ve veliyle paylaşın.
                     </p>
 
                     <div className="flex flex-col sm:flex-row justify-center gap-2.5">
@@ -148,37 +139,19 @@ const LandingPage = () => {
                 <div className="max-w-5xl mx-auto">
                     <div className="text-center mb-8">
                         <h2 className="text-2xl md:text-3xl font-black mb-2">Uygulama Ne Yapıyor?</h2>
-                        <p className="text-ink-2 text-sm">İki ayrı iş, iki ayrı bölüm.</p>
-                    </div>
-
-                    <div className="tabbar mx-auto w-fit mb-6">
-                        <button
-                            onClick={() => setTaraf('kocluk')}
-                            aria-selected={taraf === 'kocluk'}
-                            className={`tb ${taraf === 'kocluk' ? 'is-on' : ''}`}
-                        >
-                            Koçluk Çalışmaları
-                        </button>
-                        <button
-                            onClick={() => setTaraf('pdr')}
-                            aria-selected={taraf === 'pdr'}
-                            className={`tb ${taraf === 'pdr' ? 'is-on' : ''}`}
-                            style={taraf === 'pdr' ? { '--brand': 'var(--accent)' } : undefined}
-                        >
-                            Rehberlik (PDR)
-                        </button>
+                        <p className="text-ink-2 text-sm">Koçluğun dört temel işi, tek panelde.</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {(taraf === 'kocluk' ? KOCLUK : REHBERLIK).map((o) => (
+                        {KOCLUK.map((o) => (
                             <div
                                 key={o.ad}
                                 className="srf srf-accent p-4"
-                                style={{ '--acc': taraf === 'kocluk' ? 'var(--brand)' : 'var(--accent)' }}
+                                style={{ '--acc': 'var(--brand)' }}
                             >
                                 <span
                                     className="sec-icon mb-2"
-                                    style={{ '--acc': taraf === 'kocluk' ? 'var(--brand)' : 'var(--accent)' }}
+                                    style={{ '--acc': 'var(--brand)' }}
                                 >
                                     <o.icon size={16} />
                                 </span>
@@ -354,7 +327,7 @@ const LandingPage = () => {
                             className="h-5 w-auto object-contain" />
                     </div>
                     <p className="text-[11px] text-ink-3 text-center">
-                        Öğrenci ve veli verileri KVKK kapsamındadır; rehberlik kayıtları
+                        Öğrenci ve veli verileri KVKK kapsamındadır; koçluk kayıtları
                         mesleki gizlilik altındadır.
                     </p>
                     <p className="text-[11px] text-ink-3">

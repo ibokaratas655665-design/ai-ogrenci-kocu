@@ -21,8 +21,8 @@ export const MARKA = {
     altBaslik: 'Koçluk Platformu',
 
     /** Tek cümlelik tanım. */
-    tanim: 'Özel öğrenci koçluğu ve okul rehberlik servisi için program, '
-        + 'deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.',
+    tanim: 'Özel öğrenci koçluğu için program, deneme analizi, '
+        + 'görev takibi ve öğrenci gelişim raporları.',
 
     /** Amblem + yazı. Karşılama ve giriş ekranında kullanılır. */
     /* 640 piksel: giriş ekranında en fazla 288 piksel genişlikte

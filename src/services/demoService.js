@@ -140,36 +140,7 @@ const demoVerisiUret = () => {
         ];
     });
 
-    // Rehberlik tarafı boş kalmasın — birkaç dosya kaydı
-    const arsiv = {
-        kayitlar: [
-            {
-                id: 'demo_pa_1', klasor: '1', baslik: 'Okul RPD Programı (imzalı çıktı)',
-                aciklama: 'Yürütme komisyonunca imzalandı', tarih: bugun(-40),
-                yil: '2025-2026', kaynak: 'plan', ekleyen: 'Demo Koç',
-                olusturma: new Date(Date.now() - 40 * 86400000).toISOString(),
-            },
-            {
-                id: 'demo_pa_2', klasor: '5', baslik: 'RPD Hizmetleri Yürütme Komisyonu I. toplantı tutanağı (yıl başı)',
-                tarih: bugun(-38), yil: '2025-2026', kaynak: 'tutanak', ekleyen: 'Demo Koç',
-                olusturma: new Date(Date.now() - 38 * 86400000).toISOString(),
-            },
-            {
-                id: 'demo_pa_3', klasor: '6', baslik: 'Öğrenci görüşme formları',
-                aciklama: 'Sınav kaygısı görüşmesi', ogrenci: 'Elif Yıldız', sinif: '12/A',
-                tarih: bugun(-10), yil: '2025-2026', kaynak: 'gorusme', ekleyen: 'Demo Koç',
-                olusturma: new Date(Date.now() - 10 * 86400000).toISOString(),
-            },
-            {
-                id: 'demo_pa_4', klasor: '8', baslik: 'Okul risk haritası',
-                tarih: bugun(-20), yil: '2025-2026', kaynak: 'risk', ekleyen: 'Demo Koç',
-                olusturma: new Date(Date.now() - 20 * 86400000).toISOString(),
-            },
-        ],
-        notlar: {},
-    };
-
-    return { ogrenciler, denemeler, gorevler, arsiv };
+    return { ogrenciler, denemeler, gorevler };
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -180,7 +151,7 @@ export const DEMO_KULLANICI = {
     coach: {
         id: 'demo_coach', uid: 'demo_coach',
         name: 'Demo Koç', role: 'coach', coachRole: 'masterCoach',
-        sections: ['kocluk', 'pdr'],
+        sections: ['kocluk'],
         email: 'demo@ornek.app', phone: '05000000000',
         schoolName: 'Demo Anadolu Lisesi',
         approved: true, demo: true,
@@ -214,19 +185,17 @@ export const girisDemo = (rol = 'coach') => {
         // demo verisi yazılırsa gerçek veri geri getirilemez.
         if (!demoAktifMi()) yedekle();
 
-        const { ogrenciler, denemeler, gorevler, arsiv } = demoVerisiUret();
+        const { ogrenciler, denemeler, gorevler } = demoVerisiUret();
 
         localStorage.setItem('coach_students', JSON.stringify(ogrenciler));
         localStorage.setItem('exam_results', JSON.stringify(denemeler));
         localStorage.setItem('student_tasks', JSON.stringify(gorevler));
-        localStorage.setItem('pdr_archive', JSON.stringify(arsiv));
         localStorage.setItem('managed_coaches', JSON.stringify([]));
         localStorage.setItem('coach_tasks', JSON.stringify([]));
         localStorage.setItem('student_groups', JSON.stringify([]));
-        localStorage.setItem('pdr_materials', JSON.stringify([]));
         localStorage.setItem('coach_subscriptions', JSON.stringify({
             demo_coach: {
-                planId: 'rehberlik', baslangic: bugun(), bitis: bugun(30),
+                planId: 'koc20', baslangic: bugun(), bitis: bugun(30),
                 deneme: true, durum: 'aktif', odenen: 0,
             },
         }));

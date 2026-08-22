@@ -1,13 +1,15 @@
-# AI Öğrenci Koçluğu Uygulaması
+# Başarı Kampı Koçluk Platformu
 
-Bu proje, öğrenciler için yapay zeka destekli bir koçluk ve takip sistemidir.
+Özel öğrenci koçluğu için takip ve gelişim sistemi.
 
 ## Özellikler
 
 - **Akıllı Ders Programı:** Haftalık ve günlük çalışma planları oluşturur.
-- **Deneme Takibi:** LGS, YKS, YDS gibi sınavlar için deneme sonuçlarını analiz eder.
-- **Rehberlik Servisi:** Psikolojik testler ve rehberlik envanterleri içerir.
+- **Deneme Takibi:** LGS, YKS gibi sınavlar için deneme sonuçlarını analiz eder.
+- **Gelişim Takibi:** Günlük kayıt, hata defteri ve deneme analizi tek merkezde.
 - **Panel Sistemi:** Öğrenci ve Koç girişleri ayrıdır.
+
+> PDR/rehberlik modülü 22.08.2026'da arşivlendi — bkz. `archive/pdr_module/README.md`.
 
 ## Kurulum ve Çalıştırma
 

@@ -10,9 +10,9 @@
  *   · Dönem SEZONLUKtur (1 Temmuz – 30 Haziran), otomatik yenileme yoktur.
  *   · Ücretsiz kademe süresizdir ve kart bilgisi istemez.
  *
- * Bu uygulamanın rakiplerde bulunmayan yanı okul rehberlik servisi (PDR)
- * tarafıdır: desimal dosya düzeni, MEB formatlı belge üretimi, BEP.
- * Bunun için ayrı bir "Rehberlik Servisi" paketi tanımlıdır.
+ * PDR/rehberlik bölümü 22.08.2026'da arşivlendi; "Rehberlik Servisi"
+ * paketi de onunla birlikte kaldırıldı. Eski aboneliklerde planId
+ * 'rehberlik' görülürse `planBul` ücretsiz pakete düşürür.
  *
  * ⚠️ Fiyatlar kurumun kendi ticari kararıdır. Buradaki değerler
  * piyasadaki yaygın aralığa göre konulmuş BAŞLANGIÇ değerleridir;
@@ -56,7 +56,7 @@ export const PLANLAR = [
             'Deneme sonucu yükleme ve analiz',
             'Öğrenci ve veli hesapları ücretsiz',
         ],
-        yok: ['Rehberlik (PDR) modülleri', 'Ek koç hesabı'],
+        yok: ['Ek koç hesabı'],
     },
     {
         id: 'koc5',
@@ -106,37 +106,6 @@ export const PLANLAR = [
             'Yardımcı koç hesabı (2 adet)',
             'Koça görev atama',
             'Onay ve yetki yönetimi',
-        ],
-    },
-    {
-        id: 'rehberlik',
-        ad: 'Rehberlik Servisi',
-        rozet: 'Okullara özel',
-        fiyat: 3000,
-        ogrenciLimiti: null,          // okul geneli
-        sure: 'Sezonluk',
-        /**
-         * Yalnızca kurumsal (okul rehberlik servisi) hesaplara açıktır.
-         *
-         * Bu paket öğrenci sayısı sınırsız olduğu hâlde Koç 20'den ucuz;
-         * kurum kısıtı olmasaydı 20+ öğrencisi olan bireysel koç için
-         * Koç 20 almanın hiçbir anlamı kalmazdı. Ayrım fiyatta değil,
-         * kimin alabildiğinde: okul rehberlik servisi ile bireysel koç
-         * farklı pazarlar.
-         */
-        kurumsal: true,
-        aciklama:
-            'Okul psikolojik danışmanları için. Koçluk modüllerine ek olarak '
-            + 'rehberlik servisinin resmî dosya düzeni ve belge üretimi.',
-        ozellikler: [
-            'Öğrenci sayısı sınırsız',
-            'Tüm koçluk modülleri',
-            '10 resmî rehberlik dosyası (desimal düzen)',
-            'MEB formatında belge ve PDF üretimi',
-            'BEP ve kaynaştırma dosyası',
-            'Risk haritaları ve komisyon tutanakları',
-            'Envanter uygulama ve sosyometri',
-            'Materyal üretici (broşür, pano, etkinlik planı)',
         ],
     },
 ];

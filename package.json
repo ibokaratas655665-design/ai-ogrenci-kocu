@@ -23,7 +23,7 @@
   },
   "build": {
     "appId": "com.ogrencikocu.app",
-    "productName": "Ibrahim Karatas Egitim Kocu",
+    "productName": "Basari Kampi Kocluk Platformu",
     "directories": {
       "output": "dist-electron"
     },

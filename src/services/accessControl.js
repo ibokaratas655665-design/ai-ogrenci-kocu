@@ -1,15 +1,15 @@
 /**
  * 🔐 ERİŞİM VE SAHİPLİK KATMANI
  *
- * Uygulama iki ayrı işi bir arada yürütüyor:
- *   · KOÇLUK — özel öğrenci koçluğu (program, deneme, hedef, materyal)
- *   · PDR    — okul rehberlik servisi (görüşme, envanter, BEP, desimal dosya)
+ * Uygulama tek bölüm çalışır: KOÇLUK — özel öğrenci koçluğu (program,
+ * deneme, hedef, materyal). PDR bölümü 22.08.2026'da arşivlendi
+ * (archive/pdr_module); eski kayıtların `sections`/`bolum` alanları
+ * geriye dönük uyum için okunmaya devam eder.
  *
  * Kimin neyi görebileceği tek yerden belirlenir:
  *
- *   ANA KOÇ (master)   → her iki bölüm, TÜM öğrenci ve veliler, koç yönetimi
- *   KOÇ (subCoach)     → yetkili olduğu bölüm(ler), YALNIZCA kendi eklediği
- *                        öğrenci ve veliler
+ *   ANA KOÇ (master)   → TÜM öğrenci ve veliler, koç yönetimi
+ *   KOÇ (subCoach)     → YALNIZCA kendi eklediği öğrenci ve veliler
  *
  * Eskiden böyle bir ayrım yoktu: eklenen her koç bütün öğrenci listesini
  * görüyor ve üzerinde işlem yapabiliyordu.
@@ -35,7 +35,7 @@ const safeParse = (key, def = []) => {
 //  ROLLER VE BÖLÜMLER
 // ══════════════════════════════════════════════════════════════
 
-/** Uygulamanın iki ana bölümü. */
+/** Uygulamanın tek aktif bölümü (PDR arşivlendi). */
 export const BOLUMLER = {
     kocluk: {
         id: 'kocluk',
@@ -43,13 +43,6 @@ export const BOLUMLER = {
         kisa: 'Koçluk',
         aciklama: 'Özel öğrenci koçluğu: program, deneme analizi, hedef takibi',
         renk: 'var(--brand)',
-    },
-    pdr: {
-        id: 'pdr',
-        ad: 'PDR Çalışmaları',
-        kisa: 'PDR',
-        aciklama: 'Okul rehberlik servisi: görüşme, envanter, BEP, desimal dosya',
-        renk: 'var(--accent)',
     },
 };
 
@@ -65,17 +58,11 @@ export const isAnaKoc = (user) => {
 };
 
 /**
- * Kullanıcının erişebildiği bölümler.
- * Ana koç ikisine de erişir. Diğer koçlarda `sections` alanı belirleyicidir;
- * tanımsızsa geriye dönük uyum için yalnızca koçluk verilir.
+ * Kullanıcının erişebildiği bölümler. Tek bölüm kaldığı için sabittir;
+ * eski kayıtlardaki `sections: ['pdr']` değerleri BOLUMLER süzgecine
+ * takılır ve koçluğa düşer.
  */
-export const erisilenBolumler = (user) => {
-    if (isAnaKoc(user)) return ['kocluk', 'pdr'];
-    const kayit = kocKaydi(user?.id);
-    const s = kayit?.sections || user?.sections;
-    if (Array.isArray(s) && s.length) return s.filter((x) => BOLUMLER[x]);
-    return ['kocluk'];
-};
+export const erisilenBolumler = () => ['kocluk'];
 
 export const bolumeErisebilir = (user, bolum) => erisilenBolumler(user).includes(bolum);
 

@@ -65,17 +65,6 @@ const APP_SCREENS = [
         emoji: '📈',
     },
     {
-        id: 'coach-guidance',
-        role: 'coach',
-        label: 'PDR Hizmetleri',
-        title: 'Rehberlik & Psikolojik Testler',
-        desc: 'Rehberlik servisinin 10 resmî dosyasını ekranda tutun. MEB formatında belge üretin, envanter ve sosyometri uygulayın, BEP planı hazırlayın.',
-        color: 'from-purple-600 to-pink-600',
-        icon: Shield,
-        features: ['10 resmî desimal dosya', 'Sosyometri haritası', 'BEP plan motoru', 'MEB formatlı PDF'],
-        emoji: '🧠',
-    },
-    {
         id: 'coach-tasks',
         role: 'coach',
         label: 'Görev & Program',
@@ -581,8 +570,8 @@ const LoginPage = () => {
                             Koçluk Platformu
                         </p>
                         <p className="text-lg text-ink-2 max-w-2xl mx-auto font-medium leading-relaxed">
-                            Özel öğrenci koçluğu ve okul rehberlik servisi tek uygulamada.
-                            Program, deneme analizi, görev takibi ve MEB düzenine uygun dosya yönetimi.
+                            Özel öğrenci koçluğu tek uygulamada: program, deneme analizi,
+                            görev takibi ve öğrenci gelişim raporları.
                         </p>
                     </div>
 
@@ -748,7 +737,7 @@ const LoginPage = () => {
                                     <span className="text-[12px] font-black text-ink">Demo Sürümü</span>
                                 </div>
                                 <p className="text-[11px] text-ink-3 leading-snug mb-3">
-                                    Kayıt olmadan, örnek öğrenci ve rehberlik verisiyle
+                                    Kayıt olmadan, örnek öğrenci verisiyle
                                     gerçek panelleri gezin. Verileriniz etkilenmez.
                                 </p>
                                 <div className="grid grid-cols-3 gap-2">

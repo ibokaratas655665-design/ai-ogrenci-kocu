@@ -24,7 +24,7 @@ export const useTabBadges = (rol, user, bolum = 'kocluk') => {
     useEffect(() => {
         const olaylar = [
             'storage', 'focus',
-            'coach-tasks-updated', 'pdr-archive-updated',
+            'coach-tasks-updated',
             'notifications-updated', 'tab-badges-updated',
         ];
         olaylar.forEach((o) => window.addEventListener(o, tazele));

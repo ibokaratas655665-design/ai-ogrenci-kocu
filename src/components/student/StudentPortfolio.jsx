@@ -56,7 +56,7 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
             doc.setFontSize(7);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(255, 255, 255);
-            doc.text('Basari Kampi', 188, 30, { align: 'center' });
+            doc.text('Basari Kampi Kocluk Platformu', 188, 30, { align: 'center' });
             doc.setFont('helvetica', 'normal');
 
             // Temel Bilgiler

@@ -4,7 +4,7 @@ import { MessageSquare, X, Send, Bot } from 'lucide-react';
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { id: 1, text: "Merhaba! Ben İbrahim Hoca. Sana nasıl yardımcı olabilirim?", sender: 'bot' }
+        { id: 1, text: "Merhaba! Ben Başarı Kampı koçluk asistanı. Sana nasıl yardımcı olabilirim?", sender: 'bot' }
     ]);
     const [inputText, setInputText] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -41,7 +41,7 @@ const Chatbot = () => {
         if (t.includes('net') || t.includes('deneme')) return "Deneme sonuçlarını analiz ettiğimde TYT Matematik'te biraz eksik görüyorum. Fonksiyonlara odaklanılım mı?";
         if (t.includes('motivasyon') || t.includes('sıkıldım') || t.includes('yoruldum')) return "Yorulmak başarının bir parçası! 'Emek olmadan yemek olmaz.' Kısa bir mola ver, sonra bomba gibi döneriz! 🚀";
         if (t.includes('merhaba') || t.includes('selam')) return "Selam! Bugün nasılsın? Çalışmalar nasıl gidiyor?";
-        if (t.includes('kaygı') || t.includes('korkuyorum')) return "Sınav kaygısı çok normal. Rehberlik bölümündeki testleri denemen iyi gelebilir. Birlikte başaracağız! 💪";
+        if (t.includes('kaygı') || t.includes('korkuyorum')) return "Sınav kaygısı çok normal. Koçunla bir görüşme planlaman iyi gelebilir. Birlikte başaracağız! 💪";
         return "Bunu tam anlayamadım ama her zaman yanındayım. Ders programın, deneme analizlerin veya sohbet için buradayım!";
     };
 
@@ -89,7 +89,7 @@ const Chatbot = () => {
                         <div className="flex items-center gap-2">
                             <div className="bg-surface/20 p-1.5 rounded-lg"><Bot size={18} /></div>
                             <div>
-                                <h3 className="font-bold text-sm">İbrahim Hoca Asistan</h3>
+                                <h3 className="font-bold text-sm">Koçluk Asistanı</h3>
                                 <p className="text-xs text-brand">Çevrimiçi</p>
                             </div>
                         </div>
@@ -147,7 +147,7 @@ const Chatbot = () => {
                     title="Sürükleyerek taşıyabilirsin"
                 >
                     <MessageSquare size={20} className="animate-pulse" />
-                    <span className="font-bold text-sm tracking-wide">İbrahim'e Sor</span>
+                    <span className="font-bold text-sm tracking-wide">Asistana Sor</span>
                     {/* Notification Dot */}
                     <span className="absolute -right-1 -top-1 flex h-4 w-4">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />

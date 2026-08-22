@@ -124,14 +124,7 @@ const kocBekleyenler = (user, bolum = 'kocluk') => {
     harita.invites = dizi('student_invites')
         .flatMap((d) => (d.katilanlar || []).map((x) => kimlik(x, 'dvt:')));
 
-    // PDR dosyaları — modüllerden dosyaya düşen kayıtlar
-    if (bolum === 'pdr') {
-        const arsiv = guvenliJson('pdr_archive', {}) || {};
-        (Array.isArray(arsiv.kayitlar) ? arsiv.kayitlar : []).forEach((k) => {
-            const tab = `pdr-${k.klasor}`;
-            (harita[tab] = harita[tab] || []).push(kimlik(k, 'pdr:'));
-        });
-    }
+    // PDR bölümü arşivlendi — pdr-* sekme rozetleri artık üretilmez.
 
     return harita;
 };

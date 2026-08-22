@@ -119,7 +119,7 @@ export const aiService = {
                         id: 'back',
                         title: "İletişim & Kaynaklar",
                         subtitle: "Bize Ulaşın",
-                        content: "Daha fazla bilgi ve kaynak için rehberlik servisine başvurabilirsiniz.\nwww.aiogrencikocu.com",
+                        content: "Daha fazla bilgi ve kaynak için koçuna danışabilirsin.",
                         color: "bg-surface-2",
                         isContact: true
                     },

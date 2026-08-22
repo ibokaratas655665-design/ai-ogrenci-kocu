@@ -6,6 +6,7 @@ import {
     Unlock, CalendarDays, CalendarRange,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import MARKA from '../data/marka';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { CURRICULUM, SUBJECT_COLORS, EXAM_COLORS, EXAM_TYPES, getTopicName, getTopicWeight } from '../data/curriculum';
@@ -1865,9 +1866,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                         <PdfLegend schedule={schedule} month={m} week={w} />
 
                                         <div className="mt-3 flex justify-between text-[8px] text-ink-3 font-bold uppercase tracking-[0.2em]">
-                                            <span>AI ÖĞRENCİ KOÇU SİSTEMİ</span>
+                                            <span>{MARKA.tamAd.toLocaleUpperCase('tr-TR')}</span>
                                             <span className="text-ink-3 italic">HER HAFTA YENİ BİR BAŞLANGIÇTIR!</span>
-                                            <span>İBRAHİM KARATAŞ EĞİTİM DANIŞMANLIĞI</span>
                                         </div>
                                     </div>
                                 );

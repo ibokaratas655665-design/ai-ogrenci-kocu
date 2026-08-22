@@ -5,6 +5,8 @@ import {
     Shield, Zap, Star, ChevronDown, ChevronUp, Globe, Share2, Plus,
     AlertCircle, Wifi, ExternalLink, RefreshCw
 } from 'lucide-react';
+import MARKA from '../data/marka';
+import MarkaGorsel from '../components/ui/MarkaGorsel';
 
 // ──────────────────────────────────────────
 // 🔗 KURULUM DOSYALARI
@@ -549,10 +551,10 @@ const DownloadPage = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
                         <button onClick={() => navigate('/')} className="flex items-center space-x-3 group">
-                            <div className="on-color w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-ink shadow-lg group-hover:scale-110 transition">
-                                <Brain size={22} />
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition overflow-hidden">
+                                <MarkaGorsel src={MARKA.amblem} alt={MARKA.tamAd} width="32" height="32" className="w-8 h-8 object-contain" />
                             </div>
-                            <span className="text-ink font-bold hidden sm:block">Başarı Kampı</span>
+                            <span className="text-ink font-bold hidden sm:block">{MARKA.tamAd}</span>
                         </button>
                         <div className="flex items-center gap-3">
                             <button
@@ -694,10 +696,10 @@ const DownloadPage = () => {
             {/* Footer */}
             <footer className="border-t border-line py-8 px-4 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                    <Brain size={18} className="text-brand" />
-                    <span className="text-ink-2 font-semibold text-sm">EĞİTİM KOÇU İBRAHİM KARATAŞ</span>
+                    <MarkaGorsel src={MARKA.amblem} alt="" width="18" height="18" className="w-[18px] h-[18px] object-contain" />
+                    <span className="text-ink-2 font-semibold text-sm">{MARKA.tamAd.toLocaleUpperCase('tr-TR')}</span>
                 </div>
-                <p className="text-ink-3 text-xs">© {new Date().getFullYear()} Başarı Kampı. Tüm hakları saklıdır.</p>
+                <p className="text-ink-3 text-xs">© {new Date().getFullYear()} {MARKA.tamAd}. Tüm hakları saklıdır.</p>
             </footer>
         </div>
     );

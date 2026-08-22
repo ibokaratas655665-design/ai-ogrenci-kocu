@@ -11,7 +11,6 @@ import {
     BarChart, Bar
 } from 'recharts';
 import { api } from '../services/api';
-import PerformanceHeatmap from './PerformanceHeatmap';
 import GoalTracking from './GoalTracking';
 import ProgramBuilderModal from '../components/ProgramBuilderModal';
 import SubjectAnalysis from '../components/charts/SubjectAnalysis';
@@ -126,14 +125,22 @@ const StudentDetailPage = () => {
     const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const DAYS_LABEL = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-    // Mock Graph Data
-    const GRAPH_DATA = [
-        { name: 'Ocak', tyt: 45, ayt: 20 },
-        { name: 'Şubat', tyt: 52, ayt: 25 },
-        { name: 'Mart', tyt: 58, ayt: 32 },
-        { name: 'Nisan', tyt: 65, ayt: 40 },
-        { name: 'Mayıs', tyt: 72, ayt: 48 },
-    ];
+    /**
+     * Net gelişim grafiği — GERÇEK deneme kayıtlarından.
+     * Eski sürümde burada sabit (Ocak-Mayıs) örnek veri çiziliyordu;
+     * koç, öğrencinin karnesinde uydurma bir grafik görüyordu.
+     */
+    const netGelisimi = React.useMemo(() => {
+        const zaman = (r) => new Date(r.date || r.uploadedAt || 0).getTime();
+        return [...examResults]
+            .filter((r) => Number.isFinite(parseFloat(r.totalNet)))
+            .sort((a, b) => zaman(a) - zaman(b))
+            .slice(-10)
+            .map((r) => ({
+                name: r.name || r.trialName || new Date(zaman(r)).toLocaleDateString('tr-TR'),
+                net: Math.round(parseFloat(r.totalNet) * 100) / 100,
+            }));
+    }, [examResults]);
 
     // Tüm verileri yükleyen merkezi fonksiyon
     const loadAllData = useCallback(() => {
@@ -462,7 +469,7 @@ const StudentDetailPage = () => {
                             { id: 'karne', icon: Award, label: 'Karne' },
                             { id: 'academic', icon: TrendingUp, label: 'Akademik' },
                             { id: 'program', icon: Calendar, label: 'Program' },
-                            { id: 'guidance', icon: Brain, label: 'Rehberlik' },
+                            { id: 'guidance', icon: Brain, label: 'Envanterler' },
                             { id: 'messages', icon: MessageSquare, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'student').length },
                             { id: 'goals', icon: Target, label: 'Hedefler' },
                             { id: 'stats', icon: Activity, label: 'İstatistikler' },
@@ -766,27 +773,28 @@ const StudentDetailPage = () => {
 
                 {activeTab === 'academic' && (
                     <div className="space-y-8 animate-fade-in">
-                        {/* Grafik Alanı */}
-                        <div className="glass-card p-6">
-                            <h3 className="text-lg font-bold text-ink mb-6 flex items-center">
-                                <TrendingUp className="mr-2 text-brand" size={20} />
-                                Net Gelişimi (TYT & AYT)
-                            </h3>
-                            <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={GRAPH_DATA}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                                        <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                                        <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Line type="monotone" dataKey="tyt" stroke="#4F46E5" strokeWidth={3} dot={{ r: 4, fill: '#4F46E5' }} activeDot={{ r: 6 }} name="TYT Net"  animationDuration={300} />
-                                        <Line type="monotone" dataKey="ayt" stroke="var(--c5)" strokeWidth={3} dot={{ r: 4, fill: 'var(--c5)' }} activeDot={{ r: 6 }} name="AYT Net"  animationDuration={300} />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                        {/* Net gelişimi — öğrencinin gerçek deneme kayıtları */}
+                        {netGelisimi.length >= 2 && (
+                            <div className="glass-card p-6">
+                                <h3 className="text-lg font-bold text-ink mb-6 flex items-center">
+                                    <TrendingUp className="mr-2 text-brand" size={20} />
+                                    Net Gelişimi (Son {netGelisimi.length} Deneme)
+                                </h3>
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={netGelisimi}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
+                                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Line type="monotone" dataKey="net" stroke="var(--brand)" strokeWidth={3} dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} name="Toplam Net" animationDuration={300} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Gelişmiş Deneme Analizleri */}
                         <div className="space-y-8">
@@ -808,8 +816,16 @@ const StudentDetailPage = () => {
                             )}
                         </div>
 
-                        {/* Akıllı Konu Analizi Heatmap */}
-                        <PerformanceHeatmap />
+                        {/* Öğrencinin kendi girdiği deneme analizleri —
+                            koç bu analize eskiden karneden ulaşamıyordu.
+                            (Sabit verili PerformanceHeatmap kaldırıldı.) */}
+                        <div className="glass-card p-6">
+                            <DenemeAnalizi ogrenci={student} studentId={student?.id} bakis="koc" />
+                        </div>
+
+                        {/* Kayıt yönetimi — günlük/hata/deneme kayıtlarını
+                            onaylı ve senkronlu silme (ölü import'tu, bağlandı). */}
+                        <OgrenciVeriYonetimi student={student} />
 
                         {/* Ödevler Listesi */}
                         <div className="glass-card p-6">

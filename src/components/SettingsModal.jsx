@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Settings, Shield, Users, Lock, Unlock, BookOpen, FileText, Calendar, Target, MessageSquare, BarChart2, Brain, Palette } from 'lucide-react';
 import AppearancePanel from './settings/AppearancePanel';
-import InstitutionPanel from './settings/InstitutionPanel';
 import Modal from './ui/Modal';
 import { oku } from '../services/veriDeposu';
 
@@ -16,8 +15,6 @@ const gecerliHex = (v) => (typeof v === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})
 const hexVeya = (v, yedek) => (gecerliHex(v) ? String(v).trim() : yedek);
 
 const SettingsModal = ({ onClose }) => {
-    // Kurum paneli kendi kaydını yapar; buradaki mesaj sadece geri bildirim
-    const [kurumMesaji, setKurumMesaji] = useState(null);
     const [settings, setSettings] = useState({
         // Sistem Ayarları
         systemLocked: false,
@@ -259,12 +256,6 @@ const SettingsModal = ({ onClose }) => {
                             onToggle={() => toggleStudentPermission('canUploadTrials')}
                         />
                         <PermissionItem
-                            icon={<Target size={16} />}
-                            label="Rehberlik Servisi"
-                            enabled={settings.studentPermissions.canViewGuidance}
-                            onToggle={() => toggleStudentPermission('canViewGuidance')}
-                        />
-                        <PermissionItem
                             icon={<BookOpen size={16} />}
                             label="Envanterler"
                             enabled={settings.studentPermissions.canAccessInventories}
@@ -355,13 +346,7 @@ const SettingsModal = ({ onClose }) => {
                     </div>
                 </div>
 
-                {/* KURUM BİLGİLERİ — PDR belgelerinin resmî başlığı */}
-                <div className="glass-card p-6 border-l-4 border-brand">
-                    <InstitutionPanel setToast={(m) => setKurumMesaji(m)} />
-                    {kurumMesaji && (
-                        <p className="mt-3 text-xs font-bold text-ok">{kurumMesaji}</p>
-                    )}
-                </div>
+                {/* Kurum bilgileri paneli PDR belgeleriyle birlikte arşivlendi. */}
             </div>
 
             {/* Footer */}

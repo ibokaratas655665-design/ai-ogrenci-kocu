@@ -8,11 +8,8 @@ import html2pdf from 'html2pdf.js';
 import { useTheme } from '../context/ThemeContext';
 import SmartNotificationBell from '../components/shared/SmartNotifications';
 import { useNavigate } from 'react-router-dom';
-import GuidanceServiceTab from './GuidanceServiceTab';
-import PdrOgrenciHavuzu from '../components/guidance/PdrOgrenciHavuzu';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
-import KocDegerlendirme from '../components/coach/KocDegerlendirme';
-import pdrHavuz from '../services/pdrOgrencileri';
+import OgrenciGelisimMerkezi from '../components/coach/OgrenciGelisimMerkezi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
 import { parsePdfExamData } from '../utils/pdfParser';
@@ -22,18 +19,13 @@ import TaskAssignModal from '../components/TaskAssignModal';
 import GroupsTab from '../components/GroupsTab';
 import ProjectsTab from '../components/ProjectsTab';
 import LeaderboardTab from '../components/LeaderboardTab';
-import WorkflowTab from '../components/WorkflowTab';
 import PresentationsTab from '../components/PresentationsTab';
 import AnalyticsTab from '../components/AnalyticsTab';
 import RemoteCoachingTab from '../components/RemoteCoachingTab';
 import AnalysisCenter from '../components/coach/AnalysisCenter';
-import GuidanceCenter from '../components/coach/GuidanceCenter';
-import BEPGenerator from '../components/BEPGenerator';
 import WhatsAppTab from '../components/whatsapp/WhatsAppTab';
 import WhatsAppComposer from '../components/whatsapp/WhatsAppComposer';
-import MaterialTab from '../components/dashboard/MaterialTab';
 import AdvancedExamsTab from '../components/dashboard/AdvancedExamsTab';
-import TeacherSchedulerTab from '../components/dashboard/TeacherSchedulerTab';
 import UniversityScoresTab from '../components/dashboard/UniversityScoresTab';
 import { useAuth } from '../context/AuthContext';
 import firebaseSync from '../services/firebaseSync';
@@ -47,21 +39,16 @@ import { CoachBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import KocBugun from '../components/coach/KocBugun';
 import { BolumHataSiniri } from '../components/ui';
-import ClassInstantAnalysis from '../components/coach/ClassInstantAnalysis';
 // 🆕 Yeni Koç Özellikleri
 import GoalComparisonPanel from '../components/coach/GoalComparisonPanel';
 import TaskTemplates from '../components/coach/TaskTemplates';
 import ClassRanking from '../components/coach/ClassRanking';
-import SparklineChart from '../components/student/SparklineChart';
 // 🚀 12 Madde Geliştirme
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import { notifyMany } from '../services/notificationService';
-import { BOLUMLER, BOLUM_LISTESI, erisilenBolumler, isAnaKoc, gorunurOgrenciler, gorebilir, sahiplikEkle, onayDurumu } from '../services/accessControl';
-import DecimalFolderTab from '../components/guidance/DecimalFolderTab';
-import SosyometriPaneli from '../components/guidance/SosyometriPaneli';
-import BEPCenter from '../components/guidance/bep/BEPCenter';
+import { BOLUMLER, isAnaKoc, gorunurOgrenciler, gorebilir, sahiplikEkle, onayDurumu } from '../services/accessControl';
 import ApprovalCenter from '../components/coach/ApprovalCenter';
 import CoachTaskCenter from '../components/coach/CoachTaskCenter';
 import CouponManager from '../components/coach/CouponManager';
@@ -76,7 +63,6 @@ import { CoachSelfAssessmentView } from '../components/student/SelfAssessment';
 import { CoachAppointmentManager } from '../components/coach/AppointmentSystem';
 import StudentGoalsPanel from '../components/coach/StudentGoalsPanel';
 import { CoachPomodoroView } from '../components/student/SubjectPomodoro';
-import SociometryNetworkMap from '../components/coach/SociometryNetworkMap';
 import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
@@ -175,9 +161,9 @@ const NAV_BY_SECTION = {
                 /* Öğrencinin telefonda girdiği üç kayıt türünün KOÇ
                    değerlendirme ekranları — öğrenci ekranının kopyası
                    değil, zaman içi değişim analizi (KocDegerlendirme). */
-                { id: 'degerlendirme-gunluk', icon: MODULE_ICONS.tasks, label: 'Günlük Kayıt' },
-                { id: 'degerlendirme-hata', icon: MODULE_ICONS.analysis, label: 'Hata Defteri' },
-                { id: 'degerlendirme-deneme', icon: MODULE_ICONS.exams, label: 'Deneme Analizi' },
+                /* 22.08.2026: üç değerlendirme sekmesi tek merkezde
+                   birleşti — sınıf geneli kesit de burada. */
+                { id: 'gelisim-merkezi', icon: MODULE_ICONS.analysis, label: 'Öğrenci Gelişim Merkezi' },
             ],
         },
         {
@@ -187,6 +173,11 @@ const NAV_BY_SECTION = {
                 { id: 'programs', icon: MODULE_ICONS.programs, label: 'Programlar', perm: 'programs' },
                 { id: 'task-templates', icon: MODULE_ICONS.tasks, label: 'Görev Şablonları' },
                 { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
+                /* PDR bölümü arşivlendiğinde "Akademik Takip" grubundan
+                   buraya taşındılar — yoksa menüden tamamen düşerlerdi. */
+                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
+                { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
+                { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
             ],
         },
         {
@@ -206,88 +197,10 @@ const NAV_BY_SECTION = {
         },
     ],
 
-    /**
-     * PDR bölümü doğrudan resmî DOSYA DÜZENİNE göre kurulur: rehberlik
-     * servisinin tuttuğu 10 dosyanın her biri kendi sekmesidir. Uygulamanın
-     * çalışma araçları (BEP, envanter, görüşme, randevu, risk haritası)
-     * ayrı sekmelerde durmaz — ait oldukları dosyanın İÇİNDE, alt sekme
-     * olarak açılır. Böylece "çalışmayı yap, sonra ayrıca dosyala"
-     * ikiliği ortadan kalkar.
-     */
-    pdr: [
-        {
-            label: 'Planlama ve Raporlama',
-            accent: 'var(--c1)',
-            items: [
-                { id: 'pdr-1', icon: MODULE_ICONS.programs, label: '1 · Plan-Program', perm: 'guidance' },
-                { id: 'pdr-2', icon: MODULE_ICONS.analysis, label: '2 · Yıl Sonu Rapor', perm: 'guidance' },
-                { id: 'pdr-3', icon: MODULE_ICONS.projects, label: '3 · Eylem Planları', perm: 'guidance' },
-            ],
-        },
-        {
-            label: 'Evrak ve Kurul',
-            accent: 'var(--c3)',
-            items: [
-                { id: 'pdr-4', icon: MODULE_ICONS.material, label: '4 · Gelen-Giden Evrak', perm: 'guidance' },
-                { id: 'pdr-5', icon: MODULE_ICONS.coaches, label: '5 · Komisyon Tutanak', perm: 'guidance' },
-                { id: 'pdr-10', icon: MODULE_ICONS.guidance, label: '10 · Mevzuat', perm: 'guidance' },
-            ],
-        },
-        {
-            label: 'Öğrenci Çalışmaları',
-            accent: 'var(--accent)',
-            items: [
-                /* V1.1: PDR'nin KENDİ öğrenci havuzu — okul kapsamlı liste.
-                   Koçluk öğrencilerinden ayrı tutulur (pdr_students anahtarı,
-                   pdr_ önekli kimlikler); yanlışlıkla birleşemezler. */
-                { id: 'pdr-ogrenciler', icon: MODULE_ICONS.groups, label: 'Öğrenci Havuzu', perm: 'guidance' },
-                { id: 'pdr-6', icon: MODULE_ICONS.appointments, label: '6 · Görüşme', perm: 'guidance' },
-                { id: 'pdr-7', icon: MODULE_ICONS.groups, label: '7 · Sınıf Dosyası', perm: 'guidance' },
-                { id: 'pdr-8', icon: MODULE_ICONS.analysis, label: '8 · Risk Haritaları', perm: 'guidance' },
-                { id: 'pdr-9', icon: MODULE_ICONS.guidance, label: '9 · Özel Eğitim / BEP', perm: 'guidance' },
-            ],
-        },
-        {
-            /* V1.1 kararı: Sıralama/Projeler/Sunumlar PDR'ye taşındı;
-               Denemeler/Programlar/Taban Puan iki bölümde de görünür.
-               Sekme kimlikleri AYNI olduğu için render blokları ve veri
-               ortak — çift kayıt oluşmaz, yalnızca giriş yolu çoğalır. */
-            label: 'Akademik Takip',
-            accent: 'var(--c5)',
-            items: [
-                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
-                { id: 'programs', icon: MODULE_ICONS.programs, label: 'Programlar', perm: 'programs' },
-                { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
-                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
-                { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
-                { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
-            ],
-        },
-        {
-            label: 'Rehberlik Araçları',
-            accent: 'var(--c4)',
-            items: [
-                { id: 'material', icon: MODULE_ICONS.material, label: 'Materyal Üretimi', perm: 'material' },
-                { id: 'analysis', icon: MODULE_ICONS.analysis, label: 'Öğrenci İzleme', perm: 'analysis', ortak: true },
-                { id: 'teacher-scheduler', icon: MODULE_ICONS['teacher-scheduler'], label: 'Öğretmen Programı', perm: 'teacher-scheduler' },
-            ],
-        },
-        {
-            label: 'İletişim ve Takip',
-            accent: 'var(--brand)',
-            items: [
-                { id: 'groups', icon: MODULE_ICONS.groups, label: 'Gruplar', perm: 'groups', ortak: true },
-                { id: 'whatsapp', icon: MODULE_ICONS.whatsapp, label: 'WhatsApp', perm: 'whatsapp', ortak: true },
-                // Randevu, PDR tarafında ayrı sekme değil — 6. Görüşme
-                // Dosyası'nın içinde, ait olduğu çalışmanın yanında durur.
-                { id: 'coaches', icon: MODULE_ICONS.coaches, label: 'Koç Yön.', boss: true },
-                { id: 'approvals', icon: MODULE_ICONS.coaches, label: 'Onaylar', boss: true, ortak: true },
-                { id: 'coach-tasks', icon: MODULE_ICONS.projects, label: 'Görevler', ortak: true },
-                { id: 'coupons', icon: MODULE_ICONS.material, label: 'Kuponlar', ortak: true },
-                { id: 'invites', icon: MODULE_ICONS.groups, label: 'Davetler', ortak: true },
-            ],
-        },
-    ],
+    /* PDR bölümü 22.08.2026'da aktif üründen çıkarıldı; ekranları ve
+       servisleri archive/pdr_module/ altında saklanıyor. Veri anahtarları
+       (pdr_*, bep_data, guidance_*) silinmedi — geri getirilirse kaldığı
+       yerden devam eder. */
 };
 
 const GOREV_SEKMELERI = gorevSekmeleriniTuret(NAV_BY_SECTION);
@@ -304,253 +217,6 @@ const Toast = ({ message, onClose, type = 'success' }) => (
 );
 
 
-const TestsTab = ({ students, setToast, onAssignTask }) => {
-    const [viewMode, setViewMode] = useState('list'); // 'list' | 'assign'
-    const [selectedForInternalView, setSelectedForInternalView] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const getCompletedTests = (studentId) => {
-        try {
-            return listeOku(`test_results_${studentId}`);
-        } catch { return []; }
-    };
-
-    const getAssignedTests = (studentId) => {
-        try {
-            return listeOku(`assigned_tests_${studentId}`);
-        } catch { return []; }
-    };
-
-    const handleDeleteResult = async (studentId, resultId) => {
-        if (await onayla({ mesaj: 'Bu test sonucunu silmek istediğinize emin misiniz?', tehlikeli: true })) {
-            const results = safeParse(`test_results_${studentId}`, []);
-            const filtered = results.filter(r => r.id !== resultId);
-            yaz(`test_results_${studentId}`, filtered);
-            setToast('Test sonucu silindi.');
-        }
-    };
-
-    const handleUnassign = async (studentId, testId) => {
-        if (await onayla({ mesaj: 'Bu test atamasını kaldırmak istediğinize emin misiniz?', tehlikeli: true })) {
-            const assigned = listeOku(`assigned_tests_${studentId}`);
-            const filtered = assigned.filter(a => a.testId !== testId);
-            localStorage.setItem(`assigned_tests_${studentId}`, JSON.stringify(filtered));
-            setToast('Atama kaldırıldı.');
-        }
-    };
-
-    // PDF generation from coach side
-    const downloadDetailedPDF = (student, result) => {
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const W = 210; const H = 297;
-        const today = new Date().toLocaleDateString('tr-TR');
-
-        // Professional Header
-        pdf.setFillColor(30, 58, 138); // Dark Blue
-        pdf.rect(0, 0, W, 45, 'F');
-
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(24);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('PSIKOLOJIK ANALIZ VE REHBERLIK RAPORU', 15, 20);
-
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Kurumsal Rehberlik Modulu`, 15, 30);
-        pdf.text(`Rapor Tarihi: ${today}`, 15, 38);
-
-        /* Marka amblemi sağ üstte.
-           Bu rapor MEB resmî evrakı DEĞİL — altında "resmi evrak niteligi
-           tasimaz" ibaresi var — o yüzden uygulama markası basılabiliyor.
-           mebDocument.js ile üretilen resmî belgelere amblem KONULMAZ. */
-        pdf.setFillColor(255, 255, 255);
-        pdf.circle(W - 25, 18, 9, 'F');
-        try { pdf.addImage(AMBLEM_BASE64, 'PNG', W - 32, 11, 14, 14); } catch { /* amblemsiz de basılır */ }
-        pdf.setFontSize(7);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text('Basari Kampi', W - 25, 32, { align: 'center' });
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(255, 255, 255);
-
-        // Student Info Box
-        pdf.setFillColor(243, 244, 246);
-        pdf.roundedRect(10, 50, W - 20, 25, 3, 3, 'F');
-
-        pdf.setTextColor(31, 41, 55);
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`OGRENCI BILGILERI`, 15, 58);
-
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Ad Soyad: ${student.name}`, 15, 65);
-        pdf.text(`Sinif/Sube: ${student.grade}/${student.section || '-'}`, 80, 65);
-        pdf.text(`No: ${student.schoolNumber || '-'}`, 140, 65);
-
-        // Test Specific Header
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(30, 58, 138);
-        pdf.text(result.testTitle?.toUpperCase() || 'TEST SONUCU', 15, 88);
-        pdf.setDrawColor(30, 58, 138);
-        pdf.line(15, 90, 70, 90);
-
-        // Analysis Result
-        pdf.setFillColor(239, 246, 255);
-        pdf.roundedRect(15, 95, W - 30, 35, 2, 2, 'F');
-
-        pdf.setTextColor(37, 99, 235);
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('TEMEL BULGU VE DEGERLENDIRME', 20, 103);
-
-        pdf.setTextColor(17, 24, 39);
-        pdf.setFontSize(18); // Higher font size as requested
-        pdf.text(result.level || 'Analiz Tamamlandi', 20, 118);
-
-        // In-depth Scientific Analysis
-        const analysisY = 140;
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(30, 58, 138);
-        pdf.text('DETAYLI BILIMSEL ANALIZ VE KOC YORUMU', 15, analysisY);
-
-        pdf.setFontSize(11); // Increased font size
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(55, 65, 81);
-
-        const mainComment = result.comment || result.detail || 'Test verileri islenmistir.';
-        const scientificAddon = "\n\nBu analiz, bilissel ve duygusal sureclerin mevcut akademik performans uzerindeki etkilerini optimize etmek amaciyla modern pedagojik yaklasimlara dayanarak hazirlanmistir. Ogrencinin oz-duzenleme becerileri ve motivasyonel faktorleri test sonuclariyla korele edilmektedir.";
-
-        const fullComment = mainComment + scientificAddon;
-        const splitText = pdf.splitTextToSize(fullComment, W - 30);
-        pdf.text(splitText, 15, analysisY + 10);
-
-        // Footer
-        pdf.setFontSize(8);
-        pdf.setTextColor(156, 163, 175);
-        pdf.text('Bu rapor Basari Kampi tarafindan otomatik olarak uretilmistir. Resmi evrak niteligi tasimaz.', W / 2, H - 10, { align: 'center' });
-
-        pdf.save(`${student.name}_${result.testId}_Analiz.pdf`);
-    };
-
-    const filteredStudents = students.filter(s =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(s.schoolNumber).includes(searchTerm)
-    );
-
-    return (
-        <div className="glass-card p-6 min-h-[600px]">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div>
-                    <h2 className="text-xl font-bold text-ink flex items-center">
-                        <ClipboardList className="mr-2 text-brand" size={24} />
-                        Bireysel Test & Envanter Yönetimi
-                    </h2>
-                    <p className="text-sm text-ink-2 mt-1">Öğrencilere özel testler atayın ve detaylı raporları inceleyin.</p>
-                </div>
-                <div className="relative w-full md:w-64">
-                    <Search className="absolute left-3 top-2.5 text-ink-3" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Öğrenci ara..."
-                        className="pl-9 pr-4 py-2 border border-line rounded-xl w-full text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredStudents.map(s => {
-                    const results = getCompletedTests(s.id);
-                    const assigned = getAssignedTests(s.id);
-                    const hasPending = assigned.some(a => a.status === 'pending');
-
-                    return (
-                        <div key={s.id} className="bg-surface border border-line rounded-2xl p-5 hover:border-indigo-400 transition-all shadow-sm flex flex-col group">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center text-brand font-bold">
-                                        {s.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-ink truncate max-w-[140px]">{s.name}</h3>
-                                        <p className="text-xs text-ink-3">{s.grade}/{s.section} · No: {s.schoolNumber}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <span className="bg-ok-soft text-ok text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                        {results.length} Biten
-                                    </span>
-                                    {hasPending && (
-                                        <span className="bg-warn-soft text-warn text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
-                                            Bekleyen
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 space-y-3 mb-4">
-                                {results.length > 0 ? (
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-ink-3 uppercase tracking-wider">Son Sonuçlar</p>
-                                        {results.slice(0, 2).map(r => (
-                                            <div key={r.id} className="flex items-center justify-between p-2 bg-surface-2 rounded-lg group/item">
-                                                <div className="min-w-0 pr-2">
-                                                    <p className="text-xs font-bold text-ink-2 truncate">{r.testTitle}</p>
-                                                    <p className="text-[10px] text-brand font-medium">{r.level}</p>
-                                                </div>
-                                                <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                    <button onClick={() => downloadDetailedPDF(s, r)} className="p-1 hover:bg-surface rounded border border-line text-brand">
-                                                        <FileText size={12} />
-                                                    </button>
-                                                    <button onClick={() => handleDeleteResult(s.id, r.id)} className="p-1 hover:bg-surface rounded border border-line text-danger">
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-xl">
-                                        <p className="text-xs text-ink-3">Henüz sonuç yok</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex gap-2">
-                                {/* Bu buton eskiden boş bir handler'a bağlıydı: tıklanıyor
-                                    ama hiçbir şey açmıyordu. Artık görev/test atama
-                                    penceresini bu öğrenci seçili olarak açar. */}
-                                <button
-                                    onClick={() => onAssignTask?.(s)}
-                                    className="flex-1 bg-brand text-white py-2 rounded-xl text-xs font-bold hover:bg-brand-hover transition shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5"
-                                >
-                                    <Plus size={14} /> Test Ata
-                                </button>
-                                <button
-                                    onClick={() => setToast(`${s.name} profilinden tüm testlere erişebilirsiniz.`)}
-                                    className="px-3 bg-surface-3 text-ink-2 py-2 rounded-xl hover:bg-surface-3 transition text-xs font-bold"
-                                >
-                                    Profil
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {filteredStudents.length === 0 && (
-                    <div className="col-span-full py-20 text-center">
-                        <Search size={48} className="mx-auto text-ink-3 mb-4" />
-                        <p className="text-ink-3 font-medium">Öğrenci bulunamadı.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
 
 const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBuilderForStudent }) => {
     const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -930,9 +596,8 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                                     ))}
                                 </div>
                                 <div className="mt-3 flex justify-between text-[9px] text-ink-3 font-mono uppercase tracking-widest">
-                                    <span>AI ÖĞRENCİ KOÇU SİSTEMİ</span>
+                                    <span>{MARKA.tamAd.toLocaleUpperCase('tr-TR')}</span>
                                     <span className="text-ink-3 font-bold italic">HER HAFTA YENİ BİR BAŞLANGIÇTIR!</span>
-                                    <span>İBRAHİM KARATAŞ EĞİTİM DANIŞMANLIĞI</span>
                                 </div>
                             </div>
                         );
@@ -1953,18 +1618,18 @@ const PERM_ALL_TABS = [
     { id: 'analysis', label: 'Analiz Merkezi', hint: 'Özet, risk, sıralama, hedefler, grafikler' },
     { id: 'exams', label: 'Deneme Sonuçları', hint: 'Deneme yükleme ve analiz' },
     { id: 'programs', label: 'Ders Programları', hint: 'Program oluşturma ve takip' },
-    { id: 'guidance', label: 'Rehberlik Merkezi', hint: 'Testler, sosyometri, PDR, BEP' },
     { id: 'groups', label: 'Öğrenci Grupları' },
     { id: 'whatsapp', label: 'WhatsApp Merkezi' },
-    { id: 'material', label: 'Materyal Üretimi' },
     { id: 'projects', label: 'Projeler' },
-    { id: 'teacher-scheduler', label: 'Öğretmen Programı' },
     { id: 'university-scores', label: 'Taban Puanlar' },
     { id: 'appointments', label: 'Randevular' },
 ];
 const ALL_TABS = PERM_ALL_TABS;
 
 const ManageCoachesTab = ({ setToast }) => {
+    // Yeni koçun okul adı (giriş doğrulamasında kullanılıyor) ekleyen
+    // koçtan miras alınır — eski sürümde kişisel okul adı gömülüydü.
+    const { user: aktifKullanici } = useAuth();
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingCoach, setEditingCoach] = useState(null);    // izin modalı
     const [detailCoach, setDetailCoach] = useState(null);      // düzenleme modalı
@@ -2064,8 +1729,8 @@ const ManageCoachesTab = ({ setToast }) => {
             phone,
             coachRole: addForm.coachRole,
             permissions,
-            // Ana koç her iki bölümde de çalışır; alt koç seçilen bölümlerde
-            sections: addForm.coachRole === 'masterCoach' ? ['kocluk', 'pdr'] : (addForm.sections || ['kocluk']),
+            // Tek bölüm kaldı: koçluk (PDR arşivlendi)
+            sections: ['kocluk'],
             status: 'Aktif',
             addedAt: new Date().toISOString(),
         };
@@ -2085,7 +1750,7 @@ const ManageCoachesTab = ({ setToast }) => {
             permissions,
             sections: newCoach.sections,
             approved: true,
-            schoolName: 'Şamran Anadolu Lisesi',
+            schoolName: aktifKullanici?.schoolName || MARKA.ad,
             createdAt: new Date().toISOString(),
         };
         localStorage.setItem('users_db', JSON.stringify([...existingUsers, userRecord]));
@@ -2262,44 +1927,7 @@ const ManageCoachesTab = ({ setToast }) => {
                                 </select>
                             </div>
                         </div>
-                        {/* Bölüm erişimi: koç hangi mesaide çalışacak?
-                            Yalnız koçluk yapan bir koça rehberlik dosyalarını,
-                            yalnız rehberlik yapan birine koçluk programlarını
-                            açmanın anlamı yok. */}
-                        {addForm.coachRole === 'subCoach' && (
-                            <div>
-                                <label className="block text-xs font-bold text-ink-2 mb-2">Çalışma Bölümleri</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {BOLUM_LISTESI.map((b) => {
-                                        const secili = (addForm.sections || ['kocluk']).includes(b.id);
-                                        return (
-                                            <label
-                                                key={b.id}
-                                                className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition text-xs ${secili ? 'bg-brand-soft border-brand-line text-brand' : 'bg-surface-2 border-line text-ink-2 hover:bg-surface-3'}`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={secili}
-                                                    onChange={() => setAddForm((p) => {
-                                                        const mevcut = p.sections || ['kocluk'];
-                                                        const yeni = mevcut.includes(b.id)
-                                                            ? mevcut.filter((x) => x !== b.id)
-                                                            : [...mevcut, b.id];
-                                                        // En az bir bölüm kalmalı, yoksa koç hiçbir şey göremez
-                                                        return { ...p, sections: yeni.length ? yeni : mevcut };
-                                                    })}
-                                                    className="accent-indigo-600 mt-0.5"
-                                                />
-                                                <span>
-                                                    <span className="font-bold block">{b.ad}</span>
-                                                    <span className="opacity-80">{b.aciklama}</span>
-                                                </span>
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                        {/* Bölüm seçimi kaldırıldı — tek bölüm (koçluk) var. */}
                         {addForm.coachRole === 'subCoach' && (
                             <div>
                                 <label className="block text-xs font-bold text-ink-2 mb-2">Erişim İzinleri (Sekme bazlı)</label>
@@ -2774,21 +2402,9 @@ const CoachDashboard = () => {
             window.location.href = '#/login';
         }
     };
-    // ── Aktif bölüm: koçluk mesaisi mi, rehberlik (PDR) mesaisi mi ──
-    // Ana koç ikisini de görür; eklenen koç sadece kendisine tanımlı
-    // bölümleri görür. Seçim kalıcıdır — koç her açılışta kendi
-    // mesaisine düşer.
-    const bolumler = useMemo(() => erisilenBolumler(user), [user]);
-    const [bolum, setBolum] = useState(() => {
-        try {
-            const kayitli = localStorage.getItem('coach_active_section');
-            if (kayitli && erisilenBolumler(user).includes(kayitli)) return kayitli;
-        } catch { /* ilk bölüme düş */ }
-        return erisilenBolumler(user)[0] || 'kocluk';
-    });
-    useEffect(() => {
-        try { localStorage.setItem('coach_active_section', bolum); } catch { /* ignore */ }
-    }, [bolum]);
+    // ── Tek bölüm: koçluk. PDR bölümü arşivlendi (archive/pdr_module);
+    // görev/rozet kayıtları hâlâ `bolum` alanı taşıdığı için sabit kaldı.
+    const bolum = 'kocluk';
 
     // Koçluk bölümünde açılış artık "Bugün" — grafik değil iş listesi.
     //
@@ -2797,7 +2413,7 @@ const CoachDashboard = () => {
     // KENDİSİ (#/coach); sekme hash İÇİNDEKİ sorguya yazılır:
     // `#/coach?sekme=analysis`. Düz `#sekme=x` rotayı ezer (denendi,
     // kırdı). Geçerlilik listesi NAV_BY_SECTION'dan türetilir, elle
-    // kopya yok; pdr-* alt sekmeleri desenle kabul edilir.
+    // kopya yok.
     const [activeTab, setActiveTab] = useState(() => {
         try {
             const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
@@ -2805,10 +2421,10 @@ const CoachDashboard = () => {
                 const gecerli = new Set(
                     Object.values(NAV_BY_SECTION).flat().flatMap((g) => g.items.map((i) => i.id))
                 );
-                if (gecerli.has(h) || h.startsWith('pdr-')) return h;
+                if (gecerli.has(h)) return h;
             }
         } catch { /* hash okunamazsa varsayılana düş */ }
-        return (localStorage.getItem('coach_active_section') === 'pdr') ? 'pdr-archive' : 'bugun';
+        return 'bugun';
     });
     useEffect(() => {
         try {
@@ -2964,88 +2580,9 @@ const CoachDashboard = () => {
         [user, tumOgrenciler]
     );
 
-    /**
-     * Dosya sekmelerinin içine gömülen çalışma modülleri.
-     *
-     * Anahtar = dosya numarası. Her modül bir alt sekme olarak açılır ve
-     * ürettiği kayıt "Modülleri Bağla" ile aynı dosyaya düşer. Eşleştirme
-     * dosyanın resmî tanımına göre yapılmıştır:
-     *
-     *   1  Plan-Program        → PDR iş akışı / plan motoru
-     *   6  Görüşme Dosyası     → görüşme kayıtları + randevu takvimi
-     *   7  Sınıf Dosyası       → envanter uygulamaları + sosyometri
-     *   8  Risk Haritaları     → risk alarm paneli
-     *   9  Kaynaştırma / BEP   → BEP plan motoru
-     */
-    /**
-     * V1.1 — PDR öğrenci havuzu (okul kapsamlı liste, koçluktan ayrı).
-     * PDR modülleri ve PDR grupları KOÇLUK + HAVUZ birleşik listesini
-     * görür; koçluk ekranları havuzu hiç görmez. Kimlikler pdr_ önekli
-     * olduğu için iki küme yanlışlıkla birleşemez.
-     */
-    const [pdrOgrenciSurumu, setPdrOgrenciSurumu] = useState(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- üçü de bilinçli: listele() reaktif değil; havuz değişince (sürüm), bölüm/sekme değişince yeniden okunur
-    const pdrOgrencileri = useMemo(() => pdrHavuz.listele(), [pdrOgrenciSurumu, bolum, activeTab]);
-    const pdrCalismaOgrencileri = useMemo(
-        () => [...students, ...pdrOgrencileri.map((o) => ({ ...o, pdrHavuzu: true }))],
-        [students, pdrOgrencileri]
-    );
-
-    const pdrModulleri = useMemo(() => {
-        /* PDR modülleri birleşik listeyi görür (yukarıdaki not) */
-        const students = pdrCalismaOgrencileri;
-        return {
-        '1': [{
-            id: 'akis', label: 'Plan ve İş Akışı', icon: ClipboardList,
-            render: () => <WorkflowTab students={students} setToast={setToast} />,
-        }],
-        '6': [
-            {
-                id: 'gorusme', label: 'Görüşme Kayıtları', icon: MessageSquare,
-                render: () => <GuidanceServiceTab students={students} setToast={setToast} />,
-            },
-            {
-                id: 'randevu', label: 'Randevu Takvimi', icon: Calendar,
-                render: () => (
-                    <CoachAppointmentManager
-                        students={students}
-                        coachId={user?.id}
-                        coachName={user?.name || ''}
-                        bolum="pdr"
-                    />
-                ),
-            },
-        ],
-        '7': [
-            {
-                id: 'envanter', label: 'Envanter Uygulama', icon: ClipboardList,
-                render: () => (
-                    <TestsTab
-                        students={students}
-                        setToast={setToast}
-                        onAssignTask={(s) => { setTaskPreselect(s || null); setIsTaskAssignModalOpen(true); }}
-                    />
-                ),
-            },
-            {
-                id: 'sosyometri', label: 'Sosyometri', icon: Share2,
-                render: () => <SosyometriPaneli students={students} />,
-            },
-            {
-                id: 'grup', label: 'Grup Rehberliği', icon: Users,
-                render: () => <GroupsTab students={students} setToast={setToast} bolum="pdr" />,
-            },
-        ],
-        '8': [{
-            id: 'risk', label: 'Risk Alarm Paneli', icon: AlertCircle,
-            render: () => <RiskAlarmPanel students={students} setToast={setToast} />,
-        }],
-        '9': [{
-            id: 'bep', label: 'BEP Merkezi', icon: Brain,
-            render: () => <BEPCenter students={students} setToast={setToast} />,
-        }],
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }; }, [pdrCalismaOgrencileri, user?.id, user?.name]);
+    /* PDR dosya modülleri ve PDR öğrenci havuzu arşive taşındı
+       (archive/pdr_module). Veri anahtarları (pdr_students, pdr_archive,
+       bep_data …) yerinde duruyor; modül geri getirilirse okur. */
 
     // Firebase Sync - Coach için başlat + real-time dinle
     React.useEffect(() => {
@@ -3574,39 +3111,8 @@ const CoachDashboard = () => {
                         opacity-40 ile okunmaz haldeydi ve aktif sekme zeminden
                         ayrışmıyordu. Artık gruplar tek bir çubukta, aktif sekme
                         yüzeyden yükselerek belli oluyor. */}
-                    {/* ── BÖLÜM ANAHTARI ─────────────────────────────────────────
-                        Koçluk mesaisi ile okul rehberlik mesaisi ayrı işler;
-                        sekmeler tek çubukta toplandığında hangi işi yaptığınız
-                        kayboluyordu. Ana koç iki bölüme de girer, eklenen koç
-                        yalnızca kendisine tanımlı bölümü görür — tek bölümü
-                        olan koça anahtar hiç gösterilmez. */}
-                    {bolumler.length > 1 && (
-                        <div className="mt-5 flex flex-wrap items-center gap-3">
-                            <div className="tabbar" role="tablist" aria-label="Çalışma bölümü">
-                                {bolumler.map((b) => {
-                                    const tanim = BOLUMLER[b];
-                                    const on = bolum === b;
-                                    return (
-                                        <button
-                                            key={b}
-                                            role="tab"
-                                            aria-selected={on}
-                                            onClick={() => setBolum(b)}
-                                            className={`tb ${on ? 'is-on' : ''}`}
-                                            style={on ? { '--brand': b === 'pdr' ? 'var(--accent)' : 'var(--brand)' } : undefined}
-                                            title={tanim?.aciklama || ''}
-                                        >
-                                            {tanim?.ad || b}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <p className="text-[11px] text-ink-3 leading-snug max-w-md">
-                                {BOLUMLER[bolum]?.aciklama}
-                                {isAnaKoc(user) && ' · Ana koç yetkisiyle tüm kayıtları görüyorsunuz.'}
-                            </p>
-                        </div>
-                    )}
+                    {/* Bölüm anahtarı kaldırıldı — PDR bölümü arşivde,
+                        uygulama tek bölüm (koçluk) olarak çalışıyor. */}
 
                     {/* TELEFONDA GİZLİ — orada alt çubuk ve "Tüm Bölümler"
                         sayfası var. Otuz sekmeyi yatay kaydırmalı bir şeritte
@@ -3758,39 +3264,9 @@ const CoachDashboard = () => {
                                 <AdvancedExamsTab students={students} setToast={setToast} onOpenProgramBuilder={() => setIsProgramBuilderOpen(true)} />
                             </div>
                         )}
-                        {/* 🧠 REHBERLİK MERKEZİ — servis, testler, sosyometri, PDR, BEP */}
-                        {activeTab === 'guidance' && (
-                            <GuidanceCenter
-                                students={students}
-                                setToast={setToast}
-                                GuidanceServiceTab={GuidanceServiceTab}
-                                TestsTab={TestsTab}
-                                onAssignTask={(student) => { setTaskPreselect(student || null); setIsTaskAssignModalOpen(true); }}
-                                SociometryNetworkMap={SociometryNetworkMap}
-                                WorkflowTab={WorkflowTab}
-                                BEPGenerator={BEPGenerator}
-                                AICoachButton={AICoachButton}
-                            />
-                        )}
-                        {/* ══════════════════════════════════════════════════
-                            🗂️ REHBERLİK SERVİSİ — 10 RESMÎ DOSYA
-
-                            Her dosya kendi sekmesinde açılır. Dosyayı besleyen
-                            çalışma araçları o dosyanın İÇİNDE alt sekme olarak
-                            durur; danışman çalışmayı yaptığı yerde dosyalar.
-                           ══════════════════════════════════════════════════ */}
-                        {activeTab === 'pdr-ogrenciler' && (
-                            <PdrOgrenciHavuzu onDegisti={() => setPdrOgrenciSurumu((v) => v + 1)} />
-                        )}
-                        {activeTab?.startsWith('pdr-') && activeTab !== 'pdr-ogrenciler' && (
-                            <DecimalFolderTab
-                                key={activeTab}
-                                klasorNo={activeTab.slice(4)}
-                                setToast={setToast}
-                                user={user}
-                                moduller={pdrModulleri[activeTab.slice(4)] || []}
-                            />
-                        )}
+                        {/* PDR/Rehberlik render blokları arşive taşındı
+                            (archive/pdr_module) — rehberlik ekranları artık
+                            aktif üründe yok. */}
                         {activeTab === 'coaches' && <ManageCoachesTab setToast={setToast} />}
                         {/* ✅ Onay merkezi — koç, öğrenci ve veli için bireysel + toplu onay */}
                         {activeTab === 'approvals' && <ApprovalCenter user={user} setToast={setToast} />}
@@ -3815,30 +3291,30 @@ const CoachDashboard = () => {
                                 user={user}
                                 setToast={setToast}
                                 sekmeler={GOREV_SEKMELERI}
-                                onSekmeyeGit={(hedefBolum, hedefSekme) => {
-                                    setBolum(hedefBolum);
+                                onSekmeyeGit={(_hedefBolum, hedefSekme) => {
                                     setActiveTab(hedefSekme);
                                 }}
                             />
                         )}
 
                         {/* NEW WORKING TABS */}
-                        {activeTab === 'groups' && <GroupsTab students={bolum === 'pdr' ? pdrCalismaOgrencileri : students} setToast={setToast} bolum={bolum} />}
+                        {activeTab === 'groups' && <GroupsTab students={students} setToast={setToast} bolum={bolum} />}
                         {activeTab === 'projects' && <ProjectsTab students={students} setToast={setToast} />}
                         {activeTab === 'leaderboard' && <LeaderboardTab students={students} />}
                         {activeTab === 'presentations' && <PresentationsTab students={students} setToast={setToast} />}
                         {activeTab === 'whatsapp' && <WhatsAppTab students={students} coachName={user?.name || ''} />}
                         {activeTab === 'remote' && <RemoteCoachingTab students={students} setToast={setToast} />}
-                        { activeTab === 'material' && <MaterialTab setToast={setToast} /> }
-                        { activeTab === 'teacher-scheduler' && <TeacherSchedulerTab /> }
                         { activeTab === 'university-scores' && <UniversityScoresTab /> }
 
                         {/* 🌟 PREMIUM MODÜLLER */}
                         {activeTab === 'self-assessment' && <CoachSelfAssessmentView students={students} />}
                         {activeTab === 'pomodoro-tracker' && <CoachPomodoroView students={students} />}
-                        {activeTab === 'degerlendirme-gunluk' && <KocDegerlendirme students={students} tur="gunluk" />}
-                        {activeTab === 'degerlendirme-hata' && <KocDegerlendirme students={students} tur="hata" />}
-                        {activeTab === 'degerlendirme-deneme' && <KocDegerlendirme students={students} tur="deneme" />}
+                        {activeTab === 'gelisim-merkezi' && (
+                            <OgrenciGelisimMerkezi
+                                students={students}
+                                onOgrenciAc={(id) => navigate(`/coach/student/${id}`)}
+                            />
+                        )}
                         {/* Randevu ortak sekme: aynı bileşen iki bölümde de var,
                             ama saatler bölüme etiketlenip ayrı gösteriliyor. */}
                         {activeTab === 'appointments' && (

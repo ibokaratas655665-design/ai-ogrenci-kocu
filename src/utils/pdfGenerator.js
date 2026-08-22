@@ -138,7 +138,7 @@ const addFooters = (doc, leftText) => {
             doc.addImage(AMBLEM_BASE64, 'PNG', 97, 287, 6, 6);
         } catch { /* amblemsiz de basılabilir */ }
         doc.setFont('helvetica', 'bold');
-        doc.text(t(MARKA.ad), 105, 291.5, { align: 'left' });
+        doc.text(t(MARKA.tamAd), 105, 291.5, { align: 'left' });
         doc.setFont('helvetica', 'normal');
     }
 };
@@ -299,7 +299,7 @@ export const generateStudentReport = (student, trial, allExams = []) => {
             doc.addImage(AMBLEM_BASE64, 'PNG', 185, 8, 12, 12);
         } catch { /* amblem basılamazsa rapor yine üretilsin */ }
         doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...COLORS.white);
-        doc.text(t(MARKA.ad), 191, 25, { align: 'center' });
+        doc.text(t(MARKA.tamAd), 191, 25, { align: 'center' });
 
         let yPos = 58;
         const getTotalNetLocal = (s) => (parseFloat(s.totalNet) || parseFloat(s.tyt) || Object.values(s.subjects || {}).reduce((a, b) => a + (parseFloat(b?.net) || 0), 0));

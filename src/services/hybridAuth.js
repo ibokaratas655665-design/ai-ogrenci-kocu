@@ -679,21 +679,8 @@ export const registerCoach = async (data) => {
             return { success: false, error: `Şifre yeterince güçlü değil: ${guc.sorunlar[0]}` };
         }
 
-        /**
-         * Rehberlik paketi öğrenci sayısı sınırsız olduğu hâlde Koç 20'den
-         * ucuzdur; kurum kısıtı olmasa 20+ öğrencisi olan bireysel koç için
-         * Koç 20 almanın anlamı kalmazdı. Paket okul rehberlik servisleri
-         * için tanımlı, o yüzden kurum adı zorunlu.
-         *
-         * Bu tek başına yeterli bir kapı değil — talep zaten ana koç onayına
-         * düşüyor, kurum bilgisi orada görünsün diye isteniyor.
-         */
-        if (planBul(planId)?.kurumsal && !schoolName?.trim()) {
-            return {
-                success: false,
-                error: 'Rehberlik Servisi paketi okul rehberlik servisleri içindir. Kurum adını yazmanız gerekiyor.',
-            };
-        }
+        /* Kurumsal paket kontrolü kaldırıldı — Rehberlik Servisi paketi
+           PDR bölümüyle birlikte arşivlendi; kurumsal plan kalmadı. */
 
         const localUsers = safeParse('users_db');
         if (localUsers.some(u => samePhone(u.phone, phone))) {

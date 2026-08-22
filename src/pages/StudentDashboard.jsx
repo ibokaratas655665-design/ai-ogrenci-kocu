@@ -497,7 +497,7 @@ const StudentDashboard = () => {
      * oraya eklenip buraya eklenmezse çökme olmaz, yalnızca o sekmenin
      * derin bağlantısı ana sekmeye düşer.
      */
-    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'deneme-analizi', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests'];
+    const GECERLI_SEKMELER = ['home', 'tasks', 'program', 'smart-plan', 'exams', 'deneme-analizi', 'topics', 'matrix', 'portfolio', 'pomodoro', 'daily-log', 'error-notebook', 'assessment', 'messages', 'appointments', 'tests', 'stats', 'badges'];
     const [activeTab, setActiveTab] = useState(() => {
         try {
             const h = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
@@ -961,25 +961,28 @@ const StudentDashboard = () => {
             ],
         },
         {
-            label: 'Gelişimim',
+            /* Talimat (22.08.2026): Günlük Kayıt + Hata Defteri + Deneme
+               Analizi tek gelişim alanında toplanır — adı ÇALIŞMALARIM. */
+            label: 'Çalışmalarım',
             items: [
-                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
-                /* Deneme Analizi artık birinci sınıf sekme — Hata
-                   Defteri'nin içine gömülü görünüm de duruyor ama
-                   öğrenci buradan doğrudan ulaşır. */
+                { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
+                { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
                 { id: 'deneme-analizi', icon: MODULE_ICONS.analysis, label: 'Deneme Analizi' },
-                { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
-                { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
-                { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
+                { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
+                { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
             ],
         },
         {
-            label: 'Çalışma Araçlarım',
+            label: 'Gelişimim',
             items: [
-                { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
-                { id: 'daily-log', icon: MODULE_ICONS['daily-log'], label: 'Günlük Kayıt' },
-                { id: 'error-notebook', icon: MODULE_ICONS['error-notebook'], label: 'Hata Defteri' },
-                { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Değerlendirme' },
+                /* 'stats' ve 'badges' ekranları yazılmış ama menüye hiç
+                   bağlanmamıştı — 22.08.2026'da bağlandı. */
+                { id: 'stats', icon: MODULE_ICONS.analysis, label: 'İstatistikler' },
+                { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler' },
+                { id: 'topics', icon: MODULE_ICONS.topics, label: 'Konu Takibi' },
+                { id: 'matrix', icon: MODULE_ICONS.matrix, label: 'Trend Matrix' },
+                { id: 'badges', icon: MODULE_ICONS.portfolio, label: 'Rozetler' },
+                { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
             ],
         },
         {
@@ -993,6 +996,35 @@ const StudentDashboard = () => {
     ];
 
     const TABS = SEKME_GRUPLARI.flatMap((g) => g.items);
+
+    /**
+     * İstatistikler sekmesindeki radar GERÇEK veriden beslenir:
+     * mevcut = son 3 denemenin ders bazlı ortalaması, hedef = öğrencinin
+     * kendi en iyi denemesi. Deneme yoksa radar hiç çizilmez — eski
+     * sürümdeki gibi örnek (sahte) veriye düşülmez.
+     */
+    const radarVerisi = useMemo(() => {
+        if (!examData.length) return [];
+        const DERSLER = [
+            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
+            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
+            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
+            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
+        ];
+        const sirali = [...examData].sort((a, b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt));
+        const son3 = sirali.slice(0, 3);
+        return DERSLER.map(({ anahtar, ad, tavan }) => {
+            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
+            if (!degerler.length) return null;
+            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
+            const enIyi = Math.max(...sirali.map((e) => parseFloat(e[anahtar]) || 0));
+            return {
+                subject: ad,
+                current: Math.round(Math.max(0, (ort / tavan) * 100)),
+                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
+            };
+        }).filter(Boolean);
+    }, [examData]);
 
     /** Telefonda alt çubuğa çıkan dört hedef — en sık kullanılanlar. */
     const MOBIL_BIRINCIL = ['home', 'tasks', 'program', 'messages']
@@ -1479,7 +1511,7 @@ const StudentDashboard = () => {
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className="font-bold text-ink text-sm syne uppercase tracking-wider">KURUMSAL REHBERLİK</h3>
+                                                    <h3 className="font-bold text-ink text-sm syne uppercase tracking-wider">KOÇUMDAN</h3>
                                                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                                                 </div>
                                                 <p className="text-[10px] font-bold text-brand/60 uppercase tracking-widest mt-0.5">KOÇUN CANLI / AKTİF</p>
@@ -1798,8 +1830,8 @@ const StudentDashboard = () => {
                         <div className="flex items-center gap-4 bg-surface border border-line px-6 py-3 rounded-2xl">
                              <TrendingUp size={20} className="text-brand" />
                              <div>
-                                 <p className="text-[10px] font-black text-ink-3 uppercase">SIRALAMAN</p>
-                                 <p className="text-lg font-black text-ink syne line-height-none">#12</p>
+                                 <p className="text-[10px] font-black text-ink-3 uppercase">TOPLAM XP</p>
+                                 <p className="text-lg font-black text-ink syne line-height-none">{gamStats.totalXP || 0}</p>
                              </div>
                         </div>
                     </div>
@@ -1976,37 +2008,19 @@ const StudentDashboard = () => {
                         </div>
                     )}
 
-                    {/* Konu Performans Radar + Aktivite Akışı */}
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                        <div className="lg:col-span-3 space-y-6">
+                    {/* Konu Performans Radarı — yalnız gerçek deneme verisi
+                        varsa çizilir (örnek veriye düşme kaldırıldı). */}
+                    {radarVerisi.length > 0 && (
+                        <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🎯 PERFORMANS RADARI</h2>
                                 <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
                             </div>
                             <div className="premium-card p-8 border-line">
-                                <PerformanceRadar />
+                                <PerformanceRadar performanceData={radarVerisi} />
                             </div>
                         </div>
-                        <div className="lg:col-span-2 space-y-6">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">⚡ SON AKTİVİTELER</h2>
-                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                            </div>
-                            <div className="premium-card p-6 border-line">
-                                <ActivityFeed maxItems={8} />
-                            </div>
-                        </div>
-                    </div>
-                    {/* Başarı Tahmini */}
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🔮 BAŞARI TAHMİNİ</h2>
-                            <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                        </div>
-                        <div className="premium-card p-8 border-line">
-                            <PredictiveAnalytics targetScore={450} examDate="15 Haziran 2026" />
-                        </div>
-                    </div>
+                    )}
 
                     {/* Hedef Belirleme Modülü */}
                     <div className="space-y-6">

@@ -130,7 +130,7 @@ const generateCardPDF = (allData, year, stats) => {
   pdf.setFillColor(255, 255, 255); pdf.circle(W - 22, 12, 7, 'F');
   try { pdf.addImage(AMBLEM_BASE64, 'PNG', W - 27, 7, 10, 10); } catch { /* amblemsiz de basılır */ }
   pdf.setFontSize(6.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255, 255, 255);
-  pdf.text('Basari Kampi', W - 22, 24, { align: 'center' });
+  pdf.text('Basari Kampi Kocluk Platformu', W - 22, 24, { align: 'center' });
 
   let y = 34;
   const cardW = W - 20;
@@ -221,7 +221,7 @@ const generateCardPDF = (allData, year, stats) => {
 
   // Footer on last page
   pdf.setFontSize(6); pdf.setTextColor(150,150,150);
-  pdf.text(trToEn('Bu rapor Basari Kampi tarafindan olusturulmustur. YOK Atlas verilerine dayanmaktadir.'), W/2, H-5, {align:'center'});
+  pdf.text(trToEn('Bu rapor Basari Kampi Kocluk Platformu tarafindan olusturulmustur. YOK Atlas verilerine dayanmaktadir.'), W/2, H-5, {align:'center'});
 
   pdf.save(`Taban_Puanlari_${year}_Rapor.pdf`);
 };
