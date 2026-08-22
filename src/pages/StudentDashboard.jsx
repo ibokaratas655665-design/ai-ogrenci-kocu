@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -927,6 +927,35 @@ const StudentDashboard = () => {
      */
     const { rozetler, okundu } = useTabBadges('student', user);
 
+    /**
+     * İstatistikler sekmesindeki radar GERÇEK veriden beslenir:
+     * mevcut = son 3 denemenin ders bazlı ortalaması, hedef = öğrencinin
+     * kendi en iyi denemesi. Deneme yoksa radar hiç çizilmez — örnek
+     * (sahte) veriye düşülmez. Hook olduğu için erken return'den ÖNCE.
+     */
+    const radarVerisi = useMemo(() => {
+        if (!examData.length) return [];
+        const DERSLER = [
+            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
+            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
+            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
+            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
+        ];
+        const sirali = [...examData].sort((a, b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt));
+        const son3 = sirali.slice(0, 3);
+        return DERSLER.map(({ anahtar, ad, tavan }) => {
+            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
+            if (!degerler.length) return null;
+            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
+            const enIyi = Math.max(...sirali.map((e) => parseFloat(e[anahtar]) || 0));
+            return {
+                subject: ad,
+                current: Math.round(Math.max(0, (ort / tavan) * 100)),
+                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
+            };
+        }).filter(Boolean);
+    }, [examData]);
+
     if (loading) return <StudentDashboardSkeleton />;
 
     const safeSlotCount = Number(programConfig?.dailySlotCount) || 6;
@@ -996,35 +1025,6 @@ const StudentDashboard = () => {
     ];
 
     const TABS = SEKME_GRUPLARI.flatMap((g) => g.items);
-
-    /**
-     * İstatistikler sekmesindeki radar GERÇEK veriden beslenir:
-     * mevcut = son 3 denemenin ders bazlı ortalaması, hedef = öğrencinin
-     * kendi en iyi denemesi. Deneme yoksa radar hiç çizilmez — eski
-     * sürümdeki gibi örnek (sahte) veriye düşülmez.
-     */
-    const radarVerisi = useMemo(() => {
-        if (!examData.length) return [];
-        const DERSLER = [
-            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
-            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
-            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
-            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
-        ];
-        const sirali = [...examData].sort((a, b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt));
-        const son3 = sirali.slice(0, 3);
-        return DERSLER.map(({ anahtar, ad, tavan }) => {
-            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
-            if (!degerler.length) return null;
-            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
-            const enIyi = Math.max(...sirali.map((e) => parseFloat(e[anahtar]) || 0));
-            return {
-                subject: ad,
-                current: Math.round(Math.max(0, (ort / tavan) * 100)),
-                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
-            };
-        }).filter(Boolean);
-    }, [examData]);
 
     /** Telefonda alt çubuğa çıkan dört hedef — en sık kullanılanlar. */
     const MOBIL_BIRINCIL = ['home', 'tasks', 'program', 'messages']

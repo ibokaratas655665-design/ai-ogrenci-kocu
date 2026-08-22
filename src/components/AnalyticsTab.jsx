@@ -95,7 +95,7 @@ const AnalyticsTab = ({ students = [] }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1 bg-surface dark:bg-surface-inv rounded-[2.5rem] p-6 shadow-xl border border-line dark:border-line-2 h-[450px]">
                     <h3 className="text-xs font-black text-ink dark:text-ink mb-6 uppercase tracking-widest flex items-center gap-2">
-                        <RadarIcon className="text-brand" size={16}  animationDuration={300} /> Bilişsel Dağılım
+                        <RadarIcon className="text-brand" size={16} /> Bilişsel Dağılım
                     </h3>
                     <div className="h-full w-full pb-10">
                         <ResponsiveContainer width="100%" height="100%">

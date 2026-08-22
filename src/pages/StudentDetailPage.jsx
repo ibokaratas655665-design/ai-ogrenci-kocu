@@ -799,7 +799,7 @@ const StudentDetailPage = () => {
                         {/* Gelişmiş Deneme Analizleri */}
                         <div className="space-y-8">
                             <h3 className="text-xl font-black text-ink flex items-center gap-2 border-b border-line pb-4">
-                                <BarChart2 size={24} className="text-brand"  animationDuration={300} />
+                                <BarChart2 size={24} className="text-brand" />
                                 Detaylı Deneme Analizi
                             </h3>
                             
