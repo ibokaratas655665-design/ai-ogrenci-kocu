@@ -38,6 +38,7 @@ import BulkMessageModal from '../components/coach/BulkMessageModal';
 import { CoachBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import KocBugun from '../components/coach/KocBugun';
+import KocGenelBakis from '../components/coach/KocGenelBakis';
 import { BolumHataSiniri } from '../components/ui';
 // 🆕 Yeni Koç Özellikleri
 import GoalComparisonPanel from '../components/coach/GoalComparisonPanel';
@@ -146,7 +147,7 @@ const NAV_BY_SECTION = {
                    anlamlı ama koçun sabah sorduğu soru "kim beni bekliyor";
                    o soruyu bu sekme cevaplıyor. Yetki koşulu YOK — her koçun
                    kendi iş listesi olmalı. */
-                { id: 'bugun', icon: MODULE_ICONS.analysis, label: 'Bugün' },
+                { id: 'bugun', icon: MODULE_ICONS.analysis, label: 'Genel Bakış' },
                 { id: 'analysis', icon: MODULE_ICONS.analysis, label: 'Analiz', perm: 'analysis' },
                 { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
                 /* Bu ikisi (ve aşağıdaki leaderboard/task-templates/
@@ -3063,6 +3064,55 @@ const CoachDashboard = () => {
                 <OfflineBanner offlineManager={window.offlineManager} />
             </header>
 
+            {/* ══ 23.08 TASARIM: masaüstünde lacivert kenar çubuğu ══════
+                Üst sekme şeridi kaldırıldı; gezinme referans tasarımdaki
+                gibi solda. Telefonda alt çubuk + Menü sayfası değişmedi. */}
+            <div className="lg:flex lg:items-start">
+                <aside className="koc-yan" aria-label="Koç gezinmesi">
+                    <nav className="flex-1">
+                        {bolumGruplari.map((group) => {
+                            const tabs = group.items.filter(
+                                (t) => (!t.perm || hasPermission(t.perm)) && (!t.boss || isMasterCoach)
+                            );
+                            if (!tabs.length) return null;
+                            return (
+                                <div key={group.label}>
+                                    <p className="yan-grup">{group.label}</p>
+                                    {tabs.map((tab) => {
+                                        const Icon = tab.icon;
+                                        const on = activeTab === tab.id;
+                                        const rozetSayisi = (rozetler[tab.id] || 0) + (sekmeGorevSayilari[tab.id] || 0);
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                type="button"
+                                                onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
+                                                aria-current={on ? 'page' : undefined}
+                                                className={`yan-oge ${on ? 'yan-on' : ''}`}
+                                            >
+                                                <Icon size={17} />
+                                                <span className="truncate">{tab.label}</span>
+                                                {rozetSayisi > 0 && <span className="yan-rozet">{rozetSayisi > 9 ? '9+' : rozetSayisi}</span>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })}
+                    </nav>
+                    <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2.5 px-2">
+                        <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center font-black text-sm">
+                            {(user?.name || 'K').charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                            <p className="text-[12px] font-black leading-tight truncate">{user?.name || 'Koç'}</p>
+                            <p className="text-[9px] font-bold tracking-[0.14em] text-white/50 uppercase">Koç</p>
+                        </div>
+                    </div>
+                </aside>
+
+                <div className="flex-1 min-w-0">
+
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
             <div className="pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos">
                 <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -3097,12 +3147,7 @@ const CoachDashboard = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex flex-col items-end">
-                                <span className="text-[10px] font-black text-ink-3 tracking-widest uppercase">Portal Status</span>
-                                <span className="text-xs font-black text-ink syne flex items-center gap-2">
-                                    V3.5.2 <span className="text-brand animate-pulse">PREMIUM</span>
-                                </span>
-                            </div>
+                            <span className="badge badge-neutral">{students.length} öğrenci</span>
                         </div>
                     </div>
 
@@ -3114,70 +3159,8 @@ const CoachDashboard = () => {
                     {/* Bölüm anahtarı kaldırıldı — PDR bölümü arşivde,
                         uygulama tek bölüm (koçluk) olarak çalışıyor. */}
 
-                    {/* TELEFONDA GİZLİ — orada alt çubuk ve "Tüm Bölümler"
-                        sayfası var. Otuz sekmeyi yatay kaydırmalı bir şeritte
-                        göstermek mobil için masaüstü düzenini küçültmekten
-                        ibaretti; kullanıcı sekmelerin çoğunu hiç görmüyordu. */}
-                    {/* ⚠️ SEKMELER GİZLİ KALIYORDU.
-                        Şerit `overflow-x-auto` + `min-w-max` idi ve kaydırma
-                        çubuğu da `no-scrollbar` ile gizlenmişti. İçerik
-                        genişliği 1400 pikselle sınırlanınca 14 sekmenin son
-                        üçü (Görevler, Kuponlar, Davetler) ekran dışında
-                        kalıyor, YANLARINDA HİÇBİR İPUCU OLMUYORDU — koç
-                        "Davetler nerede?" diye soruyordu; 310 piksel gizliydi.
-
-                        Artık gruplar alt satıra SARILIYOR: yatay kaydırma
-                        yok, her sekme görünür. */}
-                    <nav className="hidden lg:block mt-5 -mb-px">
-                        <div className="flex flex-wrap items-end gap-x-5 gap-y-3 pb-0.5">
-                            {bolumGruplari.map((group) => {
-                                const tabs = group.items.filter(
-                                    (t) => (!t.perm || hasPermission(t.perm)) && (!t.boss || isMasterCoach)
-                                );
-                                if (!tabs.length) return null;
-                                return (
-                                    <div key={group.label} className="flex flex-col gap-1.5">
-                                        <span className="eyebrow px-1">{group.label}</span>
-                                        <div className="tabbar">
-                                            {tabs.map((tab) => {
-                                                const Icon = tab.icon;
-                                                const on = activeTab === tab.id;
-                                                // Bu sekmeye bağlı açık görev sayısı — koç işin
-                                                // hangi ekranda beklediğini sekmeden görür
-                                                const gorevSayisi = sekmeGorevSayilari[tab.id] || 0;
-                                                // Sekmede bekleyen yeni çalışma sayısı; sekmeye
-                                                // girilince sıfırlanır
-                                                const yeniSayisi = rozetler[tab.id] || 0;
-                                                return (
-                                                    <button
-                                                        key={tab.id}
-                                                        onClick={() => { setActiveTab(tab.id); okundu(tab.id); }}
-                                                        aria-selected={on}
-                                                        className={`tb ${on ? 'is-on' : ''}`}
-                                                        style={on ? { '--brand': group.accent } : undefined}
-                                                    >
-                                                        {/* Simgeler kendi renklerini taşır — tek renge zorlanmaz */}
-                                                        <Icon size={18} />
-                                                        {tab.label}
-                                                        <TabBadge sayi={yeniSayisi} />
-                                                        {gorevSayisi > 0 && (
-                                                            <span
-                                                                className="badge badge-warn ml-1"
-                                                                title={`${gorevSayisi} açık görev`}
-                                                            >
-                                                                {gorevSayisi}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </nav>
-
+                    {/* Masaüstü gezinme soldaki lacivert kenar çubuğuna
+                        taşındı (23.08 tasarım); üst şerit kaldırıldı. */}
                 </div>
             </div>
             {/* ── Tab Content ────────────────────────────────────────────── */}
@@ -3204,8 +3187,18 @@ const CoachDashboard = () => {
                             gezinme ve diğer sekmeler ayakta kalır. Eskiden tek
                             bileşen hatası tüm uygulamayı beyaz ekrana düşürüyordu. */}
                         <BolumHataSiniri bolumAdi="Bu bölüm" key={activeTab}>
-                        {/* 📋 BUGÜN — koçun günlük iş listesi (açılış ekranı) */}
+                        {/* 📋 GENEL BAKIŞ — analiz merkezi + günlük iş listesi.
+                            Üstte referans tasarımın panosu (öğrenci seç →
+                            30 günlük görsel analiz), altta koçun iş listesi. */}
                         {activeTab === 'bugun' && (
+                            <div className="space-y-8">
+                            <KocGenelBakis
+                                students={students}
+                                user={user}
+                                onKarneAc={(id) => navigate(`/coach/student/${id}`)}
+                            />
+                            <div className="pt-2 border-t border-line">
+                                <h3 className="tip-h4 mb-3">Bugünkü İşlerin</h3>
                             <KocBugun
                                 kullanici={user}
                                 ogrenciler={students}
@@ -3226,6 +3219,8 @@ const CoachDashboard = () => {
                                 onOgrenciAc={(s) => navigate(`/coach/student/${s.id}`)}
                                 onGit={(id) => { setActiveTab(id); okundu(id); }}
                             />
+                            </div>
+                            </div>
                         )}
 
                         {/* 📊 ANALİZ MERKEZİ — özet, risk, sıralama, hedefler, grafikler tek yerde */}
@@ -3332,6 +3327,10 @@ const CoachDashboard = () => {
                     </div>
                 )}
             </main>
+
+                </div>
+            </div>
+            {/* ══ kenar çubuğu düzeni sonu ══ */}
 
             {/* Modals */}
             {isStudentModalOpen && (

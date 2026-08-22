@@ -327,7 +327,7 @@ select option {
         linear-gradient(180deg, var(--sheen) 0%, transparent 40%),
         var(--surface);
     border: 1px solid var(--line);
-    border-radius: 18px;
+    border-radius: 20px;
     box-shadow: var(--sh-1);
     transition: box-shadow var(--sure-normal) ease, border-color var(--sure-normal) ease, transform var(--sure-normal) ease;
 }

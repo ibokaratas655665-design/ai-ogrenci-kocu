@@ -144,7 +144,9 @@
 .koc-yan {
     background: var(--grad-lacivert);
     color: #fff;
-    display: flex;
+    /* Yalnız masaüstünde görünür — mobilde alt çubuk var. Tailwind
+       `hidden` sınıfını ezmemek için görünürlük BURADA yönetilir. */
+    display: none;
     flex-direction: column;
     width: 248px;
     flex-shrink: 0;
@@ -153,10 +155,15 @@
     height: 100vh;
     height: 100dvh;
     overflow-y: auto;
-    padding: 20px 14px;
+    /* Üstteki sabit başlık şeridinin (fixed header) altından başlar */
+    padding: 108px 14px 20px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,.2) transparent;
 }
+@media (min-width: 1024px) {
+    .koc-yan { display: flex; }
+}
+
 .koc-yan .yan-grup {
     font-size: 9.5px;
     font-weight: 800;

@@ -29,6 +29,7 @@ import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
 import { getSummary } from '../services/studyLogService';
+import denemeKayitlari from '../services/denemeKayitlari';
 import {
     ResponsiveContainer, LineChart, Line, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip as GrafikTooltip,
@@ -976,34 +977,6 @@ const StudentDashboard = () => {
      */
     const { rozetler, okundu } = useTabBadges('student', user);
 
-    /**
-     * İstatistikler sekmesindeki radar GERÇEK veriden beslenir:
-     * mevcut = son 3 denemenin ders bazlı ortalaması, hedef = öğrencinin
-     * kendi en iyi denemesi. Deneme yoksa radar hiç çizilmez — örnek
-     * (sahte) veriye düşülmez. Hook olduğu için erken return'den ÖNCE.
-     */
-    const radarVerisi = useMemo(() => {
-        if (!examData.length) return [];
-        const DERSLER = [
-            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
-            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
-            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
-            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
-        ];
-        const sirali = [...examData].sort((a, b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt));
-        const son3 = sirali.slice(0, 3);
-        return DERSLER.map(({ anahtar, ad, tavan }) => {
-            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
-            if (!degerler.length) return null;
-            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
-            const enIyi = Math.max(...sirali.map((e) => parseFloat(e[anahtar]) || 0));
-            return {
-                subject: ad,
-                current: Math.round(Math.max(0, (ort / tavan) * 100)),
-                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
-            };
-        }).filter(Boolean);
-    }, [examData]);
 
     /**
      * ÇALIŞMALARIM ve GELİŞİMİM merkezlerinin özet verisi — tamamı
@@ -1023,11 +996,58 @@ const StudentDashboard = () => {
         return () => window.removeEventListener('storage', tetik);
     }, []);
 
-    const denemelerSirali = useMemo(() => (
-        [...examData]
+    /**
+     * BİRLEŞİK deneme listesi: koç yüklemesi (examData) + öğrencinin
+     * kendi girdiği deneme analizleri. Netim kartı, net grafiği ve
+     * radar hepsi bunu okur — öğrencinin girdiği deneme "kaybolmaz".
+     */
+    const denemelerSirali = useMemo(() => {
+        const manuel = (() => {
+            try {
+                return denemeKayitlari.ogrencininKayitlari(user?.id).map((k) => ({
+                    name: k.ad,
+                    date: k.tarih || k.olusturma,
+                    totalNet: +Object.values(k.dersler || {})
+                        .reduce((a, d) => a + (parseFloat(d?.net) || 0), 0).toFixed(2),
+                    turkce: parseFloat(k.dersler?.['Türkçe']?.net),
+                    mat: parseFloat(k.dersler?.['Matematik']?.net),
+                    fen: parseFloat(k.dersler?.['Fen']?.net),
+                    sosyal: parseFloat(k.dersler?.['Sosyal']?.net),
+                }));
+            } catch { return []; }
+        })();
+        return [...examData, ...manuel]
             .filter((e) => Number.isFinite(parseFloat(e.totalNet)))
-            .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt))
-    ), [examData]);
+            .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
+    }, [examData, user?.id, kayitSurumu]);
+
+    /**
+     * Performans radarı GERÇEK veriden beslenir: mevcut = son 3
+     * denemenin ders ortalaması, hedef = öğrencinin kendi en iyi
+     * denemesi. Deneme yoksa radar hiç çizilmez — örnek veri yok.
+     */
+    const radarVerisi = useMemo(() => {
+        if (!denemelerSirali.length) return [];
+        const DERSLER = [
+            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
+            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
+            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
+            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
+        ];
+        const son3 = denemelerSirali.slice(-3);
+        return DERSLER.map(({ anahtar, ad, tavan }) => {
+            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
+            if (!degerler.length) return null;
+            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
+            const enIyi = Math.max(...denemelerSirali.map((e) => parseFloat(e[anahtar]) || 0));
+            return {
+                subject: ad,
+                current: Math.round(Math.max(0, (ort / tavan) * 100)),
+                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
+            };
+        }).filter(Boolean);
+    }, [denemelerSirali]);
 
     const merkezOzet = useMemo(() => {
         let o14 = null, o30 = null;
@@ -1073,7 +1093,7 @@ const StudentDashboard = () => {
             dakika7: o7?.minutes ?? 0,
             isabet7: o7?.accuracy ?? null,
             hatalar7,
-            deneme7: examData.filter((e) => new Date(e.date || e.uploadedAt || 0).getTime() >= Date.now() - 7 * 86400000).length,
+            deneme7: denemelerSirali.filter((e) => new Date(e.date || e.uploadedAt || 0).getTime() >= Date.now() - 7 * 86400000).length,
             sonNet, netFark, netSerisi,
             gunSerisi: son7.map((g) => ({ gun: g.date.slice(5), soru: g.questions })),
             soru30: o30?.questions ?? 0,
