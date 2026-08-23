@@ -12,6 +12,8 @@
  * kurar (iki sistem AYNI dili konuşur, veri iki kez tanımlanmaz).
  */
 
+import { HATA_TURLERI } from './hataTurleri';
+
 export const HATA_NEDENLERI = [
     { id: 'bilgi', ad: 'Konu / bilgi eksiği', eksen: 'bilgi', aksiyon: 'Konunun anlatımına geri dön', eskiKarsilik: 'knowledge' },
     { id: 'kavram', ad: 'Kavram yanılgısı / yanlış yöntem', eksen: 'bilgi', aksiyon: 'Çözümlü örneklerle yöntemi düzelt', eskiKarsilik: null },
@@ -24,7 +26,32 @@ export const HATA_NEDENLERI = [
     { id: 'diger', ad: 'Diğer', eksen: 'diger', aksiyon: null, eskiKarsilik: null },
 ];
 
-export const nedenAdi = (id) => HATA_NEDENLERI.find((n) => n.id === id)?.ad || id;
+/**
+ * Neden kimliğinin okunur adı.
+ *
+ * ⚠️ İKİ SÖZLÜK, TEK KAPI
+ * Uygulamada hata iki ayrı yerde etiketleniyor:
+ *   · Deneme analizi  → bu dosyadaki kimlikler ('bilgi', 'dikkat'…)
+ *   · Hata defteri     → data/hataTurleri ('knowledge', 'careless'…)
+ *
+ * `gelisimAnalitik.hataOzeti` hata DEFTERİ kayıtlarını gruplarken bu
+ * fonksiyonu çağırıyordu; kimlikler bu katalogda bulunmadığı için
+ * koç panelinde "Hata türüne göre" listesi ham İngilizce kimlik
+ * gösteriyordu: "careless 14, knowledge 7". Ölçüldü.
+ *
+ * Çözüm üç adımlı: önce bu katalog, sonra `eskiKarsilik` köprüsü,
+ * sonra hata defteri sözlüğü. Hiçbirinde yoksa kimlik aynen döner —
+ * elle yazılmış bir değer uydurma bir adla değiştirilmez.
+ */
+export const nedenAdi = (id) => {
+    if (!id) return 'Belirtilmemiş';
+    const dogrudan = HATA_NEDENLERI.find((n) => n.id === id);
+    if (dogrudan) return dogrudan.ad;
+    const kopru = HATA_NEDENLERI.find((n) => n.eskiKarsilik === id);
+    if (kopru) return kopru.ad;
+    const defter = HATA_TURLERI.find((t) => t.id === id);
+    return defter ? defter.label : id;
+};
 
 export const EKSEN_ADI = { bilgi: 'Bilgi', dikkat: 'Dikkat', sure: 'Süre', diger: 'Diğer' };
 

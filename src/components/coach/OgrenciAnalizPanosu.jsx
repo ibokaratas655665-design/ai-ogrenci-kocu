@@ -28,7 +28,7 @@ import {
     ResponsiveContainer, Cell,
 } from 'recharts';
 import {
-    OlcumKarti, UyumHalkasi, IsiHaritasi, DersCubuklari,
+    OlcumKarti, UyumHalkasi, IsiHaritasi, DersCubuklari, SayiCubuklari,
     GelisimZinciri, RiskListesi, Yorum, VeriYok,
 } from '../charts/Analitik';
 import { SegmentliSecim } from '../ui/Gelisim';
@@ -37,7 +37,7 @@ import {
     netTrendi, hataOzeti, dersRiskleri, gelisimZinciri, yorumla,
 } from '../../services/gelisimAnalitik';
 import { hucreTarihi, programBaslangici } from '../../services/programProgressService';
-import { izgaraOzellikleri, eksenOzellikleri, ANLAM_RENKLERI } from '../charts/grafikTemasi';
+import { izgaraOzellikleri, eksenOzellikleri, ANLAM_RENKLERI, dersRengi } from '../charts/grafikTemasi';
 
 const PENCERELER = [
     { id: 14, etiket: '14 gün' },
@@ -181,23 +181,21 @@ export default function OgrenciAnalizPanosu({ ogrenci }) {
 
             {/* ══ 1. ÇALIŞMA TRENDİ ══════════════════════════════ */}
             <Bolum no="01" baslik="Çalışma trendi" aciklama="Günlük soru çözümü ve düzen">
-                <Grafik
-                    baslik="" boy="kisa"
-                    veriVar={calisma.veri}
-                    bosBaslik="Çalışma kaydı yok"
-                    bosAciklama="Öğrenci bu dönemde günlük kayıt girmemiş."
-                >
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={seri} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
-                            <CartesianGrid {...izgara} />
-                            <XAxis dataKey="gunAdi" {...eksen} interval="preserveStartEnd" />
-                            <YAxis {...eksen} />
-                            <Tooltip content={<Ipucu birim=" soru" />} cursor={{ fill: 'var(--surface-2)' }} />
-                            <Bar dataKey="soru" name="Soru" fill="var(--brand)" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </Grafik>
-                <IsiHaritasi seri={seri} alan="soru" />
+                {/* TEK GÖRSEL, TEK SERİ.
+                    Burada AYNI diziden AYNI alan iki kez çiziliyordu: önce
+                    günlük çubuk grafiği, hemen altında aynı günlerin ısı
+                    haritası. İkisi de "gün gün kaç soru" diyordu.
+
+                    Kalan ısı haritasıdır, çünkü çubuğun söyleyemediği bir
+                    şey söyler: kayıt OLMAYAN gün ile SIFIR çözülen günü
+                    ayırır. Çubukta ikisi de sıfır yüksekliktedir ve
+                    "çalışmadı" ile "girmedi" aynı görünür. Toplam ve
+                    günlük ortalama zaten yukarıdaki ölçüm kartlarında. */}
+                {calisma.veri ? (
+                    <IsiHaritasi seri={seri} alan="soru" />
+                ) : (
+                    <VeriYok sebep="calisma-yok" />
+                )}
                 {yorumla('istikrar', ist, 'koc') && (
                     <Yorum ton={yorumla('istikrar', ist, 'koc').ton}>{yorumla('istikrar', ist, 'koc').metin}</Yorum>
                 )}
@@ -276,31 +274,27 @@ export default function OgrenciAnalizPanosu({ ogrenci }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <p className="tip-mini font-black uppercase tracking-wider text-ink-3 mb-2">Derslere göre</p>
-                            <div className="flex flex-col gap-2">
-                                {hata.derslere.slice(0, 6).map((d) => (
-                                    <div key={d.ad} className="flex items-center gap-3">
-                                        <span className="tip-small text-ink-2 w-[86px] shrink-0 truncate">{d.ad}</span>
-                                        <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden min-w-[50px]">
-                                            <div className="h-full rounded-full bg-warn" style={{ width: `${d.oran ?? 0}%` }} />
-                                        </div>
-                                        <span className="tip-mini font-bold text-ink-2 tabular-nums w-[30px] text-right">{d.adet}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            {/* Çubuk rengi = programdaki ders rengi. Eskiden
+                                bütün dersler aynı amber tondaydı; koç
+                                "Matematik" satırını programdaki maviyle
+                                eşleştiremiyordu. */}
+                            <SayiCubuklari
+                                satirlar={hata.derslere.map((d) => ({
+                                    ad: d.ad, deger: d.adet, renk: dersRengi(d.ad),
+                                }))}
+                                enFazla={6}
+                            />
                         </div>
                         <div>
                             <p className="tip-mini font-black uppercase tracking-wider text-ink-3 mb-2">Hata türüne göre</p>
-                            <div className="flex flex-col gap-2">
-                                {hata.turlere.slice(0, 6).map((d) => (
-                                    <div key={d.ad} className="flex items-center gap-3">
-                                        <span className="tip-small text-ink-2 w-[86px] shrink-0 truncate">{d.ad}</span>
-                                        <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden min-w-[50px]">
-                                            <div className="h-full rounded-full bg-danger" style={{ width: `${d.oran ?? 0}%` }} />
-                                        </div>
-                                        <span className="tip-mini font-bold text-ink-2 tabular-nums w-[30px] text-right">{d.adet}</span>
-                                    </div>
-                                ))}
-                            </div>
+                            {/* Tür çubukları NÖTR: yanındaki panel ders
+                                kimliğini renkle taşıyor, aynı kartta ikinci
+                                bir renk sözlüğü kurmak iki anlamı aynı tona
+                                bindirirdi. */}
+                            <SayiCubuklari
+                                satirlar={hata.turlere.map((d) => ({ ad: d.ad, deger: d.adet }))}
+                                enFazla={6}
+                            />
                         </div>
                     </div>
                 ) : (
