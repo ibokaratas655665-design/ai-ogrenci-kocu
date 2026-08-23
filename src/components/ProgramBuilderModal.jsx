@@ -17,6 +17,7 @@ import programProgress from '../services/programProgressService';
 import firebaseSync from '../services/firebaseSync';
 import { yaz as veriYaz } from '../services/veriDeposu';
 import { bildir, onayla } from '../services/uiGeriBildirim';
+import ProgramHafizaPaneli from './program/ProgramHafizaPaneli';
 import Modal from './ui/Modal';
 
 /** Hazır aktivite fırçalarına tıklanınca hücreye yazılacak varsayılan açıklama. */
@@ -471,6 +472,39 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
      * kalanSoru, bitti}. Etüt sayıları burada ÖNİZLEME olarak
      * hesaplanır; koç tek tek değiştirebilir.
      */
+    /**
+     * PROGRAM HAFIZASINDAN EKLEME (§7, §12).
+     *
+     * Koç hafıza panelinden "+ Ekle" dediğinde çalışır. Otomatik
+     * çağrılmaz — öneri ile karar arasındaki sınır burada durur.
+     *
+     * Aynı konu listede zaten varsa ikinci kez eklenmez; eksik soru
+     * çift sayılmasın diye (§8) kalan soru güncellenir.
+     */
+    const hafizadanEkle = (kayit, tur) => {
+        if (!kayit?.konu) return;
+        setDistributionQueue((onceki) => {
+            const i = onceki.findIndex(
+                (q) => q.konu === kayit.konu && (q.dersAd || q.ders) === (kayit.dersAd || kayit.ders),
+            );
+            if (i >= 0) {
+                const kopya = [...onceki];
+                kopya[i] = {
+                    ...kopya[i],
+                    // Kalan soru bilgisi hafızadan tazelenir, TOPLANMAZ
+                    ...(kayit.kalanSoru != null ? { kalanSoru: kayit.kalanSoru } : {}),
+                    hafizadan: tur,
+                };
+                bildir(`${kayit.konu} listede zaten vardı, bilgileri güncellendi.`, 'bilgi');
+                return kopya;
+            }
+            const etiket = tur === 'soru' ? 'eksik soru'
+                : tur === 'etut' ? 'eksik etüt' : 'tekrar';
+            bildir(`${kayit.konu} (${etiket}) dağıtım listesine eklendi.`, 'basari');
+            return [...onceki, { ...kayit, konuEtut: tur === 'tekrar' ? 1 : undefined }];
+        });
+    };
+
     const addSelectedToQueue = () => {
         const yeni = selectedTopics.map((t) => {
             const kayit = {
@@ -1082,6 +1116,16 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 </button>
                             )}
                         </div>
+
+                        {/* ══ PROGRAM HAFIZASI ══════════════════════════
+                            Geçmiş haftaların eksikleri ve tekrar zamanı
+                            gelen konular. ÖNERİDİR: hiçbiri otomatik
+                            eklenmez, koç tek tek "+ Ekle" der (§7, §12). */}
+                        <ProgramHafizaPaneli
+                            studentId={studentId}
+                            konular={distributionQueue}
+                            onEkle={hafizadanEkle}
+                        />
 
                         {/* Queue Section */}
                         <div className="p-4 bg-brand-soft border-b border-brand-line flex flex-col">

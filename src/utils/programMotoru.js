@@ -497,7 +497,8 @@ export function programUret({
             if (!h) return false;
             yaz(h, {
                 subject: d.ad, topic: is_.konu.konu, type: tip,
-                exam: is_.konu.bolum, ...(tip === 'tekrar' ? { round: is_.round } : {}),
+                exam: is_.konu.bolum, grup: d.grup,
+                ...(tip === 'tekrar' ? { round: is_.round } : {}),
             });
             if (dersSayilir(tip)) bugunDersler.add(d.ad);
             if (tip === 'konu') bugunKonular.add(is_.konu.konu);
@@ -692,6 +693,33 @@ export function programUret({
             return sol + 1 + sag <= M.AYNI_DERS_ARDISIK_EN_COK;
         };
 
+        /**
+         * BİLİŞSEL GRUP KOMŞULUĞU (§15) — sayısal/sözel dönüşümü.
+         *
+         * Aynı ders sınırı tutuluyordu ama aynı GRUP sınırı doldurma
+         * yolunda hiç bakılmıyordu. Ölçüldü: YKS senaryolarında dört
+         * ardışık sayısal etüt oluşuyordu (sınır 3). Farklı dersler
+         * olduğu için ders kuralı devreye girmiyor, ama bilişsel yük
+         * açısından "Matematik · Fizik · Kimya · Geometri" tek blok.
+         *
+         * ⚠️ Bu sınır ders sınırından YUMUŞAKTIR: §17 uyarınca imkânsız
+         * bir dağılımı zorlamak için program bozulmaz. Kural yalnızca
+         * BAŞKA SEÇENEK VARKEN uygulanır; yoksa gevşetilir.
+         */
+        const grupKomsuUygun = (idx, grup) => {
+            if (!grup) return true;
+            const dizi = gunDizisi();
+            const ayniMi = (i) => {
+                const c = dizi[i];
+                return c && dersSayilir(c.type) && c.grup === grup;
+            };
+            let sol = 0;
+            for (let i = idx - 1; i >= 0 && ayniMi(i); i--) sol++;
+            let sag = 0;
+            for (let i = idx + 1; i < gunlukEtut && ayniMi(i); i++) sag++;
+            return sol + 1 + sag <= M.AYNI_GRUP_ARDISIK_EN_COK;
+        };
+
         while (g.acik.length) {
             const mevcut = gunDizisi().filter(Boolean);
             const gunDersleri = new Set(mevcut.filter((c) => dersSayilir(c.type)).map((c) => c.subject));
@@ -727,25 +755,40 @@ export function programUret({
                 return true;
             });
 
+            /**
+             * BİLİŞSEL GRUP SÜZGECİ (§15) — YUMUŞAK.
+             *
+             * Grup kuralını sağlayan aday varsa yalnızca onlar kullanılır;
+             * hiç yoksa süzgeç düşürülür. §17: imkânsız bir dağılımı
+             * zorlamak için program bozulmaz, en iyi mümkün dizilim üretilir.
+             */
+            const grupUyanlar = farkliOlan.filter((d) => grupKomsuUygun(idx, d.grup));
+            const dersAdaylari = grupUyanlar.length ? grupUyanlar : farkliOlan;
+
             // 1) Bekleyen tekrar — gündeki dersler ya da yeni açılabilir ders
-            const tIdx = tekrarKuyrugu.findIndex((x) => (
+            const tekrarUygun = (x) => (
                 (gunDersleri.has(x.ders.ad) || yeniDersAcilabilir) && komsuUygun(idx, x.ders.ad)
-            ));
+            );
+            // Önce grup kuralına da uyan tekrar aranır, yoksa herhangi biri
+            let tIdx = tekrarKuyrugu.findIndex(
+                (x) => tekrarUygun(x) && grupKomsuUygun(idx, x.ders.grup),
+            );
+            if (tIdx < 0) tIdx = tekrarKuyrugu.findIndex(tekrarUygun);
             if (tIdx >= 0) {
                 const t = tekrarKuyrugu.splice(tIdx, 1)[0];
                 yaz(h, {
                     subject: t.ders.ad, topic: t.konu.konu, type: 'tekrar',
-                    exam: t.konu.bolum, round: t.aralik,
+                    exam: t.konu.bolum, grup: t.ders.grup, round: t.aralik,
                 });
                 continue;
             }
             // 2) Zincirde kalan iş — limit ve bloklama gözetilerek
-            const kalanDers = farkliOlan[0];
+            const kalanDers = dersAdaylari[0];
             if (kalanDers) {
                 const is_ = kalanDers.zincir[0];
                 yaz(h, {
                     subject: kalanDers.ad, topic: is_.konu.konu,
-                    type: is_.tip, exam: is_.konu.bolum,
+                    type: is_.tip, exam: is_.konu.bolum, grup: kalanDers.grup,
                 });
                 is_.kalan--;
                 if (is_.kalan <= 0) kalanDers.zincir.shift();
