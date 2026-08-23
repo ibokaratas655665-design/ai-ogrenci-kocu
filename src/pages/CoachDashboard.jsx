@@ -10,6 +10,8 @@ import SmartNotificationBell from '../components/shared/SmartNotifications';
 import { useNavigate } from 'react-router-dom';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
 import OgrenciGelisimMerkezi from '../components/coach/OgrenciGelisimMerkezi';
+import { SayiCubuklari } from '../components/charts/Analitik';
+import { dersRengi } from '../components/charts/grafikTemasi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
 import { parsePdfExamData } from '../utils/pdfParser';
@@ -340,6 +342,48 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
     const withoutProgram = studentsWithStatus.filter(s => !s.hasProgram);
     const avgFill = withProgram.length ? Math.round(withProgram.reduce((a, s) => a + s.fillRate, 0) / withProgram.length) : 0;
 
+    /**
+     * ORTALAMA TAMAMLAMA — doluluktan farklı şey.
+     *
+     * Panelde yalnızca "Ort. Doluluk" vardı: koçun çizelgeyi ne kadar
+     * doldurduğu. Bu sayı koçun kendi işini ölçer, öğrencinin işini
+     * değil; bütün öğrenciler hiçbir etüt yapmasa bile %100 kalır.
+     * Sınıf genelinde "ne kadarı yapıldı?" sorusunun cevabı yoktu.
+     *
+     * Yalnızca tamamlama oranı HESAPLANABİLEN öğrenciler ortalamaya
+     * girer (programı olup hiç etüdü olmayan biri paydayı bozardı).
+     */
+    const olculebilir = withProgram.filter((x) => x.doneRate !== null);
+    const avgDone = olculebilir.length
+        ? Math.round(olculebilir.reduce((a, x) => a + x.doneRate, 0) / olculebilir.length)
+        : null;
+
+    /**
+     * SEÇİLİ PROGRAMIN DERS DAĞILIMI.
+     *
+     * Koç, yazdığı programda hangi dersin ne kadar yer tuttuğunu ancak
+     * ızgaradaki hücreleri tek tek sayarak görebiliyordu. Aynı bilgi
+     * çizelgeden doğrudan türetilir; yeni veri yazılmaz.
+     *
+     * Yalnızca DERS blokları sayılır: deneme, kitap, paragraf ve mola
+     * birer etkinliktir, ders değil — karıştırılırsa "Kitap Okuma"
+     * bir dersmiş gibi listeye girer.
+     */
+    const DERS_TURU = new Set(['konu', 'soru', 'tekrar']);
+    const dersDagilimi = React.useMemo(() => {
+        if (!previewStudentId) return [];
+        const cizelge = getStudentSchedule(previewStudentId) || {};
+        const m = new Map();
+        Object.values(cizelge).forEach((h) => {
+            if (!h || !DERS_TURU.has(h.type || 'konu') || !h.subject) return;
+            m.set(h.subject, (m.get(h.subject) || 0) + 1);
+        });
+        return [...m.entries()]
+            .map(([ad, adet]) => ({ ad, deger: adet }))
+            .sort((a, b) => b.deger - a.deger);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [previewStudentId, tazelik]);
+
     const previewSchedule = previewStudentId ? getStudentSchedule(previewStudentId) : null;
     const previewStudent = students.find(s => String(s.id) === String(previewStudentId));
     const safeSlotCount = 6;
@@ -415,14 +459,21 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                     { label: 'Toplam Öğrenci', value: students.length, icon: Users, acc: 'var(--brand)' },
                     { label: 'Program Var', value: withProgram.length, icon: CheckCircle, acc: 'var(--ok)' },
                     { label: 'Program Yok', value: withoutProgram.length, icon: AlertCircle, acc: 'var(--warn)' },
-                    { label: 'Ort. Doluluk', value: `%${avgFill}`, icon: Activity, acc: 'var(--c4)' },
-                ].map(({ label, value, icon: Icon, acc }) => (
+                    {
+                        label: 'Ort. Doluluk', value: `%${avgFill}`, icon: Activity, acc: 'var(--c4)',
+                        /* Doluluk koçun işini ölçer, tamamlama öğrencininkini.
+                           İkisi aynı karttadır çünkü yan yana okunmadıklarında
+                           "%100 doluluk" iyi bir haber sanılıyor. */
+                        alt: avgDone !== null ? `öğrenci tamamlama %${avgDone}` : 'tamamlama kaydı yok',
+                    },
+                ].map(({ label, value, icon: Icon, acc, alt }) => (
                     <div key={label} className="srf srf-accent p-4" style={{ '--acc': acc }}>
                         <div className="flex items-center justify-between mb-2">
                             <span className="sec-icon" style={{ '--acc': acc }}><Icon size={16} /></span>
                             <span className="num text-3xl">{value}</span>
                         </div>
                         <p className="eyebrow">{label}</p>
+                        {alt && <p className="text-[10px] text-ink-3 mt-0.5">{alt}</p>}
                     </div>
                 ))}
             </div>
@@ -567,6 +618,20 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                             </button>
                         </div>
                     </div>
+
+                    {/* PROGRAMIN DERS DAĞILIMI — ızgaradan önce.
+                        "Bu programda matematik ne kadar yer tutuyor?"
+                        sorusu şimdiye kadar hücreleri saymayı gerektiriyordu.
+                        Renkler ızgaradaki hücre renkleriyle aynıdır. */}
+                    {dersDagilimi.length > 0 && (
+                        <div className="px-4 py-3 border-b border-line bg-surface-2/40 pdf-hide">
+                            <p className="eyebrow mb-2">Ders Dağılımı · {dersDagilimi.reduce((a, x) => a + x.deger, 0)} ders etüdü</p>
+                            <SayiCubuklari
+                                satirlar={dersDagilimi.map((x) => ({ ...x, renk: dersRengi(x.ad) }))}
+                                enFazla={8}
+                            />
+                        </div>
+                    )}
 
                     {!previewSchedule || Object.keys(previewSchedule).length === 0 ? (
                         <div className="text-center py-14 px-4 bg-surface-2">
