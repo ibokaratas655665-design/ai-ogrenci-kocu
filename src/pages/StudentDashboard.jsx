@@ -49,6 +49,7 @@ import ActivityFeed from '../components/social/ActivityFeed';
 import { getStudentPermissions } from '../utils/permissions';
 import firebaseSync from '../services/firebaseSync';
 import StudentProgramTab from '../components/StudentProgramTab';
+import ProgramKarnem from '../components/student/ProgramKarnem';
 import StudentTestsTab from '../components/StudentTestsTab';
 // 🌟 Yeni Gamification & Analytics
 import BadgeCollection, { XPBar, StreakCard } from '../components/gamification/BadgeSystem';
@@ -2077,6 +2078,10 @@ const StudentDashboard = () => {
                                 KOÇUNUN HAZIRLADIĞI ÇALIŞMA PROGRAMI
                             </p>
                         </div>
+                        {/* Karne ÖNCE gelir: "ne kadar uydum" sorusu
+                            "hangi gün ne var" sorusundan önce cevaplanır.
+                            Çizelge zaten aşağıda, tam hâliyle duruyor. */}
+                        <ProgramKarnem studentId={user?.id} />
                         <div className="card p-1 sm:p-2">
                             <StudentProgramTab
                                 schedule={schedule}

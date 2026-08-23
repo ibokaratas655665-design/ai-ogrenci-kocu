@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     Calendar, CheckCircle, ChevronDown, ChevronUp,
-    RefreshCw, LayoutGrid, Info, Target, Zap,
+    RefreshCw, LayoutGrid, Info,
     BarChart3, Download, XCircle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -78,7 +78,6 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
     const filledCells = weekKeys.filter(k => schedule?.[k]).length;
     const completedCount = weekKeys.filter(k => progress[k]?.status === 'done' && schedule?.[k]).length;
     const missedCount = weekKeys.filter(k => progress[k]?.status === 'missed' && schedule?.[k]).length;
-    const fillRate = weekKeys.length ? Math.round((filledCells / weekKeys.length) * 100) : 0;
     const completionRate = filledCells ? Math.round((completedCount / filledCells) * 100) : 0;
 
     const handleDownloadPDF = async () => {
@@ -130,18 +129,22 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* DÖRT KART İKİYE İNDİ — ikisi zaten aynı kesri söylüyordu:
+                  "Toplam Etüt 30/42"  ile  "Doluluk %71"   → aynı oran
+                  "Tamamlanma %40"     ile  aşağıdaki çubuk → aynı oran
+                Mutlak sayılar kartta, oranlar çubukta kaldı. */}
+            <div className="grid grid-cols-2 gap-3">
                 <StatCard icon={LayoutGrid} label="Toplam Etüt" value={`${filledCells}/${weekKeys.length}`} sub="bu hafta" color="bg-brand-soft border-brand-line text-brand" />
                 <StatCard icon={CheckCircle} label="Yaptım" value={completedCount} sub={missedCount ? `${missedCount} yapamadım` : 'etüt'} color="bg-ok-soft border-ok text-ok" />
-                <StatCard icon={Target} label="Doluluk" value={`%${fillRate}`} sub="program doluluğu" color="bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] border-[color-mix(in_srgb,var(--c4)_35%,transparent)] text-c4" />
-                <StatCard icon={Zap} label="Tamamlanma" value={`%${completionRate}`} sub="işaretlenen" color="bg-warn-soft border-warn text-warn" />
             </div>
 
             {filledCells > 0 && (
                 <div className="bg-surface rounded-2xl p-4 border border-line shadow-sm">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-bold text-ink-2">Haftalık İlerleme</span>
-                        <span className="text-sm font-black text-brand">{completedCount}/{filledCells} etüt</span>
+                        <span className="text-sm font-bold text-ink-2">Bu Haftanın İlerlemesi</span>
+                        <span className="text-sm font-black text-brand tabular-nums">
+                            %{completionRate} · {completedCount}/{filledCells} etüt
+                        </span>
                     </div>
                     <div className="w-full bg-surface-3 rounded-full h-3 overflow-hidden">
                         <div className="on-color h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-yavas" style={{ width: `${completionRate}%` }} />
