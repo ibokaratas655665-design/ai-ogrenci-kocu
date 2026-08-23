@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { StudentBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import BugunEkrani from '../components/student/BugunEkrani';
+import GelisimPanosu from '../components/student/GelisimPanosu';
 import { cn } from '../lib/cn';
 import { Sayac } from '../components/ui/Badge';
 import { BolumHataSiniri } from '../components/ui';
@@ -2278,6 +2279,8 @@ const StudentDashboard = () => {
                 radar ve hedef yönetimi burada devam eder. */}
             {activeTab === 'gelisimim' && gelisimSegment === 'genel' && (
                 <div className="icerik-gecis space-y-8">
+                    {/* Analitik pano — mevcut verilerden anlık türetilir, veri yazmaz */}
+                    <GelisimPanosu user={user} />
                     {radarVerisi.length > 0 && (
                         <div className="card p-4 sm:p-6">
                             <PerformanceRadar performanceData={radarVerisi} />

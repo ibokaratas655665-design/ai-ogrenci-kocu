@@ -12,6 +12,9 @@ import Progress from '../ui/Progress';
 import OnayKutusu from '../ui/OnayKutusu';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
 import { getCellColor } from '../../data/programColors';
+import { hucreTarihi, programBaslangici } from '../../services/programProgressService';
+import { programUyumu, calismaOzeti, istikrar, motivasyon } from '../../services/gelisimAnalitik';
+import { MotivasyonSeridi, Degisim } from '../charts/Analitik';
 import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
@@ -105,6 +108,35 @@ export default function BugunEkrani({
 
     const biten = bugunEtutleri.filter((e) => e.durum === 'done').length;
     const toplam = bugunEtutleri.length;
+
+    /**
+     * HAFTALIK TEMPO — öz düzenlemenin hazırlık ayağı.
+     *
+     * "Bugün ne yapacağım?"ın yanına "şu ana kadar ne kadar ilerledim?"
+     * eklenir. Görünür tempo göstergesi olmadan öğrenci yalnızca o günü
+     * görür, gidişatı göremez.
+     *
+     * SALT OKUNUR: program çizelgesi ve tamamlama kayıtları yalnızca
+     * okunur; etüt tamamlama mantığına dokunulmaz.
+     */
+    const tempo = useMemo(() => {
+        const studentId = kullanici?.id;
+        if (!studentId) return null;
+        try {
+            const baslangic = programBaslangici(studentId);
+            const tarihCoz = baslangic ? (k) => hucreTarihi(k, baslangic) : null;
+            const uyum = programUyumu(studentId, { tarihCoz, gun: 7 });
+            const calisma = calismaOzeti(studentId, 7);
+            const ist = istikrar(studentId, 14);
+            return {
+                uyum,
+                mesaj: motivasyon({ uyum, calisma, net: { veri: false }, istikrar: ist }),
+            };
+        } catch {
+            return null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kullanici?.id, ilerleme, schedule]);
 
     /** Sıradaki adım: işaretlenmemiş ilk etüt. */
     const sonraki = bugunEtutleri.find((e) => e.durum !== 'done');
@@ -331,6 +363,48 @@ export default function BugunEkrani({
                     </div>
                 </Card>
             )}
+
+            {/* ══ 4b. HAFTALIK TEMPO ═════════════════════════════════
+                "Bugün ne yapacağım?"ın yanına "nasıl gidiyorum?".
+                Yalnızca program varsa ve vadesi gelmiş etüt varsa çıkar;
+                yoksa hiç çizilmez — boş bir %0 halkası yanıltıcı olurdu. */}
+            {tempo?.uyum?.veri && (
+                <Card>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                            <p className="tip-label text-ink-3 m-0">Bu Haftaki Tempon</p>
+                            <p className="tip-small text-ink-2 m-0 mt-1">
+                                Günü gelen {tempo.uyum.planlanan} etüdün{' '}
+                                <strong className="text-ink">{tempo.uyum.tamamlanan}</strong> tanesi tamam
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <span
+                                className="text-2xl font-black tabular-nums leading-none"
+                                style={{
+                                    color: tempo.uyum.oran >= 80 ? 'var(--ok)'
+                                        : tempo.uyum.oran >= 60 ? 'var(--warn)' : 'var(--danger)',
+                                }}
+                            >
+                                %{tempo.uyum.oran}
+                            </span>
+                            <Button varyant="ghost" onClick={() => onGit?.('program')}>
+                                Programım
+                            </Button>
+                        </div>
+                    </div>
+                    <Progress
+                        deger={tempo.uyum.tamamlanan}
+                        enFazla={tempo.uyum.planlanan}
+                        ton={tempo.uyum.oran >= 80 ? 'basari' : 'marka'}
+                        kalinlik="sm"
+                        className="mt-3"
+                    />
+                </Card>
+            )}
+
+            {/* Motivasyon — YALNIZCA gerçekten olmuş bir başarı varsa */}
+            <MotivasyonSeridi metin={tempo?.mesaj} />
 
             {/* ══ 5. KISAYOLLAR — dört renkli hedef ══════════════════ */}
             <div>

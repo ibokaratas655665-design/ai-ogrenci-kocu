@@ -15,6 +15,7 @@ import GoalTracking from './GoalTracking';
 import ProgramBuilderModal from '../components/ProgramBuilderModal';
 import SubjectAnalysis from '../components/charts/SubjectAnalysis';
 import StudentReportCard from '../components/coach/StudentReportCard';
+import OgrenciAnalizPanosu from '../components/coach/OgrenciAnalizPanosu';
 import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
 import { onayla, bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
@@ -466,6 +467,7 @@ const StudentDetailPage = () => {
                     {/* Tab Switcher */}
                     <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto">
                         {[
+                            { id: 'analiz', icon: Activity, label: 'Gelişim Analizi' },
                             { id: 'karne', icon: Award, label: 'Karne' },
                             { id: 'academic', icon: TrendingUp, label: 'Akademik' },
                             { id: 'program', icon: Calendar, label: 'Program' },
@@ -761,6 +763,13 @@ const StudentDetailPage = () => {
                                 </button>
                             </form>
                         </div>
+                    </div>
+                )}
+
+                {/* --- GELİŞİM ANALİZİ — mevcut verilerden anlık türetilir --- */}
+                {activeTab === 'analiz' && student && (
+                    <div className="animate-fade-in">
+                        <OgrenciAnalizPanosu ogrenci={student} />
                     </div>
                 )}
 
