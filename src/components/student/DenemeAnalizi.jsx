@@ -18,6 +18,8 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { TrendingUp, TrendingDown, Target, AlertCircle, BarChart2, PlusCircle, Trash2, Timer, HelpCircle } from 'lucide-react';
+import { dersRengi } from '../charts/grafikTemasi';
+import { hataTuruAdi } from '../../data/hataTurleri';
 import { listeOku } from '../../services/veriDeposu';
 import {
     dersOzeti, trendSerisi,
@@ -31,10 +33,10 @@ import { onayla, bildir } from '../../services/uiGeriBildirim';
 
 const NEDEN_RENKLERI = ['var(--danger)', 'var(--warn)', 'var(--info)'];
 
-const TUR_ADI = {
-    knowledge: 'Bilgi Eksiği', misread: 'Soruyu Yanlış Okuma',
-    time: 'Zaman Yetmedi', calculation: 'İşlem Hatası', careless: 'Dikkatsizlik',
-};
+/* Hata türü adları data/hataTurleri'nden — dört dosyada dört ayrı
+   kopya vardı ve hiçbirinde 'interpretation' yoktu; öğrencinin
+   "Yorum Hatası" seçtiği kayıtlar burada "interpretation: 4" diye
+   ham kimlikle görünüyordu. */
 
 const Rozet = ({ renk, children }) => (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" style={{ backgroundColor: `color-mix(in srgb, ${renk} 12%, transparent)`, color: renk }}>
@@ -228,6 +230,50 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                 </Bolum>
             )}
 
+            {/* ── DERSLERE GÖRE NET GELİŞİMİ ─────────────────────
+                `trendSerisi` her deneme noktasına ders netlerini de
+                yazıyordu (nokta[dersAnahtari] = net) ama hiçbir grafik
+                bu alanları okumuyordu: toplam net çiziliyor, kırılım
+                yalnızca SON denemenin tablosunda kalıyordu. Yani
+                "matematiğim yükseliyor mu?" sorusunun verisi vardı,
+                görseli yoktu.
+
+                Toplam netle AYNI grafikte çizilmiyor: toplam 80-120
+                bandında, tek ders 5-25 bandındadır; aynı eksende ders
+                çizgileri dibe yapışır.
+
+                Renk programdaki ders rengidir — seri sırası değil. */}
+            {seri.length >= 2 && dersler.length > 1 && (
+                <Bolum baslik="Derslere Göre Net Gelişimi" ikon={TrendingUp}>
+                    <div className="h-60">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={seri} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="tarih" tick={{ fill: 'var(--ink-3)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                                <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 11 }} tickLine={false} axisLine={false} />
+                                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }} />
+                                {/* Çok seri var — efsane olmadan hangi çizgi
+                                    hangi ders anlaşılmaz. */}
+                                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                                {dersler.map((d) => (
+                                    <Line
+                                        key={d.anahtar}
+                                        type="monotone"
+                                        dataKey={d.anahtar}
+                                        name={d.ad}
+                                        stroke={dersRengi(d.ad)}
+                                        strokeWidth={2}
+                                        dot={{ r: 2.5 }}
+                                        connectNulls
+                                        animationDuration={300}
+                                    />
+                                ))}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Bolum>
+            )}
+
             {/* ── Ders bazlı D/Y/B/net ───────────────────────────── */}
             {dersler.length > 0 && (
                 <Bolum baslik="Son Deneme — Ders Dökümü" ikon={Target}>
@@ -289,7 +335,7 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                     {konu.turDagilimi.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
                             {konu.turDagilimi.map((t) => (
-                                <Rozet key={t.tur} renk="var(--ink-3)">{TUR_ADI[t.tur] || t.tur}: {t.adet}</Rozet>
+                                <Rozet key={t.tur} renk="var(--ink-3)">{hataTuruAdi(t.tur)}: {t.adet}</Rozet>
                             ))}
                         </div>
                     )}

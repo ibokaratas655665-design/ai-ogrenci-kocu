@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
+import { HATA_TURLERI } from '../../data/hataTurleri';
 import DenemeAnalizi from './DenemeAnalizi';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend as GrafikEfsane, ResponsiveContainer,
@@ -29,13 +30,17 @@ const LS_KEY = 'error_notebook';
 /** Aralıklı tekrar aşamaları (gün) */
 const REVIEW_STAGES = [1, 3, 7, 21, 60];
 
-const ERROR_TYPES = [
-    { id: 'knowledge', label: 'Bilgi Eksiği', icon: Brain, color: 'var(--danger)', hint: 'Konuyu tam bilmiyordum' },
-    { id: 'careless', label: 'Dikkatsizlik', icon: Zap, color: 'var(--highlight)', hint: 'Biliyordum ama yanlış işaretledim' },
-    { id: 'interpretation', label: 'Yorum Hatası', icon: Target, color: 'var(--c4)', hint: 'Soruyu yanlış anladım' },
-    { id: 'time', label: 'Zaman Yetmedi', icon: Clock, color: 'var(--info)', hint: 'Süre bitti, boş bıraktım' },
-    { id: 'calculation', label: 'İşlem Hatası', icon: AlertTriangle, color: 'var(--accent)', hint: 'Yol doğruydu, işlemde hata yaptım' },
-];
+/**
+ * Tür listesi ARTIK BURADA TANIMLI DEĞİL: kimlik, ad, renk ve ipucu
+ * data/hataTurleri'nden gelir. Aynı liste dört dosyada kopyalanmıştı
+ * ve kopyalar birbirini tutmuyordu (bkz. o dosyadaki not). Yalnızca
+ * ikon eşlemesi burada kalır — data katmanı React bileşeni taşımaz.
+ */
+const TUR_IKONU = {
+    knowledge: Brain, careless: Zap, interpretation: Target,
+    time: Clock, calculation: AlertTriangle,
+};
+const ERROR_TYPES = HATA_TURLERI.map((t) => ({ ...t, icon: TUR_IKONU[t.id] || Brain }));
 
 /* V1.1: dersler öğrencinin alanından türetilir (utils/dersKonu);
    bu liste yalnızca katalog çözülemezse devreye giren yedektir. */

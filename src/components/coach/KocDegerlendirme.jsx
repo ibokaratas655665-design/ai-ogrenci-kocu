@@ -23,11 +23,9 @@ import { PencilLine, BookX, ChevronDown } from 'lucide-react';
 import { listeOku } from '../../services/veriDeposu';
 import { gunlukSeri, gunlukDersDagilimi, hataTrendi, konuHatalari } from '../../utils/denemeAnalizi';
 import DenemeAnalizi from '../student/DenemeAnalizi';
+import { hataTuruAdi } from '../../data/hataTurleri';
 
-const TUR_ADI = {
-    knowledge: 'Bilgi Eksiği', misread: 'Yanlış Okuma', time: 'Süre',
-    calculation: 'İşlem Hatası', careless: 'Dikkatsizlik',
-};
+/* Hata türü adları data/hataTurleri'nden — bkz. o dosyadaki not. */
 
 const Kart = ({ baslik, deger, altyazi }) => (
     <div className="bg-surface border border-line rounded-2xl p-3">
@@ -230,7 +228,7 @@ export default function KocDegerlendirme({ students = [], tur }) {
                                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
                                     {konu.turDagilimi.map((t) => (
                                         <span key={t.tur} className="px-2.5 py-1 rounded-full text-xs font-bold bg-surface-3 text-ink-2">
-                                            {TUR_ADI[t.tur] || t.tur}: {t.adet}
+                                            {hataTuruAdi(t.tur)}: {t.adet}
                                         </span>
                                     ))}
                                 </div>

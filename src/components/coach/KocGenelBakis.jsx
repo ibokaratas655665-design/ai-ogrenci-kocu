@@ -29,11 +29,9 @@ import { buildClassReport } from '../../services/reportService';
 import { api } from '../../services/api';
 import { bildir } from '../../services/uiGeriBildirim';
 import { cn } from '../../lib/cn';
+import { hataTuruAdi } from '../../data/hataTurleri';
 
-const TUR_ADI = {
-    knowledge: 'Bilgi Eksikliği', misread: 'Yanlış Okuma', time: 'Süre Problemi',
-    calculation: 'İşlem Hatası', careless: 'Dikkat Hatası',
-};
+/* Hata türü adları data/hataTurleri'nden — bkz. o dosyadaki not. */
 const PASTA_RENKLERI = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
 const GRAFIK_STIL = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 };
 const GUN_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -141,7 +139,7 @@ export default function KocGenelBakis({ students = [], user, onKarneAc }) {
 
         // Hata türleri — hata defteri + öğrenci deneme nedenleri
         const { turDagilimi } = konuHatalari(hatalar);
-        const hataPasta = turDagilimi.map((t) => ({ ad: TUR_ADI[t.tur] || t.tur, deger: t.adet }));
+        const hataPasta = turDagilimi.map((t) => ({ ad: hataTuruAdi(t.tur), deger: t.adet }));
 
         // Günlük çalışma istikrarı — 4 hafta × 7 gün ısı haritası
         const gunHarita = new Map();
