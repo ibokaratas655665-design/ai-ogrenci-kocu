@@ -11,6 +11,7 @@ import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import OnayKutusu from '../ui/OnayKutusu';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
+import { getCellColor } from '../../data/programColors';
 import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
@@ -94,6 +95,9 @@ export default function BugunEkrani({
                 ders: v.subject || '',
                 konu: v.topic || v.subject || '',
                 tur: v.type || 'konu',
+                // Program ızgarasıyla AYNI renk kaynağı (§11): Bugün'de
+                // gördüğü mor "Matematik" şeridi programda da mordur.
+                renk: getCellColor(v),
                 durum: ilerleme[k]?.status || null,
             }))
             .sort((a, b) => a.sira - b.sira);
@@ -449,6 +453,13 @@ export default function BugunEkrani({
                                             halka söner. Yalnızca YENİ işaretlemede oynar;
                                             sayfa her açıldığında tekrarlamaz. */}
                                         <OnayKutusu isaretli={bitti} yeni={yeniIsaret} boyut={24} />
+
+                                        {/* Ders rengi şeridi — programdaki hücreyle aynı renk */}
+                                        <span
+                                            aria-hidden="true"
+                                            className="w-1 self-stretch rounded-full shrink-0"
+                                            style={{ backgroundColor: e.renk?.accent || 'transparent' }}
+                                        />
 
                                         <span className="min-w-0 flex-1">
                                             <span className={cn(

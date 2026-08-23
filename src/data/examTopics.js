@@ -34,6 +34,8 @@
  *                  Tarih 6 · Coğrafya 6 · Mevzuat 8
  */
 
+import { sinifBolumu, MUFREDAT_SINIFLARI } from './ortaokulMufredat';
+
 /** Konu kaydı kısaltması. */
 const k = (ad, a = 1, z = 2) => ({ ad, a, z });
 
@@ -54,6 +56,43 @@ const birlestir = (...havuzlar) => {
             const varOlan = new Set(cikti[ders].map((t) => t.ad));
             konular.forEach((t) => { if (!varOlan.has(t.ad)) cikti[ders].push(t); });
         });
+    });
+    return cikti;
+};
+
+/**
+ * Bir ders havuzunu KOPYALAYIP ağırlıklarını verilen soru sayısına ölçekler.
+ *
+ * NEDEN GEREKLİ
+ * `a` alanı "bu konudan sınavda tipik olarak kaç soru gelir" demek.
+ * Aynı ders havuzu iki farklı sınavda kullanılabiliyor: Eğitim Bilimleri
+ * hem KPSS'de (80 soru) hem AGS'de (30 soru) var. Tek havuz iki sınava
+ * birden bağlanınca ağırlıklar yalnızca birinde doğru oluyordu — AGS
+ * öğrencisi 30 soruluk bir bölüm için 80 soruluk ağırlıklarla hedef
+ * alıyordu (ölçülen sapma: 1,53 kat fazla).
+ *
+ * Burada UYDURMA yapılmaz: konular arasındaki ORAN havuzun kendi
+ * kaynağından gelir, MUTLAK ölçek ise sınavın resmî soru sayısından.
+ * İkisi de dışarıdan gelir, ara değer türetilir.
+ *
+ * Havuz derin kopyalanır; iki sınav aynı konu nesnesini paylaşmaz.
+ *
+ * @param {object} havuz        {ders: [{ad,a,z}]}
+ * @param {number} hedefToplam  bölümün resmî soru sayısı
+ */
+const olcekle = (havuz, hedefToplam) => {
+    const mevcut = Object.values(havuz)
+        .reduce((t, konular) => t + konular.reduce((s, x) => s + x.a, 0), 0);
+    if (!mevcut || !hedefToplam) return havuz;
+
+    const kat = hedefToplam / mevcut;
+    const cikti = {};
+    Object.entries(havuz).forEach(([ders, konular]) => {
+        cikti[ders] = konular.map((t) => ({
+            ...t,
+            // Çeyrek soru hassasiyeti yeter; daha incesi sahte kesinlik olur
+            a: Math.round(t.a * kat * 4) / 4,
+        }));
     });
     return cikti;
 };
@@ -401,6 +440,115 @@ const LGS_SAYISAL = {
 };
 
 // ══════════════════════════════════════════════════════════════
+//  KPSS ALAN BİLGİSİ — A Grubu, 9 test × 40 soru
+//
+//  KAYNAK: 2026 KPSS Lisans Kılavuzu, TABLO-1 "KPSS'DE UYGULANACAK
+//  TESTLERİN KAPSAMLARI" (s. 34-35).
+//  dokuman.osym.gov.tr/pdfdokuman/2026/KPSS/LISANS/kilavuz_Ld01072026.pdf
+//
+//  Ağırlıklar ÖSYM'nin yayımladığı YÜZDELERDEN türetildi:
+//      a = yüzde × 40 / 100
+//  Her testin ağırlık toplamı tam 40'a oturur. Ara değer uydurulmadı.
+//
+//  ⚠️ ZORLUK (`z`) RESMÎ DEĞİLDİR — ÖSYM hiçbir testte zorluk
+//  derecesi yayımlamaz. Buradaki değerler pedagojik değerlendirmedir.
+//
+//  ⚠️ ÖSYM yalnızca 1. seviye başlıkları verir. Alt kırılım isteyen
+//  yerlerde (özellikle Muhasebe → Genel Muhasebe, tek başına 28 soru)
+//  daha ince bölme ÖSYM dayanaklı OLMAZ; bu yüzden yapılmadı.
+// ══════════════════════════════════════════════════════════════
+
+const ALAN_BILGISI = {
+    HUKUK: {
+        hukuk: [
+            k('Anayasa Hukuku', 4, 2),
+            k('İdare Hukuku ve İdari Yargı', 6, 3),
+            k('Ceza Hukuku (Genel Hükümler ve Ceza Muhakemesi Hukuku)', 6, 3),
+            k('Medeni Hukuk', 6, 3),
+            k('Borçlar Hukuku (Genel Hükümler)', 6, 3),
+            k('Ticaret Hukuku', 6, 3),
+            k('İcra ve İflas Hukuku', 6, 2),
+        ],
+    },
+    IKTISAT: {
+        iktisat: [
+            k('İktisadi Doktrinler Tarihi', 2, 1),
+            k('Mikro İktisat', 12, 3), k('Makro İktisat', 10, 3),
+            k('Para-Banka-Kredi', 4, 2), k('Uluslararası İktisat', 4, 2),
+            k('Kalkınma-Büyüme', 4, 2), k('Türkiye Ekonomisi', 4, 1),
+        ],
+    },
+    ISLETME: {
+        isletme: [
+            k('Temel Kavramlar', 4, 1), k('İşletme Yönetimi', 10, 2),
+            k('Üretim Yönetimi', 10, 3), k('Pazarlama Yönetimi', 8, 2),
+            k('Finansal Yönetim', 8, 3),
+        ],
+    },
+    MALIYE: {
+        maliye: [
+            k('Maliye Teorisi', 4, 2), k('Kamu Gelirleri', 6, 2),
+            k('Kamu Giderleri', 6, 2), k('Kamu Borçları', 6, 2),
+            k('Bütçe', 6, 2), k('Vergi Hukuku', 6, 3), k('Maliye Politikası', 6, 3),
+        ],
+    },
+    MUHASEBE: {
+        muhasebe: [
+            // ÖSYM: Genel Muhasebe %70 → 28 soru. Alt başlık yayımlanmıyor.
+            k('Genel Muhasebe', 28, 2),
+            k('Mali Tablolar Analizi', 8, 2),
+            k('İhtisas Muhasebesi (Maliyet, Yönetim, Denetim, TFRS/TMS)', 4, 3),
+        ],
+    },
+    CEKO: {
+        ceko: [
+            // İş ve Sosyal Güvenlik Hukuku %55 → 22 soru (ÖSYM alt kırılımı verir)
+            k('İş Hukuku ve Teorisi', 8, 3),
+            k('Sosyal Güvenlik Hukuku ve Teorisi', 10, 3),
+            k('Sosyal Politika', 4, 2),
+            k('Çalışma Ekonomisi', 12, 3),
+            k('Çalışma Psikolojisi ve Çalışma Sosyolojisi', 6, 1),
+        ],
+    },
+    ISTATISTIK: {
+        istatistik: [
+            k('Olasılık ve Stokastik Süreçler', 6, 3), k('Matematiksel İstatistik', 6, 3),
+            k('Yöneylem Araştırması', 2, 3), k('Çok Değişkenli Analizler', 4, 3),
+            k('Parametrik Olmayan Testler', 2, 2), k('Uygulamalı İstatistik', 6, 2),
+            k('Zaman Serileri', 2, 2), k('Deney Tasarımı ve Varyans Analizi', 4, 3),
+            k('Örnekleme', 4, 2), k('Regresyon Analizi', 4, 2),
+        ],
+    },
+    KAMU_YONETIMI: {
+        kamuYonetimi: [
+            k('Siyaset Bilimi', 8, 2), k('Anayasa', 6, 2), k('Yönetim Bilimleri', 8, 2),
+            k('Yönetim Hukuku', 8, 3), k('Kentleşme ve Çevre Sorunları', 6, 1),
+            k('Türk Siyasi Hayatı (Osmanlıdan Günümüze Siyasi Olaylar)', 4, 2),
+        ],
+    },
+    ULUSLARARASI: {
+        uluslararasiIliskiler: [
+            k('Uluslararası İlişkiler Teorisi', 8, 3), k('Uluslararası Hukuk', 10, 3),
+            k('Siyasi Tarih', 8, 2), k('Uluslararası Güncel Sorunlar', 4, 1),
+            k('Uluslararası Örgütler', 4, 1), k('Türk Dış Politikası', 6, 2),
+        ],
+    },
+};
+
+/** Alan Bilgisi testlerinin görünen adları — bölüm kimliğine göre. */
+const ALAN_BILGISI_ADLARI = {
+    HUKUK: 'Hukuk', IKTISAT: 'İktisat', ISLETME: 'İşletme', MALIYE: 'Maliye',
+    MUHASEBE: 'Muhasebe', CEKO: 'Çalışma Ekonomisi ve Endüstri İlişkileri',
+    ISTATISTIK: 'İstatistik', KAMU_YONETIMI: 'Kamu Yönetimi',
+    ULUSLARARASI: 'Uluslararası İlişkiler',
+};
+
+/** Her Alan Bilgisi testi 40 sorudur (2026 KPSS Lisans Kılavuzu s. 16). */
+const ALAN_BILGISI_BOLUMLERI = Object.entries(ALAN_BILGISI).map(([id, dersler]) => ({
+    id, ad: ALAN_BILGISI_ADLARI[id], soru: 40, alanBilgisi: true, dersler,
+}));
+
+// ══════════════════════════════════════════════════════════════
 //  EĞİTİM BİLİMLERİ — KPSS ve AGS ortak
 // ══════════════════════════════════════════════════════════════
 
@@ -614,12 +762,31 @@ export const SINAVLAR = {
         ad: 'KPSS — Kamu Personel Seçme Sınavı',
         kisa: 'KPSS',
         icon: '🏛️',
-        aciklama: 'Genel Yetenek 60 · Genel Kültür 60 · Eğitim Bilimleri 80 soru',
+        aciklama: 'Genel Yetenek 60 · Genel Kültür 60 · Alan Bilgisi 9 test × 40 soru',
         kademe: 'lisans',
         bolumler: [
             { id: 'GY', ad: 'Genel Yetenek', soru: 60, dersler: KPSS_GY },
             { id: 'GK', ad: 'Genel Kültür', soru: 60, dersler: KPSS_GK },
-            { id: 'EB', ad: 'Eğitim Bilimleri', soru: 80, dersler: EGITIM_BILIMLERI },
+            /**
+             * ⚠️ 2026'da KPSS'te EĞİTİM BİLİMLERİ OTURUMU KALDIRILDI.
+             * 2026 KPSS Lisans Kılavuzu'nun tam metninde "Eğitim Bilimleri"
+             * hiç geçmiyor; sınav takvimi tablosunda böyle bir oturum yok.
+             * İçerik, 7528 sayılı Öğretmenlik Mesleği Kanunu uyarınca
+             * MEB Akademi Giriş Sınavı'na (AGS) taşındı — AGS'nin 80
+             * sorusunun %37,5'i (30 soru) eğitim bilimleridir.
+             *
+             * Bölüm SİLİNMEDİ: eski kayıtlarda bu bölüme ait ilerleme
+             * verisi var ve veri kaybı olmayacak. Öğretmen adayları
+             * artık AGS bölümlerini çalışmalıdır.
+             */
+            {
+                id: 'EB',
+                ad: 'Eğitim Bilimleri (2026’da AGS’ye taşındı)',
+                soru: 80,
+                devreDisi: true,
+                dersler: olcekle(EGITIM_BILIMLERI, 80),
+            },
+            ...ALAN_BILGISI_BOLUMLERI,
         ],
     },
 
@@ -631,7 +798,8 @@ export const SINAVLAR = {
         aciklama: 'Eğitim Bilimleri 30 · Genel Yetenek-Kültür 42 · Mevzuat 8',
         kademe: 'lisans',
         bolumler: [
-            { id: 'EB', ad: 'Eğitim Bilimleri', soru: 30, dersler: EGITIM_BILIMLERI },
+            // AGS EB 30 soru; KPSS'nin 80 soruluk ağırlıkları burada geçmez
+            { id: 'EB', ad: 'Eğitim Bilimleri', soru: 30, dersler: olcekle(EGITIM_BILIMLERI, 30) },
             { id: 'GENEL', ad: 'Genel Yetenek-Kültür', soru: 42, dersler: AGS_GENEL },
             { id: 'MEVZUAT', ad: 'Mevzuat', soru: 8, dersler: AGS_MEVZUAT },
         ],
@@ -655,10 +823,21 @@ export const DERS_ADLARI = {
     ingilizce: 'İngilizce',
     edebiyat: 'Türk Dili ve Edebiyatı',
     fen: 'Fen Bilimleri',
+    sosyal: 'Sosyal Bilgiler',
     inkilap: 'T.C. İnkılap Tarihi ve Atatürkçülük',
     vatandaslik: 'Vatandaşlık',
     guncel: 'Güncel Bilgiler',
     mevzuat: 'Mevzuat',
+    // KPSS A Grubu Alan Bilgisi testleri
+    hukuk: 'Hukuk',
+    iktisat: 'İktisat',
+    isletme: 'İşletme',
+    maliye: 'Maliye',
+    muhasebe: 'Muhasebe',
+    ceko: 'Çalışma Ekonomisi ve Endüstri İlişkileri',
+    istatistik: 'İstatistik',
+    kamuYonetimi: 'Kamu Yönetimi',
+    uluslararasiIliskiler: 'Uluslararası İlişkiler',
     gelisim: 'Gelişim Psikolojisi',
     ogrenme: 'Öğrenme Psikolojisi',
     ogretim: 'Öğretim İlke ve Yöntemleri',
@@ -676,6 +855,29 @@ export const dersAdi = (anahtar) =>
     || (String(anahtar || '').charAt(0).toLocaleUpperCase('tr-TR') + String(anahtar || '').slice(1));
 
 export const sinavBul = (id) => SINAVLAR[String(id || '').toLocaleUpperCase('tr-TR')] || null;
+
+/** Öğrencinin sınıf düzeyi — kayıtta yoksa null. */
+export const ogrencininSinifi = (ogrenci) => {
+    const s = parseInt(String(ogrenci?.grade ?? ogrenci?.class ?? '').replace(/\D/g, ''), 10);
+    return Number.isFinite(s) ? s : null;
+};
+
+/**
+ * Bir bölümü kimliğinden bulur.
+ *
+ * Sınavın kendi bölümlerine ek olarak ortaokul SINIF bölümlerine de
+ * bakar (`SINIF_5`…): 5, 6 ve 7. sınıf öğrencisi LGS'nin 8. sınıf
+ * içeriğini değil kendi müfredatını çalışır ve bu bölümler sınavın
+ * `bolumler` listesinde yer almaz (LGS'de o içerikten soru sorulmaz).
+ */
+export const bolumBul = (sinavId, bolumId) => {
+    const s = sinavBul(sinavId);
+    const dogrudan = s?.bolumler.find((b) => b.id === bolumId);
+    if (dogrudan) return dogrudan;
+
+    const eslesme = /^SINIF_(\d+)$/.exec(String(bolumId || ''));
+    return eslesme ? sinifBolumu(Number(eslesme[1])) : null;
+};
 
 /**
  * Öğrenci kaydından sınav türünü çıkarır.
@@ -701,8 +903,9 @@ export const ogrencininSinavi = (ogrenci) => {
  *  ALANLAR
  *
  *  Bir öğrenci sınavın TÜM bölümlerini çözmez. Sözel öğrencisi
- *  AYT Sayısal ve YDT konularını görmemeli: 271 konuluk bir liste
- *  içinde kendi 138 konusunu araması, listeyi kullanılmaz kılar.
+ *  AYT Sayısal ve YDT konularını görmemeli: YKS'nin 335 konuluk
+ *  listesi içinde kendi 188 konusunu araması, listeyi kullanılmaz
+ *  kılar. (En küçük alan DİL: 147 konu.)
  *
  *  `bolumler` alanı o alanın çözdüğü bölümleri sıralar.
  * ══════════════════════════════════════════════════════════════
@@ -717,9 +920,22 @@ export const ALANLAR = {
     ],
     // Diğer sınavlarda alan ayrımı yok; tüm bölümler herkese açık
     LGS: [],
+    /**
+     * KPSS'te aday GY-GK oturumuna (zorunlu) girer; Alan Bilgisi
+     * oturumları isteğe bağlıdır ve aday kendi mezuniyet alanının
+     * testini seçer. Her alan bu yüzden GY + GK + kendi testi olarak
+     * tanımlıdır (2026 KPSS Lisans Kılavuzu md. 22, 24).
+     */
     KPSS: [
         { id: 'GENEL', ad: 'Genel (GY + GK)', kisa: 'GENEL', bolumler: ['GY', 'GK'] },
-        { id: 'OGRETMEN', ad: 'Öğretmenlik (GY + GK + EB)', kisa: 'ÖĞRT', bolumler: ['GY', 'GK', 'EB'] },
+        // 2026'da kaldırıldı; eski kayıtlar erişimini kaybetmesin diye duruyor
+        { id: 'OGRETMEN', ad: 'Öğretmenlik — 2026’da AGS’ye taşındı', kisa: 'ÖĞRT', bolumler: ['GY', 'GK', 'EB'] },
+        ...Object.keys(ALAN_BILGISI).map((id) => ({
+            id: `A_${id}`,
+            ad: `A Grubu — ${ALAN_BILGISI_ADLARI[id]}`,
+            kisa: ALAN_BILGISI_ADLARI[id],
+            bolumler: ['GY', 'GK', id],
+        })),
     ],
     AGS: [],
 };
@@ -769,8 +985,35 @@ export const ogrencininBolumleri = (ogrenci, sinavId = null) => {
     const s = sinavBul(sinav);
     if (!s) return [];
 
+    /**
+     * 5, 6 ve 7. sınıf: LGS'nin 8. sınıf içeriği değil, KENDİ müfredatı.
+     * LGS yalnızca 8. sınıf konularından sorulur; bu sınıflar hazırlık
+     * aşamasındadır ve MEB'in kendi sınıf programını çalışır. Öncesinde
+     * 5. sınıf öğrencisi doğrudan 8. sınıf konu listesini görüyordu.
+     */
+    if (sinav === 'LGS') {
+        const sinif = ogrencininSinifi(ogrenci);
+        if (MUFREDAT_SINIFLARI.includes(sinif)) {
+            const bolum = sinifBolumu(sinif);
+            if (bolum) return [bolum];
+        }
+    }
+
     const alanId = ogrencininAlani(ogrenci, sinav);
-    if (!alanId) return s.bolumler;
+    if (!alanId) {
+        /**
+         * Alan seçilmemişse sınavın tamamı gösterilir — eski kayıtlar
+         * boş liste görmesin. TEK İSTİSNA: KPSS Alan Bilgisi testleri.
+         * Bunlar isteğe bağlıdır ve aday yalnızca KENDİ mezuniyet
+         * alanının testine girer; dokuzunu birden listelemek alanı
+         * seçilmemiş her KPSS öğrencisine 400+ alakasız konu açardı.
+         * Alan seçilince ilgili test zaten gelir.
+         *
+         * Devre dışı EB bölümü BURADA ELENMEZ: eski öğrencilerin
+         * oradaki ilerlemesi görünür kalmalı.
+         */
+        return s.bolumler.filter((b) => !b.alanBilgisi);
+    }
 
     const alan = alanListesi(sinav).find((a) => a.id === alanId);
     if (!alan) return s.bolumler;
@@ -779,6 +1022,61 @@ export const ogrencininBolumleri = (ogrenci, sinavId = null) => {
     return alan.bolumler
         .map((bid) => s.bolumler.find((b) => b.id === bid))
         .filter(Boolean);
+};
+
+/**
+ * ══════════════════════════════════════════════════════════════
+ *  KONU KİMLİĞİ
+ *
+ *  Konular yıllarca yalnızca ADIYLA saklandı. Bu, aynı adı taşıyan
+ *  farklı sınav konularını tek kayda düşürüyordu: LGS'nin "Üslü
+ *  İfadeler"i ile TYT'nin "Üslü Sayılar"ı ayrı konulardır, kapsamları
+ *  ve hedef soru sayıları farklıdır — ama ikisi de aynı ilerleme
+ *  satırını paylaşıyordu. Aynı şekilde TYT Matematik "Fonksiyonlar"
+ *  ile AYT "Fonksiyonlar" tek kayda biniyordu.
+ *
+ *  Kimlik dört parçadan kurulur ve sınav bağlamını taşır:
+ *      yks:tyt:matematik:uslu-sayilar
+ *      lgs:sayisal:matematik:uslu-ifadeler
+ *
+ *  ⚠️ Eski kayıtlar SİLİNMEZ. Kimlik yeni yazımlarda birincil anahtar
+ *  olur; okuma yaparken kimlik bulunamazsa isim anahtarına düşülür
+ *  (bkz. topicProgressService). Böylece geçmiş ilerleme kaybolmaz.
+ * ══════════════════════════════════════════════════════════════
+ */
+
+/** Türkçe metni URL-güvenli, kararlı bir parçaya indirger. */
+export const kimlikParcasi = (metin) => String(metin || '')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i')
+    .replace(/i̇/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+/**
+ * Bir konunun sınav bağlamlı benzersiz kimliği.
+ * @param {string} sinavId  'YKS' | 'LGS' | 'KPSS' | 'AGS'
+ * @param {string} bolumId  'TYT' | 'AYT_SAY' | 'SOZEL' | 'GY' …
+ * @param {string} ders     ders kimliği ('matematik')
+ * @param {string} konuAd   konunun adı
+ * @returns {string|null} 'yks:tyt:matematik:uslu-sayilar'
+ */
+export const konuKimligi = (sinavId, bolumId, ders, konuAd) => {
+    const konu = kimlikParcasi(konuAd);
+    if (!konu) return null;
+    return [
+        kimlikParcasi(sinavId) || 'genel',
+        kimlikParcasi(bolumId) || 'genel',
+        kimlikParcasi(ders) || 'genel',
+        konu,
+    ].join(':');
+};
+
+/** Kimliği parçalarına ayırır; kimlik değilse null. */
+export const kimlikCoz = (kimlik) => {
+    const p = String(kimlik || '').split(':');
+    if (p.length !== 4) return null;
+    return { sinav: p[0], bolum: p[1], ders: p[2], konu: p[3] };
 };
 
 /** Bir sınavın tüm konuları düz listede — sayım ve arama için. */
@@ -790,6 +1088,7 @@ export const tumKonular = (sinavId) => {
             konular.map((t) => ({
                 bolum: b.id, bolumAd: b.ad, ders,
                 konu: t.ad, agirlik: t.a, zorluk: t.z,
+                topicId: konuKimligi(s.id, b.id, ders, t.ad),
                 hedef: hedefSoruHesapla(t.a, t.z),
             }))));
 };
@@ -798,4 +1097,5 @@ export default {
     SINAVLAR, SINAV_LISTESI, sinavBul, ogrencininSinavi,
     ALANLAR, alanListesi, ogrencininAlani, ogrencininBolumleri,
     dersAdi, tumKonular, DERS_ADLARI, hedefSoruHesapla, ZORLUK_ADI,
+    konuKimligi, kimlikCoz, kimlikParcasi,
 };

@@ -9,7 +9,7 @@ import {
     programUret, programDenetle, konuEtutIhtiyaci, soruEtutIhtiyaci,
     denemeEtutSayisi, dersPaylari, KRITER_VARSAYILANLARI,
 } from './programMotoru';
-import { OTURUMLAR, DERS_SORULARI } from '../data/sinavYapisi';
+import { OTURUMLAR, DERS_SORULARI, bilisselGrup } from '../data/sinavYapisi';
 
 /** Test kolaylığı: konu üretici. */
 const konu = (bolum, ders, ad, agirlik, zorluk, ek = {}) => ({
@@ -322,3 +322,156 @@ describe('program üretimi — kesin kurallar', () => {
 function gunIndex(ad) {
     return ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'].indexOf(ad);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MOTOR 3.0 — kapasite, bloklama, çok sınavlı destek
+   ══════════════════════════════════════════════════════════════ */
+describe('Motor 3.0 — kapasite ve bloklama', () => {
+    const yksKonular = [
+        konu('TYT', 'turkce', 'Paragrafta Anlam', 12, 2),
+        konu('TYT', 'turkce', 'Sözcükte Anlam', 3, 1),
+        konu('TYT', 'matematik', 'Problemler: Sayı-Kesir', 3, 2),
+        konu('TYT', 'matematik', 'Temel Kavramlar', 2, 1),
+        konu('AYT_SAY', 'fizik', 'Vektörler', 1, 2),
+        konu('AYT_SAY', 'matematik', 'Türev', 5, 3),
+    ];
+
+    /* TEST 1: 10 ay / 6 etüt → son ay boş olmamalı, hiç boş etüt kalmamalı */
+    it('10 ay × 6 etüt programında boş etüt kalmaz ve son ay dolu olur', () => {
+        const aylar = 10;
+        const { schedule, stats, uyarilar } = programUret({
+            konular: yksKonular, sinavId: 'YKS', alanId: 'SAY',
+            kriterler: { gunlukMaxDers: 3, gunlukMaxKonu: 2 },
+            aylar, haftaPerAy: 4, gunlukEtut: 6,
+        });
+        // Beklenen hücre: 10 ay × 4 hafta × 7 gün × 6 etüt
+        const beklenen = aylar * 4 * 7 * 6;
+        expect(Object.keys(schedule).length).toBe(beklenen);
+        expect(stats.bosEtut).toBe(0);
+        // Son ay gerçekten dolu
+        const sonAy = Object.keys(schedule).filter((k) => k.startsWith(`m${aylar}-`));
+        expect(sonAy.length).toBe(4 * 7 * 6);
+        // QA: boş etüt / son ay uyarısı çıkmamalı
+        expect(uyarilar.some((u) => u.tur === 'bos-etut' || u.tur === 'son-ay-bos')).toBe(false);
+    });
+
+    /* TEST 3: aynı ders 4+ blok oluşmamalı */
+    it('aynı ders arka arkaya 4+ etüt bloklanmaz', () => {
+        const { schedule, uyarilar } = programUret({
+            konular: yksKonular, sinavId: 'YKS', alanId: 'SAY',
+            kriterler: { gunlukMaxDers: 3, gunlukMaxKonu: 2 },
+            aylar: 3, haftaPerAy: 4, gunlukEtut: 6,
+        });
+        for (const [gun, g] of gunlukSayim(schedule)) {
+            let ard = 0, onceki = null, oncekiKonu = null, ayniKonu = true;
+            for (const h of g.sira) {
+                if (!dersSayilir(h.type)) { ard = 0; onceki = null; continue; }
+                if (h.subject === onceki) {
+                    ard++;
+                    if (h.topic !== oncekiKonu) ayniKonu = false;
+                } else { ard = 1; ayniKonu = true; }
+                // Aynı konu zinciri en çok 3, farklı konu en çok 2
+                expect(ard, `${gun} — ${h.subject} ${ard} kez arka arkaya`).toBeLessThanOrEqual(ayniKonu ? 3 : 2);
+                onceki = h.subject; oncekiKonu = h.topic;
+            }
+        }
+        expect(uyarilar.some((u) => u.tur === 'ders-bloklama')).toBe(false);
+    });
+
+    it('QA denetçisi 4 blokluk ihlali yakalar', () => {
+        const bozuk = {};
+        for (let i = 0; i < 4; i++) {
+            bozuk[`m1-w1-Salı-${i}`] = { subject: 'Türkçe', topic: `Konu ${i}`, type: 'konu' };
+        }
+        const uyarilar = programDenetle(bozuk, {
+            kriterler: { ...KRITER_VARSAYILANLARI, gunlukMaxDers: 3, gunlukMaxKonu: 9 },
+        });
+        expect(uyarilar.some((u) => u.tur === 'ders-bloklama')).toBe(true);
+    });
+
+    /* TEST 10 — her sınav kendi yapısıyla program üretebiliyor */
+    it('LGS / KPSS / AGS kendi ders ve süreleriyle program üretir', () => {
+        const senaryolar = {
+            LGS: {
+                sinavId: 'LGS', alanId: null,
+                konular: [
+                    konu('SOZEL', 'turkce', 'Paragrafta Anlam', 5, 2),
+                    konu('SOZEL', 'inkilap', 'Bir Kahraman Doğuyor', 1.5, 1),
+                    konu('SAYISAL', 'matematik', 'Çarpanlar ve Katlar', 2, 2),
+                    konu('SAYISAL', 'fen', 'Basınç', 3, 2),
+                ],
+            },
+            KPSS: {
+                sinavId: 'KPSS', alanId: 'OGRETMEN',
+                konular: [
+                    konu('GY', 'turkce', 'Paragraf', 10, 2),
+                    konu('GY', 'matematik', 'Problemler: Sayı-Kesir', 2.5, 2),
+                    konu('GK', 'tarih', 'Atatürk İlke ve İnkılapları', 3, 2),
+                    konu('EB', 'ogretim', 'Öğretim Yöntem ve Teknikleri', 2, 2),
+                ],
+            },
+            AGS: {
+                sinavId: 'AGS', alanId: null,
+                konular: [
+                    konu('GENEL', 'turkce', 'Paragraf', 6, 2),
+                    konu('GENEL', 'matematik', 'Problemler', 3, 2),
+                    konu('EB', 'ogretim', 'Öğretim Yöntem ve Teknikleri', 2, 2),
+                    konu('MEVZUAT', 'mevzuat', '657 Sayılı DMK: Genel Hükümler', 1, 2),
+                ],
+            },
+        };
+        for (const [ad, s] of Object.entries(senaryolar)) {
+            const { schedule, stats } = programUret({
+                ...s,
+                kriterler: { gunlukMaxDers: 2, gunlukMaxKonu: 2 },
+                aylar: 1, haftaPerAy: 2, gunlukEtut: 6,
+            });
+            expect(Object.keys(schedule).length, `${ad}: program üretilmeli`).toBeGreaterThan(0);
+            expect(stats.bosEtut, `${ad}: boş etüt kalmamalı`).toBe(0);
+            // Günlük ders limiti her sınavda geçerli
+            for (const [gun, g] of gunlukSayim(schedule)) {
+                expect(g.dersler.size, `${ad} ${gun}`).toBeLessThanOrEqual(2);
+            }
+        }
+    });
+
+    it('her sınavın denemesi KENDİ süresinden hesaplanır', () => {
+        const k = { etutSuresiDk: 40 };
+        // TYT 165dk → 5 · LGS Sözel 75dk → 2 · LGS Sayısal 80dk → 2
+        expect(denemeEtutSayisi('TYT', k, 'YKS')).toBe(5);
+        expect(denemeEtutSayisi('SOZEL', k, 'LGS')).toBe(2);
+        expect(denemeEtutSayisi('SAYISAL', k, 'LGS')).toBe(2);
+        // KPSS GY-GK 130dk → 4 · KPSS EB 100dk → 3
+        expect(denemeEtutSayisi('GY', k, 'KPSS')).toBe(4);
+        expect(denemeEtutSayisi('EB', k, 'KPSS')).toBe(3);
+        // AGS 110dk → 3 — KPSS EB ile AYNI 'EB' kimliği ama farklı süre
+        expect(denemeEtutSayisi('EB', k, 'AGS')).toBe(3);
+        expect(denemeEtutSayisi('GENEL', k, 'AGS')).toBe(3);
+    });
+
+    it('bilişsel geçiş kuralı sınava özgüdür (YKS kuralı kör kopyalanmaz)', () => {
+        // LGS'de matematik+fen aynı grup (islem), türkçe+ingilizce dil
+        expect(bilisselGrup('LGS', 'matematik')).toBe(bilisselGrup('LGS', 'fen'));
+        expect(bilisselGrup('LGS', 'turkce')).toBe(bilisselGrup('LGS', 'ingilizce'));
+        expect(bilisselGrup('LGS', 'matematik')).not.toBe(bilisselGrup('LGS', 'turkce'));
+        // KPSS'de eğitim bilimleri kendi grubu (kuram)
+        expect(bilisselGrup('KPSS', 'ogretim')).toBe('kuram');
+        expect(bilisselGrup('KPSS', 'tarih')).toBe('ezber');
+        // YKS'de klasik sayısal/sözel
+        expect(bilisselGrup('YKS', 'fizik')).toBe('sayisal');
+        expect(bilisselGrup('YKS', 'edebiyat')).toBe('sozel');
+    });
+
+    it('ders payları her sınavın KENDİ soru dağılımından gelir', () => {
+        // LGS: Türkçe 20 soru, İnkılap 10 → 2 kat
+        const lgs = dersPaylari([
+            konu('SOZEL', 'turkce', 'X', 5, 2),
+            konu('SOZEL', 'inkilap', 'Y', 1.5, 2),
+        ], 'LGS');
+        expect(lgs.get('SOZEL:turkce') / lgs.get('SOZEL:inkilap')).toBeCloseTo(2, 5);
+        // AGS EB (30 soru) ile KPSS EB (80 soru) farklı ağırlık almalı
+        const agsPay = dersPaylari([konu('EB', 'ogretim', 'X', 2, 2)], 'AGS').get('EB:ogretim');
+        const kpssPay = dersPaylari([konu('EB', 'ogretim', 'X', 2, 2)], 'KPSS').get('EB:ogretim');
+        expect(kpssPay).toBeGreaterThan(agsPay);
+    });
+});

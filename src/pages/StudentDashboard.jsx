@@ -30,6 +30,7 @@ import { generateStudentReport } from '../utils/pdfGenerator';
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
 import { getSummary } from '../services/studyLogService';
 import denemeKayitlari from '../services/denemeKayitlari';
+import programProgress from '../services/programProgressService';
 import {
     ResponsiveContainer, LineChart, Line, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip as GrafikTooltip,
@@ -575,8 +576,32 @@ const StudentDashboard = () => {
     }, [activeTab, user?.id]);
     const [schedule, setSchedule] = useState({});
     const [programConfig, setProgramConfig] = useState({ programDurationMonths: 1, dailySlotCount: 6, title: 'Çalışma Programı' });
+    /**
+     * ⚠️ BUGÜN EKRANI 1. AY 1. HAFTAYA ÇAKILIYDI (§37).
+     * Bu ikisi sabit 1/1 kalıyordu; program 2. haftaya geçince
+     * "Bugün" ekranı boş görünüyordu çünkü `m1-w1-{bugün}-` önekiyle
+     * arıyordu. Artık programın başlangıç haftasından bugüne kaç
+     * hafta geçtiği hesaplanıyor — Bugün ile Program aynı hücreyi
+     * gösteriyor.
+     */
     const [activeMonth, setActiveMonth] = useState(1);
     const [activeWeek, setActiveWeek] = useState(1);
+    useEffect(() => {
+        if (!user?.id) return;
+        const hesapla = () => {
+            try {
+                const baslangic = programProgress.programBaslangici(user.id);
+                const buHafta = programProgress.haftaBasi();
+                const gecen = Math.max(0, Math.round((buHafta - baslangic) / (7 * 86400000)));
+                const sure = Number(programConfig?.programDurationMonths) || 1;
+                const enFazlaHafta = sure * 4;
+                const index = Math.min(gecen, enFazlaHafta - 1);
+                setActiveMonth(Math.floor(index / 4) + 1);
+                setActiveWeek((index % 4) + 1);
+            } catch { /* hesaplanamazsa 1/1 kalır */ }
+        };
+        hesapla();
+    }, [user?.id, programConfig?.programDurationMonths, schedule]);
     const [loading, setLoading] = useState(true);
 
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
@@ -739,11 +764,19 @@ const StudentDashboard = () => {
                 const parsed = JSON.parse(coachSchedule);
                 if (parsed && Object.keys(parsed).length > 0) {
                     setSchedule(parsed);
-                    // Config'i de oku (başlık + etüt sayısı)
-                    const coachConfig = localStorage.getItem(`program_${user.id}_config`);
-                    if (coachConfig) {
-                        const parsedConfig = JSON.parse(coachConfig);
-                        setProgramConfig(prev => ({ ...prev, ...parsedConfig }));
+                    /**
+                     * ⚠️ 23.08.2026 — ÖĞRENCİ PROGRAMIN TAMAMINI GÖREMİYORDU.
+                     * Burada `program_{id}_config` okunuyordu; o anahtar
+                     * HİÇBİR YERDE YAZILMIYOR. Sonuç: programDurationMonths
+                     * hep varsayılan 1 kalıyor, ay seçici gizleniyor ve koç
+                     * 10 aylık program gönderse bile öğrenci yalnızca
+                     * 1. ayı görüyordu. Koçun gerçekten yazdığı anahtar
+                     * `program_meta_{id}`.
+                     */
+                    const meta = localStorage.getItem(`program_meta_${user.id}`)
+                        || localStorage.getItem(`program_${user.id}_config`);
+                    if (meta) {
+                        try { setProgramConfig(prev => ({ ...prev, ...JSON.parse(meta) })); } catch { /* bozuksa varsayılan */ }
                     }
                     return;
                 }
@@ -1361,7 +1394,7 @@ const StudentDashboard = () => {
                         examData={examData}
                         dailyPomodoros={dailyPomodoros}
                         seri={userStats.currentStreak || 0}
-                        onGit={(id) => { setActiveTab(id); okundu(id); }}
+                        onGit={(id) => { sekmeyeGit(id); okundu(id); }}
                     />
                 )}
 

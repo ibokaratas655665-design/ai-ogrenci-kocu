@@ -112,10 +112,15 @@ const TopicTracker = ({ user, setToast, saltGorunum = false, baslangicBolum = nu
         [studentId, sinav, gorunenBolumler, surum]
     );
 
-    const isaretle = (konu, tamam) => {
+    /**
+     * @param {object} satir konuHaritasi satırı — `topicId` sınav bağlamını
+     *   taşır (§24), böylece aynı adlı LGS/TYT konuları ayrı kaydedilir.
+     */
+    const isaretle = (satir, tamam) => {
         // Koç, öğrenci adına konu işaretleyemez — kayıt öğrencinin beyanıdır
         if (saltGorunum) { haberVer('Bu görünümde işaretleme yapılamaz.'); return; }
-        topics.elleIsaretle(studentId, konu, tamam);
+        const konu = satir.konu;
+        topics.elleIsaretle(studentId, konu, tamam, 'ogrenci', { topicId: satir.topicId });
         yenile();
         haberVer(tamam
             ? `${konu} tamamlandı olarak işaretlendi`
@@ -397,7 +402,7 @@ const KonuSatiri = ({ k, onIsaretle }) => {
             {/* Sağ: tamamlama butonu */}
             <div className="w-20 flex justify-center shrink-0">
                 <button
-                    onClick={() => onIsaretle(k.konu, !k.tamam)}
+                    onClick={() => onIsaretle(k, !k.tamam)}
                     aria-label={k.tamam ? `${k.konu} işaretini kaldır` : `${k.konu} tamamlandı işaretle`}
                     title={
                         k.durum === 'tekrar'

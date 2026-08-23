@@ -53,9 +53,23 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
     const toggleCell = (cellKey) => {
         const suanki = progress?.[cellKey]?.status;
         const yeni = suanki === 'done' ? null : 'done';
+        // Gelecek tarihli etüt tamamlanamaz (§3) — servis de reddeder
+        if (yeni === 'done') {
+            const k = programProgress.isaretlenebilirMi(userId, cellKey);
+            if (!k.izin) { bildir(k.sebep, 'uyari', 2600); return; }
+        }
         programProgress.setCellStatus(userId, cellKey, yeni);
         setProgress(programProgress.getProgress(userId));
         bildir(yeni === 'done' ? 'Etüt tamamlandı ✓' : 'Etüt tamamlama geri alındı', yeni === 'done' ? 'basari' : 'bilgi', 1800);
+    };
+
+    /** Bu hafta gösterilen etütlerin takvim tarihleri (kilit için). */
+    const baslangic = React.useMemo(() => programProgress.programBaslangici(userId), [userId]);
+    const gelecekMi = (cellKey) => {
+        const t = programProgress.hucreTarihi(cellKey, baslangic);
+        if (!t) return false;
+        const bugun = new Date(); bugun.setHours(23, 59, 59, 999);
+        return t.getTime() > bugun.getTime();
     };
 
     const weekKeys = DAYS.flatMap(day =>
@@ -211,14 +225,24 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
                                         const cellKey = `m${activeMonth}-w${activeWeek}-${day}-${si}`;
                                         const cell = schedule?.[cellKey];
                                         const status = progress[cellKey]?.status;
+                                        // Gelecek tarihli etüt: yalnızca görüntülenir (§3)
+                                        const kilitli = cell && !status && gelecekMi(cellKey);
                                         return (
                                             <div key={day} className="p-1 relative">
                                                 <ProgramCell
                                                     cell={cell}
                                                     size="md"
-                                                    onClick={cell ? () => toggleCell(cellKey) : undefined}
-                                                    className={status ? 'opacity-70' : ''}
+                                                    onClick={cell && !kilitli ? () => toggleCell(cellKey) : undefined}
+                                                    className={`${status ? 'opacity-70' : ''} ${kilitli ? 'opacity-60 cursor-default' : ''}`}
                                                 />
+                                                {kilitli && (
+                                                    <span
+                                                        className="absolute top-1.5 right-1.5 text-[9px] font-black px-1 py-0.5 rounded bg-surface-3 text-ink-3 pointer-events-none"
+                                                        title="Gelecek tarihli etüt — günü gelince işaretleyebilirsin"
+                                                    >
+                                                        🔒
+                                                    </span>
+                                                )}
                                                 {cell && status && (
                                                     <div
                                                         className="absolute inset-1 flex items-center justify-center rounded-xl pointer-events-none"

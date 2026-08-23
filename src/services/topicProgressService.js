@@ -27,6 +27,7 @@ import { nesneOku } from './veriDeposu';
 import {
     sinavBul, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri,
     dersAdi as dersAdiKatalog, hedefSoruHesapla, ZORLUK_ADI,
+    konuKimligi, bolumBul,
 } from '../data/examTopics';
 
 const KEY = 'topic_progress';
@@ -107,6 +108,20 @@ export const anahtar = (metin) =>
         .trim();
 
 /**
+ * Bir konunun elle işaret kaydını bulur.
+ *
+ * ÖNCE sınav bağlamlı kimlik (§24), BULUNAMAZSA eski isim anahtarı.
+ * Sıralama geriye dönük uyum için şart: kimlik sistemi gelmeden önce
+ * yazılmış bütün kayıtlar isim anahtarındadır ve silinmez.
+ *
+ * @param {object} depo   öğrencinin işaret kayıtları
+ * @param {string} kimlik konu kimliği ('yks:tyt:matematik:turev') | null
+ * @param {string} isim   normalize edilmiş konu adı
+ */
+export const isaretBul = (depo, kimlik, isim) =>
+    (kimlik ? depo?.[kimlik] : undefined) ?? depo?.[isim];
+
+/**
  * Bir sınavın istenen bölümündeki dersler.
  * @param {string} sinavId  'YKS' | 'LGS' | 'KPSS' | 'AGS'
  * @param {string} [bolumId] Verilmezse ilk bölüm
@@ -114,9 +129,9 @@ export const anahtar = (metin) =>
 export const konuListesi = (sinavId = 'YKS', bolumId = null) => {
     const sinav = sinavBul(sinavId);
     if (!sinav) return {};
-    const bolum = bolumId
-        ? sinav.bolumler.find((b) => b.id === bolumId)
-        : sinav.bolumler[0];
+    // Sınıf müfredatı bölümleri (SINIF_5…) sınavın listesinde olmadığı
+    // için doğrudan arama yetmez; `bolumBul` ikisine de bakar.
+    const bolum = bolumId ? bolumBul(sinavId, bolumId) : sinav.bolumler[0];
     return bolum?.dersler || {};
 };
 
@@ -295,15 +310,24 @@ export const konuHaritasi = (studentId, sinavId = 'YKS', olcut = VARSAYILAN_OLCU
     const program = programToplamlari(studentId);
     const elleDepo = (oku()[String(studentId)] || {});
 
+    const aktifBolum = bolumId || bolumler(sinavId)[0]?.id || null;
+
     const dersler = Object.entries(liste).map(([ders, konular]) => {
         const satirlar = konular.map((k) => {
-            const a = anahtar(typeof k === 'string' ? k : k.ad);
-            return konuDurumu(k, {
-                soru: soru.get(a),
-                program: program.get(a),
-                elle: elleDepo[a],
-                olcut,
-            });
+            const ad = typeof k === 'string' ? k : k.ad;
+            const a = anahtar(ad);
+            const kimlik = konuKimligi(sinavId, aktifBolum, ders, ad);
+            return {
+                ...konuDurumu(k, {
+                    soru: soru.get(a),
+                    program: program.get(a),
+                    elle: isaretBul(elleDepo, kimlik, a),
+                    olcut,
+                }),
+                topicId: kimlik,
+                ders,
+                bolum: aktifBolum,
+            };
         });
 
         const tamam = satirlar.filter((s) => s.tamam).length;
@@ -332,7 +356,7 @@ export const konuHaritasi = (studentId, sinavId = 'YKS', olcut = VARSAYILAN_OLCU
         ozet: {
             sinavId,
             sinavTuru: sinavId,          // eski çağrılar için
-            bolumId: bolumId || bolumler(sinavId)[0]?.id || null,
+            bolumId: aktifBolum,
             toplamKonu,
             tamam: toplamTamam,
             tekrar: dersler.reduce((t, d) => t + d.tekrar, 0),
@@ -410,25 +434,50 @@ export const sonrakiKonular = (
 //  ELLE İŞARETLEME
 // ══════════════════════════════════════════════════════════════
 
-/** Öğrenci konuyu elle bitmiş/bitmemiş işaretler. */
-export const elleIsaretle = (studentId, konu, tamam, kaynak = 'ogrenci') => {
+/**
+ * Öğrenci konuyu elle bitmiş/bitmemiş işaretler.
+ *
+ * `baglam` verilirse (§24) kayıt sınav bağlamlı kimlikle yazılır; böylece
+ * LGS "Üslü İfadeler" ile TYT "Üslü Sayılar" ayrı satırlarda tutulur.
+ * Bağlam verilmeyen eski çağrılar isim anahtarını kullanmayı sürdürür.
+ *
+ * İşareti KALDIRIRKEN her iki anahtar da temizlenir — kimlikten önce
+ * yazılmış eski kayıt kalırsa konu "bitmedi" denmesine rağmen yeşil
+ * görünmeye devam ederdi.
+ *
+ * @param {object} [baglam] {sinavId, bolumId, ders}
+ */
+export const elleIsaretle = (studentId, konu, tamam, kaynak = 'ogrenci', baglam = null) => {
     const depo = oku();
     const sid = String(studentId);
     const a = anahtar(konu);
     if (!a) return false;
 
+    // Bağlam ya hazır kimliği ya da onu kuracak parçaları taşır
+    const kimlik = baglam?.topicId
+        ?? (baglam ? konuKimligi(baglam.sinavId, baglam.bolumId, baglam.ders, konu) : null);
+
     depo[sid] = { ...(depo[sid] || {}) };
     if (tamam) {
-        depo[sid][a] = { tamam: true, konu, kaynak, tarih: new Date().toISOString() };
+        depo[sid][kimlik || a] = {
+            tamam: true, konu, kaynak, topicId: kimlik,
+            tarih: new Date().toISOString(),
+        };
     } else {
+        if (kimlik) delete depo[sid][kimlik];
         delete depo[sid][a];
     }
     yaz(depo);
     return true;
 };
 
-export const elleIsaretliMi = (studentId, konu) =>
-    Boolean((oku()[String(studentId)] || {})[anahtar(konu)]?.tamam);
+export const elleIsaretliMi = (studentId, konu, baglam = null) => {
+    const depo = oku()[String(studentId)] || {};
+    // Bağlam ya hazır kimliği ya da onu kuracak parçaları taşır
+    const kimlik = baglam?.topicId
+        ?? (baglam ? konuKimligi(baglam.sinavId, baglam.bolumId, baglam.ders, konu) : null);
+    return Boolean(isaretBul(depo, kimlik, anahtar(konu))?.tamam);
+};
 
 /**
  * ══════════════════════════════════════════════════════════════
@@ -500,13 +549,14 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
         let toplamKonu = 0, tamam = 0, tekrar = 0, calisilan = 0;
 
         bolumListesi.forEach((b) => {
-            Object.values(b.dersler).forEach((konular) => {
+            Object.entries(b.dersler).forEach(([ders, konular]) => {
                 konular.forEach((t) => {
-                    const a = anahtar(typeof t === 'string' ? t : t.ad);
+                    const ad = typeof t === 'string' ? t : t.ad;
+                    const a = anahtar(ad);
                     const d = konuDurumu(t, {
                         soru: soru.get(a),
                         program: prgHarita.get(a),
-                        elle: elle[a],
+                        elle: isaretBul(elle, konuKimligi(sinav, b.id, ders, ad), a),
                         olcut,
                     });
                     toplamKonu += 1;
@@ -546,4 +596,5 @@ export default {
     konuListesi, bolumler, konuHaritasi, konuDurumu, sonrakiKonular, topluOzet,
     ogrencininSinavi, ogrencininAlani, ogrencininBolumleri,
     elleIsaretle, elleIsaretliMi, olcutOku, anahtar, dersAdi,
+    konuKimligi, isaretBul,
 };

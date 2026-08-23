@@ -69,12 +69,95 @@ export const getProgress = (studentId) => {
     return safeParse()[String(studentId)] || {};
 };
 
+/* ════════════════════════════════════════════════════════════
+   TARİH DOĞRULAMASI (23.08.2026 talimatı §3)
+
+   Geçmiş ve bugünün etüdü işaretlenebilir; GELECEK tarihli etüt
+   işaretlenemez. Kontrol yalnızca arayüzde değil, YAZMA
+   katmanında da yapılır — arayüz atlansa bile kayıt reddedilir.
+
+   Hücre anahtarı `m{ay}-w{hafta}-{GünAdı}-{etüt}` takvim tarihi
+   taşımaz; tarih, programın başlangıç haftasına göre hesaplanır.
+   Başlangıç `program_meta_{id}.baslangicTarihi`, yoksa
+   `updatedAt`, o da yoksa bugünün haftası kabul edilir.
+   ════════════════════════════════════════════════════════════ */
+
+const GUN_SIRASI = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+
+/** Verilen tarihin içinde bulunduğu haftanın PAZARTESİ'si (00:00). */
+export const haftaBasi = (d = new Date()) => {
+    const t = new Date(d);
+    t.setHours(0, 0, 0, 0);
+    t.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+    return t;
+};
+
+/** Programın başlangıç haftası (Pazartesi). */
+export const programBaslangici = (studentId) => {
+    try {
+        const ham = localStorage.getItem(`program_meta_${studentId}`);
+        if (ham) {
+            const meta = JSON.parse(ham);
+            const kaynak = meta.baslangicTarihi || meta.updatedAt;
+            if (kaynak) {
+                const d = new Date(kaynak);
+                if (!Number.isNaN(d.getTime())) return haftaBasi(d);
+            }
+        }
+    } catch { /* meta okunamazsa bugüne düş */ }
+    return haftaBasi();
+};
+
+/**
+ * Hücre anahtarının takvim tarihi.
+ * @returns {Date|null} çözümlenemezse null (kısıt uygulanmaz)
+ */
+export const hucreTarihi = (cellKey, baslangic, haftaPerAy = 4) => {
+    const m = /^m(\d+)-w(\d+)-(.+)-(\d+)$/.exec(String(cellKey || ''));
+    if (!m) return null;
+    const gunIdx = GUN_SIRASI.indexOf(m[3]);
+    if (gunIdx < 0) return null;
+    const haftaIndex = (Number(m[1]) - 1) * haftaPerAy + (Number(m[2]) - 1);
+    const t = new Date(baslangic);
+    t.setDate(t.getDate() + haftaIndex * 7 + gunIdx);
+    t.setHours(0, 0, 0, 0);
+    return t;
+};
+
+/**
+ * Bu etüt işaretlenebilir mi? Geçmiş/bugün → evet, gelecek → hayır.
+ * @returns {{izin:boolean, tarih:Date|null, sebep?:string}}
+ */
+export const isaretlenebilirMi = (studentId, cellKey, haftaPerAy = 4) => {
+    const tarih = hucreTarihi(cellKey, programBaslangici(studentId), haftaPerAy);
+    if (!tarih) return { izin: true, tarih: null };   // tarih çözülemedi — engelleme
+    const bugun = new Date();
+    bugun.setHours(23, 59, 59, 999);
+    if (tarih.getTime() > bugun.getTime()) {
+        return {
+            izin: false, tarih,
+            sebep: `Bu etüt ${tarih.toLocaleDateString('tr-TR')} tarihli — gelecekteki etütler tamamlanamaz.`,
+        };
+    }
+    return { izin: true, tarih };
+};
+
 /**
  * Bir etüdün durumunu yazar.
  * @param {string} status - 'done' | 'missed' | null (temizler)
  */
 export const setCellStatus = (studentId, cellKey, status, note) => {
     if (!studentId || !cellKey) return {};
+    /* Gelecek tarihli etüt işaretlenemez — arayüz atlansa bile burada
+       reddedilir (§3: "yalnızca UI tarafında yapılmayacak"). Temizleme
+       (status=null) her zaman serbesttir. */
+    if (status) {
+        const kontrol = isaretlenebilirMi(studentId, cellKey);
+        if (!kontrol.izin) {
+            try { window.dispatchEvent(new CustomEvent('program-gelecek-etut', { detail: kontrol })); } catch { /* ignore */ }
+            return getProgress(studentId);
+        }
+    }
     const all = safeParse();
     const sid = String(studentId);
     const mine = { ...(all[sid] || {}) };
@@ -107,8 +190,10 @@ export const setManyStatuses = (studentId, entries = []) => {
 
     for (const { cellKey, status } of entries) {
         if (!cellKey) continue;
-        if (!status) delete mine[cellKey];
-        else mine[cellKey] = { status, at };
+        if (!status) { delete mine[cellKey]; continue; }
+        // Toplu yazımda da gelecek tarih kilidi geçerlidir
+        if (!isaretlenebilirMi(studentId, cellKey).izin) continue;
+        mine[cellKey] = { status, at };
     }
 
     all[sid] = mine;
@@ -293,6 +378,8 @@ export const getCarryOverQueue = (studentId, schedule, { month, week } = {}) => 
     return [...byTopic.values()].sort((a, b) => b.missedCount - a.missedCount);
 };
 
+export const _tarihYardimcilari = { haftaBasi, programBaslangici, hucreTarihi, isaretlenebilirMi };
+
 export default {
     getProgress,
     setCellStatus,
@@ -302,4 +389,9 @@ export default {
     getWeekStats,
     getOverallStats,
     getCarryOverQueue,
+    // Tarih kilidi (§3)
+    haftaBasi,
+    programBaslangici,
+    hucreTarihi,
+    isaretlenebilirMi,
 };

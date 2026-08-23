@@ -349,11 +349,19 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         }
         localStorage.setItem(`program_schedule_${studentId}`, JSON.stringify(schedule));
         localStorage.setItem(`program_closed_slots_${studentId}`, JSON.stringify(closedSlots));
+        /* baslangicTarihi: tarih kilidinin (§3) dayanağı — programın
+           1. ay 1. haftası hangi takvim haftasına denk geliyor.
+           Var olan programda korunur; yoksa bu haftadan başlar. */
+        let baslangicTarihi;
+        try {
+            baslangicTarihi = JSON.parse(localStorage.getItem(`program_meta_${studentId}`) || '{}').baslangicTarihi;
+        } catch { /* yoksa aşağıda üretilir */ }
         localStorage.setItem(`program_meta_${studentId}`, JSON.stringify({
             programDurationMonths,
             dailySlotCount,
             title,
             weeklyMode,
+            baslangicTarihi: baslangicTarihi || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         }));
         localStorage.setItem(`program_kriterleri_${studentId}`, JSON.stringify(kriterler));

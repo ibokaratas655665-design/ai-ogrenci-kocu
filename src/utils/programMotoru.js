@@ -24,8 +24,8 @@
  */
 
 import {
-    OTURUMLAR, BOLUM_OTURUMU, DERS_SORULARI, OTURUM_KATKISI,
-    soruSuresiDk, ANA_DERSLER, SAYISAL_DERSLER,
+    OTURUMLAR, bolumOturumu, bolumDersSorulari, OTURUM_KATKISI,
+    soruSuresiDk, ANA_DERSLER, bilisselGrup,
     TEKRAR_ARALIKLARI_GUN, EKSTRA_KONUM, MOTOR_VARSAYILANLARI as M,
 } from '../data/sinavYapisi';
 
@@ -67,44 +67,74 @@ export const konuEtutIhtiyaci = (konu) => {
  * Soru etüdü ihtiyacı — kalan hedef soru × soru süresi × pratik payı /
  * etüt süresi [1][4]. "120 soru = 2 etüt" gibi sabit eşleme YOK.
  */
-export const soruEtutIhtiyaci = (konu, kriterler = {}) => {
+export const soruEtutIhtiyaci = (konu, kriterler = {}, sinavId = null) => {
     const kalan = Math.max(0, konu.kalanSoru ?? konu.hedef ?? 0);
     if (!kalan) return konu.bitti ? 1 : 0;   // bitmişe 1 pekiştirme sorusu etüdü
     const dakika = kalan
-        * soruSuresiDk(konu.bolum, konu.ders)
+        * soruSuresiDk(konu.bolum, konu.ders, sinavId)
         * (kriterler.pratikCarpani ?? M.PRATIK_CARPANI);
     return sinir(Math.ceil(dakika / (kriterler.etutSuresiDk ?? M.ETUT_SURESI_DK)), 1, M.SORU_ETUT_MAX);
 };
 
-/** Deneme kaç etüt sürer — gerçek oturum süresi / etüt süresi [1]. */
-export const denemeEtutSayisi = (bolumId, kriterler = {}) => {
-    const oturum = OTURUMLAR[BOLUM_OTURUMU[bolumId] || bolumId];
+/**
+ * Deneme kaç etüt sürer — o sınavın GERÇEK oturum süresi / etüt süresi.
+ * Hiçbir sınavın süresi diğerinden kopyalanmaz [1][8][9][10].
+ */
+export const denemeEtutSayisi = (bolumId, kriterler = {}, sinavId = null) => {
+    const oturum = OTURUMLAR[bolumOturumu(sinavId, bolumId) || bolumId];
     if (!oturum) return 3; // oturumu bilinmeyen sınav — QA uyarısı üretir
     return Math.max(1, Math.ceil(oturum.sureDk / (kriterler.etutSuresiDk ?? M.ETUT_SURESI_DK)));
 };
 
-/** Haftalık ders payları — DERS_SORULARI × oturum katkısı [1]. */
-export const dersPaylari = (konular) => {
+/**
+ * Haftalık ders payları — o sınavın kendi soru dağılımı × oturum
+ * katkısı. YKS'de TYT %40 / alan %60; tek oturumlu sınavlarda katkı 1.
+ */
+export const dersPaylari = (konular, sinavId = null) => {
+    /**
+     * RESMÎ SORU SAYISI OLMAYAN DERSLER
+     *
+     * Sınav kurumu her dersin soru sayısını ayrı yayımlamaz. Somut örnek:
+     * ÖSYM, KPSS Genel Yetenek için yalnızca "Sözel Bölüm %50 · Sayısal
+     * Bölüm %50" der; Sayısal Bölüm'ün içindeki matematik/geometri
+     * ayrımını hiç yayımlamaz. Bu yüzden `DERS_SORULARI.GY` tablosunda
+     * geometri satırı yok — ama katalogda 6 geometri konusu var.
+     *
+     * Eski davranış boşluğu "ilk konunun ağırlığı × 4" ile dolduruyordu:
+     * dersin payı listede hangi konunun ÖNCE geldiğine bağlıydı ve
+     * geometri programda neredeyse hiç yer bulmuyordu.
+     *
+     * Yerine dersin KENDİ konu ağırlıkları toplanır. `agirlik`, katalogda
+     * "bu konudan sınavda tipik olarak kaç soru gelir" demek — yani resmî
+     * soru sayısıyla aynı ölçekte. Böylece uydurma bir sabit konmadan,
+     * eldeki bilgiden tutarlı bir pay türetilir.
+     */
+    const agirlikToplami = new Map();
+    for (const k of konular) {
+        const anahtar = `${k.bolum}:${k.ders}`;
+        agirlikToplami.set(anahtar, (agirlikToplami.get(anahtar) || 0) + (k.agirlik ?? 1));
+    }
+
     const pay = new Map();
     for (const k of konular) {
         const anahtar = `${k.bolum}:${k.ders}`;
         if (pay.has(anahtar)) continue;
-        const soru = DERS_SORULARI[k.bolum]?.[k.ders] ?? (k.agirlik ?? 1) * 4;
+        const soru = bolumDersSorulari(sinavId, k.bolum)?.[k.ders]
+            ?? agirlikToplami.get(anahtar);
         const katki = k.bolum === 'TYT' ? OTURUM_KATKISI.TYT
             : (k.bolum.startsWith('AYT') || k.bolum === 'YDT') ? OTURUM_KATKISI.ALAN
             : OTURUM_KATKISI.TEK_BOLUM;
-        pay.set(anahtar, soru * katki);
+        pay.set(anahtar, Math.max(1, soru) * katki);
     }
     return pay;
 };
-
-const sayisalMi = (ders) => SAYISAL_DERSLER.has(ders);
 
 /* ══════════════════════════════════════════════════════════════ */
 
 export function programUret({
     konular = [],          // [{bolum, ders, dersAd, konu, agirlik, zorluk, hedef, kalanSoru, bitti}]
-    alanId = null,         // SAY | EA | SOZ | DIL | TYT | null
+    sinavId = 'YKS',       // YKS | LGS | KPSS | AGS
+    alanId = null,         // YKS: SAY|EA|SOZ|DIL|TYT · KPSS: GENEL|OGRETMEN · diğer: null
     kriterler: kriterlerGiris = {},
     aylar = 1,
     haftaPerAy = 4,
@@ -116,6 +146,7 @@ export function programUret({
     const kriterler = { ...KRITER_VARSAYILANLARI, ...kriterlerGiris };
     const uyarilar = [];
     const schedule = {};
+    const grubu = (ders) => bilisselGrup(sinavId, ders);
 
     /* ── 1. Zaman çizelgesi ─────────────────────────────────── */
     const gunListesi = [];
@@ -147,18 +178,31 @@ export function programUret({
         return g.acik.shift();
     };
 
-    /* ── 2. Deneme + analiz [1][6] ──────────────────────────── */
-    // Deneme bölümü haftalara dönüşümlü: TYT ↔ alan bölümü.
-    const alanBolumu = { SAY: 'AYT_SAY', EA: 'AYT_EA', SOZ: 'AYT_SOZ', DIL: 'YDT' }[alanId] || null;
-    const denemeBolumleri = alanBolumu ? ['TYT', alanBolumu] : ['TYT'];
+    /* ── 2. Deneme + analiz — her sınav KENDİ oturumuyla [1][6][8][9][10] ──
+       Deneme bölümü haftalara dönüşümlü verilir: YKS'de TYT ↔ alan
+       bölümü, LGS'de Sözel ↔ Sayısal, KPSS'de GY-GK ↔ EB. */
+    const DENEME_BOLUMLERI = {
+        YKS: { SAY: ['TYT', 'AYT_SAY'], EA: ['TYT', 'AYT_EA'], SOZ: ['TYT', 'AYT_SOZ'], DIL: ['TYT', 'YDT'], TYT: ['TYT'] },
+        LGS: { _: ['SOZEL', 'SAYISAL'] },
+        KPSS: { OGRETMEN: ['GY', 'EB'], GENEL: ['GY'], _: ['GY'] },
+        AGS: { _: ['GENEL', 'EB'] },
+    };
+    const denemeBolumleri = (() => {
+        const tablo = DENEME_BOLUMLERI[sinavId] || DENEME_BOLUMLERI.YKS;
+        const secilen = tablo[alanId] || tablo._ || Object.values(tablo)[0];
+        // Yalnızca koçun konu seçtiği bölümlerle sınırla; yoksa hepsi
+        const secilenBolumler = new Set(konular.map((k) => k.bolum));
+        const suzulmus = secilen.filter((b) => secilenBolumler.has(b));
+        return suzulmus.length ? suzulmus : secilen;
+    })();
 
     if (kriterler.denemeAcik) {
         let sira = 0;
         for (const g of gunListesi) {
             if (g.gun !== kriterler.denemeGunu || !g.acik.length) continue;
             const bolumId = denemeBolumleri[sira % denemeBolumleri.length];
-            const gerekli = denemeEtutSayisi(bolumId, kriterler);
-            const denemeAdi = OTURUMLAR[BOLUM_OTURUMU[bolumId] || bolumId]?.ad || bolumId;
+            const gerekli = denemeEtutSayisi(bolumId, kriterler, sinavId);
+            const denemeAdi = OTURUMLAR[bolumOturumu(sinavId, bolumId) || bolumId]?.ad || bolumId;
             const konacak = Math.min(gerekli, Math.max(1, g.acik.length - 1));
             if (konacak < gerekli) {
                 uyarilar.push({
@@ -246,7 +290,7 @@ export function programUret({
     }
 
     /* ── 4. Konu → soru zincirleri ──────────────────────────── */
-    const paylar = dersPaylari(konular);
+    const paylar = dersPaylari(konular, sinavId);
     const dersler = new Map(); // 'bolum:ders' → durum
     for (const k of konular) {
         const anahtar = `${k.bolum}:${k.ders}`;
@@ -254,7 +298,7 @@ export function programUret({
             dersler.set(anahtar, {
                 anahtar, bolum: k.bolum, ders: k.ders,
                 ad: k.dersAd || k.ders,
-                sayisal: sayisalMi(k.ders),
+                grup: grubu(k.ders),          // bilişsel grup (sınava özgü)
                 pay: paylar.get(anahtar) || 1,
                 token: 0,
                 zincir: [],   // sıralı iş: {tip:'konu'|'soru', konu, kalan}
@@ -263,19 +307,75 @@ export function programUret({
         const d = dersler.get(anahtar);
         // Koç elle etüt sayısı belirlediyse KOÇUN KARARI ÜSTÜNDÜR
         const konuE = k.sabitKonuEtut ?? konuEtutIhtiyaci(k);
-        const soruE = kriterler.soruEtutleriAcik ? soruEtutIhtiyaci(k, kriterler) : 0;
+        const soruE = kriterler.soruEtutleriAcik ? soruEtutIhtiyaci(k, kriterler, sinavId) : 0;
         d.zincir.push({ tip: 'konu', konu: k, kalan: konuE, toplam: konuE, soruE });
     }
 
     const dersListesi = [...dersler.values()];
     const toplamPay = dersListesi.reduce((a, d) => a + d.pay, 0) || 1;
     const toplamAcik = gunListesi.reduce((a, g) => a + g.acik.length, 0);
+
+    /* ══ KAPASİTE DENGELEME [talimat §8] ═══════════════════════════
+       TOTAL_CAPACITY (kalan boş etüt) ile TOTAL_WORKLOAD (zincirdeki
+       iş) karşılaştırılır. Kapasite iş yükünden büyükse — ki 10 ay ×
+       6 etüt gibi uzun programlarda hep öyledir — konuların soru
+       etütleri hedefe kadar GENİŞLETİLİR ve pekiştirme turları
+       eklenir. Böylece son ay boş kalmaz; boşluk anlamsız A-B-C
+       döngüsüyle DEĞİL, gerçek çalışmayla dolar.                   */
+    const zincirYuku = () => dersListesi.reduce(
+        (a, d) => a + d.zincir.reduce((s, z) => s + z.kalan, 0), 0,
+    );
+    const kapasite = toplamAcik;
+    const ilkYuk = zincirYuku();
+
+    if (kapasite > ilkYuk && dersListesi.length) {
+        // Ne kadar ek iş gerekiyor? (ekstra/deneme etütleri zaten
+        // yerleşti; buradaki açık yalnızca ders etütleriyle dolar)
+        let acik = kapasite - ilkYuk;
+        /* Genişletme sırası = talimattaki öncelik merdiveni:
+           1) soru etüdü tavana kadar  2) pekiştirme turu.
+           Ağırlığı yüksek dersten başlanır — sınav ağırlığı korunur. */
+        const sirali = [...dersListesi].sort((a, b) => b.pay - a.pay);
+        // 1. tur: soru etütlerini tavana çıkar
+        for (const d of sirali) {
+            if (acik <= 0) break;
+            for (const z of d.zincir) {
+                if (acik <= 0) break;
+                if (z.tip !== 'konu' || !z.soruE) continue;
+                const eklenebilir = Math.min(acik, Math.max(0, M.SORU_ETUT_MAX - z.soruE));
+                z.soruE += eklenebilir;
+                acik -= eklenebilir;
+            }
+        }
+        // 2. tur: pekiştirme (aynı konuya ikinci soru turu) — döngüsel
+        let guvenlik = 0;
+        while (acik > 0 && guvenlik < 5000) {
+            guvenlik++;
+            let eklendi = false;
+            for (const d of sirali) {
+                if (acik <= 0) break;
+                const konuIsi = d.zincir.find((z) => z.tip === 'konu');
+                const kaynak = konuIsi || d.zincir[0];
+                if (!kaynak) continue;
+                d.zincir.push({
+                    tip: 'soru', konu: kaynak.konu, kalan: 1, toplam: 1, pekistirme: true,
+                });
+                acik--; eklendi = true;
+            }
+            if (!eklendi) break;
+        }
+    }
+
     dersListesi.forEach((d) => {
         d.gunlukPay = (d.pay / toplamPay) * (toplamAcik / Math.max(1, gunListesi.filter((g) => g.acik.length).length));
     });
 
-    const anaDersAnahtarlari = (ANA_DERSLER[alanId] || [])
-        .filter((a) => dersler.has(a) || a.endsWith(':sosyal') || a.endsWith(':fen'));
+    /* Ana ders listesi: YKS alan bazlı; alanı olmayan sınavlarda
+       sınav kimliği (KPSS'de alan varsa KPSS_OGRETMEN gibi). */
+    const anaListeAnahtari = (sinavId === 'KPSS' && alanId === 'OGRETMEN') ? 'KPSS_OGRETMEN'
+        : (ANA_DERSLER[alanId] ? alanId : sinavId);
+    const anaDersAnahtarlari = (ANA_DERSLER[anaListeAnahtari] || [])
+        .filter((a) => dersler.has(a));
 
     /* ── 5. Gün gün yerleştirme ─────────────────────────────── */
     const tekrarKuyrugu = []; // {vadeGun, ders(d), konu, ertelendi}
@@ -288,11 +388,51 @@ export function programUret({
         const bugunDersler = new Set();       // konu/soru/tekrar dersleri
         const bugunKonular = new Set();       // farklı KONU çalışması
         let sonYerlesenDers = null;
+        /* Ardışıklık sayaçları [talimat §5, §6] — aynı dersin ve aynı
+           bilişsel grubun arka arkaya kaç etüt sürdüğü. 4+ blok
+           (Türkçe·Türkçe·Türkçe·Türkçe) burada engellenir. */
+        let ardisikDers = 0, ardisikGrup = 0, sonGrup = null, sonKonuAdi = null;
+        /* Serinin TAMAMI aynı konu mu? 3 etütlük esneme yalnızca
+           gerçek konu zincirine (Türev·Türev·Türev) tanınır; seri
+           farklı konuyla başlayıp aynı konuyla devam ederse bu bir
+           zincir değil, ders bloklamasıdır → sınır 2. */
+        let seriKonuAdi = null, seriAyniKonu = true;
 
         const dersSigar = (dAd) => bugunDersler.has(dAd) || bugunDersler.size < kriterler.gunlukMaxDers;
         const konuSigar = (konuAd) => bugunKonular.has(konuAd) || bugunKonular.size < kriterler.gunlukMaxKonu;
 
-        const yerlestir = (d, is_, tip) => {
+        /**
+         * Bu ders şu an arka arkaya konabilir mi?
+         * `zincirDevami` = aynı KONUNUN etüt zinciri sürüyor demektir;
+         * o durumda sınır bir kademe esner (konu bütünlüğü korunur).
+         */
+        const ardisiklikUygun = (d, zincirDevami) => {
+            /* ⚠️ Karşılaştırma NESNE değil GÖRÜNEN AD üzerinden:
+               TYT:matematik ile AYT_SAY:matematik ayrı kayıtlardır ama
+               programda ikisi de "Matematik" yazar; nesne kimliğiyle
+               bakınca ekranda 3-4 "Matematik" arka arkaya çıkıyordu. */
+            if (sonYerlesenDers?.ad !== d.ad) return true;
+            const sinirDers = zincirDevami
+                ? M.AYNI_KONU_ZINCIR_ESNEMESI
+                : M.AYNI_DERS_ARDISIK_EN_COK;
+            return ardisikDers < sinirDers;
+        };
+        const grupUygun = (d) => (
+            d.grup !== sonGrup || ardisikGrup < M.AYNI_GRUP_ARDISIK_EN_COK
+        );
+
+        /**
+         * Tek yerleştirme kapısı. Bloklama kuralı BURADA uygulanır —
+         * tekrar/konu/soru hangi yoldan gelirse gelsin aynı sınıra
+         * tabidir. `zorla` yalnızca boşluk doldurma merdiveninin son
+         * basamağında kullanılır (boş etüt yasağı ondan üstün).
+         */
+        const yerlestir = (d, is_, tip, zorla = false) => {
+            if (!zorla && sonYerlesenDers?.ad === d.ad) {
+                const zincirSurer = seriAyniKonu && is_.konu?.konu === seriKonuAdi;
+                const sinirB = zincirSurer ? M.AYNI_KONU_ZINCIR_ESNEMESI : M.AYNI_DERS_ARDISIK_EN_COK;
+                if (ardisikDers >= sinirB) return false;
+            }
             const h = al(g, 'ilk');
             if (!h) return false;
             yaz(h, {
@@ -301,7 +441,20 @@ export function programUret({
             });
             if (dersSayilir(tip)) bugunDersler.add(d.ad);
             if (tip === 'konu') bugunKonular.add(is_.konu.konu);
+            // Ardışıklık sayaçlarını güncelle (görünen ada göre)
+            const konuAdi = is_.konu?.konu ?? null;
+            if (sonYerlesenDers?.ad === d.ad) {
+                ardisikDers += 1;
+                if (konuAdi !== seriKonuAdi) seriAyniKonu = false;
+            } else {
+                ardisikDers = 1;
+                seriKonuAdi = konuAdi;
+                seriAyniKonu = true;
+            }
+            ardisikGrup = (sonGrup === d.grup) ? ardisikGrup + 1 : 1;
+            sonGrup = d.grup;
             sonYerlesenDers = d;
+            sonKonuAdi = is_.konu?.konu ?? null;
             const hIdx = g.haftaIndex;
             if (!haftaAnaDers.has(hIdx)) haftaAnaDers.set(hIdx, new Set());
             haftaAnaDers.get(hIdx).add(d.anahtar);
@@ -338,70 +491,90 @@ export function programUret({
         while (g.acik.length) {
             const hIdx = g.haftaIndex;
             const buHafta = haftaAnaDers.get(hIdx) || new Set();
-            const adaylar = dersListesi
+            const tumAdaylar = dersListesi
                 .filter((d) => d.zincir.length && dersSigar(d.ad))
                 .filter((d) => {
                     const is_ = d.zincir[0];
                     if (is_.tip === 'konu' && !konuSigar(is_.konu.konu)) return false;
                     return true;
                 });
-            if (!adaylar.length) break;
+            if (!tumAdaylar.length) break;
+
+            /* Ardışıklık süzgeci [§5]: aynı ders/grup üst üste sınırı
+               dolduysa o aday elenir. Hepsi elenirse sınır gevşetilir —
+               yoksa boş etüt kalır ve §9 (boş etüt yasağı) ihlal olur. */
+            const zincirDevamiMi = (d) => (
+                sonYerlesenDers?.ad === d.ad && d.zincir[0]?.konu?.konu === sonKonuAdi
+            );
+            let adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d, zincirDevamiMi(d)) && grupUygun(d));
+            if (!adaylar.length) adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d, zincirDevamiMi(d)));
+            /* Gevşetme sırası önemli: ders sınırı dolduysa bile ÖNCE
+               farklı bir ders denenir; aynı dersi üst üste uzatmak
+               ancak başka ders hiç kalmadıysa kabul edilir. */
+            if (!adaylar.length) adaylar = tumAdaylar.filter((d) => d.ad !== sonYerlesenDers?.ad);
+            if (!adaylar.length) adaylar = tumAdaylar;
 
             const anaSirasi = (d) => {
                 const i = anaDersAnahtarlari.indexOf(d.anahtar);
                 return i === -1 ? 99 : i;
             };
             adaylar.sort((a, b) => {
-                // 1) Bu hafta hiç girmemiş ANA ders öne
+                // 1) Bu hafta hiç girmemiş ANA ders öne [§15]
                 const aAna = anaSirasi(a) < 99 && !buHafta.has(a.anahtar) ? 0 : 1;
                 const bAna = anaSirasi(b) < 99 && !buHafta.has(b.anahtar) ? 0 : 1;
                 if (aAna !== bAna) return aAna - bAna;
-                // 2) Sayısal/sözel dönüşümü [5]
-                if (sonYerlesenDers) {
-                    const aDon = a.sayisal !== sonYerlesenDers.sayisal ? 0 : 1;
-                    const bDon = b.sayisal !== sonYerlesenDers.sayisal ? 0 : 1;
+                // 2) Bilişsel grup dönüşümü — sınava özgü [§6]
+                if (sonGrup) {
+                    const aDon = a.grup !== sonGrup ? 0 : 1;
+                    const bDon = b.grup !== sonGrup ? 0 : 1;
                     if (aDon !== bDon) return aDon - bDon;
                 }
-                // 3) Birikmiş pay
+                // 3) Birikmiş pay (sınav ağırlığı)
                 return b.token - a.token;
             });
 
-            // İSTİSNA: son yerleşen dersin zincir başı AYNI KONUDAN devam
-            // ediyorsa blok tamamlanır (aynı konu 2 etüt üst üste) [5]
-            let secilen = adaylar[0];
+            /* İSTİSNA: aynı KONUNUN zinciri sürüyorsa blok tamamlanır
+               (konu → konu → soru → soru sürekliliği), ama yalnızca
+               esneme sınırına kadar — bu aday listenin başına alınır. */
+            const sirali = [...adaylar];
             if (sonYerlesenDers
                 && sonYerlesenDers.zincir.length
                 && dersSigar(sonYerlesenDers.ad)
-                && sonYerlesenDers.zincir[0].blokAcik) {
-                secilen = sonYerlesenDers;
+                && sonYerlesenDers.zincir[0].blokAcik
+                && sonYerlesenDers.zincir[0].konu?.konu === sonKonuAdi
+                && ardisikDers < M.AYNI_KONU_ZINCIR_ESNEMESI) {
+                const is0 = sonYerlesenDers.zincir[0];
+                if (is0.tip !== 'konu' || konuSigar(is0.konu.konu)) {
+                    sirali.unshift(sonYerlesenDers);
+                }
             }
 
-            const is_ = secilen.zincir[0];
-            const tip = is_.tip;
-            if (tip === 'konu' && !konuSigar(is_.konu.konu)) {
-                // blok devamı konu limitine takıldı — normal adaya dön
-                secilen = adaylar.find((d) => d !== secilen);
-                if (!secilen) break;
+            /* Adayları SIRAYLA dene: `yerlestir` bloklama kuralına
+               takılırsa bir sonrakine geç. Eskiden ilk ret döngüyü
+               kırıyor ve etüt boş kalıyordu. */
+            let secilen = null, is2 = null;
+            for (const aday of sirali) {
+                const is_ = aday.zincir[0];
+                if (!is_) continue;
+                if (is_.tip === 'konu' && !konuSigar(is_.konu.konu)) continue;
+                if (yerlestir(aday, is_, is_.tip)) { secilen = aday; is2 = is_; break; }
             }
-            const isSecilen = secilen.zincir[0];
-            if (!yerlestir(secilen, isSecilen, isSecilen.tip)) break;
+            if (!secilen) break;   // hiçbiri yerleşemedi → 5c doldurur
 
-            isSecilen.kalan--;
+            is2.kalan--;
             secilen.token -= 1;
             // Aynı konudan bir etüt daha gerekiyorsa bir sonraki turda
-            // blok olarak devam etsin (en çok 2 üst üste)
-            isSecilen.blokAcik = isSecilen.kalan > 0 && !isSecilen.blokKullanildi;
-            if (isSecilen.blokAcik) isSecilen.blokKullanildi = true;
-            else isSecilen.blokKullanildi = false;
+            // blok olarak devam etsin (esneme sınırına kadar)
+            is2.blokAcik = is2.kalan > 0;
 
-            if (isSecilen.kalan <= 0) {
+            if (is2.kalan <= 0) {
                 secilen.zincir.shift();
-                if (isSecilen.tip === 'konu') {
+                if (is2.tip === 'konu') {
                     // KONU BİTTİ → soru etütleri zincirin BAŞINA [KESİN KURAL]
-                    if (isSecilen.soruE > 0) {
+                    if (is2.soruE > 0) {
                         secilen.zincir.unshift({
-                            tip: 'soru', konu: isSecilen.konu,
-                            kalan: isSecilen.soruE, toplam: isSecilen.soruE,
+                            tip: 'soru', konu: is2.konu,
+                            kalan: is2.soruE, toplam: is2.soruE,
                         });
                     }
                     // Aralıklı tekrar halkaları [3]
@@ -409,7 +582,7 @@ export function programUret({
                         for (const aralik of kriterler.tekrarAraliklari) {
                             tekrarKuyrugu.push({
                                 vadeGun: g.gunIndex + aralik, aralik,
-                                ders: secilen, konu: isSecilen.konu,
+                                ders: secilen, konu: is2.konu,
                             });
                         }
                     }
@@ -418,10 +591,74 @@ export function programUret({
         }
     }
 
+    /* ── 5c. BOŞ ETÜT YASAĞI [§9] ───────────────────────────────
+       Buraya kadar dolmayan etütler kalırsa (ör. günlük ders limiti
+       yüzünden) öncelik merdiveninden gerçek çalışmayla doldurulur:
+       vadesi geçmiş tekrar → bekleyen soru → esnek/telafi.
+       Anlamsız A-B-C döngüsü kurulmaz.                            */
+    for (const g of gunListesi) {
+        if (!g.acik.length) continue;
+        /* O günün mevcut durumu: hangi dersler kullanılmış, son ders ne,
+           kaç kez arka arkaya gelmiş. Doldurma ASLA günlük ders/konu
+           limitini delmez — §7 kesin kuraldır, §9 ona tabidir. */
+        const gunHucreleri = () => Object.entries(schedule)
+            .filter(([k]) => k.startsWith(`m${g.ay}-w${g.hafta}-${g.gun}-`))
+            .sort((a, b) => Number(a[0].split('-').pop()) - Number(b[0].split('-').pop()))
+            .map(([, v]) => v);
+
+        while (g.acik.length) {
+            const mevcut = gunHucreleri();
+            const gunDersleri = new Set(mevcut.filter((c) => dersSayilir(c.type)).map((c) => c.subject));
+            const son = mevcut.length ? mevcut[mevcut.length - 1] : null;
+            const sonDers = son && dersSayilir(son.type) ? son.subject : null;
+            let ard = 0;
+            for (let i = mevcut.length - 1; i >= 0; i--) {
+                if (dersSayilir(mevcut[i].type) && mevcut[i].subject === sonDers) ard++;
+                else break;
+            }
+            // Yalnızca o gün ZATEN kullanılmış dersler (yeni ders açmaz)
+            const uygunDersler = dersListesi.filter((d) => d.zincir.length && gunDersleri.has(d.ad));
+            const farkliOlan = uygunDersler.filter((d) => d.ad !== sonDers || ard < M.AYNI_DERS_ARDISIK_EN_COK);
+
+            const h = al(g, 'ilk');
+            // 1) Bekleyen tekrar — yalnızca gündeki mevcut derslerden
+            const tIdx = tekrarKuyrugu.findIndex((x) => (
+                gunDersleri.has(x.ders.ad) && (x.ders.ad !== sonDers || ard < M.AYNI_DERS_ARDISIK_EN_COK)
+            ));
+            if (tIdx >= 0) {
+                const t = tekrarKuyrugu.splice(tIdx, 1)[0];
+                yaz(h, {
+                    subject: t.ders.ad, topic: t.konu.konu, type: 'tekrar',
+                    exam: t.konu.bolum, round: t.aralik,
+                });
+                continue;
+            }
+            // 2) Zincirde kalan iş — limit ve bloklama gözetilerek
+            const kalanDers = farkliOlan[0];
+            if (kalanDers) {
+                const is_ = kalanDers.zincir[0];
+                yaz(h, {
+                    subject: kalanDers.ad, topic: is_.konu.konu,
+                    type: is_.tip, exam: is_.konu.bolum,
+                });
+                is_.kalan--;
+                if (is_.kalan <= 0) kalanDers.zincir.shift();
+                continue;
+            }
+            /* 3) Son çare: esnek/telafi. EXTRA_STUDY olduğu için ders
+               sayılmaz — limiti delmez, etüdü de boş bırakmaz. */
+            yaz(h, {
+                subject: 'Esnek / Telafi', type: 'mola', exam: '',
+                topic: 'Eksiklerini tamamla / serbest çalışma',
+            });
+        }
+    }
+
     /* ── 6. Denetim (QA) ────────────────────────────────────── */
     uyarilar.push(...programDenetle(schedule, {
         kriterler, gunler, gunlukEtut, aylar, haftaPerAy,
-        alanId, anaDersAnahtarlari, dersler: dersListesi,
+        sinavId, alanId, anaDersAnahtarlari, dersler: dersListesi,
+        beklenenHucre: toplamAcik,
     }));
 
     /* ── 7. İstatistik ──────────────────────────────────────── */
@@ -456,23 +693,75 @@ export function programDenetle(schedule, {
     kriterler = KRITER_VARSAYILANLARI,
     gunler = GUNLER_VARSAYILAN,
     aylar = 1, haftaPerAy = 4,
+    sinavId = 'YKS',
     alanId = null, anaDersAnahtarlari = null, dersler = [],
+    beklenenHucre = null,
 } = {}) {
     const uyarilar = [];
     const dersSayilir = (tip) => tip === 'konu' || tip === 'soru' || tip === 'tekrar';
 
-    // Gün bazlı sayımlar
+    // Gün bazlı sayımlar + etüt sırası (bloklama denetimi için)
     const gunlukHarita = new Map();
     for (const [anahtar, hucre] of Object.entries(schedule)) {
         const m = /^m(\d+)-w(\d+)-(.+)-(\d+)$/.exec(anahtar);
         if (!m) continue;
         const gunAnahtari = `${m[1]}-${m[2]}-${m[3]}`;
         if (!gunlukHarita.has(gunAnahtari)) {
-            gunlukHarita.set(gunAnahtari, { dersler: new Set(), konular: new Set(), hafta: (Number(m[1]) - 1) * haftaPerAy + Number(m[2]) });
+            gunlukHarita.set(gunAnahtari, {
+                dersler: new Set(), konular: new Set(), sira: [],
+                ay: Number(m[1]), hafta: (Number(m[1]) - 1) * haftaPerAy + Number(m[2]),
+            });
         }
         const g = gunlukHarita.get(gunAnahtari);
         if (dersSayilir(hucre.type)) g.dersler.add(hucre.subject);
         if (hucre.type === 'konu') g.konular.add(hucre.topic);
+        g.sira.push({ etut: Number(m[4]), ...hucre });
+    }
+    for (const g of gunlukHarita.values()) g.sira.sort((a, b) => a.etut - b.etut);
+
+    /* §5 — Aynı ders gereksiz uzun blok. Aynı KONUNUN zinciri sürüyorsa
+       esneme sınırına kadar izin verilir; ötesi ihlaldir. */
+    for (const [gunAnahtari, g] of gunlukHarita) {
+        let ard = 0, oncekiDers = null, oncekiKonu = null, ayniKonu = true;
+        for (const h of g.sira) {
+            if (!dersSayilir(h.type)) { ard = 0; oncekiDers = null; continue; }
+            if (h.subject === oncekiDers) {
+                ard++;
+                if (h.topic !== oncekiKonu) ayniKonu = false;
+            } else { ard = 1; ayniKonu = true; }
+            const sinirB = ayniKonu ? M.AYNI_KONU_ZINCIR_ESNEMESI : M.AYNI_DERS_ARDISIK_EN_COK;
+            if (ard > sinirB) {
+                uyarilar.push({
+                    tur: 'ders-bloklama', gun: gunAnahtari,
+                    mesaj: `${gunAnahtari}: ${h.subject} dersi arka arkaya ${ard} etüt — en çok ${sinirB} olmalı (serpiştirme ilkesi).`,
+                });
+                break;
+            }
+            oncekiDers = h.subject; oncekiKonu = h.topic;
+        }
+    }
+
+    /* §9 — Boş etüt yasağı: beklenen hücre sayısı verilmişse eksik
+       yerleşim ihlaldir. */
+    if (beklenenHucre != null) {
+        const yerlesen = Object.keys(schedule).length;
+        if (yerlesen < beklenenHucre) {
+            uyarilar.push({
+                tur: 'bos-etut',
+                mesaj: `${beklenenHucre - yerlesen} etüt boş kaldı — program tüm açık etütleri doldurmalı.`,
+            });
+        }
+    }
+
+    /* §8 — Son ay boş kalmamalı. */
+    if (aylar > 1) {
+        const sonAyHucre = Object.keys(schedule).filter((k) => k.startsWith(`m${aylar}-`)).length;
+        if (sonAyHucre === 0) {
+            uyarilar.push({
+                tur: 'son-ay-bos',
+                mesaj: `Son ay (${aylar}. ay) tamamen boş — çalışma yükü programın tamamına yayılmalı.`,
+            });
+        }
     }
 
     for (const [gunAnahtari, g] of gunlukHarita) {
