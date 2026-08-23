@@ -17,6 +17,12 @@ import {
 import Modal from '../ui/Modal';
 import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
 import DenemeAnalizi from './DenemeAnalizi';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend as GrafikEfsane, ResponsiveContainer,
+} from 'recharts';
+import { SayiCubuklari } from '../charts/Analitik';
+import { izgaraOzellikleri, eksenOzellikleri, ANIMASYON, dersRengi } from '../charts/grafikTemasi';
+import { hataTrendi } from '../../utils/denemeAnalizi';
 
 const LS_KEY = 'error_notebook';
 
@@ -137,6 +143,20 @@ const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
             bySubject: bySubject.slice(0, 5),
         };
     }, [myEntries, now]);
+
+    /**
+     * HAFTALIK HATA TRENDİ.
+     *
+     * `hataTrendi` aylar önce yazılmış ve yalnızca koç panelinde
+     * kullanılıyordu; hatanın sahibi olan öğrenci kendi eğilimini
+     * göremiyordu. Aynı hesap, ikinci bir veri kaynağı açılmadan
+     * buraya da bağlandı.
+     *
+     * Bu grafik iki şeyi birlikte gösterir: o hafta KAÇ yeni hata
+     * girildi ve KAÇI çözüldü. Yalnız hata sayısı ceza gibi okunur;
+     * çözülen çizgisi olmadan çabanın karşılığı görünmez.
+     */
+    const trend = useMemo(() => hataTrendi(myEntries), [myEntries]);
 
     // ── Eylemler ─────────────────────────────────────────────
     const addEntry = (form) => {
@@ -295,6 +315,77 @@ const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
                     </button>
                 )}
             </div>
+
+            {/* ── HATA DESENİM ───────────────────────────────
+                Dağılımlar buraya gelene kadar yalnızca katlanmış
+                filtre panelinde, parantez içi sayı olarak duruyordu:
+                "Dikkatsizlik (12), Bilgi Eksiği (9)". Sayı okunuyor
+                ama oran görünmüyordu ve panel varsayılan olarak
+                KAPALI olduğu için çoğu öğrenci hiç açmıyordu.
+                Desen artık listeden önce, açık hâlde duruyor. */}
+            {stats.active >= 3 && (stats.byType.length > 1 || stats.bySubject.length > 1) && (
+                <div className="premium-card p-4 space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-ink-3">
+                        Hata Desenim · {stats.active} açık kayıt
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {stats.byType.length > 1 && (
+                            <div>
+                                <p className="text-[11px] font-bold text-ink-2 mb-2">Hata Tipine Göre</p>
+                                {/* Tip kimliği NOKTAYA, çubuk nötr.
+                                    Ölçüldü: hata tipi paleti ders paletiyle
+                                    çakışıyor — "Bilgi Eksiği" ile Türkçe aynı
+                                    kırmızı, "Zaman Yetmedi" ile Matematik aynı
+                                    mavi. Yandaki panel ders renklerini kimlik
+                                    olarak kullandığı için, aynı kartta iki
+                                    kırmızı çubuk iki ayrı şeyi anlatıyordu.
+                                    Tipin rengi filtre çiplerindeki gibi korunur,
+                                    yalnızca çubuğa taşınmaz. */}
+                                <SayiCubuklari
+                                    satirlar={stats.byType.map((t) => ({ ad: t.label, deger: t.count, nokta: t.color }))}
+                                    enFazla={5}
+                                />
+                            </div>
+                        )}
+                        {stats.bySubject.length > 1 && (
+                            <div>
+                                <p className="text-[11px] font-bold text-ink-2 mb-2">Derse Göre</p>
+                                {/* Renk = programdaki ders rengi. Matematik burada
+                                    da programdaki mavisiyle görünür. */}
+                                <SayiCubuklari
+                                    satirlar={stats.bySubject.map((x) => ({
+                                        ad: x.subject, deger: x.count, renk: dersRengi(x.subject),
+                                    }))}
+                                    enFazla={5}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {trend.length >= 2 && (
+                        <div>
+                            <p className="text-[11px] font-bold text-ink-2 mb-1">Haftalık Seyir</p>
+                            <div className="h-40">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={trend} margin={{ top: 6, right: 8, bottom: 0, left: -24 }}>
+                                        <CartesianGrid {...izgaraOzellikleri()} />
+                                        <XAxis dataKey="etiket" {...eksenOzellikleri()} />
+                                        <YAxis allowDecimals={false} {...eksenOzellikleri()} />
+                                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }} />
+                                        {/* İki seri var — efsane burada gerçekten gerekli */}
+                                        <GrafikEfsane iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                                        <Line type="monotone" dataKey="adet" name="Yeni hata"
+                                            stroke="var(--danger)" strokeWidth={2.5} dot={{ r: 3 }} animationDuration={ANIMASYON} />
+                                        <Line type="monotone" dataKey="cozulen" name="Çözülen"
+                                            stroke="var(--ok)" strokeWidth={2.5} dot={{ r: 3 }} animationDuration={ANIMASYON} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Filtreler ──────────────────────────────── */}
             {(stats.bySubject.length > 1 || stats.byType.length > 1) && (

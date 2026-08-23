@@ -11,7 +11,11 @@ import {
     Plus, X, BookOpen, PencilLine, Trash2, Check, TrendingUp,
     CalendarDays, Target, ChevronDown,
 } from 'lucide-react';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import studyLog from '../../services/studyLogService';
+import { izgaraOzellikleri, eksenOzellikleri, ANIMASYON } from '../charts/grafikTemasi';
 import { getSubjectColor, getSubjectLabel } from '../../data/programColors';
 import Modal from '../ui/Modal';
 import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
@@ -51,8 +55,6 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
         studyLog.removeEntry(id);
         refresh();
     };
-
-    const maxDay = Math.max(1, ...summary.byDay.map((d) => d.questions));
 
     return (
         <div className="space-y-5">
@@ -158,26 +160,50 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
                     <Stat label="Aktif Gün" value={`${summary.activeDays}/${range}`} color="var(--c4)" />
                 </div>
 
-                {/* Günlük çubuk grafik */}
+                {/* GÜNLÜK TREND.
+                    Eskiden burada eksensiz bir mini çubuk şeridi vardı: yalnızca
+                    iki uç tarih yazıyordu, y ekseni yoktu ve bir çubuğun kaç
+                    soruya karşılık geldiği okunamıyordu — biçim vardı, ölçü
+                    yoktu. Ayrıca boş günün rengi sabit beyaz-alfa idi ve açık
+                    temada zeminden ayırt edilemiyordu.
+
+                    Alan grafiği aynı veriyi ölçülebilir kılar: ölçekli y ekseni,
+                    tarihli ipucu, sürekli bir eğri. Trend soru sayısıyladır;
+                    kitap sayfası ipucunda ayrıca yazar. */}
                 {summary.questions > 0 && (
-                    <div className="mb-4">
-                        <div className="flex items-end gap-1 h-16">
-                            {summary.byDay.map((d) => (
-                                <div key={d.date} className="flex-1 flex flex-col items-center gap-1" title={`${d.date}: ${d.questions} soru, ${d.pages} sayfa`}>
-                                    <div
-                                        className="w-full rounded-t transition-all"
-                                        style={{
-                                            height: `${Math.max(3, (d.questions / maxDay) * 100)}%`,
-                                            backgroundColor: d.questions > 0 ? 'var(--highlight)' : 'rgba(255,255,255,0.06)',
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                        <div className="flex justify-between mt-1.5">
-                            <span className="text-[9px] text-ink-3">{summary.byDay[0]?.date.slice(5)}</span>
-                            <span className="text-[9px] text-ink-3">bugün</span>
-                        </div>
+                    <div className="h-40 mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={summary.byDay} margin={{ top: 6, right: 8, bottom: 0, left: -22 }}>
+                                <defs>
+                                    <linearGradient id="gunlukTrend" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
+                                        <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid {...izgaraOzellikleri()} />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(d) => String(d).slice(5).replace('-', '.')}
+                                    minTickGap={18}
+                                    {...eksenOzellikleri()}
+                                />
+                                <YAxis allowDecimals={false} {...eksenOzellikleri()} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }}
+                                    labelFormatter={(d) => d}
+                                    formatter={(v, ad, o) => [
+                                        o?.payload?.pages ? `${v} soru · ${o.payload.pages} sayfa` : `${v} soru`,
+                                        'Çalışma',
+                                    ]}
+                                />
+                                <Area
+                                    type="monotone" dataKey="questions" name="Soru"
+                                    stroke="var(--brand)" strokeWidth={2.5}
+                                    fill="url(#gunlukTrend)" dot={{ r: 2.5 }}
+                                    animationDuration={ANIMASYON}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 )}
 
@@ -194,10 +220,14 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
                                     <span className="w-20 shrink-0 text-[11px] font-black truncate" style={{ color: c.border }}>
                                         {getSubjectLabel(s.subject)}
                                     </span>
-                                    <div className="flex-1 h-2 rounded-full bg-surface/5 overflow-hidden flex">
+                                    {/* Zemin ve "boş" dilimi tema belirtecinden gelir.
+                                        Sabit beyaz-alfa değerler açık temada beyaz
+                                        üstünde beyaz kalıyordu: boş sorular
+                                        görünmüyor, çubuk kısa görünüyordu. */}
+                                    <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden flex">
                                         <div style={{ width: `${(s.correct / Math.max(1, s.questions)) * 100}%`, backgroundColor: 'var(--ok)' }} />
                                         <div style={{ width: `${(s.wrong / Math.max(1, s.questions)) * 100}%`, backgroundColor: 'var(--danger)' }} />
-                                        <div style={{ width: `${(s.blank / Math.max(1, s.questions)) * 100}%`, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                                        <div style={{ width: `${(s.blank / Math.max(1, s.questions)) * 100}%`, backgroundColor: 'var(--ink-3)' }} />
                                     </div>
                                     <span className="w-24 text-right text-[10px] font-bold text-ink-3 tabular-nums shrink-0">
                                         {s.questions} soru{s.accuracy != null ? ` · %${s.accuracy}` : ''}
@@ -208,7 +238,7 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
                         <div className="flex gap-3 pt-1.5">
                             <Legend color="var(--ok)" label="Doğru" />
                             <Legend color="var(--danger)" label="Yanlış" />
-                            <Legend color="rgba(255,255,255,0.25)" label="Boş" />
+                            <Legend color="var(--ink-3)" label="Boş" />
                         </div>
                     </div>
                 ) : (

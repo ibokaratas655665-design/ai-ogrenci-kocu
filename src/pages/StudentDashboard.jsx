@@ -1598,25 +1598,13 @@ const StudentDashboard = () => {
                                         </div>
                                     )}
                                 </div>
-                                {merkezOzet.gunSerisi.some((g) => g.soru > 0) && (
-                                    <div className="h-36 mt-3">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={merkezOzet.gunSerisi} margin={{ top: 4, right: 4, bottom: 0, left: -22 }}>
-                                                <defs>
-                                                    <linearGradient id="calisGrad" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.25} />
-                                                        <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-                                                <XAxis dataKey="gun" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                                <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                                                <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
-                                                <Area type="monotone" dataKey="soru" name="Soru" stroke="var(--brand)" strokeWidth={2.5} fill="url(#calisGrad)" dot={{ r: 3 }} animationDuration={300} />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                )}
+                                {/* Buradaki 7 günlük soru alanı kaldırıldı: hemen
+                                    altındaki Günlük Kayıt bölümü AYNI seriyi zaten
+                                    çiziyor ve daha fazlasını veriyor (7/30 gün
+                                    seçici, tarihli ipucu, kitap sayfası). İki
+                                    özdeş eğri aynı ekranda iki ayrı ölçüm gibi
+                                    okunuyordu. Geriye eğrinin söylemediği iki
+                                    sayı kaldı: net değişimi ve soru artışı. */}
                             </div>
                         )}
 

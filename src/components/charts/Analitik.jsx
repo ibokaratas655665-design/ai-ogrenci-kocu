@@ -355,6 +355,70 @@ export function DersCubuklari({ dersler = [], enFazla = 6, className }) {
    ══════════════════════════════════════════════════════════════ */
 
 /**
+ * SAYI ÇUBUKLARI — sıralı bir dağılımın en yalın gösterimi.
+ *
+ * "Hangi hata tipi ne kadar?", "hangi derste kaç kayıt?" gibi sorular
+ * uygulamanın birkaç yerinde yalnızca parantez içi sayı olarak
+ * duruyordu: "Dikkatsizlik (12), Bilgi Eksiği (9)". Sayı okunabiliyor
+ * ama ORAN görünmüyordu; 12 ile 9 arasındaki fark ancak çıkarma
+ * yaparak anlaşılıyordu. Çubuk bu farkı doğrudan gösterir.
+ *
+ * `DersCubuklari`dan farkı: orada iki sayının ORANI (uyum yüzdesi)
+ * çizilir, burada MUTLAK sayılar en büyüğe göre ölçeklenir.
+ *
+ * ── RENK ÇAKIŞMASI TUZAĞI ─────────────────────────────────────
+ * Ders renkleri bir KİMLİK sistemidir: Matematik her ekranda aynı
+ * mavidir. Uygulamada ikinci bir renk sistemi daha var — hata
+ * tiplerininki. İkisi aynı paletten besleniyor: "Bilgi Eksiği"
+ * #B91C1C ile Türkçe #B91C1C aynı renk, "Zaman Yetmedi" #1D4ED8 ile
+ * Matematik #1D4ED8 aynı renk. Aynı kartta yan yana çizildiklerinde
+ * okuyucu ikisini eşleştirebilir.
+ *
+ * Bu yüzden bir çubuk grubunda renk YA kimlik taşır (`renk`) YA da
+ * kimlik noktaya iner ve çubuk nötr kalır (`nokta`). İkisi bir arada
+ * kullanılmaz.
+ *
+ * @param {{ad:string, deger:number, renk?:string, nokta?:string, alt?:string}[]} satirlar
+ */
+export function SayiCubuklari({ satirlar = [], enFazla = 6, birim = '', className }) {
+    const dolu = satirlar.filter((x) => (x?.deger ?? 0) > 0).slice(0, enFazla);
+    if (!dolu.length) return null;
+    const tavan = Math.max(...dolu.map((x) => x.deger), 1);
+
+    return (
+        <div className={cn('flex flex-col gap-2', className)}>
+            {dolu.map((x) => {
+                const renk = x.renk || 'var(--brand)';
+                return (
+                    <div key={x.ad} className="flex items-center gap-2.5">
+                        <span className="tip-small text-ink-2 w-[92px] shrink-0 flex items-center gap-1.5" title={x.alt || x.ad}>
+                            {x.nokta && (
+                                <span aria-hidden="true" className="w-2 h-2 rounded-full shrink-0"
+                                    style={{ background: x.nokta }} />
+                            )}
+                            <span className="truncate">{x.ad}</span>
+                        </span>
+                        <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden min-w-[48px]">
+                            <div
+                                className="h-full rounded-full transition-all duration-yavas"
+                                style={{ width: `${Math.round((x.deger / tavan) * 100)}%`, background: renk }}
+                            />
+                        </div>
+                        <span className="tip-mini font-bold tabular-nums text-ink w-[46px] text-right shrink-0">
+                            {x.deger}{birim}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8. GELİŞİM ZİNCİRİ
+   ══════════════════════════════════════════════════════════════ */
+
+/**
  * PROGRAM → ÇALIŞMA → DENEME → NET zinciri.
  *
  * Halkalardan biri eksikse zincir "kurulmuş" gösterilmez; eksik halka
