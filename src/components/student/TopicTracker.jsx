@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     CheckCircle2, Circle, RotateCcw, Calendar, Target, Search, Flame, Trophy,
+    Clock, BarChart3,
 } from 'lucide-react';
 import topics, { DURUMLAR } from '../../services/topicProgressService';
+import { DersCubuklari } from '../charts/Analitik';
 import {
     sinavBul, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri, alanListesi,
 } from '../../data/examTopics';
@@ -203,6 +205,30 @@ const TopicTracker = ({ user, setToast, saltGorunum = false, baslangicBolum = nu
                 )}
             </div>
 
+            {/* ── DERSLERE GÖRE KONU TAMAMLAMA ───────────────
+                Ders başına oran şimdiye kadar yalnızca her ders
+                bloğunun kendi başlığında, sayfaya dağılmış hâlde
+                duruyordu: "hangi dersim geride?" sorusunu yanıtlamak
+                için sayfayı baştan sona kaydırmak gerekiyordu.
+                Tek yerde, sıralı ve programdaki ders renkleriyle. */}
+            {dersler.length > 1 && (
+                <div className="srf p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <BarChart3 size={15} className="text-brand" />
+                        <span className="eyebrow">Derslere Göre</span>
+                    </div>
+                    <DersCubuklari
+                        dersler={dersler.map((d) => ({
+                            ders: d.ad,
+                            oran: d.oran,
+                            tamamlanan: d.tamam,
+                            planlanan: d.toplam,
+                        }))}
+                        enFazla={dersler.length}
+                    />
+                </div>
+            )}
+
             {/* ── Sıradaki konular ───────────────────────── */}
             {sonraki.length > 0 && (
                 <div className="srf p-4">
@@ -352,6 +378,28 @@ const DersBlogu = ({ d, onIsaretle }) => (
 //  KONU SATIRI — sol: konu · orta: soru sayısı · sağ: tamamlama
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * "Kaç gün önce" — sonTarih'in okunabilir hâli.
+ *
+ * Tarih damgası `konuDurumu` içinde hep hesaplanıyordu ama hiçbir
+ * ekranda gösterilmiyordu. Oysa aralıklı tekrarda en kritik bilgi
+ * budur: 40 soru çözülmüş ama üstünden iki ay geçmiş bir konu,
+ * 20 soru çözülmüş taze bir konudan daha risklidir.
+ */
+const gunFarkiMetni = (sonTarih) => {
+    if (!sonTarih) return null;
+    const t = new Date(sonTarih);
+    if (Number.isNaN(t.getTime())) return null;
+    const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    t.setHours(0, 0, 0, 0);
+    const fark = Math.round((bugun - t) / 86400000);
+    if (fark <= 0) return 'bugün';
+    if (fark === 1) return 'dün';
+    if (fark < 30) return `${fark} gün önce`;
+    const ay = Math.round(fark / 30);
+    return ay === 1 ? '1 ay önce' : `${ay} ay önce`;
+};
+
 const KonuSatiri = ({ k, onIsaretle }) => {
     const d = DURUMLAR[k.durum];
 
@@ -368,9 +416,25 @@ const KonuSatiri = ({ k, onIsaretle }) => {
                     <span className="badge" title={`Sınavda yaklaşık ${k.agirlik} soru`}>
                         {k.zorlukAdi}
                     </span>
+                    {/* İSABET + HAM SAYILAR.
+                        `dogru`, `yanlis`, `bos` hesaplanıyor ama hiçbir yerde
+                        görünmüyordu; yalnızca bunlardan türetilen yüzde vardı.
+                        "%50 isabet" iki doğru iki yanlıştan da gelebilir,
+                        yirmi doğru yirmi yanlıştan da — ikisi aynı şey değil. */}
                     {k.basari != null && (
-                        <span className={`badge ${k.basari >= 60 ? 'badge-ok' : k.basari >= 50 ? 'badge-warn' : 'badge-danger'}`}>
-                            %{k.basari} isabet
+                        <span className={`badge ${k.basari >= 60 ? 'badge-ok' : k.basari >= 50 ? 'badge-warn' : 'badge-danger'}`}
+                            title={`${k.dogru} doğru · ${k.yanlis} yanlış · ${k.bos} boş`}>
+                            %{k.basari} · {k.dogru}D {k.yanlis}Y{k.bos > 0 ? ` ${k.bos}B` : ''}
+                        </span>
+                    )}
+                    {k.dakika > 0 && (
+                        <span className="badge" title="Bu konuya ayırdığın toplam süre">
+                            <Clock size={10} /> {k.dakika >= 60 ? `${Math.floor(k.dakika / 60)}s ${k.dakika % 60}d` : `${k.dakika}d`}
+                        </span>
+                    )}
+                    {gunFarkiMetni(k.sonTarih) && (
+                        <span className="badge" title="Bu konuya en son ne zaman çalıştın">
+                            son: {gunFarkiMetni(k.sonTarih)}
                         </span>
                     )}
                     {k.programda > 0 && (
