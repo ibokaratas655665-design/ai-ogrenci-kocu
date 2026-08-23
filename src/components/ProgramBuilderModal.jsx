@@ -9,9 +9,11 @@ import { jsPDF } from 'jspdf';
 import MARKA from '../data/marka';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
-import { CURRICULUM, SUBJECT_COLORS, EXAM_COLORS, EXAM_TYPES, getTopicName, getTopicWeight } from '../data/curriculum';
+import { SUBJECT_COLORS, EXAM_COLORS } from '../data/curriculum';
 import { ACTIVITY_TYPES, STANDALONE_ACTIVITIES, getCellColor, getSubjectColor, getSubjectLabel, isActivityBlock, buildLegend } from '../data/programColors';
-import { distributeToSlots, DEFAULT_PLAN_OPTIONS } from '../utils/scheduleDistributor';
+import { programUret, KRITER_VARSAYILANLARI, konuEtutIhtiyaci, soruEtutIhtiyaci } from '../utils/programMotoru';
+import { SINAVLAR, dersAdi, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri } from '../data/examTopics';
+import topics from '../services/topicProgressService';
 import programProgress from '../services/programProgressService';
 import firebaseSync from '../services/firebaseSync';
 import { bildir, onayla } from '../services/uiGeriBildirim';
@@ -152,8 +154,13 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     const [activeWeek, setActiveWeek] = useState(1);
 
     // Selection State
-    const [selectedExam, setSelectedExam] = useState('');
-    const [gradeLevel, setGradeLevel] = useState('grade11'); // For AYT/YDT
+    // ⚠️ 23.08.2026: konu kaynağı curriculum.js'ten examTopics.js'e taşındı.
+    // Gerekçe: konu takibi, günlük kayıt, hata defteri ve deneme analizi
+    // examTopics adlarını kullanıyor; program curriculum adlarını yazınca
+    // TYT'de adların yalnız 60/197'si eşleşiyordu — programa yazılan
+    // konuların çoğu konu takibinde HİÇ sayılmıyordu.
+    const [selectedExam, setSelectedExam] = useState('');   // bölüm id: TYT | AYT_SAY | ...
+    const [gradeLevel, setGradeLevel] = useState('grade11'); // (eski curriculum kalıntısı, YDT/AYT için)
     const [selectedSubject, setSelectedSubject] = useState('');
     const [availableTopics, setAvailableTopics] = useState([]);
     const [selectedTopics, setSelectedTopics] = useState([]);
@@ -170,11 +177,18 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedCells, setSelectedCells] = useState([]);
 
-    // 🧠 Verimli program kriterleri — dağıtım motoruna geçilir
-    const [planOptions, setPlanOptions] = useState(DEFAULT_PLAN_OPTIONS);
+    /**
+     * 🧠 Program kriterleri — Program Motoru 2.0'a geçilir ve
+     * `program_kriterleri_<id>` anahtarında SAKLANIR (eskiden modal
+     * kapanınca kayboluyordu; koç her açılışta baştan ayarlıyordu).
+     */
+    const [kriterler, setKriterler] = useState(KRITER_VARSAYILANLARI);
     const [showPlanSettings, setShowPlanSettings] = useState(true);
     const [sidebarTab, setSidebarTab] = useState('icerik');
     const [lastStats, setLastStats] = useState(null);
+    const [programUyarilari, setProgramUyarilari] = useState([]);
+
+    const kriterDegistir = (alan, deger) => setKriterler((k) => ({ ...k, [alan]: deger }));
 
     /**
      * 📱 MOBİL DÜZEN
@@ -242,41 +256,87 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 console.error("Error loading meta:", e);
             }
         }
+
+        // Program kriterleri kalıcı — koç ayarı bir daha kaybolmasın
+        try {
+            const kayitli = localStorage.getItem(`program_kriterleri_${studentId}`);
+            if (kayitli) setKriterler({ ...KRITER_VARSAYILANLARI, ...JSON.parse(kayitli) });
+        } catch { /* bozuksa varsayılanla devam */ }
     }, [studentId]);
 
-    // Curriculum Logic
+    /* ══ KONU KAYNAĞI — examTopics + öğrencinin konu durumu ══════
+       Öğrencinin sınavı/alanı kaydından okunur; yalnız o alanın
+       bölümleri gösterilir (Sözel öğrencisine Fizik konuları düşmez).
+       Her konuya öğrencinin GERÇEK durumu (bitti mi, kaç soru kaldı)
+       iliştirilir — "bitenler" uyarısı ve soru etüdü hesabı bundan. */
+    const [ogrenci, setOgrenci] = useState(null);
+    const [konuDurumHaritasi, setKonuDurumHaritasi] = useState({});
+
     useEffect(() => {
-        console.log('🔍 CURRICULUM useEffect triggered:', { selectedExam, selectedSubject, gradeLevel });
-
-        // Defensive check: Ensure CURRICULUM exists
-        if (!CURRICULUM) {
-            console.error("CURRICULUM data is missing!");
-            setAvailableTopics([]);
-            return;
+        try {
+            const liste = JSON.parse(localStorage.getItem('coach_students') || '[]');
+            const bulunan = liste.find((s) => String(s.id) === String(studentId));
+            setOgrenci(bulunan || { id: studentId, name: studentName });
+        } catch {
+            setOgrenci({ id: studentId, name: studentName });
         }
+    }, [studentId, studentName]);
 
-        if (selectedExam && selectedSubject) {
-            // AYT ve YDT için grade bazlı erişim
-            const examData = (selectedExam === 'AYT' || selectedExam === 'YDT')
-                ? CURRICULUM[selectedExam]?.[gradeLevel]
-                : CURRICULUM[selectedExam];
+    const sinavId = React.useMemo(() => ogrencininSinavi(ogrenci || {}), [ogrenci]);
+    const alanId = React.useMemo(() => ogrencininAlani(ogrenci || {}, sinavId), [ogrenci, sinavId]);
+    const bolumler = React.useMemo(
+        () => (ogrenci ? ogrencininBolumleri(ogrenci, sinavId) : (SINAVLAR[sinavId]?.bolumler || [])),
+        [ogrenci, sinavId],
+    );
 
-            console.log('📚 Exam Data:', { selectedExam, selectedSubject, gradeLevel, examData: examData ? 'EXISTS' : 'NULL' });
+    /** Öğrencinin konu durumu: `${bolum}|${konuAnahtarı}` → satır. */
+    useEffect(() => {
+        if (!studentId || !bolumler.length) return;
+        const harita = {};
+        for (const b of bolumler) {
+            try {
+                const h = topics.konuHaritasi(studentId, sinavId, undefined, b.id);
+                for (const ders of h.dersler) {
+                    for (const satir of ders.konular) {
+                        harita[`${b.id}|${ders.ders}|${satir.konu}`] = satir;
+                    }
+                }
+            } catch { /* konu haritası okunamazsa uyarısız devam */ }
+        }
+        setKonuDurumHaritasi(harita);
+    }, [studentId, sinavId, bolumler]);
 
-            if (examData && examData[selectedSubject]) {
-                console.log('✅ Topics found:', examData[selectedSubject].length);
-                setAvailableTopics(examData[selectedSubject]);
-                setSelectedTopics([]); // Clear selection on subject change
-            } else {
-                console.log('❌ No topics found for:', { selectedExam, selectedSubject, gradeLevel });
-                setAvailableTopics([]);
-                setSelectedTopics([]);
-            }
-        } else {
+    /** Seçili bölümün ders listesi (anahtar + görünen ad). */
+    const dersSecenekleri = React.useMemo(() => {
+        const b = bolumler.find((x) => x.id === selectedExam);
+        if (!b) return [];
+        return Object.keys(b.dersler).map((anahtar) => ({ anahtar, ad: dersAdi(anahtar) }));
+    }, [bolumler, selectedExam]);
+
+    // Bölüm/ders değişince konu listesi — examTopics'ten, öğrencinin
+    // durumu iliştirilmiş hâlde
+    useEffect(() => {
+        if (!selectedExam || !selectedSubject) {
             setAvailableTopics([]);
             setSelectedTopics([]);
+            return;
         }
-    }, [selectedExam, selectedSubject, gradeLevel]);
+        const b = bolumler.find((x) => x.id === selectedExam);
+        const ham = b?.dersler?.[selectedSubject] || [];
+        setAvailableTopics(ham.map((k) => {
+            const durum = konuDurumHaritasi[`${selectedExam}|${selectedSubject}|${k.ad}`];
+            return {
+                ad: k.ad, agirlik: k.a, zorluk: k.z,
+                bitti: !!durum?.tamam,
+                durum: durum?.durum || 'baslanmadi',
+                hedef: durum?.hedef ?? null,
+                kalanSoru: durum?.kalan ?? durum?.hedef ?? null,
+                soru: durum?.soru ?? 0,
+                basari: durum?.basari ?? null,
+            };
+        }));
+        setSelectedTopics([]);
+    }, [selectedExam, selectedSubject, bolumler, konuDurumHaritasi]);
 
     // --- Action Handlers ---
 
@@ -289,14 +349,20 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         }
         localStorage.setItem(`program_schedule_${studentId}`, JSON.stringify(schedule));
         localStorage.setItem(`program_closed_slots_${studentId}`, JSON.stringify(closedSlots));
-        localStorage.setItem(`program_meta_${studentId}`, JSON.stringify({ 
-            programDurationMonths, 
-            dailySlotCount, 
+        localStorage.setItem(`program_meta_${studentId}`, JSON.stringify({
+            programDurationMonths,
+            dailySlotCount,
             title,
             weeklyMode,
-            updatedAt: new Date().toISOString() 
+            updatedAt: new Date().toISOString()
         }));
-        
+        localStorage.setItem(`program_kriterleri_${studentId}`, JSON.stringify(kriterler));
+        /* ⚠️ Konu takibi köprüsü: topicProgressService `student_programs_*`
+           okuyor, program `program_schedule_*`'e yazıyordu — "programda"
+           durumu ve program borcu önceliği ölüydü. Aynı içerik ikinci
+           anahtara da yazılarak eşgüdüm kuruluyor. */
+        localStorage.setItem(`student_programs_${studentId}`, JSON.stringify(schedule));
+
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2500);
         // Firebase'e hemen senkronize et - öğrenci mobilde anlık görsün
@@ -350,11 +416,11 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     };
 
     const toggleTopicSelection = (topic) => {
-        if (selectedTopics.includes(topic)) {
-            setSelectedTopics(selectedTopics.filter(t => t !== topic));
-        } else {
-            setSelectedTopics([...selectedTopics, topic]);
-        }
+        setSelectedTopics((prev) => (
+            prev.some((t) => t.ad === topic.ad)
+                ? prev.filter((t) => t.ad !== topic.ad)
+                : [...prev, topic]
+        ));
     };
 
     const handleSelectAll = () => {
@@ -365,19 +431,41 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         }
     };
 
+    /**
+     * Seçilen konuları dağıtım listesine ekler. Motorun beklediği
+     * biçim: {bolum, ders, dersAd, konu, agirlik, zorluk, hedef,
+     * kalanSoru, bitti}. Etüt sayıları burada ÖNİZLEME olarak
+     * hesaplanır; koç tek tek değiştirebilir.
+     */
     const addSelectedToQueue = () => {
-        const newItems = selectedTopics.map(topic => {
-            return {
-                subject: selectedSubject,
-                topic: getTopicName(topic),
-                color: SUBJECT_COLORS?.[selectedSubject] || 'bg-surface-3',
-                weight: getTopicWeight(topic),
-                duration: getTopicWeight(topic),
-                exam: selectedExam || ''
+        const yeni = selectedTopics.map((t) => {
+            const kayit = {
+                bolum: selectedExam,
+                ders: selectedSubject,
+                dersAd: dersAdi(selectedSubject),
+                konu: t.ad,
+                agirlik: t.agirlik,
+                zorluk: t.zorluk,
+                hedef: t.hedef,
+                kalanSoru: t.kalanSoru,
+                bitti: t.bitti,
+                // geriye dönük alanlar (eski kuyruk görünümleri için)
+                subject: dersAdi(selectedSubject),
+                topic: t.ad,
+                exam: selectedExam,
             };
+            kayit.konuEtut = konuEtutIhtiyaci(kayit);
+            kayit.soruEtut = soruEtutIhtiyaci(kayit, kriterler);
+            return kayit;
         });
-        setDistributionQueue([...distributionQueue, ...newItems]);
+        // Aynı konu iki kez eklenmesin
+        const varOlan = new Set(distributionQueue.map((q) => `${q.bolum}|${q.ders}|${q.konu}`));
+        const suzulmus = yeni.filter((k) => !varOlan.has(`${k.bolum}|${k.ders}|${k.konu}`));
+        setDistributionQueue([...distributionQueue, ...suzulmus]);
         setSelectedTopics([]);
+        if (suzulmus.length < yeni.length) {
+            bildir(`${yeni.length - suzulmus.length} konu listede zaten vardı, tekrar eklenmedi.`, 'bilgi');
+        }
     };
 
     const removeFromQueue = (index) => {
@@ -386,50 +474,61 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         setDistributionQueue(newQueue);
     };
 
+    /** Koç konunun etüt sayısını elle değiştirebilir (koçun kararı üstün). */
     const updateQueueItemWeight = (index, delta) => {
         const newQueue = [...distributionQueue];
-        newQueue[index].weight = Math.max(1, newQueue[index].weight + delta);
+        const k = newQueue[index];
+        k.konuEtut = Math.max(1, (k.konuEtut ?? 1) + delta);
         setDistributionQueue(newQueue);
     };
 
     /**
-     * 🧠 AKILLI DAĞITIM
+     * 🧠 AKILLI DAĞITIM — Program Motoru 2.0 (utils/programMotoru.js)
      *
-     * Algoritma artık utils/scheduleDistributor.js içinde tek yerde duruyor.
-     * (Eskiden bu dosyada birebir kopyası vardı; iki yerde bakım gerekiyordu.)
+     * Motor: YKS ders ağırlıkları + konu zorluk/kapsam + öğrencinin
+     * hedef soru sayısı + soru başına çözüm süresi + aralıklı tekrar
+     * ile dağıtır; günlük ders/konu limitlerine kesin uyar ve
+     * üretim sonrası QA uyarıları döner.
      */
     const handleAutoDistribute = () => {
         if (!distributionQueue.length) {
-            bildir('Önce dağıtılacak ders/konu ekleyin! Soldaki "Tüm Müfredatı Ekle" veya "+" butonlarını kullanın.');
+            bildir('Önce dağıtılacak ders/konu ekleyin! Soldaki listeden konu seçip "Listeye Ekle" deyin.', 'uyari');
             return;
         }
 
-        const NUMERIC_SUBJECTS = new Set([
-            'Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Geometri', 'Fen',
-            'Trigonometri', 'Analitik Geometri', 'Logaritma', 'Sayılar', 'Olasılık'
-        ]);
-
-        const { schedule: generated, stats } = distributeToSlots(distributionQueue, {
-            months: weeklyMode ? 1 : programDurationMonths,
-            weeksPerMonth: weeklyMode ? 1 : 4,
-            slotsPerDay: dailySlotCount,
-            closedSlots,
-            existingSchedule: schedule,
-            DAYS,
-            numericSet: NUMERIC_SUBJECTS,
-            options: planOptions,
+        const { schedule: uretilen, stats, uyarilar } = programUret({
+            konular: distributionQueue.map((k) => ({
+                ...k,
+                // Koç elle değiştirdiyse onun sayısı geçerli
+                sabitKonuEtut: k.konuEtut,
+            })),
+            alanId,
+            kriterler,
+            aylar: weeklyMode ? 1 : programDurationMonths,
+            haftaPerAy: weeklyMode ? 1 : 4,
+            gunlukEtut: dailySlotCount,
+            gunler: DAYS,
+            kapaliEtutler: closedSlots,
+            mevcutSchedule: schedule,
         });
 
-        if (!generated || Object.keys(generated).length === 0) {
-            bildir('Tüm etütler dolu! Önce "Temizle" butonu ile programı sıfırlayın.');
+        if (!uretilen || Object.keys(uretilen).length === 0) {
+            bildir('Boş etüt kalmamış. Önce "Temizle" ile programı sıfırlayın ya da etüt sayısını artırın.', 'uyari');
             return;
         }
 
-        const merged = { ...schedule, ...generated };
-        setSchedule(merged);
+        setSchedule({ ...schedule, ...uretilen });
         setDistributionQueue([]);
         setSelectedTopics([]);
         setLastStats(stats);
+        setProgramUyarilari(uyarilar);
+        const ihlal = uyarilar.filter((u) => u.tur.startsWith('limit-')).length;
+        bildir(
+            ihlal
+                ? `Program oluşturuldu ama ${ihlal} kriter ihlali var — uyarı panelini inceleyin.`
+                : `Program oluşturuldu: ${stats.toplamYerlesen} etüt yerleşti.`,
+            ihlal ? 'uyari' : 'basari',
+        );
     };
 
 
@@ -536,10 +635,10 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
 
     const handleToolSelect = (topic) => {
         setActiveTool({
-            subject: selectedSubject,
-            topic: getTopicName(topic), // Extract name from object or use string
-            color: SUBJECT_COLORS?.[selectedSubject] || 'bg-surface-3 border-line-2 text-ink',
-            exam: selectedExam || ''
+            subject: dersAdi(selectedSubject),
+            topic: topic.ad,
+            type: 'konu',
+            exam: selectedExam || '',
         });
     };
 
@@ -550,66 +649,44 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
      */
     const handleAddCarryOver = () => {
         if (!carryOver.length) return;
-        const items = carryOver.map((c) => ({
-            subject: c.subject,
-            topic: c.topic,
-            exam: c.exam || '',
-            color: SUBJECT_COLORS?.[c.subject] || 'bg-surface-3',
-            // Öğrencinin "yapamadım" dediği konulara fazladan ağırlık —
-            // hem tekrar edilsin hem daha fazla etüt alsın
-            weight: Math.max(1, c.weight + (c.missedCount > 0 ? 1 : 0)),
-            carriedOver: true,
-        }));
+        const items = carryOver.map((c) => {
+            const kayit = {
+                bolum: c.exam || selectedExam || 'TYT',
+                ders: c.subject,
+                dersAd: dersAdi(c.subject),
+                konu: c.topic,
+                agirlik: c.weight || 1,
+                zorluk: 2,
+                bitti: false,
+                carriedOver: true,
+                subject: dersAdi(c.subject), topic: c.topic, exam: c.exam || '',
+            };
+            // "Yapamadım" işaretli konu bir etüt fazla alır
+            kayit.konuEtut = konuEtutIhtiyaci(kayit) + (c.missedCount > 0 ? 1 : 0);
+            kayit.soruEtut = 0;   // eksik kapatma turu; soru etüdü koçun kararı
+            return kayit;
+        });
         setDistributionQueue((prev) => [...items, ...prev]);
     };
 
-    const handleAddEntireCurriculum = async () => {
-        if (!selectedExam) return bildir('Lütfen önce bir sınav türü seçin!');
-
-        const examData = (selectedExam === 'AYT' || selectedExam === 'YDT')
-            ? CURRICULUM[selectedExam]?.[gradeLevel]
-            : CURRICULUM[selectedExam];
-
-        if (!examData) return bildir('Veri bulunamadı. Lütfen sayfayı yenileyin.');
-
-        const allTopics = [];
-        Object.keys(examData).forEach(subj => {
-            const topics = examData[subj];
-            if (Array.isArray(topics)) {
-                topics.forEach(t => {
-                    const topicName = getTopicName(t);
-                    allTopics.push({
-                        subject: subj,
-                        topic: topicName,
-                        color: SUBJECT_COLORS?.[subj] || 'bg-brand-soft border-brand-line text-brand',
-                        weight: getTopicWeight(t),
-                        duration: getTopicWeight(t),
-                        exam: selectedExam || ''
-                    });
-                });
-            }
-        });
-
-        if (allTopics.length === 0) return bildir('Seçili sınav tipi için konu bulunamadı!');
-
-        if (await onayla({ mesaj: `${allTopics.length} adet konu dağıtım listesine eklenecek. Onaylıyor musunuz?`, tehlikeli: false })) {
-            setDistributionQueue(prev => [...prev, ...allTopics]);
-        }
-    };
-
-    // Quick Add Subject Helper
+    /** Seçili dersin TÜM konularını listeye ekler. */
     const handleAddSubjectTopics = () => {
-        if (selectedSubject && availableTopics.length > 0) {
-            const newItems = availableTopics.map(topic => ({
-                subject: selectedSubject,
-                topic: getTopicName(topic),
-                color: SUBJECT_COLORS?.[selectedSubject] || 'bg-surface-3',
-                weight: getTopicWeight(topic),
-                duration: getTopicWeight(topic),
-                exam: selectedExam || ''
-            }));
-            setDistributionQueue([...distributionQueue, ...newItems]);
-        }
+        if (!selectedSubject || !availableTopics.length) return;
+        const varOlan = new Set(distributionQueue.map((q) => `${q.bolum}|${q.ders}|${q.konu}`));
+        const yeni = availableTopics
+            .filter((t) => !varOlan.has(`${selectedExam}|${selectedSubject}|${t.ad}`))
+            .map((t) => {
+                const kayit = {
+                    bolum: selectedExam, ders: selectedSubject, dersAd: dersAdi(selectedSubject),
+                    konu: t.ad, agirlik: t.agirlik, zorluk: t.zorluk,
+                    hedef: t.hedef, kalanSoru: t.kalanSoru, bitti: t.bitti,
+                    subject: dersAdi(selectedSubject), topic: t.ad, exam: selectedExam,
+                };
+                kayit.konuEtut = konuEtutIhtiyaci(kayit);
+                kayit.soruEtut = soruEtutIhtiyaci(kayit, kriterler);
+                return kayit;
+            });
+        setDistributionQueue([...distributionQueue, ...yeni]);
     };
 
     // 🔁 Önceki dönemden tamamlanmayan konular (öğrencinin işaretlemelerinden)
@@ -620,7 +697,10 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     const carryOverMissed = carryOver.filter((c) => c.missedCount > 0).length;
 
     // Metrics for Queue
-    const totalWeights = distributionQueue.reduce((acc, i) => acc + i.weight, 0);
+    /** Listedeki toplam etüt ihtiyacı (konu + soru) — kapasite göstergesi. */
+    const totalWeights = distributionQueue.reduce(
+        (acc, i) => acc + (i.konuEtut ?? 1) + (i.soruEtut ?? 0), 0,
+    );
 
     /**
      * İkincil araçlar (paylaş / temizle / etütleri aç / PDF).
@@ -852,34 +932,23 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                         {/* TOPIC SELECTOR - SCROLLABLE */}
                         <div className="flex-1 overflow-y-auto p-3 border-b border-line bg-surface">
                             <div className="space-y-2">
-                                <div className="flex gap-1 bg-surface-3 p-1 rounded-lg">
-                                    {EXAM_TYPES.map(exam => (
+                                {/* Bölümler öğrencinin ALANINDAN gelir — Sözel
+                                    öğrencisine AYT Fen konuları düşmez. */}
+                                <div className="flex gap-1 bg-surface-3 p-1 rounded-lg flex-wrap">
+                                    {bolumler.map(b => (
                                         <button
-                                            key={exam}
-                                            onClick={() => { setSelectedExam(exam); setSelectedSubject(''); }}
-                                            className={`flex-1 py-1.5 text-[10px] font-bold rounded-md transition ${selectedExam === exam ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink-2'}`}
+                                            key={b.id}
+                                            onClick={() => { setSelectedExam(b.id); setSelectedSubject(''); }}
+                                            className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-md transition whitespace-nowrap ${selectedExam === b.id ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink'}`}
                                         >
-                                            {exam}
+                                            {b.ad}
                                         </button>
                                     ))}
                                 </div>
-
-                                {/* Grade Level Seçimi (Sadece AYT/YDT için) */}
-                                {(selectedExam === 'AYT' || selectedExam === 'YDT') && (
-                                    <div className="flex gap-2 bg-info-soft p-2 rounded-lg border border-info">
-                                        <button
-                                            onClick={() => { setGradeLevel('grade11'); setSelectedSubject(''); }}
-                                            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-md transition ${gradeLevel === 'grade11' ? 'bg-info text-ink shadow-sm' : 'bg-surface text-info hover:bg-info-soft'}`}
-                                        >
-                                            11. Sınıf
-                                        </button>
-                                        <button
-                                            onClick={() => { setGradeLevel('grade12'); setSelectedSubject(''); }}
-                                            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-md transition ${gradeLevel === 'grade12' ? 'bg-info text-ink shadow-sm' : 'bg-surface text-info hover:bg-info-soft'}`}
-                                        >
-                                            12. Sınıf
-                                        </button>
-                                    </div>
+                                {ogrenci && (
+                                    <p className="text-[10px] text-ink-3 px-0.5">
+                                        {sinavId}{alanId ? ` · ${alanId}` : ''} — konular öğrencinin alanına göre listeleniyor.
+                                    </p>
                                 )}
 
                                 <div className="flex gap-1">
@@ -889,34 +958,20 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                         className="flex-1 p-2 border border-line-2 rounded-lg text-xs font-medium outline-none focus:border-brand"
                                     >
                                         <option value="">Ders Seçiniz...</option>
-                                        {(() => {
-                                            if (!selectedExam || !CURRICULUM[selectedExam]) return null;
-
-                                            // AYT/YDT için grade bazlı, diğerleri direkt
-                                            const examData = (selectedExam === 'AYT' || selectedExam === 'YDT')
-                                                ? CURRICULUM[selectedExam]?.[gradeLevel]
-                                                : CURRICULUM[selectedExam];
-
-                                            return examData ? Object.keys(examData).map(sub => (
-                                                <option key={sub} value={sub}>{sub}</option>
-                                            )) : null;
-                                        })()}
+                                        {dersSecenekleri.map(d => (
+                                            <option key={d.anahtar} value={d.anahtar}>{d.ad}</option>
+                                        ))}
                                     </select>
                                     {selectedSubject && (
                                         <button
                                             onClick={handleAddSubjectTopics}
-                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-indigo-200 transition"
-                                            title={`Tüm ${selectedSubject} Konularını Ekle`}
+                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft transition"
+                                            title={`Tüm ${dersAdi(selectedSubject)} konularını ekle`}
                                         >
                                             <Book size={16} />
                                         </button>
                                     )}
                                 </div>
-
-                                {/* Global Add Button */}
-                                <button onClick={handleAddEntireCurriculum} className="w-full py-2 border-2 border-brand-line text-brand rounded-lg text-xs font-bold hover:bg-brand-soft transition flex items-center justify-center">
-                                    <Globe size={14} className="mr-1" /> Tüm {selectedExam} Müfredatını Ekle
-                                </button>
 
                                 {/* 🔁 Geçen dönemin eksikleri — programı öğrencinin
                                     gerçekte yaptıklarıyla endekslemenin yolu */}
@@ -984,7 +1039,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     <Layers size={16} className="mr-2" /> Dağıtım Listesi
                                 </h3>
                                 <span className="text-[10px] font-bold text-brand bg-brand-soft px-2 py-0.5 rounded-full">
-                                    Ağırlık: {totalWeights}
+                                    {totalWeights} etüt
                                 </span>
                             </div>
 
@@ -992,24 +1047,28 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 {distributionQueue.length === 0 && <p className="text-xs text-brand italic text-center mt-4">Henüz ders eklenmedi.</p>}
 
                                 {distributionQueue.map((item, idx) => (
-                                    <div key={idx} className="bg-surface border border-line rounded-lg p-2 shadow-sm flex flex-col relative group">
+                                    <div key={`${item.bolum}|${item.ders}|${item.konu}|${idx}`} className="bg-surface border border-line rounded-lg p-2 shadow-sm flex flex-col relative group">
                                         <button onClick={() => removeFromQueue(idx)} className="absolute top-1 right-1 text-ink-3 hover:text-danger"><X size={12} /></button>
                                         <div className="flex items-center mb-1">
-                                            <div className={`w-2 h-2 rounded-full mr-2 ${item.color?.split(' ')[0] || 'bg-gray-400'}`}></div>
                                             <div className="flex flex-col truncate w-full pr-4">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-[8px] font-black text-brand uppercase">{item.exam}</span>
-                                                    <span className="text-[9px] font-bold text-ink-2">{item.subject}</span>
+                                                <div className="flex items-center gap-1 flex-wrap">
+                                                    <span className="text-[8px] font-black text-brand uppercase">{item.bolum || item.exam}</span>
+                                                    <span className="text-[9px] font-bold text-ink-2">{item.dersAd || item.subject}</span>
+                                                    {item.bitti && <span className="text-[8px] font-black text-ok">✓ bitti</span>}
+                                                    {item.carriedOver && <span className="text-[8px] font-black text-warn">↻ eksik</span>}
                                                 </div>
-                                                <span className="text-[10px] font-bold text-ink-2 truncate">{item.topic}</span>
+                                                <span className="text-[10px] font-bold text-ink-2 truncate">{item.konu || item.topic}</span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-between bg-surface-2 rounded px-1">
-                                            <span className="text-[9px] text-ink-2 font-medium z-10">Ağırlık:</span>
-                                            <div className="flex items-center space-x-1 z-10">
-                                                <button onClick={() => updateQueueItemWeight(idx, -1)} className="p-0.5 hover:bg-surface-3 rounded"><Minus size={10} /></button>
-                                                <span className="text-[10px] font-bold text-brand w-4 text-center">{item.weight}</span>
-                                                <button onClick={() => updateQueueItemWeight(idx, 1)} className="p-0.5 hover:bg-surface-3 rounded"><Plus size={10} /></button>
+                                        <div className="flex items-center justify-between bg-surface-2 rounded px-1.5 py-0.5">
+                                            <span className="text-[9px] text-ink-2 font-medium">
+                                                Konu etüdü
+                                                {item.soruEtut > 0 && <span className="text-ink-3"> · +{item.soruEtut} soru</span>}
+                                            </span>
+                                            <div className="flex items-center space-x-1">
+                                                <button onClick={() => updateQueueItemWeight(idx, -1)} className="p-0.5 hover:bg-surface-3 rounded" aria-label="Azalt"><Minus size={10} /></button>
+                                                <span className="text-[10px] font-bold text-brand w-4 text-center">{item.konuEtut ?? 1}</span>
+                                                <button onClick={() => updateQueueItemWeight(idx, 1)} className="p-0.5 hover:bg-surface-3 rounded" aria-label="Artır"><Plus size={10} /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1027,21 +1086,12 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                             {lastStats && (
                                 <div className="mt-2 rounded-xl bg-surface border border-line p-2">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-ink-3 mb-1.5">
-                                        Son dağıtım · {lastStats.totalPlaced} etüt
+                                        Son dağıtım · {lastStats.toplamYerlesen} etüt
+                                        {lastStats.bosEtut > 0 && <span className="text-ink-3 normal-case"> ({lastStats.bosEtut} boş)</span>}
                                     </p>
-                                    {lastStats.subjectsPerDay && (
-                                        <p className="text-[10px] text-ink-2 mb-2 leading-snug">
-                                            Günde <strong className="text-brand">
-                                                {lastStats.subjectsPerDay.min === lastStats.subjectsPerDay.max
-                                                    ? lastStats.subjectsPerDay.max
-                                                    : `${lastStats.subjectsPerDay.min}–${lastStats.subjectsPerDay.max}`}
-                                            </strong> farklı ders
-                                            <span className="text-ink-3"> (ortalama {lastStats.subjectsPerDay.avg}, üst sınır {lastStats.subjectsPerDay.cap})</span>
-                                        </p>
-                                    )}
                                     <div className="flex flex-wrap gap-1">
                                         {['konu', 'soru', 'tekrar', 'deneme', 'analiz', 'paragraf', 'kitap', 'mola']
-                                            .filter(k => lastStats[k] > 0)
+                                            .filter(k => (lastStats.turler?.[k] || 0) > 0)
                                             .map(k => {
                                                 const a = ACTIVITY_TYPES[k];
                                                 const c = a.color || getSubjectColor('genel');
@@ -1051,11 +1101,35 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                         className="text-[9px] font-bold px-1.5 py-0.5 rounded"
                                                         style={{ backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}33` }}
                                                     >
-                                                        {a.icon} {a.short} {lastStats[k]}
+                                                        {a.icon} {a.short} {lastStats.turler[k]}
                                                     </span>
                                                 );
                                             })}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* ══ PROGRAM UYARI PANELİ (QA) ══════════════════
+                                Motor üretimden sonra kuralları denetler; koç
+                                programı yine de elle değiştirebilir. */}
+                            {programUyarilari.length > 0 && (
+                                <div className="mt-2 rounded-xl border-2 border-warn bg-warn-soft p-2.5">
+                                    <p className="text-[10px] font-black text-warn uppercase tracking-wider mb-1.5">
+                                        ⚠ Program Uyarıları ({programUyarilari.length})
+                                    </p>
+                                    <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                        {programUyarilari.slice(0, 12).map((u, i) => (
+                                            <li key={i} className="text-[10px] leading-snug text-ink-2 flex gap-1.5">
+                                                <span className={u.tur.startsWith('limit-') ? 'text-danger font-black' : 'text-warn font-black'}>
+                                                    {u.tur.startsWith('limit-') ? '✕' : '•'}
+                                                </span>
+                                                <span>{u.mesaj}</span>
+                                            </li>
+                                        ))}
+                                        {programUyarilari.length > 12 && (
+                                            <li className="text-[10px] text-ink-3">+{programUyarilari.length - 12} uyarı daha</li>
+                                        )}
+                                    </ul>
                                 </div>
                             )}
                         </div>
@@ -1126,9 +1200,9 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                         onChange={e => setManualExam(e.target.value)}
                                         className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400 bg-surface"
                                     >
-                                        <option value="">Sınav Türü Seç(İsteğe Bağlı)</option>
-                                        {EXAM_TYPES.map(ex => (
-                                            <option key={ex} value={ex}>{ex}</option>
+                                        <option value="">Bölüm Seç (isteğe bağlı)</option>
+                                        {bolumler.map(b => (
+                                            <option key={b.id} value={b.id}>{b.ad}</option>
                                         ))}
                                     </select>
                                     <button
@@ -1160,52 +1234,79 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 <Trash2 size={16} className="mr-3" /> Silgi
                             </button>
 
+                            {/* Konu satırı: zorluk, sınav ağırlığı, öğrencinin
+                                durumu ve BİTEN UYARISI. Uyarı seçimi ENGELLEMEZ —
+                                tekrar/pekiştirme için koç yine seçebilir. */}
                             {availableTopics && availableTopics.length > 0 && availableTopics.map((topic, idx) => {
-                                try {
-                                    const topicName = getTopicName(topic);
-                                    const isActive = activeTool?.topic === topicName;
-                                    const isSelected = selectedTopics.includes(topic);
-                                    const stableKey = topic.id || topicName || idx;
+                                const isActive = activeTool?.topic === topic.ad;
+                                const isSelected = selectedTopics.some((t) => t.ad === topic.ad);
+                                const kuyruktaVar = distributionQueue.some(
+                                    (q) => q.bolum === selectedExam && q.ders === selectedSubject && q.konu === topic.ad,
+                                );
+                                const zorlukEtiketi = { 1: 'Kolay', 2: 'Orta', 3: 'Zor' }[topic.zorluk] || 'Orta';
+                                const zorlukRengi = { 1: 'text-ok', 2: 'text-warn', 3: 'text-danger' }[topic.zorluk] || 'text-warn';
 
-                                    return (
-                                        <div key={stableKey} className="flex gap-1 group">
-                                            <div className="flex items-center justify-center pl-1">
-                                                <button
-                                                    onClick={() => toggleTopicSelection(topic)}
-                                                    className={`p-1 rounded hover:bg-surface-3 transition ${isSelected ? 'text-brand' : 'text-ink-3'}`}
-                                                >
-                                                    {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-                                                </button>
-                                            </div>
+                                return (
+                                    <div key={topic.ad || idx} className="flex gap-1 group">
+                                        <div className="flex items-center justify-center pl-1">
                                             <button
-                                                onClick={() => handleToolSelect(topic)}
-                                                className={`flex-1 text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition flex items-center border ${isActive ? 'bg-brand text-ink border-indigo-600 shadow-md transform scale-105' : 'bg-surface text-ink-2 border-line hover:bg-brand-soft hover:border-brand-line'}`}
+                                                onClick={() => toggleTopicSelection(topic)}
+                                                className={`p-1 rounded hover:bg-surface-3 transition ${isSelected ? 'text-brand' : 'text-ink-3'}`}
+                                                aria-label={`${topic.ad} seç`}
                                             >
-                                                <div className={`w-2 h-2 rounded-full mr-2 shrink-0 ${(SUBJECT_COLORS?.[selectedSubject] || 'bg-surface-3')?.split(' ')[0] || 'bg-gray-400'}`}></div>
-                                                <span className="truncate">{topicName || 'Konu'}</span>
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setDistributionQueue([...distributionQueue, {
-                                                        subject: selectedSubject,
-                                                        topic: topicName,
-                                                        color: SUBJECT_COLORS?.[selectedSubject] || 'bg-surface-3',
-                                                        weight: getTopicWeight(topic),
-                                                        duration: getTopicWeight(topic),
-                                                        exam: selectedExam || ''
-                                                    }]);
-                                                }}
-                                                className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft flex items-center justify-center font-bold"
-                                                title="Listeye Ekle"
-                                            >
-                                                +
+                                                {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                                             </button>
                                         </div>
-                                    )
-                                } catch (error) {
-                                    console.error('Topic render error:', error, topic);
-                                    return null;
-                                }
+                                        <button
+                                            onClick={() => handleToolSelect(topic)}
+                                            className={`flex-1 text-left px-2.5 py-2 rounded-lg text-[11px] font-semibold transition border min-w-0 ${isActive ? 'bg-brand text-white border-brand shadow-md' : 'bg-surface text-ink-2 border-line hover:bg-brand-soft hover:border-brand-line'}`}
+                                        >
+                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                <span className="truncate">{topic.ad}</span>
+                                                {topic.bitti && (
+                                                    <span
+                                                        className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-ok-soft text-ok border border-ok/30"
+                                                        title="Öğrenci bu konuyu tamamladı — tekrar/pekiştirme için yine seçebilirsiniz"
+                                                    >
+                                                        ✓ BİTTİ
+                                                    </span>
+                                                )}
+                                                {!topic.bitti && topic.durum === 'tekrar' && (
+                                                    <span className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-warn-soft text-warn border border-warn/30" title="Hedef soru doldu ama isabet düşük — tekrar gerekiyor">
+                                                        ⚠ TEKRAR
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className={`block mt-0.5 text-[9px] font-bold ${isActive ? 'text-white/80' : 'text-ink-3'}`}>
+                                                <span className={isActive ? '' : zorlukRengi}>{zorlukEtiketi}</span>
+                                                {' · '}sınavda ~{topic.agirlik} soru
+                                                {topic.hedef != null && (
+                                                    <> · {topic.soru}/{topic.hedef} soru çözüldü</>
+                                                )}
+                                            </span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (kuyruktaVar) return;
+                                                const kayit = {
+                                                    bolum: selectedExam, ders: selectedSubject,
+                                                    dersAd: dersAdi(selectedSubject), konu: topic.ad,
+                                                    agirlik: topic.agirlik, zorluk: topic.zorluk,
+                                                    hedef: topic.hedef, kalanSoru: topic.kalanSoru, bitti: topic.bitti,
+                                                    subject: dersAdi(selectedSubject), topic: topic.ad, exam: selectedExam,
+                                                };
+                                                kayit.konuEtut = konuEtutIhtiyaci(kayit);
+                                                kayit.soruEtut = soruEtutIhtiyaci(kayit, kriterler);
+                                                setDistributionQueue([...distributionQueue, kayit]);
+                                            }}
+                                            disabled={kuyruktaVar}
+                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft flex items-center justify-center font-bold disabled:opacity-40"
+                                            title={kuyruktaVar ? 'Bu konu listede zaten var' : 'Listeye Ekle'}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                );
                             })}
                         </div>
                         </div>
@@ -1269,21 +1370,20 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 </button>
 
                                 {showPlanSettings && (
-                                    <div className="px-3 pb-3 space-y-1.5">
+                                    <div className="px-3 pb-3 space-y-2">
                                         {[
-                                            { key: 'practiceEnabled', label: 'Konu → Soru çözümü', hint: 'Her yeni konunun ardından soru bloğu' },
-                                            { key: 'reviewEnabled', label: 'Aralıklı tekrar', hint: '+1, +7, +21. günlerde tekrar' },
-                                            { key: 'examEnabled', label: 'Haftalık deneme + analiz', hint: 'Analiz hemen denemenin ardından' },
-                                            { key: 'paragraphEnabled', label: 'Günlük paragraf', hint: 'Hafta içi her gün' },
-                                            { key: 'readingEnabled', label: 'Kitap okuma', hint: 'Her günün son etüdü' },
-                                            { key: 'flexEnabled', label: 'Haftalık telafi payı', hint: 'Aksama olduğunda program çökmesin' },
-                                            { key: 'cognitiveOrdering', label: 'Zihinsel yük sıralaması', hint: 'Zor işler güne erken' },
+                                            { key: 'soruEtutleriAcik', label: 'Konu → Soru çözümü', hint: 'Konu bitince hedef soruya göre soru etüdü' },
+                                            { key: 'tekrarAcik', label: 'Aralıklı tekrar', hint: `+${kriterler.tekrarAraliklari.join(', +')}. günlerde geri getirme` },
+                                            { key: 'denemeAcik', label: 'Haftalık deneme + analiz', hint: 'Süre gerçek sınavdan hesaplanır' },
+                                            { key: 'paragrafAcik', label: 'Günlük paragraf', hint: 'Hafta içi, günün ilk yarısı' },
+                                            { key: 'kitapAcik', label: 'Kitap okuma', hint: 'Günün son etüdü' },
+                                            { key: 'gunTekrariAcik', label: 'Günün tekrarı', hint: 'Gün sonunda o günün geri getirme provası' },
                                         ].map(o => (
                                             <label key={o.key} className="flex items-start gap-2 cursor-pointer group">
                                                 <input
                                                     type="checkbox"
-                                                    checked={!!planOptions[o.key]}
-                                                    onChange={e => setPlanOptions(p => ({ ...p, [o.key]: e.target.checked }))}
+                                                    checked={!!kriterler[o.key]}
+                                                    onChange={e => kriterDegistir(o.key, e.target.checked)}
                                                     className="mt-0.5 accent-indigo-600 shrink-0"
                                                 />
                                                 <span className="min-w-0">
@@ -1293,69 +1393,76 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                             </label>
                                         ))}
 
-                                        {planOptions.examEnabled && (
+                                        {kriterler.denemeAcik && (
                                             <div className="flex items-center gap-2 pt-1">
                                                 <span className="text-[10px] font-bold text-ink-2 shrink-0">Deneme günü:</span>
                                                 <select
-                                                    value={planOptions.examDay}
-                                                    onChange={e => setPlanOptions(p => ({ ...p, examDay: e.target.value }))}
-                                                    className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-indigo-400"
+                                                    value={kriterler.denemeGunu}
+                                                    onChange={e => kriterDegistir('denemeGunu', e.target.value)}
+                                                    className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-brand"
                                                 >
                                                     {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                                                 </select>
                                             </div>
                                         )}
 
+                                        {/* ⚠️ Bu iki sınır motorda KESİN uygulanır; ihlal olursa
+                                            üretim sonrası uyarı paneli gösterir. */}
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-ink-2 shrink-0">Aynı ders/gün:</span>
+                                            <span className="text-[10px] font-bold text-ink-2 shrink-0">Günde en çok:</span>
                                             <select
-                                                value={planOptions.maxKonuPerSubjectPerDay}
-                                                onChange={e => setPlanOptions(p => ({ ...p, maxKonuPerSubjectPerDay: Number(e.target.value) }))}
-                                                className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-indigo-400"
+                                                value={kriterler.gunlukMaxDers}
+                                                onChange={e => kriterDegistir('gunlukMaxDers', Number(e.target.value))}
+                                                className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-brand"
                                             >
-                                                {[1, 2, 3].map(n => <option key={n} value={n}>en fazla {n} yeni konu</option>)}
+                                                {[1, 2, 3, 4, 5].map(n => (
+                                                    <option key={n} value={n}>{n} ders{n === 3 ? ' (önerilen)' : ''}</option>
+                                                ))}
                                             </select>
                                         </div>
 
-                                        {/* Günde kaç farklı ders — bilimsel gerekçesi aşağıda */}
-                                        <div className="pt-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-ink-2 shrink-0">Günde en çok:</span>
-                                                <select
-                                                    value={planOptions.maxSubjectsPerDay}
-                                                    onChange={e => setPlanOptions(p => ({ ...p, maxSubjectsPerDay: Number(e.target.value) }))}
-                                                    className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-indigo-400"
-                                                >
-                                                    {[2, 3, 4, 5].map(n => (
-                                                        <option key={n} value={n}>
-                                                            {n} ders{n === 3 ? ' (önerilen)' : ''}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <p className="text-[9px] text-ink-3 leading-snug mt-1">
-                                                Paragraf, kitap okuma, tekrar ve deneme bu sayıya dahil değil.
-                                                Tek ders/gün karıştırma etkisini yok eder; 4'ten fazlası benzer
-                                                içerikler arasında ket vurma riskini artırır.
-                                            </p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-ink-2 shrink-0">Günde en çok:</span>
+                                            <select
+                                                value={kriterler.gunlukMaxKonu}
+                                                onChange={e => kriterDegistir('gunlukMaxKonu', Number(e.target.value))}
+                                                className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-brand"
+                                            >
+                                                {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} yeni konu</option>)}
+                                            </select>
                                         </div>
 
-                                        <label className="flex items-start gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={!!planOptions.avoidSimilarAdjacent}
-                                                onChange={e => setPlanOptions(p => ({ ...p, avoidSimilarAdjacent: e.target.checked }))}
-                                                className="mt-0.5 accent-indigo-600 shrink-0"
-                                            />
-                                            <span className="min-w-0">
-                                                <span className="block text-[11px] font-bold text-ink-2 leading-tight">
-                                                    Benzer dersleri ayır
-                                                </span>
-                                                <span className="block text-[9px] text-ink-3 leading-tight">
-                                                    Fizik→Kimya gibi yakın dersler arka arkaya gelmesin
-                                                </span>
-                                            </span>
-                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-ink-2 shrink-0">Esnek/telafi:</span>
+                                            <select
+                                                value={kriterler.esnekHaftalik}
+                                                onChange={e => kriterDegistir('esnekHaftalik', Number(e.target.value))}
+                                                className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-brand"
+                                            >
+                                                {[0, 1, 2, 3, 4].map(n => (
+                                                    <option key={n} value={n}>{n === 0 ? 'yok' : `haftada ${n} etüt`}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-ink-2 shrink-0">Etüt süresi:</span>
+                                            <select
+                                                value={kriterler.etutSuresiDk}
+                                                onChange={e => kriterDegistir('etutSuresiDk', Number(e.target.value))}
+                                                className="flex-1 text-[11px] p-1 border border-brand-line rounded bg-surface outline-none focus:border-brand"
+                                            >
+                                                {[30, 40, 45, 50, 60, 75, 90].map(n => <option key={n} value={n}>{n} dakika</option>)}
+                                            </select>
+                                        </div>
+
+                                        <p className="text-[9px] text-ink-3 leading-snug pt-1 border-t border-brand-line/50">
+                                            Ders sayımına yalnız konu/soru/tekrar girer; paragraf, kitap,
+                                            deneme, analiz ve esnek etüt <strong>ekstra</strong> sayılır.
+                                            Deneme etüdü gerçek sınav süresinden (TYT 165 dk, AYT 180 dk,
+                                            YDT 120 dk) hesaplanır. Soru etüdü, konunun kalan hedef sorusu ×
+                                            ders bazlı soru süresinden çıkar.
+                                        </p>
                                     </div>
                                 )}
                             </div>

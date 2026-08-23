@@ -46,7 +46,6 @@ import ActivityFeed from '../components/social/ActivityFeed';
 import { getStudentPermissions } from '../utils/permissions';
 import firebaseSync from '../services/firebaseSync';
 import StudentProgramTab from '../components/StudentProgramTab';
-import ProgramBuilderModal from '../components/ProgramBuilderModal';
 import StudentTestsTab from '../components/StudentTestsTab';
 // 🌟 Yeni Gamification & Analytics
 import BadgeCollection, { XPBar, StreakCard } from '../components/gamification/BadgeSystem';
@@ -60,7 +59,6 @@ import YKSCountdownWidget from '../components/student/YKSCountdownWidget';
 import SubjectWeaknessAnalyzer from '../components/student/SubjectWeaknessAnalyzer';
 import XPLeaderboard from '../components/student/XPLeaderboard';
 import GoalSettingModule from '../components/student/GoalSettingModule';
-import WeeklyScheduleBuilder from '../components/student/WeeklyScheduleBuilder';
 // 🆕 Yeni Özellikler
 import ExamCalendar from '../components/student/ExamCalendar';
 import AITopicSuggestions from '../components/student/AITopicSuggestions';
@@ -80,7 +78,6 @@ import TopicTracker from '../components/student/TopicTracker';
 import useTabBadges from '../hooks/useTabBadges';
 import SubjectPomodoro from '../components/student/SubjectPomodoro';
 import StudentPortfolio from '../components/student/StudentPortfolio';
-import SmartScheduleSuggestion from '../components/student/SmartScheduleSuggestion';
 import ExamComparisonMatrix from '../components/student/ExamComparisonMatrix';
 import { OfflineBanner, useOfflineStatus } from '../services/offlineSync';
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
@@ -513,6 +510,8 @@ const StudentDashboard = () => {
      * oldu; eski derin bağlantılar kırılmasın diye burada eşlenir.
      */
     const HUB_ESLEME = {
+        // Kaldırılan ekranların eski bağlantıları güvenli hedefe düşer
+        'smart-plan': ['program', null],
         'daily-log': ['calismalarim', 'gunluk'],
         'error-notebook': ['calismalarim', 'hata'],
         'deneme-analizi': ['calismalarim', 'deneme'],
@@ -524,7 +523,7 @@ const StudentDashboard = () => {
     };
     const GECERLI_SEKMELER = [
         'home', 'program', 'calismalarim', 'gelisimim', 'daha-fazla',
-        'tasks', 'smart-plan', 'pomodoro', 'assessment',
+        'tasks', 'pomodoro', 'assessment',
         'messages', 'appointments', 'tests', 'portfolio',
     ];
     const urlSekme = (() => {
@@ -549,8 +548,9 @@ const StudentDashboard = () => {
         const hedef = HUB_ESLEME[id];
         if (hedef) {
             setActiveTab(hedef[0]);
+            if (hedef[1] === null) return;                 // segmenti olmayan hedef
             if (hedef[0] === 'calismalarim') setCalisSegment(hedef[1]);
-            else setGelisimSegment(hedef[1]);
+            else if (hedef[0] === 'gelisimim') setGelisimSegment(hedef[1]);
         } else {
             setActiveTab(id);
         }
@@ -1142,7 +1142,6 @@ const StudentDashboard = () => {
             items: [
                 { id: 'tasks', icon: MODULE_ICONS.tasks, label: 'Görevler', badge: pendingTasks.length },
                 { id: 'messages', icon: MODULE_ICONS.messages, label: 'Mesajlar', badge: messages.filter(m => m.sender === 'coach').length },
-                { id: 'smart-plan', icon: MODULE_ICONS['smart-plan'], label: 'Akıllı Plan' },
                 { id: 'pomodoro', icon: MODULE_ICONS.pomodoro, label: 'Odaklan' },
                 { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
                 { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
@@ -1931,23 +1930,9 @@ const StudentDashboard = () => {
                 {/* Konu Takibi ve Trend Matrix, GELİŞİMİM merkezinin
                     Konularım / Netlerim segmentlerine taşındı (23.08). */}
 
-                {/* ═══════════════ AKILLI PLAN (AI Program) ═══════════════ */}
-                {activeTab === 'smart-plan' && (
-                    <div className="icerik-gecis space-y-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI DERS PLANI</h1>
-                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SİZE ÖZEL ÇALIŞMA ÇİZELGESİ</p>
-                        </div>
-                        <div className="premium-card p-4 sm:p-8 border-line">
-                            <SmartScheduleSuggestion 
-                                studentId={user?.id} 
-                                studentName={user?.name} 
-                                examResults={examData} 
-                                yksDate={localStorage.getItem('yks_date')}
-                            />
-                        </div>
-                    </div>
-                )}
+                {/* Akıllı Plan kaldırıldı (23.08.2026): öğrenci program
+                    oluşturmaz; program yalnız koç tarafından hazırlanır.
+                    Eski `?sekme=smart-plan` bağlantısı Program'a düşer. */}
 
                 {/* ═══════════════ POMODORO (Ders Bazlı) ═══════════════ */}
                 {activeTab === 'pomodoro' && (
@@ -2013,49 +1998,28 @@ const StudentDashboard = () => {
                     </div>
                 )}
 
-                {/* ═══════════════ PROGRAMIM ═══════════════ */}
+                {/* ═══════════════ PROGRAM ═══════════════
+                    23.08.2026: Öğrenci artık program HAZIRLAMAZ.
+                    Kaldırılanlar: kendi haftalık program oluşturucusu
+                    (WeeklyScheduleBuilder), "Akıllı Planlayıcıyı Aç"
+                    düğmesi ve ProgramBuilderModal erişimi (öğrenci
+                    yetki kontrolsüz koçun programının üzerine
+                    yazabiliyordu). Tek etkileşim: etüt tamamlama. */}
                 {activeTab === 'program' && (
-                    <div className="icerik-gecis space-y-10 pb-10">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div>
-                                <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">DERS PROGRAMIM</h1>
-                                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">KİŞİSEL ÇALIŞMA VE ETKİNLİK PLANI</p>
-                            </div>
-                            <button
-                                onClick={() => setShowProgramBuilder(true)}
-                                className="premium-button h-12 px-6 flex items-center gap-3 text-[10px]"
-                            >
-                                <Zap size={16} /> AKILLI PLANLAYICIYI AÇ
-                            </button>
+                    <div className="icerik-gecis space-y-5 pb-10">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Programım</h1>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">
+                                KOÇUNUN HAZIRLADIĞI ÇALIŞMA PROGRAMI
+                            </p>
                         </div>
-
-                        <div className="space-y-10">
-                            <div className="premium-card p-1 sm:p-2 border-line">
-                                <WeeklyScheduleBuilder user={user} />
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-4">
-                                    <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">🗓️ GÜNCEL ÇİZELGE</h2>
-                                    <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                                </div>
-                                <div className="premium-card p-1 sm:p-2 border-line">
-                                    <StudentProgramTab
-                                        schedule={schedule}
-                                        programConfig={programConfig}
-                                        user={user}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {showProgramBuilder && (
-                            <ProgramBuilderModal
-                                studentId={user?.id}
-                                studentName={user?.name}
-                                onClose={() => { setShowProgramBuilder(false); loadProgram(); }}
+                        <div className="card p-1 sm:p-2">
+                            <StudentProgramTab
+                                schedule={schedule}
+                                programConfig={programConfig}
+                                user={user}
                             />
-                        )}
+                        </div>
                     </div>
                 )}
 

@@ -142,6 +142,11 @@ const DYNAMIC_KEY_PATTERNS = [
     /^program_schedule_/,
     /^program_closed_slots_/,
     /^program_meta_/,
+    // Program Motoru 2.0 (23.08.2026): koçun program kriterleri ve
+    // konu takibi köprüsü. İkisi de kapsam dışıydı — kriterler cihazda
+    // kalıyor, konu takibi programı hiç görmüyordu.
+    /^program_kriterleri_/,
+    /^student_programs_/,
     /^program_.+_(monthly_grid|config)$/,
     /^test_results_/,
     /^test_result_[a-z0-9_]+_/,
