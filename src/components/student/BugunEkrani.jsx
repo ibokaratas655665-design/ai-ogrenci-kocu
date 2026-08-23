@@ -13,8 +13,8 @@ import OnayKutusu from '../ui/OnayKutusu';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
 import { getCellColor } from '../../data/programColors';
 import { hucreTarihi, programBaslangici } from '../../services/programProgressService';
-import { programUyumu, calismaOzeti, istikrar, motivasyon } from '../../services/gelisimAnalitik';
-import { MotivasyonSeridi, Degisim } from '../charts/Analitik';
+import { programUyumu, calismaOzeti, istikrar, motivasyon, gunlukSeri } from '../../services/gelisimAnalitik';
+import { MotivasyonSeridi, Degisim, UyumHalkasi, IsiHaritasi } from '../charts/Analitik';
 import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
@@ -41,6 +41,9 @@ import { bildir } from '../../services/uiGeriBildirim';
  */
 
 const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+/** Isı haritası ve istikrar penceresi — TEK sayı, iki yerde kullanılır. */
+const ISI_GUN = 28;
 
 /**
  * Günlük motivasyon — tarihe bağlı döner; aynı gün hep aynı cümle,
@@ -127,9 +130,12 @@ export default function BugunEkrani({
             const tarihCoz = baslangic ? (k) => hucreTarihi(k, baslangic) : null;
             const uyum = programUyumu(studentId, { tarihCoz, gun: 7 });
             const calisma = calismaOzeti(studentId, 7);
-            const ist = istikrar(studentId, 14);
+            /* 28 gün: ısı haritasıyla AYNI pencere. Ayrı pencereler
+               "aktif gün" sayısını iki ekranda iki türlü gösteriyordu. */
+            const ist = istikrar(studentId, ISI_GUN);
             return {
                 uyum,
+                istikrar: ist,
                 mesaj: motivasyon({ uyum, calisma, net: { veri: false }, istikrar: ist }),
             };
         } catch {
@@ -220,6 +226,15 @@ export default function BugunEkrani({
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
     }, [kullanici?.id, ilerleme, kayitSurumu]);
 
+    /**
+     * 28 GÜNLÜK AKTİVİTE SERİSİ — ısı haritasının kaynağı.
+     * study_log'dan türetilir; yeni depo açmaz, hiçbir şey yazmaz.
+     */
+    const aktivite = useMemo(() => {
+        try { return gunlukSeri(kullanici?.id, ISI_GUN); } catch { return []; }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
+    }, [kullanici?.id, kayitSurumu]);
+
     const gunlukMotivasyon = useMemo(() => gunlukMotivasyonSec(), []);
 
     /** Gelişim mesajı — son iki denemenin net farkından, yapıcı dille. */
@@ -275,16 +290,29 @@ export default function BugunEkrani({
                 <p className="tip-small text-ink-2 mt-1">{gunlukMotivasyon}</p>
             </div>
 
-            {/* ══ 2. ÇALIŞMA SERİSİ ═══════════════════════════════════ */}
-            {seri > 0 && (
-                <Card dolgu="md" className="flex items-center gap-4">
-                    <span className="shrink-0 w-11 h-11 rounded-2xl bg-warn-soft text-warn flex items-center justify-center">
-                        <Flame size={22} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                        <p className="tip-small font-black text-ink">Çalışma Serin · {seri} gün</p>
-                        <p className="tip-caption mt-0.5">Devam et, hedefine ulaş!</p>
+            {/* ══ 2. ÇALIŞMA SÜREKLİLİĞİ — 28 günlük ısı haritası ═════
+                Eskiden burada yalnızca "Çalışma Serin · N gün" yazıyordu:
+                tek sayı, hangi günlerin boş kaldığını göstermiyordu.
+                Süreklilik bir DESENDİR; deseni ancak takvim gösterir.
+                Kayıt olmayan gün ile sıfır çözülen gün ayrı çizilir —
+                "girmedim" ile "çalışmadım" aynı şey değildir. */}
+            {aktivite.some((g) => g.kayit) && (
+                <Card dolgu="md">
+                    <div className="flex items-center gap-4">
+                        <span className="shrink-0 w-11 h-11 rounded-2xl bg-warn-soft text-warn flex items-center justify-center">
+                            <Flame size={22} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="tip-small font-black text-ink">
+                                Çalışma Serin · {tempo?.istikrar?.guncelZincir ?? seri} gün
+                            </p>
+                            <p className="tip-caption mt-0.5">
+                                Son {ISI_GUN} günün {tempo?.istikrar?.aktifGun ?? aktivite.filter((g) => g.kayit).length}'inde kayıt var
+                                {tempo?.istikrar?.enUzunZincir > 0 && ` · en uzun seri ${tempo.istikrar.enUzunZincir} gün`}
+                            </p>
+                        </div>
                     </div>
+                    <IsiHaritasi seri={aktivite} alan="soru" className="mt-3" />
                 </Card>
             )}
 
@@ -294,24 +322,41 @@ export default function BugunEkrani({
                     <h3 className="tip-h4">Bugünkü Hedefin</h3>
                     {seri > 0 && <Badge ton="uyari" hap simge={Flame}>{seri} gün</Badge>}
                 </div>
-                <div className="px-5 sm:px-6 pb-3 grid grid-cols-4 gap-2">
-                    {[
-                        { deger: bugunToplam.questions, etiket: 'Soru' },
-                        { deger: hedefBiten, etiket: 'Tamamlanan' },
-                        { deger: bugunToplam.minutes ? `${bugunToplam.minutes}dk` : '0dk', etiket: 'Dakika' },
-                        { deger: `%${gunYuzde}`, etiket: 'İlerleme' },
-                    ].map((s) => (
-                        <div key={s.etiket} className="text-center">
-                            <p className="text-lg sm:text-xl font-black text-ink syne rakam">{s.deger}</p>
-                            <p className="tip-mini text-ink-3 uppercase tracking-wider mt-0.5">{s.etiket}</p>
-                        </div>
-                    ))}
+                {/* HALKA + SAYILAR.
+                    Önceden gün ilerlemesi ÜÇ kez çiziliyordu: "%X İlerleme"
+                    sayacı, "Tamamlanan" sayacı ve alttaki çubuk. Üçü de aynı
+                    kesri anlatıyordu. Halka kesri tek bakışta verdiği için
+                    yüzde sayacı ve çubuk kaldırıldı; geriye halkanın
+                    anlatmadığı üç ölçü kaldı: soru, dakika, tamamlanan. */}
+                <div className="px-5 sm:px-6 pb-4 flex items-center gap-3 sm:gap-5">
+                    {hedefToplam > 0 && (
+                        <UyumHalkasi
+                            oran={gunYuzde}
+                            tamamlanan={hedefBiten}
+                            planlanan={hedefToplam}
+                            altMetin={`${hedefBiten} / ${hedefToplam} iş`}
+                            /* 76: 375 px ekranda halka + üç sayı yan yana sığsın.
+                               92 iken "TAMAMLANAN" etiketi 26 px kırpılıyordu. */
+                            boyut={76}
+                            className="shrink-0"
+                        />
+                    )}
+                    {/* Yalnızca İKİ sayı: halka "1 / 2 iş" diyerek tamamlananı
+                        zaten gösteriyor, üçüncü bir "Tamamlanan" sayacı aynı
+                        değeri tekrarlıyordu (ve 375 px ekranda etiketi 26 px
+                        kırpılıyordu). Geriye halkanın anlatmadığı iki ölçü kaldı. */}
+                    <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
+                        {[
+                            { deger: bugunToplam.questions, etiket: 'Soru' },
+                            { deger: bugunToplam.minutes ? `${bugunToplam.minutes}dk` : '0dk', etiket: 'Dakika' },
+                        ].map((s) => (
+                            <div key={s.etiket} className="text-center">
+                                <p className="text-lg sm:text-xl font-black text-ink syne rakam">{s.deger}</p>
+                                <p className="tip-mini text-ink-3 uppercase tracking-normal sm:tracking-wider mt-0.5">{s.etiket}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                {hedefToplam > 0 && (
-                    <Progress deger={hedefBiten} enFazla={hedefToplam}
-                        ton={gunYuzde >= 100 ? 'basari' : 'marka'} kalinlik="sm"
-                        className="px-5 sm:px-6 pb-4" />
-                )}
             </Card>
 
             {/* ══ 4. BUGÜNÜ BAŞLAT — tek büyük eylem ═════════════════ */}
@@ -379,27 +424,20 @@ export default function BugunEkrani({
                             </p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                            <span
-                                className="text-2xl font-black tabular-nums leading-none"
-                                style={{
-                                    color: tempo.uyum.oran >= 80 ? 'var(--ok)'
-                                        : tempo.uyum.oran >= 60 ? 'var(--warn)' : 'var(--danger)',
-                                }}
-                            >
-                                %{tempo.uyum.oran}
-                            </span>
+                            {/* Halka yüzdeyi ve kesri birlikte taşır; yanındaki
+                                büyük yüzde sayısı ve alttaki çubuk aynı şeyi
+                                üçüncü kez söylediği için kaldırıldı. */}
+                            <UyumHalkasi
+                                oran={tempo.uyum.oran}
+                                tamamlanan={tempo.uyum.tamamlanan}
+                                planlanan={tempo.uyum.planlanan}
+                                boyut={78}
+                            />
                             <Button varyant="ghost" onClick={() => onGit?.('program')}>
                                 Programım
                             </Button>
                         </div>
                     </div>
-                    <Progress
-                        deger={tempo.uyum.tamamlanan}
-                        enFazla={tempo.uyum.planlanan}
-                        ton={tempo.uyum.oran >= 80 ? 'basari' : 'marka'}
-                        kalinlik="sm"
-                        className="mt-3"
-                    />
                 </Card>
             )}
 
@@ -461,20 +499,10 @@ export default function BugunEkrani({
                             </div>
                         ))}
                     </div>
-                    <div className="px-5 sm:px-6 pb-4 flex items-end gap-1.5 h-14" aria-hidden="true">
-                        {hafta.byDay.map((g) => {
-                            const tavan = Math.max(...hafta.byDay.map((x) => x.questions), 1);
-                            return (
-                                <div key={g.date} className="flex-1 flex flex-col justify-end">
-                                    <div
-                                        className="rounded-t-sm bg-brand/70 min-h-[3px] transition-all"
-                                        style={{ height: `${Math.round((g.questions / tavan) * 100)}%` }}
-                                        title={`${g.date}: ${g.questions} soru`}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
+                    {/* Buradaki 7 günlük mini çubuk şeridi kaldırıldı: aynı
+                        günlük soru sayısını yukarıdaki 28 günlük ısı haritası
+                        zaten gösteriyor ve dört kat uzun bir pencereyle
+                        gösteriyor. İki şeritten biri fazlaydı. */}
                     {gelisim && (
                         <div className={cn(
                             'px-5 sm:px-6 py-3 border-t border-line tip-small font-semibold',

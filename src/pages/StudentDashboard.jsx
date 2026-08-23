@@ -30,6 +30,7 @@ import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
 import { getSummary } from '../services/studyLogService';
+import { istikrar } from '../services/gelisimAnalitik';
 import denemeKayitlari from '../services/denemeKayitlari';
 import programProgress from '../services/programProgressService';
 import {
@@ -1144,6 +1145,27 @@ const StudentDashboard = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli: storage olayı yerel kayıtları tazeler
     }, [user?.id, examData, denemelerSirali, kayitSurumu]);
 
+    /**
+     * ÇALIŞMA SERİSİ — TEK KAYNAK.
+     *
+     * Ekranda iki ayrı seri sayısı vardı ve birbirini tutmuyordu:
+     * başlıktaki rozet `gamification_stats.currentStreak` okuyor,
+     * Bugün ekranındaki kart ise günlük kayıtlardan türetiyordu.
+     * Ölçüldü: 28 günün 18'inde kayıt bulunan bir öğrencide başlık
+     * "0 GÜN SERİ", kart "3 gün" gösteriyordu — çünkü oyunlaştırma
+     * sayacı yalnızca uygulama içi eylemlerle (pomodoro, görev) artıyor,
+     * öğrenci çalışmasını kaydettiğinde artmıyor.
+     *
+     * Artık GÖSTERİLEN seri tek yerden, gerçek kayıtlardan gelir.
+     * Oyunlaştırma verisi DEĞİŞTİRİLMEDİ; XP, rozet ve liderlik tablosu
+     * kendi sayacıyla çalışmayı sürdürür — burada yalnızca ekranda
+     * hangi sayının yazacağı belirlenir.
+     */
+    const calismaSerisi = useMemo(() => {
+        try { return istikrar(user?.id, 28).guncelZincir || 0; } catch { return 0; }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
+    }, [user?.id, kayitSurumu]);
+
     if (loading) return <StudentDashboardSkeleton />;
 
     const safeSlotCount = Number(programConfig?.dailySlotCount) || 6;
@@ -1268,7 +1290,7 @@ const StudentDashboard = () => {
                             <div className="hidden sm:flex items-center gap-2 mt-0.5">
                                 <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
                                     <Flame size={12} className="text-brand" />
-                                    <span className="text-[10px] font-bold text-brand tracking-wider uppercase">{userStats.currentStreak || 0} GÜN SERİ</span>
+                                    <span className="text-[10px] font-bold text-brand tracking-wider uppercase">{calismaSerisi} GÜN SERİ</span>
                                 </div>
                                 <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
                                     <Star size={12} className="text-accent" />
@@ -1402,7 +1424,7 @@ const StudentDashboard = () => {
                         messages={messages}
                         examData={examData}
                         dailyPomodoros={dailyPomodoros}
-                        seri={userStats.currentStreak || 0}
+                        seri={calismaSerisi}
                         onGit={(id) => { sekmeyeGit(id); okundu(id); }}
                     />
                 )}

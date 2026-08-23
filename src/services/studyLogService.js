@@ -61,14 +61,47 @@ export const todayKey = (d = new Date()) => {
 
 export const dateKeyFrom = (date) => todayKey(new Date(date));
 
+/**
+ * N GÜNLÜK PENCERENİN İLK GÜNÜ — 'YYYY-MM-DD'.
+ * `gun = 7` → bugün dahil son 7 gün, yani 6 gün öncesi.
+ *
+ * ⚠️ NEDEN ANAHTARLA ÇALIŞIYORUZ
+ * Pencere eskiden `Date.now() − gün × 86400000` ile kuruluyor, kayıt
+ * tarihi ise `new Date('2026-08-24')` ile çözülüyordu. Bu tarih UTC gece
+ * yarısıdır, sınır ise yerel "şu an"; UTC+3'te pencere fiilen 8 gün
+ * geniş oluyordu. Ölçüldü: bugün 10 + 6 gün önce 20 + 7 gün önce 40 soru
+ * girildiğinde `getSummary(id, 7)` 70 döndürdü — doğrusu 30.
+ *
+ * Aynı ekranda üst KPI kartları bunu, alttaki gelişim panosu
+ * `gelisimAnalitik.calismaOzeti`yi kullandığı için "Son 7 gün" etiketi
+ * iki farklı sayı gösteriyordu. Artık iki taraf da yerel gün anahtarı
+ * karşılaştırıyor.
+ */
+export const pencereBasi = (gun = 7, d = new Date()) => {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    x.setDate(x.getDate() - (Math.max(1, gun) - 1));
+    return todayKey(x);
+};
+
 // ════════════════════════════════════════════════════════════
 //  CRUD
 // ════════════════════════════════════════════════════════════
 
+/**
+ * @param {string} [opts.since]    'YYYY-MM-DD' — bu gün DAHİL sonrası
+ * @param {string} [opts.date]     tek gün
+ */
 export const getEntries = (studentId, { since, date } = {}) => {
     let list = safeParse().filter((e) => String(e.studentId) === String(studentId));
     if (date) list = list.filter((e) => e.date === date);
-    if (since) list = list.filter((e) => new Date(e.date).getTime() >= since);
+    if (since) {
+        /* Metin karşılaştırması: 'YYYY-MM-DD' biçiminde sözlük sırası =
+           takvim sırasıdır ve saat diliminden etkilenmez. Eski sayısal
+           zaman damgası desteği geriye dönük uyum için korunur. */
+        const alt = typeof since === 'number' ? todayKey(new Date(since)) : String(since).slice(0, 10);
+        list = list.filter((e) => String(e.date || '').slice(0, 10) >= alt);
+    }
     return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 };
 
@@ -127,8 +160,8 @@ const totals = (list) => {
  * @param {number} days - kaç günlük pencere (varsayılan 7)
  */
 export const getSummary = (studentId, days = 7) => {
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
-    const list = getEntries(studentId, { since });
+    // Bugün DAHİL son `days` gün — bkz. pencereBasi'ndaki saat dilimi notu
+    const list = getEntries(studentId, { since: pencereBasi(days) });
 
     const overall = totals(list);
 

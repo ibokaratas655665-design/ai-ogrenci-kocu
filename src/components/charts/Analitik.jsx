@@ -27,6 +27,7 @@ import {
     TrendingUp, TrendingDown, Minus, Info, Sparkles, UserRound, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { dersRengi } from './grafikTemasi';
 
 /* ══════════════════════════════════════════════════════════════
    1. YORUM ŞERİDİ
@@ -206,7 +207,7 @@ export function OlcumKarti({
  * Payda YALNIZCA vadesi gelmiş etütlerdir; gelecek etüt oranı
  * düşürmez (bkz. gelisimAnalitik.programUyumu).
  */
-export function UyumHalkasi({ oran, planlanan, tamamlanan, boyut = 118, className }) {
+export function UyumHalkasi({ oran, planlanan, tamamlanan, birim = 'etüt', altMetin, boyut = 118, className }) {
     if (oran === null || oran === undefined) {
         return <VeriYok sebep="vadesi-gelmis-etut-yok" boyut="kucuk" className={className} />;
     }
@@ -234,7 +235,7 @@ export function UyumHalkasi({ oran, planlanan, tamamlanan, boyut = 118, classNam
                 </div>
             </div>
             <span className="tip-mini text-ink-3" role="status">
-                {tamamlanan} / {planlanan} etüt
+                {altMetin ?? `${tamamlanan} / ${planlanan} ${birim}`}
             </span>
         </div>
     );
@@ -303,7 +304,18 @@ export function IsiHaritasi({ seri = [], alan = 'soru', className }) {
    7. DERS UYUM ÇUBUKLARI
    ══════════════════════════════════════════════════════════════ */
 
-/** Ders bazlı uyum — hangi derste plana uyuluyor, hangisinde kalınıyor. */
+/**
+ * Ders bazlı uyum — hangi derste plana uyuluyor, hangisinde kalınıyor.
+ *
+ * İKİ AYRI BİLGİ, İKİ AYRI KANAL:
+ *   · çubuğun RENGİ  → hangi ders (program ızgarasıyla aynı ders rengi)
+ *   · yüzdenin RENGİ → ne durumda (iyi / uyarı / kötü)
+ *
+ * Eskiden çubuk da durum rengindeydi ve ders kimliğini görsel olarak
+ * yok ediyordu: program ızgarasında mavi görünen Matematik burada
+ * uyumuna göre yeşil ya da kırmızı oluyor, iki ekran arasındaki bağ
+ * kopuyordu. Kimlik çubuğa, durum sayıya verildi.
+ */
 export function DersCubuklari({ dersler = [], enFazla = 6, className }) {
     if (!dersler.length) return <VeriYok sebep="vadesi-gelmis-etut-yok" boyut="kucuk" className={className} />;
 
@@ -311,18 +323,21 @@ export function DersCubuklari({ dersler = [], enFazla = 6, className }) {
         <div className={cn('flex flex-col gap-2.5', className)}>
             {dersler.slice(0, enFazla).map((d) => {
                 const o = d.oran ?? 0;
-                const renk = o >= 80 ? 'var(--ok)' : o >= 60 ? 'var(--warn)' : 'var(--danger)';
+                const durumRenk = o >= 80 ? 'var(--ok)' : o >= 60 ? 'var(--warn)' : 'var(--danger)';
+                const kimlikRenk = dersRengi(d.ders);
                 return (
                     <div key={d.ders} className="flex items-center gap-3">
-                        <span className="tip-small text-ink-2 w-[92px] shrink-0 truncate" title={d.ders}>
-                            {d.ders}
+                        <span className="tip-small text-ink-2 w-[92px] shrink-0 flex items-center gap-1.5" title={d.ders}>
+                            <span aria-hidden="true" className="w-2 h-2 rounded-full shrink-0"
+                                style={{ background: kimlikRenk }} />
+                            <span className="truncate">{d.ders}</span>
                         </span>
                         <div className="flex-1 h-2 rounded-full bg-surface-3 overflow-hidden min-w-[60px]">
                             <div className="h-full rounded-full transition-all duration-yavas"
-                                style={{ width: `${o}%`, background: renk }} />
+                                style={{ width: `${o}%`, background: kimlikRenk }} />
                         </div>
                         <span className="tip-mini font-bold tabular-nums w-[52px] text-right shrink-0"
-                            style={{ color: renk }}>
+                            style={{ color: durumRenk }}>
                             %{o}
                         </span>
                         <span className="tip-mini text-ink-3 tabular-nums w-[42px] text-right shrink-0 hidden sm:inline">

@@ -18,6 +18,8 @@
  * grafik dolgusu kadar efsane YAZISI olarak da okunur.
  */
 
+import { getSubjectColor } from '../../data/programColors';
+
 /** CSS değişkenini gerçek renge çevirir (Recharts SVG'ye doğrudan var() veremez). */
 export const renkOku = (ad, yedek = '#64748b') => {
     if (typeof window === 'undefined') return yedek;
@@ -33,6 +35,25 @@ export const SERI_RENKLERI = () => [
     renkOku('--c4', '#7C3AED'),
     renkOku('--c5', '#BE185D'),
 ];
+
+/**
+ * DERS RENGİ — grafikte de programdaki renk.
+ *
+ * ⚠️ `SERI_RENKLERI` bir DERSİ temsil etmek için KULLANILMAZ. O palet
+ * yalnızca "birinci seri, ikinci seri" gibi kimliksiz ayrımlar içindir.
+ *
+ * Denetimde ölçüldü: grafik dosyalarında `getSubjectColor` çağrısı
+ * sıfırdı. Program ızgarasında Matematik mavi görünürken "derslere göre
+ * net" grafiğinde serideki sırasına göre lacivert ya da amber
+ * olabiliyordu — aynı ders, iki ekranda iki renk.
+ *
+ * Kaynak tektir: `data/programColors`. Burası yalnızca grafiklerin
+ * kolayca çağırabileceği bir kapıdır.
+ */
+export const dersRengi = (dersAdi) => getSubjectColor(dersAdi).accent;
+
+/** Ders listesi için sıralı renk dizisi (Cell/Bar dolguları için). */
+export const dersRenkleri = (dersAdlari = []) => dersAdlari.map(dersRengi);
 
 /** Anlam taşıyan renkler — iyi/kötü göstermek için. Seri paletinden AYRI. */
 export const ANLAM_RENKLERI = () => ({
@@ -102,7 +123,7 @@ export const degisimOzeti = (dizi = []) => {
 };
 
 export default {
-    renkOku, SERI_RENKLERI, ANLAM_RENKLERI,
+    renkOku, SERI_RENKLERI, ANLAM_RENKLERI, dersRengi, dersRenkleri,
     izgaraOzellikleri, eksenOzellikleri,
     ANIMASYON, animasyonAcik, sayiBicim, degisimOzeti,
 };
