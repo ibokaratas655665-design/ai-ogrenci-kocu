@@ -23,7 +23,7 @@
  * kıyası öğrenci ekranında yoktur; norm referanslı geri bildirim
  * geride olan öğrenciyi düşürür, kıyas koç panelinde kalır.
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -54,6 +54,33 @@ const DevirKarti = ({ simge: Simge, sayi, baslik, alt, ton }) => (
 
 export default function ProgramKarnem({ studentId }) {
     /**
+     * İLERLEME DEĞİŞİNCE KARNE DE DEĞİŞSİN.
+     *
+     * Ölçüldü: öğrenci aynı sayfadaki çizelgeden bir etüdü geri
+     * aldığında ızgara "%67 · 2/3" diyordu ama karne "%64"te
+     * donuyordu — aynı ekranda aynı ölçünün iki değeri. Sebep,
+     * hesabın yalnızca studentId değişince yeniden koşmasıydı.
+     *
+     * programProgressService her yazımda 'storage' olayı yayar;
+     * sayaç o olayda artar ve hesap tazelenir. Yazılan bir şey yok,
+     * yalnızca yeniden okunur.
+     */
+    const [surum, setSurum] = useState(0);
+    useEffect(() => {
+        const tetik = (e) => {
+            if (!e?.key) { setSurum((v) => v + 1); return; }
+            if (e.key === 'program_progress'
+                || e.key.startsWith('student_programs_')
+                || e.key.startsWith('program_schedule_')
+                || e.key === 'study_log') {
+                setSurum((v) => v + 1);
+            }
+        };
+        window.addEventListener('storage', tetik);
+        return () => window.removeEventListener('storage', tetik);
+    }, []);
+
+    /**
      * Tarih çözücü — hücre anahtarından takvim gününe. Program başlangıcı
      * yoksa uyum hesaplanamaz; o zaman "vadesi gelmiş etüt" kavramı da
      * yoktur ve panel kendini gizler (sahte %0 göstermez).
@@ -72,7 +99,8 @@ export default function ProgramKarnem({ studentId }) {
         } catch {
             return null;
         }
-    }, [studentId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- surum bilinçli tetikleyici
+    }, [studentId, surum]);
 
     if (!veri) return null;
     const { uyum, seri, hafiza } = veri;
