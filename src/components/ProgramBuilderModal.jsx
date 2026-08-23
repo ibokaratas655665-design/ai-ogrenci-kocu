@@ -9,13 +9,13 @@ import { jsPDF } from 'jspdf';
 import MARKA from '../data/marka';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
-import { SUBJECT_COLORS, EXAM_COLORS } from '../data/curriculum';
 import { ACTIVITY_TYPES, STANDALONE_ACTIVITIES, getCellColor, getSubjectColor, getSubjectLabel, isActivityBlock, buildLegend } from '../data/programColors';
 import { programUret, KRITER_VARSAYILANLARI, konuEtutIhtiyaci, soruEtutIhtiyaci } from '../utils/programMotoru';
 import { SINAVLAR, dersAdi, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri } from '../data/examTopics';
 import topics from '../services/topicProgressService';
 import programProgress from '../services/programProgressService';
 import firebaseSync from '../services/firebaseSync';
+import { yaz as veriYaz } from '../services/veriDeposu';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import Modal from './ui/Modal';
 
@@ -347,8 +347,29 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
             bildir('Kaydetmek için bir öğrenci seçilmeli. Lütfen "Ders Programları" sekmesinden öğrenciye tıklayarak açın.', 'uyari');
             return;
         }
-        localStorage.setItem(`program_schedule_${studentId}`, JSON.stringify(schedule));
-        localStorage.setItem(`program_closed_slots_${studentId}`, JSON.stringify(closedSlots));
+        /**
+         * ⚠️ PROGRAM KAYDI `veriDeposu.yaz()` ÜZERİNDEN GİTMEK ZORUNDA.
+         *
+         * Eskiden burada ham `localStorage.setItem` kullanılıyordu ve
+         * kaydedilen program SAYFA YENİLENİNCE ESKİ HÂLİNE DÖNÜYORDU.
+         * Zinciri izleyince sebep şu:
+         *
+         *   `yaz()` → buluta() → firebaseSync.syncKey() → bulut yazımı
+         *   ve `_fbtime_{anahtar}` zaman damgası
+         *
+         * Ham `setItem` bu zincirin tamamını atlıyor, dolayısıyla
+         * `_fbtime_` damgası hiç oluşmuyordu. Açılışta senkron katmanı
+         * `localTime === 0` görüp kaydı "bu cihazda hiç yok" sayıyor
+         * (isNewDevice kuralı) ve BULUTTAKİ ESKİ KOPYAYI yerelin üstüne
+         * yazıyordu. Yani veri kaybı yenilemede değil, açılıştaki
+         * çekme adımında oluyordu.
+         *
+         * `yaz()` hem damgayı hem storage olayını üretir; olay sayesinde
+         * açık duran öğrenci paneli de anında güncellenir.
+         */
+        veriYaz(`program_schedule_${studentId}`, schedule);
+        veriYaz(`program_closed_slots_${studentId}`, closedSlots);
+
         /* baslangicTarihi: tarih kilidinin (§3) dayanağı — programın
            1. ay 1. haftası hangi takvim haftasına denk geliyor.
            Var olan programda korunur; yoksa bu haftadan başlar. */
@@ -356,25 +377,30 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         try {
             baslangicTarihi = JSON.parse(localStorage.getItem(`program_meta_${studentId}`) || '{}').baslangicTarihi;
         } catch { /* yoksa aşağıda üretilir */ }
-        localStorage.setItem(`program_meta_${studentId}`, JSON.stringify({
+        veriYaz(`program_meta_${studentId}`, {
             programDurationMonths,
             dailySlotCount,
             title,
             weeklyMode,
             baslangicTarihi: baslangicTarihi || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        }));
-        localStorage.setItem(`program_kriterleri_${studentId}`, JSON.stringify(kriterler));
+            updatedAt: new Date().toISOString(),
+        });
+        veriYaz(`program_kriterleri_${studentId}`, kriterler);
         /* ⚠️ Konu takibi köprüsü: topicProgressService `student_programs_*`
            okuyor, program `program_schedule_*`'e yazıyordu — "programda"
            durumu ve program borcu önceliği ölüydü. Aynı içerik ikinci
            anahtara da yazılarak eşgüdüm kuruluyor. */
-        localStorage.setItem(`student_programs_${studentId}`, JSON.stringify(schedule));
+        veriYaz(`student_programs_${studentId}`, schedule);
 
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2500);
-        // Firebase'e hemen senkronize et - öğrenci mobilde anlık görsün
-        firebaseSync.sync().catch(() => { });
+
+        /* Tam senkron da tetiklenir (öğrenci mobilde anlık görsün).
+           Hata SESSİZCE yutulmaz: koç kaydın buluta gitmediğini bilmeli,
+           yoksa "kaydettim" sanıp veriyi kaybeder. */
+        firebaseSync.sync().catch((e) => {
+            bildir(`Program bu cihaza kaydedildi ama buluta gönderilemedi: ${e?.message || 'bağlantı yok'}. İnternet gelince tekrar kaydedin.`, 'uyari');
+        });
     };
 
     const handleCellClick = async (day, slotIndex) => {

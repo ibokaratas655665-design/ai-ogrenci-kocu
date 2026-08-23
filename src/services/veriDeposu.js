@@ -75,8 +75,28 @@ const bosMu = (deger) => {
     return deger == null || deger === '';
 };
 
+/**
+ * YEREL YAZIM DAMGASI — sessiz veri kaybını önleyen tek satır.
+ *
+ * Senkron katmanı açılışta her anahtar için `_fbtime_{anahtar}` okur ve
+ * damga yoksa (`localTime === 0`) kaydı "bu cihazda hiç yok" sayarak
+ * BULUTTAKİ KOPYAYI yerelin üstüne yazar (isNewDevice kuralı).
+ *
+ * Bulut yazımı gecikmeli ya da çevrimdışıysa henüz damga oluşmamış olur;
+ * bu aralıkta yapılan bir sayfa yenilemesi taze veriyi eski bulut
+ * kopyasıyla ezer. Ölçülen belirti: "programı kaydettim, yeniledim, eski
+ * program geldi."
+ *
+ * Bu yüzden damga bulut yazımını BEKLEMEDEN, yerel yazımla aynı anda
+ * atılır. Bulut yazımı başarılı olursa damgayı kendi zamanıyla günceller.
+ */
+export const damgala = (anahtar) => {
+    try { localStorage.setItem(`_fbtime_${anahtar}`, String(Date.now())); } catch { /* kota dolu olabilir */ }
+};
+
 const buluta = (anahtar, deger, zorla = false) => {
     if (!zorla && bosMu(deger)) return;
+    damgala(anahtar);
     try { window.firebaseSync?.syncKey?.(anahtar); } catch { /* senkron yoksa sorun değil */ }
 };
 

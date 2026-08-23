@@ -89,3 +89,34 @@ describe('program tarih kilidi', () => {
         expect(p['m6-w1-Salı-1']).toBeUndefined();
     });
 });
+
+/* ══════════════════════════════════════════════════════════════
+   VERİ KALICILIĞI — "sayfa yenilenince eski veri geliyor" sınıfı
+   ══════════════════════════════════════════════════════════════ */
+describe('bulut damgası (veri kaybı koruması)', () => {
+    /**
+     * Senkron katmanı açılışta `_fbtime_{anahtar}` okur; damga yoksa
+     * (`localTime === 0`) kaydı "bu cihazda hiç yok" sayar ve BULUTTAKİ
+     * kopyayı yerelin üstüne yazar. Bulut yazımı gecikmeli olduğu için
+     * damga hemen atılmazsa, o aralıktaki bir yenileme taze işaretlemeyi
+     * eski kopyayla ezer — öğrencinin "yaptım" dediği etüt geri döner.
+     */
+    it('etüt işaretlenince zaman damgası ANINDA atılır', () => {
+        localStorage.removeItem('_fbtime_program_progress');
+        metaKur(0);
+        setCellStatus(OGRENCI, 'm1-w1-Pazartesi-0', 'done');
+
+        const damga = localStorage.getItem('_fbtime_program_progress');
+        expect(damga).toBeTruthy();
+        expect(Number(damga)).toBeGreaterThan(0);
+    });
+
+    it('işaret geri alınınca da damga tazelenir', () => {
+        metaKur(0);
+        setCellStatus(OGRENCI, 'm1-w1-Pazartesi-0', 'done');
+        const ilk = Number(localStorage.getItem('_fbtime_program_progress'));
+        setCellStatus(OGRENCI, 'm1-w1-Pazartesi-0', null);
+        const son = Number(localStorage.getItem('_fbtime_program_progress'));
+        expect(son).toBeGreaterThanOrEqual(ilk);
+    });
+});

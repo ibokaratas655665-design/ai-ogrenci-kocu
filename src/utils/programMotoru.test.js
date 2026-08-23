@@ -182,7 +182,11 @@ describe('program üretimi — kesin kurallar', () => {
             kriterler: { esnekHaftalik: 0 },
             aylar: 1, haftaPerAy: 4, gunlukEtut: 6,
         });
-        expect(hucreler(schedule).filter((h) => h.type === 'mola').length).toBe(0);
+        // Koçun PLANLADIĞI esnek seans sayılır. `dolgu` işaretli bloklar
+        // "kural gereği buraya başka hiçbir şey konamadı" demektir ve
+        // koçun esnek seans tercihiyle ilgisi yoktur.
+        const planli = hucreler(schedule).filter((h) => h.type === 'mola' && !h.dolgu);
+        expect(planli.length).toBe(0);
     });
 
     it('esnek/telafi 3 seçilirse haftada en çok 3 oluşur', () => {
@@ -193,7 +197,7 @@ describe('program üretimi — kesin kurallar', () => {
         });
         const haftalik = new Map();
         for (const h of hucreler(schedule)) {
-            if (h.type !== 'mola') continue;
+            if (h.type !== 'mola' || h.dolgu) continue;   // yalnızca planlı esnek seans
             const m = /^m(\d+)-w(\d+)-/.exec(h.k);
             const anahtar = `${m[1]}-${m[2]}`;
             haftalik.set(anahtar, (haftalik.get(anahtar) || 0) + 1);
@@ -473,5 +477,159 @@ describe('Motor 3.0 — kapasite ve bloklama', () => {
         const agsPay = dersPaylari([konu('EB', 'ogretim', 'X', 2, 2)], 'AGS').get('EB:ogretim');
         const kpssPay = dersPaylari([konu('EB', 'ogretim', 'X', 2, 2)], 'KPSS').get('EB:ogretim');
         expect(kpssPay).toBeGreaterThan(agsPay);
+    });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   KAPASİTE, KAPSAM VE YÜK DENGESİ — 23.08.2026 acil düzeltme
+   ══════════════════════════════════════════════════════════════ */
+
+/** Çok konulu gerçekçi bir konu listesi üretir. */
+const konuSeti = (adet, ders = 'matematik', bolum = 'TYT') =>
+    Array.from({ length: adet }, (_, i) => konu(bolum, ders, `Konu ${i + 1}`, 3, 2));
+
+describe('kapasite ve kapsam', () => {
+    /**
+     * KÖK NEDEN: iş yükü hesabı yalnızca konu etütlerini sayıyordu;
+     * her konunun ardından gelecek SORU etütleri hesaba girmiyordu.
+     * Motor sahte bir kapasite fazlası görüp ilk konuları şişiriyor,
+     * geri kalan konular programa hiç girmiyordu.
+     */
+    it('uzun programda seçilen konuların ÇOĞU programa girer', () => {
+        const konular = [
+            ...konuSeti(20, 'matematik', 'TYT'),
+            ...konuSeti(20, 'turkce', 'TYT'),
+            ...konuSeti(10, 'fizik', 'TYT'),
+        ];
+        const { schedule, stats } = programUret({
+            konular, sinavId: 'YKS', aylar: 6, haftaPerAy: 4, gunlukEtut: 6,
+        });
+
+        const girenler = new Set();
+        for (const h of Object.values(schedule)) {
+            if (h && dersSayilir(h.type)) girenler.add(`${h.subject}|${h.topic}`);
+        }
+        // 50 konu, 6 ay × 4 hafta × 7 gün × 6 etüt = 1008 hücre → hepsi girmeli
+        expect(girenler.size).toBe(50);
+        expect(stats.disardaKalanKonu).toBe(0);
+        expect(stats.programlananKonu).toBe(50);
+    });
+
+    it('kapasite yetmezse KAÇ KONUNUN dışarıda kaldığı raporlanır', () => {
+        // 60 konu, yalnızca 1 hafta × 4 etüt = 28 hücre → çoğu sığmaz
+        const { stats, uyarilar } = programUret({
+            konular: konuSeti(60), sinavId: 'YKS',
+            aylar: 1, haftaPerAy: 1, gunlukEtut: 4,
+        });
+        expect(stats.disardaKalanKonu).toBeGreaterThan(0);
+        expect(stats.secilenKonu).toBe(60);
+        expect(stats.programlananKonu + stats.disardaKalanKonu).toBe(60);
+
+        const kapsam = uyarilar.find((u) => u.tur === 'kapsam');
+        expect(kapsam).toBeTruthy();
+        expect(kapsam.mesaj).toContain(String(stats.disardaKalanKonu));
+    });
+
+    it('fazla kapasite ilk konulara yığılmaz, konulara YAYILIR', () => {
+        // 10 konu, bol kapasite → pekiştirme belirli bir konuya toplanmamalı
+        const { schedule } = programUret({
+            konular: konuSeti(10), sinavId: 'YKS',
+            aylar: 2, haftaPerAy: 4, gunlukEtut: 6,
+        });
+        const konuBasi = new Map();
+        for (const h of Object.values(schedule)) {
+            if (!h || !dersSayilir(h.type)) continue;
+            konuBasi.set(h.topic, (konuBasi.get(h.topic) || 0) + 1);
+        }
+        const sayilar = [...konuBasi.values()];
+        // Hiçbir konu, ortalamanın 3 katından fazla etüt almamalı
+        const ort = sayilar.reduce((a, b) => a + b, 0) / sayilar.length;
+        expect(Math.max(...sayilar)).toBeLessThanOrEqual(ort * 3);
+    });
+});
+
+describe('aynı ders ardışıklığı — KESİN sınır 2', () => {
+    /**
+     * §3: konu etüdü + soru etüdü + tekrar AYNI DERS sayılır.
+     * Etüt türü değiştirilerek sınır aşılamaz. Eskiden aynı konunun
+     * zinciri sürerken 3'e esneyen istisna vardı; kaldırıldı.
+     */
+    const enUzunSeri = (schedule) => {
+        const gunler = new Map();
+        for (const [k, v] of Object.entries(schedule)) {
+            const m = /^(m\d+-w\d+-.+)-(\d+)$/.exec(k);
+            if (!m || !v) continue;
+            if (!gunler.has(m[1])) gunler.set(m[1], []);
+            gunler.get(m[1]).push({ etut: Number(m[2]), ...v });
+        }
+        let enUzun = 0;
+        for (const sira of gunler.values()) {
+            sira.sort((a, b) => a.etut - b.etut);
+            let ard = 0, onceki = null;
+            for (const h of sira) {
+                if (!dersSayilir(h.type)) { ard = 0; onceki = null; continue; }
+                ard = (h.subject === onceki) ? ard + 1 : 1;
+                if (ard > enUzun) enUzun = ard;
+                onceki = h.subject;
+            }
+        }
+        return enUzun;
+    };
+
+    it.each([
+        ['1 hafta', 1, 1, 5],
+        ['4 hafta', 1, 4, 5],
+        ['3 ay', 3, 4, 6],
+        ['6 ay', 6, 4, 6],
+        ['10 ay', 10, 4, 6],
+    ])('%s programında aynı ders en fazla 2 ardışık', (_ad, aylar, haftaPerAy, gunlukEtut) => {
+        const konular = [
+            ...konuSeti(15, 'matematik', 'TYT'),
+            ...konuSeti(15, 'turkce', 'TYT'),
+            ...konuSeti(10, 'fizik', 'TYT'),
+        ];
+        const { schedule } = programUret({
+            konular, sinavId: 'YKS', aylar, haftaPerAy, gunlukEtut,
+        });
+        expect(enUzunSeri(schedule)).toBeLessThanOrEqual(2);
+    });
+
+    it('QA denetçisi 3 ardışık dersi ihlal olarak bildirir', () => {
+        const schedule = {
+            'm1-w1-Pazartesi-0': { subject: 'Matematik', topic: 'A', type: 'konu' },
+            'm1-w1-Pazartesi-1': { subject: 'Matematik', topic: 'A', type: 'soru' },
+            'm1-w1-Pazartesi-2': { subject: 'Matematik', topic: 'A', type: 'soru' },
+        };
+        const uyarilar = programDenetle(schedule, {});
+        expect(uyarilar.some((u) => u.tur === 'ders-bloklama')).toBe(true);
+    });
+});
+
+describe('haftalık ve aylık yük dengesi', () => {
+    it('dengeli programda yük uyarısı çıkmaz', () => {
+        const konular = [
+            ...konuSeti(15, 'matematik', 'TYT'),
+            ...konuSeti(15, 'turkce', 'TYT'),
+        ];
+        const { schedule, uyarilar } = programUret({
+            konular, sinavId: 'YKS', aylar: 3, haftaPerAy: 4, gunlukEtut: 6,
+        });
+        const denetim = programDenetle(schedule, { aylar: 3, haftaPerAy: 4 });
+        const hepsi = [...uyarilar, ...denetim];
+        expect(hepsi.some((u) => u.tur === 'hafta-yuk-dengesizligi')).toBe(false);
+        expect(hepsi.some((u) => u.tur === 'ay-yuk-dengesizligi')).toBe(false);
+    });
+
+    it('aşırı dalgalanan program yük uyarısı üretir', () => {
+        // Elle dengesiz çizelge: 1. hafta dolu, 2. hafta neredeyse boş
+        const schedule = {};
+        for (let e = 0; e < 6; e++) {
+            for (const g of ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma']) {
+                schedule[`m1-w1-${g}-${e}`] = { subject: 'Matematik', topic: `K${e}`, type: 'konu' };
+            }
+        }
+        schedule['m1-w2-Pazartesi-0'] = { subject: 'Türkçe', topic: 'T', type: 'konu' };
+        const uyarilar = programDenetle(schedule, { aylar: 1, haftaPerAy: 2 });
+        expect(uyarilar.some((u) => u.tur === 'hafta-yuk-dengesizligi')).toBe(true);
     });
 });

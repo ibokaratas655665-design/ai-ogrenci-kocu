@@ -389,14 +389,30 @@ export const MOTOR_VARSAYILANLARI = {
     ESNEK_ETUT_EN_COK: 4,
     /**
      * Aynı dersin arka arkaya en çok kaç etüdü gelebilir.
-     * 4+ blok (Türkçe·Türkçe·Türkçe·Türkçe) serpiştirme ilkesine
-     * aykırıdır [5]; konu sürekliliği için 2 yeterlidir, üçüncüsü
-     * ancak aynı KONUNUN zinciri sürüyorsa verilir.
+     * 3+ blok (Türkçe·Türkçe·Türkçe) serpiştirme ilkesine aykırıdır [5];
+     * konu sürekliliği için 2 yeterlidir.
+     *
+     * ⚠️ KESİN SINIR — konu etüdü, soru etüdü ve tekrar AYNI DERS
+     * sayılır; etüt türü değiştirilerek aşılamaz. Eskiden aynı konunun
+     * zinciri sürerken 3'e esneyen bir istisna vardı; ölçüldüğünde her
+     * programda üçlü "Matematik·Matematik·Matematik" blokları ürettiği
+     * görüldü ve kaldırıldı.
      */
     AYNI_DERS_ARDISIK_EN_COK: 2,
-    AYNI_KONU_ZINCIR_ESNEMESI: 3,
     /** Aynı bilişsel grubun arka arkaya en çok etüdü [5][7]. */
     AYNI_GRUP_ARDISIK_EN_COK: 3,
+    /**
+     * HAFTALIK / AYLIK YÜK DENGESİ EŞİĞİ — değişim katsayısı
+     * (standart sapma ÷ ortalama).
+     *
+     * Neden oran, neden mutlak fark değil: program uzunluğundan
+     * bağımsız okunur; 4 haftalık ve 40 haftalık programda aynı anlamı
+     * taşır. %20, "her hafta birebir eşit olsun" demek değildir —
+     * sınav haftası, tatil ve konu bitişi gibi gerçek nedenlerle
+     * dalgalanmaya yer bırakır, ama 30/11/28/9 gibi (değişim ~%50)
+     * savunulamaz dağılımları yakalar [§10, §37].
+     */
+    YUK_DEGISIM_ESIGI: 0.20,
 };
 
 export default {

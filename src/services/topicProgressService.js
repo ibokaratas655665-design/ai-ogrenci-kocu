@@ -23,7 +23,7 @@
  * yarım kalan konular listenin başına çekilir.
  */
 
-import { nesneOku } from './veriDeposu';
+import { nesneOku, damgala } from './veriDeposu';
 import {
     sinavBul, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri,
     dersAdi as dersAdiKatalog, hedefSoruHesapla, ZORLUK_ADI,
@@ -70,6 +70,9 @@ const oku = () => {
 let syncTimer = null;
 const yaz = (depo) => {
     localStorage.setItem(KEY, JSON.stringify(depo));
+    /* Bulut yazımı 1,5 sn gecikmeli; damga hemen atılmazsa o aralıkta
+       yapılan yenileme buluttaki eski kopyayı geri getirir. */
+    damgala(KEY);
     try { window.dispatchEvent(new StorageEvent('storage', { key: KEY })); } catch { /* ignore */ }
     try { window.dispatchEvent(new Event('topic-progress-updated')); } catch { /* ignore */ }
     if (syncTimer) clearTimeout(syncTimer);

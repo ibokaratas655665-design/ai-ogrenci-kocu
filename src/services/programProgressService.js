@@ -17,6 +17,8 @@
  *   }
  */
 
+import { damgala } from './veriDeposu';
+
 const KEY = 'program_progress';
 
 /** Ders/aktivite tipleri — hangileri "çalışma" sayılır. */
@@ -54,6 +56,12 @@ const scheduleSync = () => {
 
 const persist = (all) => {
     localStorage.setItem(KEY, JSON.stringify(all));
+    /* Damga HEMEN atılır. Bulut yazımı 1,5 sn gecikmelidir (arka arkaya
+       işaretlemede tek yazım yeter); o aralıkta yapılan bir sayfa
+       yenilemesi damgasız kaydı "bu cihazda yok" sayıp buluttaki eski
+       kopyayı üstüne yazardı — öğrencinin işaretlediği etüt geri
+       alınmış görünürdü. Bkz. veriDeposu.damgala. */
+    damgala(KEY);
     try {
         window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
     } catch { /* ignore */ }
