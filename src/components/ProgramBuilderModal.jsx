@@ -763,10 +763,27 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 <Share2 size={16} className="mr-2" /> Sistemi Paylaş
             </button>
             <button onClick={ async () => {
-                if (await onayla({ mesaj: 'Tüm program silinecek. Emin misiniz?', tehlikeli: true })) {
-                    setSchedule({});
-                    setDistributionQueue([]);
-                }
+                if (!await onayla({ mesaj: 'Tüm program silinecek. Emin misiniz?', tehlikeli: true })) return;
+                /**
+                 * ⚠️ TEMİZLEME DEPOYA DA YAZILMALI.
+                 *
+                 * Eskiden burada yalnızca `setSchedule({})` vardı: ekran
+                 * boşalıyor ama depo dokunulmadan kalıyordu. Sayfa
+                 * yenilenince yükleme etkisi eski programı geri okuyor,
+                 * koç da "temizle çalışmıyor" diyordu. Temizleme, tıpkı
+                 * kaydetme gibi kalıcı bir işlemdir; boş çizelge
+                 * `veriYaz` ile yazılır ki buluta da gitsin ve öğrenci
+                 * panelindeki program da temizlensin.
+                 */
+                setSchedule({});
+                setDistributionQueue([]);
+                if (!studentId) return;
+                veriYaz(`program_schedule_${studentId}`, {}, { zorla: true });
+                veriYaz(`student_programs_${studentId}`, {}, { zorla: true });
+                firebaseSync.sync().catch((e) => {
+                    bildir(`Program bu cihazda temizlendi ama buluta bildirilemedi: ${e?.message || 'bağlantı yok'}.`, 'uyari');
+                });
+                bildir('Program temizlendi.', 'basari');
             }} className="px-3 py-2 bg-danger/20 hover:bg-danger text-white rounded-lg text-sm font-bold transition">
                 Temizle
             </button>

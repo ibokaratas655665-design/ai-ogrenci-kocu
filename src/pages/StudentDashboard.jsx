@@ -668,7 +668,15 @@ const StudentDashboard = () => {
                 loadTasks();
             } else if (e.key === 'v2_results_data' || e.key === 'v2_trials_data' || e.key === 'exams_data' || e.key === 'v2_obp_data') {
                 loadExams();
-            } else if (e.key?.startsWith('program_schedule_') || e.key?.includes('_monthly_grid') || e.key?.includes('_config') || e.key === 'student_programs') {
+            } else if (e.key?.startsWith('program_schedule_')
+                || e.key?.startsWith('student_programs_')
+                || e.key?.startsWith('program_meta_')
+                || e.key?.includes('_monthly_grid') || e.key?.includes('_config')
+                || e.key === 'student_programs') {
+                /* Koç programı değiştirdiğinde/temizlediğinde öğrenci ekranı
+                   anında tazelenir. `student_programs_` ve `program_meta_`
+                   eskiden dinlenmiyordu: koç programı kaydediyor, öğrencinin
+                   açık ekranı eski hâlde kalıyordu. */
                 loadProgram();
             } else if (e.key === 'student_messages') {
                 loadMessages();

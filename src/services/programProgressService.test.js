@@ -80,9 +80,15 @@ describe('program tarih kilidi', () => {
     });
 
     it('toplu yazımda da gelecek etütler atlanır', () => {
+        /* Program 2 hafta ÖNCE başlamış sayılır; böylece 1. haftanın
+           her günü kesin olarak geçmişte kalır. Testin bugünün hangi
+           güne denk geldiğine bağlı olmaması için şart — aksi hâlde
+           hafta içi ilerledikçe "geçmiş" saydığımız gün geleceğe
+           kayıyor ve test takvimle birlikte kırılıyor. */
+        metaKur(2);
         programProgress.setManyStatuses(OGRENCI, [
-            { cellKey: 'm1-w1-Salı-1', status: 'done' },
-            { cellKey: 'm6-w1-Salı-1', status: 'done' },
+            { cellKey: 'm1-w1-Salı-1', status: 'done' },   // 2 hafta önce → geçmiş
+            { cellKey: 'm6-w1-Salı-1', status: 'done' },   // aylar sonra → gelecek
         ]);
         const p = getProgress(OGRENCI);
         expect(p['m1-w1-Salı-1']?.status).toBe('done');

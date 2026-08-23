@@ -277,7 +277,16 @@ const StudentDetailPage = () => {
                 e.key === 'v2_results_data' || e.key === 'v2_trials_data' ||
                 e.key === 'exams_data' || e.key === 'student_messages' ||
                 e.key?.startsWith(`program_schedule_${id}`) ||
-                e.key?.startsWith(`program_${id}`)) {
+                e.key?.startsWith(`student_programs_${id}`) ||
+                e.key?.startsWith(`program_${id}`) ||
+                /* ÖĞRENCİ → KOÇ: etüt tamamlama/geri alma bu anahtarlarda
+                   tutulur ve hiçbir koç ekranı bunları dinlemiyordu.
+                   Öğrenci "yaptım" dediğinde koçun açık ekranı eski
+                   hâlinde kalıyor, koç ancak sayfayı elle yenileyince
+                   görüyordu. */
+                e.key === 'program_progress' ||
+                e.key === 'topic_progress' ||
+                e.key === 'study_log') {
                 loadAllData();
                 loadMessages();
             }

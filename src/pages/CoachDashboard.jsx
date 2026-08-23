@@ -227,6 +227,33 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
     const [searchQuery, setSearchQuery] = useState('');
     const [previewMeta, setPreviewMeta] = useState({ duration: 1, slotCount: 6, title: '' });
 
+    /**
+     * PROGRAM DEĞİŞİNCE LİSTEYİ TAZELE.
+     *
+     * Bu sekme program durumunu her render'da doğrudan localStorage'dan
+     * okuyor ama bir dinleyicisi yoktu: koç programı kaydettiğinde ya da
+     * temizlediğinde React'in yeniden render etmesi için bir sebep
+     * olmuyordu; liste eski durumu göstermeye devam ediyordu ("program
+     * yok" yazması, öğrencinin ilerleme yüzdesinin donması). Öğrenci
+     * etüt işaretlediğinde de aynı sorun vardı.
+     *
+     * Sayaç, storage olayı geldiğinde bileşeni yeniden okumaya zorlar.
+     */
+    const [tazelik, setTazelik] = useState(0);
+    React.useEffect(() => {
+        const dinle = (e) => {
+            if (!e.key || e.key.startsWith('_fbtime_')) return;
+            if (e.key.startsWith('program_schedule_')
+                || e.key.startsWith('student_programs_')
+                || e.key.startsWith('program_meta_')
+                || e.key === 'program_progress') {
+                setTazelik((n) => n + 1);
+            }
+        };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, []);
+
     React.useEffect(() => {
         if (previewStudentId) {
             const savedMeta = localStorage.getItem(`program_meta_${previewStudentId}`);
@@ -245,7 +272,9 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                 setPreviewMeta({ duration: 1, slotCount: 6, title: '' });
             }
         }
-    }, [previewStudentId]);
+        // `tazelik` bağımlılıkta: program buluttan/başka sekmeden
+        // güncellenince önizleme ayarları da yeniden okunur.
+    }, [previewStudentId, tazelik]);
 
     const getStudentSchedule = (studentId) => {
         try {
@@ -254,10 +283,26 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
         } catch { return null; }
     };
 
+    /**
+     * ÖĞRENCİNİN ETÜT TAMAMLAMA KAYITLARI.
+     *
+     * `program_progress` tek bir anahtarda bütün öğrencileri tutar;
+     * her satır için ayrı okumak yerine bir kez okunur.
+     */
+    const ilerlemeDepo = React.useMemo(() => {
+        try { return JSON.parse(localStorage.getItem('program_progress') || '{}') || {}; }
+        catch { return {}; }
+        // `tazelik` bağımlılıkta: öğrenci etüt işaretleyince yeniden okunur
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tazelik]);
+
     const studentsWithStatus = students.map(s => {
         const schedule = getStudentSchedule(s.id);
         const hasProgram = schedule && Object.keys(schedule).length > 0;
         let fillRate = 0;
+        let doneCount = 0;
+        let plannedCount = 0;
+        let doneRate = null;
         if (hasProgram) {
             const total = DAYS.length * 6;
             const filled = DAYS.reduce((acc, day) => {
@@ -265,8 +310,23 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                 return acc;
             }, 0);
             fillRate = Math.round((filled / total) * 100);
+
+            /**
+             * TAMAMLAMA — koçun asıl merak ettiği sayı.
+             *
+             * "Doluluk" çizelgenin ne kadar dolu olduğunu ölçer; öğrenci
+             * hiçbir şey yapmasa da %100 görünür. Öğrenci etüt
+             * işaretlediğinde koç panelinde hiçbir sayı değişmiyordu ve
+             * bu "senkron çalışmıyor" gibi görünüyordu. Aslında veri
+             * geliyordu — gösterilmiyordu.
+             */
+            const ilerleme = ilerlemeDepo[String(s.id)] || {};
+            plannedCount = Object.keys(schedule).length;
+            doneCount = Object.keys(ilerleme)
+                .filter((k) => ilerleme[k]?.status === 'done' && schedule[k]).length;
+            doneRate = plannedCount ? Math.round((doneCount / plannedCount) * 100) : null;
         }
-        return { ...s, hasProgram, fillRate };
+        return { ...s, hasProgram, fillRate, doneCount, plannedCount, doneRate };
     });
 
     const filtered = studentsWithStatus.filter(s =>
@@ -418,13 +478,33 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                                 </div>
                             </div>
                             {s.hasProgram && (
-                                <div className="mb-3">
-                                    <div className="flex justify-between text-[11px] mb-1">
-                                        <span className="text-ink-3 font-medium">Program doluluk</span>
-                                        <span className="font-bold text-info">%{s.fillRate}</span>
+                                <div className="mb-3 space-y-2">
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1">
+                                            <span className="text-ink-3 font-medium">Program doluluk</span>
+                                            <span className="font-bold text-info">%{s.fillRate}</span>
+                                        </div>
+                                        <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
+                                            <div className="on-color h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-yavas" style={{ width: `${s.fillRate}%` }} />
+                                        </div>
                                     </div>
-                                    <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
-                                        <div className="on-color h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-yavas" style={{ width: `${s.fillRate}%` }} />
+                                    {/* ÖĞRENCİ TAMAMLAMA — doluluktan farklı şey.
+                                        Doluluk çizelgenin dolu olmasıdır; bu satır
+                                        öğrencinin GERÇEKTE yaptığı etütleri gösterir
+                                        ve öğrenci işaretledikçe anında güncellenir. */}
+                                    <div>
+                                        <div className="flex justify-between text-[11px] mb-1">
+                                            <span className="text-ink-3 font-medium">Öğrenci tamamlama</span>
+                                            <span className="font-bold" style={{ color: s.doneCount ? 'var(--ok)' : 'var(--ink-3)' }}>
+                                                {s.doneCount ? `${s.doneCount}/${s.plannedCount} · %${s.doneRate}` : 'henüz yok'}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className="on-color h-1.5 rounded-full transition-all duration-yavas"
+                                                style={{ width: `${s.doneRate || 0}%`, background: 'var(--ok)' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
