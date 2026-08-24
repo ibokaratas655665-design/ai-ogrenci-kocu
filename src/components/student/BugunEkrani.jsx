@@ -10,11 +10,12 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
 import OnayKutusu from '../ui/OnayKutusu';
+import KartBasligi from '../ui/KartBasligi';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
 import { getCellColor } from '../../data/programColors';
 import { hucreTarihi, programBaslangici } from '../../services/programProgressService';
 import { programUyumu, calismaOzeti, istikrar, motivasyon, gunlukSeri } from '../../services/gelisimAnalitik';
-import { MotivasyonSeridi, Degisim, UyumHalkasi, IsiHaritasi } from '../charts/Analitik';
+import { MotivasyonSeridi, UyumHalkasi, IsiHaritasi } from '../charts/Analitik';
 import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
 
@@ -279,175 +280,109 @@ export default function BugunEkrani({
     };
 
     return (
-        <div className="space-y-4 lg:space-y-5">
+        /**
+         * MASAÜSTÜ IZGARASI.
+         *
+         * Ölçüldü: 1440 px ekranda bu ekranın on kartının onu da 1336 px
+         * genişliğinde alt alta diziliyordu. "3 gündür aralıksız
+         * çalışıyorsun." tek cümlesi ekranın tüm genişliğini kaplıyor,
+         * geri kalan her şey için 1.9 ekran kaydırmak gerekiyordu.
+         * Mobil düzen 1440 px'e esnetilmişti; masaüstü düzeni yoktu.
+         *
+         * 12 sütunluk ızgara: solda günün İŞİ (hero, program, görevler),
+         * sağda günün ÖLÇÜSÜ (tempo, süreklilik, kısayollar, koç).
+         * Telefonda tek sütuna iner ve okuma sırası bozulmaz — sol
+         * sütun önce gelir.
+         */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
 
-            {/* ══ 1. SELAMLAMA + GÜNLÜK MOTİVASYON ════════════════════ */}
-            <div className="px-1">
-                <p className="tip-label text-ink-3">Merhaba 👋</p>
-                <h2 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight mt-0.5">
-                    {kullanici?.name?.split(' ')[0] || 'Öğrenci'}!
-                </h2>
-                <p className="tip-small text-ink-2 mt-1">{gunlukMotivasyon}</p>
-            </div>
+            {/* ═══════════════ SOL: GÜNÜN İŞİ ═══════════════ */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-4 lg:space-y-5 min-w-0">
 
-            {/* ══ 2. ÇALIŞMA SÜREKLİLİĞİ — 28 günlük ısı haritası ═════
-                Eskiden burada yalnızca "Çalışma Serin · N gün" yazıyordu:
-                tek sayı, hangi günlerin boş kaldığını göstermiyordu.
-                Süreklilik bir DESENDİR; deseni ancak takvim gösterir.
-                Kayıt olmayan gün ile sıfır çözülen gün ayrı çizilir —
-                "girmedim" ile "çalışmadım" aynı şey değildir. */}
-            {aktivite.some((g) => g.kayit) && (
-                <Card dolgu="md">
-                    <div className="flex items-center gap-4">
-                        <span className="shrink-0 w-11 h-11 rounded-2xl bg-warn-soft text-warn flex items-center justify-center">
-                            <Flame size={22} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <p className="tip-small font-black text-ink">
-                                Çalışma Serin · {tempo?.istikrar?.guncelZincir ?? seri} gün
-                            </p>
-                            <p className="tip-caption mt-0.5">
-                                Son {ISI_GUN} günün {tempo?.istikrar?.aktifGun ?? aktivite.filter((g) => g.kayit).length}'inde kayıt var
-                                {tempo?.istikrar?.enUzunZincir > 0 && ` · en uzun seri ${tempo.istikrar.enUzunZincir} gün`}
-                            </p>
-                        </div>
-                    </div>
-                    <IsiHaritasi seri={aktivite} alan="soru" className="mt-3" />
-                </Card>
-            )}
-
-            {/* ══ 3. BUGÜNKÜ HEDEFİN — sayılar ve ilerleme ═══════════ */}
-            <Card dolgu="yok">
-                <div className="px-5 pt-4 pb-3 sm:px-6 flex items-center justify-between">
-                    <h3 className="tip-h4">Bugünkü Hedefin</h3>
-                    {seri > 0 && <Badge ton="uyari" hap simge={Flame}>{seri} gün</Badge>}
-                </div>
-                {/* HALKA + SAYILAR.
-                    Önceden gün ilerlemesi ÜÇ kez çiziliyordu: "%X İlerleme"
-                    sayacı, "Tamamlanan" sayacı ve alttaki çubuk. Üçü de aynı
-                    kesri anlatıyordu. Halka kesri tek bakışta verdiği için
-                    yüzde sayacı ve çubuk kaldırıldı; geriye halkanın
-                    anlatmadığı üç ölçü kaldı: soru, dakika, tamamlanan. */}
-                <div className="px-5 sm:px-6 pb-4 flex items-center gap-3 sm:gap-5">
-                    {hedefToplam > 0 && (
-                        <UyumHalkasi
-                            oran={gunYuzde}
-                            tamamlanan={hedefBiten}
-                            planlanan={hedefToplam}
-                            altMetin={`${hedefBiten} / ${hedefToplam} iş`}
-                            /* 76: 375 px ekranda halka + üç sayı yan yana sığsın.
-                               92 iken "TAMAMLANAN" etiketi 26 px kırpılıyordu. */
-                            boyut={76}
-                            className="shrink-0"
-                        />
-                    )}
-                    {/* Yalnızca İKİ sayı: halka "1 / 2 iş" diyerek tamamlananı
-                        zaten gösteriyor, üçüncü bir "Tamamlanan" sayacı aynı
-                        değeri tekrarlıyordu (ve 375 px ekranda etiketi 26 px
-                        kırpılıyordu). Geriye halkanın anlatmadığı iki ölçü kaldı. */}
-                    <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
-                        {[
-                            { deger: bugunToplam.questions, etiket: 'Soru' },
-                            { deger: bugunToplam.minutes ? `${bugunToplam.minutes}dk` : '0dk', etiket: 'Dakika' },
-                        ].map((s) => (
-                            <div key={s.etiket} className="text-center">
-                                <p className="text-lg sm:text-xl font-black text-ink syne rakam">{s.deger}</p>
-                                <p className="tip-mini text-ink-3 uppercase tracking-normal sm:tracking-wider mt-0.5">{s.etiket}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </Card>
-
-            {/* ══ 4. BUGÜNÜ BAŞLAT — tek büyük eylem ═════════════════ */}
-            {sonraki ? (
-                <button
-                    type="button"
-                    onClick={() => onGit?.('pomodoro')}
-                    className="on-color w-full rounded-2xl px-5 py-4 flex items-center justify-between gap-3 text-left shadow-yuzen transition-transform duration-hizli active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                    style={{ background: 'var(--grad-mor)' }}
+                {/* ── HERO — referanstaki krem "günlük hedef" bloğu ──
+                    Selamlama, günün hedefi ve tek birincil eylem burada
+                    birleşir. Önceden bunlar üç ayrı blok hâlinde alt
+                    alta duruyordu ve hiçbiri diğerine bakmıyordu. */}
+                <div
+                    className="relative overflow-hidden rounded-dlg px-5 py-5 sm:px-7 sm:py-6"
+                    style={{ background: 'var(--krem)', border: '1px solid var(--krem-line)' }}
                 >
-                    <span className="min-w-0">
-                        <span className="block text-[15px] font-black">Bugünü Başlat</span>
-                        <span className="block text-xs font-semibold opacity-85 truncate mt-0.5">
-                            Sıradaki: {sonraki.konu}{sonraki.ders && sonraki.ders !== sonraki.konu ? ` · ${sonraki.ders}` : ''}
-                        </span>
-                    </span>
-                    <span className="shrink-0 w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <Play size={18} />
-                    </span>
-                </button>
-            ) : toplam > 0 ? (
-                <Card dolgu="md" className="flex items-center gap-3">
-                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-ok-soft text-ok inline-flex items-center justify-center">
-                        <Sparkles size={18} />
-                    </span>
-                    <div>
-                        <p className="tip-small font-black text-ink">Bugünün programı tamam 🎉</p>
-                        <p className="tip-caption mt-0.5">{toplam} etüdün hepsini bitirdin.</p>
-                    </div>
-                </Card>
-            ) : (
-                <Card dolgu="md" className="flex items-start gap-3">
-                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-surface-3 text-ink-3 inline-flex items-center justify-center">
-                        <CalendarCheck size={18} />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="tip-small font-black text-ink">Bugün için planlı etüt yok</p>
-                        <p className="tip-caption mt-1">
-                            {hicVeriYok
-                                ? 'Koçun program atadığında günün burada görünecek. O zamana kadar kendi çalışmanı kaydedebilirsin.'
-                                : 'Koçun program yüklediğinde günün burada görünür. Açık görevlerinle ilerleyebilirsin.'}
-                        </p>
-                        {hicVeriYok && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                <Button varyant="outline" onClick={() => onGit?.('daily-log')}>Çalışmamı kaydet</Button>
-                                <Button varyant="ghost" onClick={() => onGit?.('exams')}>Denemelerime bak</Button>
+                    {/* Sağ üstte yumuşak turuncu leke — referanstaki
+                        illüstrasyonun yerini tutan sessiz doku. */}
+                    <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full"
+                        style={{ background: 'color-mix(in srgb, var(--brand) 12%, transparent)' }}
+                    />
+
+                    <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+                        <div className="min-w-0 flex-1">
+                            <p className="tip-label" style={{ color: 'var(--brand-metin)' }}>
+                                Merhaba 👋 {kullanici?.name?.split(' ')[0] || 'Öğrenci'}
+                            </p>
+                            <h2 className="text-2xl sm:text-[2rem] font-black text-ink syne tracking-tight leading-[1.1] mt-1">
+                                {hedefToplam > 0 ? 'Günlük Hedefin' : 'Bugüne Hazırsın'}
+                            </h2>
+                            <p className="tip-small text-ink-2 mt-2 max-w-[46ch]">
+                                {hedefToplam > 0
+                                    ? <>Bugünün <strong className="text-ink">{hedefToplam}</strong> işinden <strong className="text-ink">{hedefBiten}</strong> tanesi tamam. {gunlukMotivasyon}</>
+                                    : gunlukMotivasyon}
+                            </p>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                                {sonraki ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => onGit?.('pomodoro')}
+                                        className="on-color inline-flex items-center gap-2.5 rounded-full pl-5 pr-2 py-2 text-[15px] font-black shadow-yuzen transition-transform duration-hizli active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                                        style={{ background: 'var(--brand)' }}
+                                    >
+                                        Derse Devam Et
+                                        <span className="w-8 h-8 rounded-full bg-white/25 inline-flex items-center justify-center">
+                                            <Play size={15} />
+                                        </span>
+                                    </button>
+                                ) : toplam > 0 ? (
+                                    <span className="inline-flex items-center gap-2 rounded-full px-4 py-2 tip-small font-bold bg-ok-soft text-ok">
+                                        <Sparkles size={15} /> Bugünün programı tamam 🎉
+                                    </span>
+                                ) : (
+                                    <Button varyant="outline" onClick={() => onGit?.('daily-log')}>
+                                        Çalışmamı kaydet
+                                    </Button>
+                                )}
+                                {sonraki && (
+                                    <span className="tip-caption truncate max-w-[24ch]">
+                                        Sıradaki: {sonraki.konu}
+                                    </span>
+                                )}
                             </div>
+                        </div>
+
+                        {/* Halka hero'nun içinde: hedef ve ilerleme aynı
+                            bakışta. Ayrı kartta olduğunda ikisi arasında
+                            göz gezdirmek gerekiyordu. */}
+                        {hedefToplam > 0 && (
+                            <UyumHalkasi
+                                oran={gunYuzde}
+                                tamamlanan={hedefBiten}
+                                planlanan={hedefToplam}
+                                altMetin={`${hedefBiten} / ${hedefToplam} iş`}
+                                ton="marka"
+                                boyut={112}
+                                className="shrink-0 self-center"
+                            />
                         )}
                     </div>
-                </Card>
-            )}
+                </div>
 
-            {/* ══ 4b. HAFTALIK TEMPO ═════════════════════════════════
-                "Bugün ne yapacağım?"ın yanına "nasıl gidiyorum?".
-                Yalnızca program varsa ve vadesi gelmiş etüt varsa çıkar;
-                yoksa hiç çizilmez — boş bir %0 halkası yanıltıcı olurdu. */}
-            {tempo?.uyum?.veri && (
-                <Card>
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="min-w-0">
-                            <p className="tip-label text-ink-3 m-0">Bu Haftaki Tempon</p>
-                            <p className="tip-small text-ink-2 m-0 mt-1">
-                                Günü gelen {tempo.uyum.planlanan} etüdün{' '}
-                                <strong className="text-ink">{tempo.uyum.tamamlanan}</strong> tanesi tamam
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                            {/* Halka yüzdeyi ve kesri birlikte taşır; yanındaki
-                                büyük yüzde sayısı ve alttaki çubuk aynı şeyi
-                                üçüncü kez söylediği için kaldırıldı. */}
-                            <UyumHalkasi
-                                oran={tempo.uyum.oran}
-                                tamamlanan={tempo.uyum.tamamlanan}
-                                planlanan={tempo.uyum.planlanan}
-                                boyut={78}
-                            />
-                            <Button varyant="ghost" onClick={() => onGit?.('program')}>
-                                Programım
-                            </Button>
-                        </div>
-                    </div>
-                </Card>
-            )}
-
-            {/* Motivasyon — YALNIZCA gerçekten olmuş bir başarı varsa */}
-            <MotivasyonSeridi metin={tempo?.mesaj} />
-
-            {/* ══ 5. KISAYOLLAR — dört renkli hedef ══════════════════ */}
-            <div>
-                <p className="tip-label text-ink-3 mb-2 px-1">Kısayollar</p>
-                <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                {/* ── KISAYOLLAR — hero'nun altında yatay şerit ─────
+                    Sağ sütunda dikey 2x2 iken o sütunu sol sütundan
+                    456 px uzatıyordu: sayfanın sağ yarısı tek başına
+                    aşağı uzuyor, sol yarısı erken bitiyordu. Dört hedef
+                    yatayda yan yana hem iki sütunu dengeliyor hem de
+                    referanstaki dörtlü kısayol şeridine karşılık geliyor. */}
+                <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
                     {[
                         { id: 'daily-log', etiket: 'Günlük Kayıt', simge: PencilLine, ton: 'cip-yesil' },
                         { id: 'error-notebook', etiket: 'Hata Defteri', simge: BookX, ton: 'cip-turuncu' },
@@ -458,227 +393,295 @@ export default function BugunEkrani({
                             key={k.id}
                             type="button"
                             onClick={() => onGit?.(k.id)}
-                            className="cipp min-h-[86px] transition-transform duration-hizli active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                            className="cipp min-h-[84px] transition-transform duration-hizli active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                             <span className={cn('cip-ikon', k.ton)}><k.simge size={16} /></span>
                             <span className="cip-etiket normal-case tracking-normal text-[10px]">{k.etiket}</span>
                         </button>
                     ))}
                 </div>
-            </div>
 
-            {/* ══ 1c. BU HAFTA — günlük kayıtlardan gerçek gelişim ════
-                Referans tasarımdaki "Bu Hafta" şeridi: soru, süre,
-                isabet ve gün gün mini çubuklar. Kayıt yoksa kart
-                görünmez — sahte sayı basılmaz. */}
-            {hafta && hafta.entries > 0 && (
-                <Card dolgu="yok">
-                    <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
-                        <div>
-                            <h3 className="tip-h4">Bu Hafta</h3>
-                            <p className="tip-caption mt-0.5">Son 7 günün çalışma özeti</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => onGit?.('daily-log')}
-                            className="tip-caption text-brand hover:underline shrink-0 min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                            Günlük Kayıt
-                        </button>
-                    </div>
-                    <div className="px-5 sm:px-6 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {[
-                            { etiket: 'Soru', deger: hafta.questions },
-                            { etiket: 'Süre', deger: hafta.minutes >= 60 ? `${Math.floor(hafta.minutes / 60)}s ${hafta.minutes % 60}d` : `${hafta.minutes}d` },
-                            { etiket: 'İsabet', deger: hafta.accuracy != null ? `%${hafta.accuracy}` : '—' },
-                            { etiket: 'Aktif Gün', deger: `${hafta.activeDays}/7` },
-                        ].map((s) => (
-                            <div key={s.etiket} className="rounded-dmd bg-surface-2 border border-line px-3 py-2.5">
-                                <p className="tip-mini text-ink-3 uppercase tracking-wider">{s.etiket}</p>
-                                <p className="tip-h4 text-ink rakam mt-0.5">{s.deger}</p>
-                            </div>
-                        ))}
-                    </div>
-                    {/* Buradaki 7 günlük mini çubuk şeridi kaldırıldı: aynı
-                        günlük soru sayısını yukarıdaki 28 günlük ısı haritası
-                        zaten gösteriyor ve dört kat uzun bir pencereyle
-                        gösteriyor. İki şeritten biri fazlaydı. */}
-                    {gelisim && (
-                        <div className={cn(
-                            'px-5 sm:px-6 py-3 border-t border-line tip-small font-semibold',
-                            gelisim.fark > 0 ? 'text-ok bg-ok-soft/40' : gelisim.fark < 0 ? 'text-warn bg-warn-soft/30' : 'text-ink-2 bg-surface-2'
-                        )}>
-                            {gelisim.mesaj}
-                        </div>
-                    )}
-                </Card>
-            )}
-
-            {/* ══ 2. BUGÜNÜN ETÜTLERİ — tek dokunuşla işaretlenir ═════ */}
-            {toplam > 0 && (
-                <Card dolgu="yok">
-                    <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
-                        <div>
-                            <h3 className="tip-h4">Bugünün Programı</h3>
-                            <p className="tip-caption mt-0.5">{bugunAdi} · {biten}/{toplam} tamamlandı</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => onGit?.('program')}
-                            className="tip-caption text-brand hover:underline shrink-0 min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                            Tümü
-                        </button>
-                    </div>
-
-                    <Progress deger={biten} enFazla={toplam} ton={biten === toplam ? 'basari' : 'marka'}
-                        kalinlik="sm" className="px-5 sm:px-6 pb-3" />
-
-                    <ul className="giris-sirali divide-y divide-line border-t border-line">
-                        {bugunEtutleri.map((e) => {
-                            const bitti = e.durum === 'done';
-                            const yeniIsaret = sonIsaretlenen === e.key;
-                            return (
-                                <li key={e.key}>
+                {/* ── BUGÜNÜN PROGRAMI ────────────────────────────── */}
+                {toplam > 0 ? (
+                    <Card dolgu="yok">
+                        <div className="px-5 pt-5 pb-3 sm:px-6">
+                            <KartBasligi
+                                simge={CalendarCheck}
+                                baslik="Bugünün Programı"
+                                alt={`${bugunAdi} · ${biten}/${toplam} etüt tamamlandı`}
+                                eylem={
                                     <button
                                         type="button"
-                                        onClick={() => etutIsaretle(e)}
-                                        aria-pressed={bitti}
-                                        className={cn(
-                                            'w-full text-left px-5 sm:px-6 py-3 min-h-[56px] flex items-center gap-3',
-                                            'transition-colors duration-hizli active:bg-surface-3',
-                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset',
-                                            bitti && 'bg-ok-soft/40'
-                                        )}
+                                        onClick={() => onGit?.('program')}
+                                        className="tip-caption font-bold hover:underline min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                        style={{ color: 'var(--brand-metin)' }}
                                     >
-                                        {/* Onay işareti çizilir + kutu bir kez nefes alır +
-                                            halka söner. Yalnızca YENİ işaretlemede oynar;
-                                            sayfa her açıldığında tekrarlamaz. */}
-                                        <OnayKutusu isaretli={bitti} yeni={yeniIsaret} boyut={24} />
-
-                                        {/* Ders rengi şeridi — programdaki hücreyle aynı renk */}
-                                        <span
-                                            aria-hidden="true"
-                                            className="w-1 self-stretch rounded-full shrink-0"
-                                            style={{ backgroundColor: e.renk?.accent || 'transparent' }}
-                                        />
-
-                                        <span className="min-w-0 flex-1">
-                                            <span className={cn(
-                                                'tip-small block truncate',
-                                                bitti ? 'text-ink-3 line-through' : 'text-ink font-semibold'
-                                            )}>
-                                                {e.konu}
-                                            </span>
-                                            {e.ders && e.ders !== e.konu && (
-                                                <span className="tip-caption block truncate">{e.ders}</span>
-                                            )}
-                                        </span>
-
-                                        <span className="tip-mini text-ink-3 shrink-0">{e.sira + 1}. etüt</span>
+                                        Tümü
                                     </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </Card>
-            )}
+                                }
+                            />
+                        </div>
 
-            {/* ══ 3. BUGÜNÜN GÖREVLERİ ═══════════════════════════════ */}
-            {acikGorevler.length > 0 && (
-                <Card dolgu="yok">
-                    <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
-                        <h3 className="tip-h4">Görevlerin</h3>
-                        <button
-                            type="button"
-                            onClick={() => onGit?.('tasks')}
-                            className="tip-caption text-brand hover:underline shrink-0 min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                        >
-                            Tümü
-                        </button>
-                    </div>
-                    <ul className="divide-y divide-line border-t border-line">
-                        {acikGorevler.map((g) => (
-                            <li key={g.id}>
-                                <button
-                                    type="button"
-                                    onClick={() => onGorevTamamla?.(g.id)}
-                                    className={cn(
-                                        'w-full text-left px-5 sm:px-6 py-3 min-h-[56px] flex items-center gap-3',
-                                        'transition-colors duration-hizli active:bg-surface-3',
-                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset'
-                                    )}
-                                >
-                                    <OnayKutusu isaretli={false} boyut={24} />
-                                    <span className="min-w-0 flex-1">
-                                        <span className="tip-small block truncate text-ink font-semibold">
-                                            {g.title || g.baslik || 'Görev'}
-                                        </span>
-                                        {g.description && (
-                                            <span className="tip-caption block truncate">{g.description}</span>
-                                        )}
-                                    </span>
-                                    {/* Geciken görevde bile ton yumuşak: suçlama değil hatırlatma */}
-                                    {g.geciken && <Badge ton="uyari" boyut="sm">gecikmiş</Badge>}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </Card>
-            )}
+                        <Progress deger={biten} enFazla={toplam} ton={biten === toplam ? 'basari' : 'marka'}
+                            kalinlik="sm" className="px-5 sm:px-6 pb-3" />
 
-            {/* ══ 4. KOÇUNDAN + ZORLANDIĞIN YER ══════════════════════ */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
-                {koctanSon && (
-                    <Card tiklanabilir onClick={() => onGit?.('messages')} role="button" tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGit?.('messages'); } }}>
-                        <div className="flex items-start gap-3">
-                            <span className="shrink-0 w-9 h-9 rounded-dmd bg-info-soft text-info inline-flex items-center justify-center">
-                                <MessageSquare size={17} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                                <p className="tip-label text-ink-3">KOÇUNDAN</p>
-                                <p className="tip-small mt-1 line-clamp-2 text-ink">{koctanSon.text || koctanSon.content}</p>
-                            </div>
-                            <ChevronRight size={16} className="text-ink-3 shrink-0 mt-1" aria-hidden="true" />
+                        <ul className="giris-sirali divide-y divide-line border-t border-line">
+                            {bugunEtutleri.map((e) => {
+                                const bitti = e.durum === 'done';
+                                const yeniIsaret = sonIsaretlenen === e.key;
+                                return (
+                                    <li key={e.key}>
+                                        <button
+                                            type="button"
+                                            onClick={() => etutIsaretle(e)}
+                                            aria-pressed={bitti}
+                                            className={cn(
+                                                'w-full text-left px-5 sm:px-6 py-3 min-h-[60px] flex items-center gap-3',
+                                                'transition-colors duration-hizli active:bg-surface-3 hover:bg-surface-2',
+                                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset',
+                                                bitti && 'bg-ok-soft/40'
+                                            )}
+                                        >
+                                            <OnayKutusu isaretli={bitti} yeni={yeniIsaret} boyut={24} />
+
+                                            {/* Ders rengi şeridi — programdaki hücreyle aynı renk */}
+                                            <span
+                                                aria-hidden="true"
+                                                className="w-1 self-stretch rounded-full shrink-0"
+                                                style={{ backgroundColor: e.renk?.accent || 'transparent' }}
+                                            />
+
+                                            <span className="min-w-0 flex-1">
+                                                <span className={cn(
+                                                    'tip-small block truncate',
+                                                    bitti ? 'text-ink-3 line-through' : 'text-ink font-bold'
+                                                )}>
+                                                    {e.konu}
+                                                </span>
+                                                {e.ders && e.ders !== e.konu && (
+                                                    <span className="tip-caption block truncate">{e.ders}</span>
+                                                )}
+                                            </span>
+
+                                            <span className="tip-mini text-ink-3 shrink-0 tabular-nums">{e.sira + 1}. etüt</span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </Card>
+                ) : (
+                    <Card dolgu="md" className="flex items-start gap-3">
+                        <span className="shrink-0 w-9 h-9 rounded-dmd bg-surface-3 text-ink-3 inline-flex items-center justify-center">
+                            <CalendarCheck size={18} />
+                        </span>
+                        <div className="min-w-0">
+                            <p className="tip-small font-black text-ink">Bugün için planlı etüt yok</p>
+                            <p className="tip-caption mt-1">
+                                {hicVeriYok
+                                    ? 'Koçun program atadığında günün burada görünecek. O zamana kadar kendi çalışmanı kaydedebilirsin.'
+                                    : 'Koçun program yüklediğinde günün burada görünür. Açık görevlerinle ilerleyebilirsin.'}
+                            </p>
                         </div>
                     </Card>
                 )}
 
-                {zayifDers && (
-                    <Card tiklanabilir onClick={() => onGit?.('topics')} role="button" tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGit?.('topics'); } }}>
-                        <div className="flex items-start gap-3">
-                            <span className="shrink-0 w-9 h-9 rounded-dmd bg-highlight-soft text-highlight inline-flex items-center justify-center">
-                                <Target size={17} />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                                <p className="tip-label text-ink-3">ÜZERİNE GİDİLECEK</p>
-                                {/* "En kötü dersin" değil "en çok kazanç burada" çerçevesi */}
-                                <p className="tip-small mt-1 text-ink">
-                                    <span className="font-bold">{zayifDers.ad}</span> son üç denemede ortalama{' '}
-                                    <span className="rakam">{zayifDers.ort.toFixed(1)}</span> net.
-                                    Buradaki her doğru toplam puanını en hızlı yükselten yer.
-                                </p>
-                            </div>
-                            <ChevronRight size={16} className="text-ink-3 shrink-0 mt-1" aria-hidden="true" />
+                {/* ── GÖREVLER ────────────────────────────────────── */}
+                {acikGorevler.length > 0 && (
+                    <Card dolgu="yok">
+                        <div className="px-5 pt-5 pb-3 sm:px-6">
+                            <KartBasligi
+                                simge={Target}
+                                baslik="Görevlerin"
+                                alt={`${acikGorevler.length} açık görev`}
+                                eylem={
+                                    <button
+                                        type="button"
+                                        onClick={() => onGit?.('tasks')}
+                                        className="tip-caption font-bold hover:underline min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                        style={{ color: 'var(--brand-metin)' }}
+                                    >
+                                        Tümü
+                                    </button>
+                                }
+                            />
                         </div>
+                        <ul className="divide-y divide-line border-t border-line">
+                            {acikGorevler.map((g) => (
+                                <li key={g.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => onGorevTamamla?.(g.id)}
+                                        className={cn(
+                                            'w-full text-left px-5 sm:px-6 py-3 min-h-[56px] flex items-center gap-3',
+                                            'transition-colors duration-hizli active:bg-surface-3 hover:bg-surface-2',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset'
+                                        )}
+                                    >
+                                        <OnayKutusu isaretli={false} boyut={24} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="tip-small block truncate text-ink font-bold">
+                                                {g.title || g.baslik || 'Görev'}
+                                            </span>
+                                            {g.description && (
+                                                <span className="tip-caption block truncate">{g.description}</span>
+                                            )}
+                                        </span>
+                                        {/* Geciken görevde bile ton yumuşak: suçlama değil hatırlatma */}
+                                        {g.geciken && <Badge ton="uyari" boyut="sm">gecikmiş</Badge>}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
                     </Card>
+                )}
+
+                {/* ── KOÇUNDAN / ÜZERİNE GİDİLECEK ────────────────── */}
+                {(koctanSon || zayifDers) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {koctanSon && (
+                            <Card tiklanabilir onClick={() => onGit?.('messages')} role="button" tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGit?.('messages'); } }}>
+                                <div className="flex items-start gap-3">
+                                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-brand-soft inline-flex items-center justify-center"
+                                        style={{ color: 'var(--brand-metin)' }}>
+                                        <MessageSquare size={17} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="tip-label text-ink-3">KOÇUNDAN</p>
+                                        <p className="tip-small mt-1 line-clamp-2 text-ink">{koctanSon.text || koctanSon.content}</p>
+                                    </div>
+                                    <ChevronRight size={16} className="text-ink-3 shrink-0 mt-1" aria-hidden="true" />
+                                </div>
+                            </Card>
+                        )}
+
+                        {zayifDers && (
+                            <Card tiklanabilir onClick={() => onGit?.('topics')} role="button" tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGit?.('topics'); } }}>
+                                <div className="flex items-start gap-3">
+                                    <span className="shrink-0 w-9 h-9 rounded-dmd bg-highlight-soft text-highlight inline-flex items-center justify-center">
+                                        <Target size={17} />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="tip-label text-ink-3">ÜZERİNE GİDİLECEK</p>
+                                        {/* "En kötü dersin" değil "en çok kazanç burada" çerçevesi */}
+                                        <p className="tip-small mt-1 text-ink">
+                                            <span className="font-bold">{zayifDers.ad}</span> son üç denemede ortalama{' '}
+                                            <span className="rakam">{zayifDers.ort.toFixed(1)}</span> net.
+                                            Buradaki her doğru toplam puanını en hızlı yükselten yer.
+                                        </p>
+                                    </div>
+                                    <ChevronRight size={16} className="text-ink-3 shrink-0 mt-1" aria-hidden="true" />
+                                </div>
+                            </Card>
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* ══ 5. GÜNÜN ÖZETİ — küçük, tek satır ══════════════════ */}
-            <Card ton="sade" className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <Flame size={16} className="text-warn" aria-hidden="true" />
-                    <span className="tip-small">
-                        Bugün <span className="rakam font-bold text-ink">{dailyPomodoros}</span> odak seansı
-                    </span>
-                </div>
-                <Button varyant="ghost" simge={ArrowRight} simgeSagda onClick={() => onGit?.('pomodoro')}>
-                    Odaklan
-                </Button>
-            </Card>
+            {/* ═══════════════ SAĞ: GÜNÜN ÖLÇÜSÜ ═══════════════ */}
+            <aside className="lg:col-span-5 xl:col-span-4 space-y-4 lg:space-y-5 min-w-0">
+
+                {/* ── HAFTALIK TEMPO ──────────────────────────────── */}
+                {tempo?.uyum?.veri && (
+                    <Card>
+                        <KartBasligi
+                            simge={BarChart3}
+                            baslik="Bu Haftaki Tempon"
+                            alt={`Günü gelen ${tempo.uyum.planlanan} etüdün ${tempo.uyum.tamamlanan} tanesi tamam`}
+                        />
+                        <div className="mt-4 flex items-center gap-4">
+                            <UyumHalkasi
+                                oran={tempo.uyum.oran}
+                                tamamlanan={tempo.uyum.tamamlanan}
+                                planlanan={tempo.uyum.planlanan}
+                                boyut={86}
+                                className="shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <Button varyant="outline" simge={ArrowRight} simgeSagda onClick={() => onGit?.('program')}>
+                                    Programım
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Motivasyon — YALNIZCA gerçekten olmuş bir başarı varsa */}
+                <MotivasyonSeridi metin={tempo?.mesaj} />
+
+                {/* ── ÇALIŞMA SÜREKLİLİĞİ — 28 günlük ısı haritası ──
+                    Süreklilik bir DESENDİR; deseni ancak takvim gösterir.
+                    Kayıt olmayan gün ile sıfır çözülen gün ayrı çizilir —
+                    "girmedim" ile "çalışmadım" aynı şey değildir. */}
+                {aktivite.some((g) => g.kayit) && (
+                    <Card>
+                        <KartBasligi
+                            simge={Flame}
+                            baslik={`Çalışma Serin · ${tempo?.istikrar?.guncelZincir ?? seri} gün`}
+                            alt={`Son ${ISI_GUN} günün ${tempo?.istikrar?.aktifGun ?? aktivite.filter((g) => g.kayit).length}'inde kayıt var${tempo?.istikrar?.enUzunZincir > 0 ? ` · en uzun ${tempo.istikrar.enUzunZincir} gün` : ''}`}
+                        />
+                        <IsiHaritasi seri={aktivite} alan="soru" className="mt-4" />
+                    </Card>
+                )}
+
+                {/* ── BU HAFTA ────────────────────────────────────── */}
+                {hafta && hafta.entries > 0 && (
+                    <Card>
+                        <KartBasligi
+                            simge={PencilLine}
+                            baslik="Bu Hafta"
+                            alt="Son 7 günün çalışma özeti"
+                            eylem={
+                                <button
+                                    type="button"
+                                    onClick={() => onGit?.('daily-log')}
+                                    className="tip-caption font-bold hover:underline min-h-[44px] px-2 -mr-2 rounded-dsm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                    style={{ color: 'var(--brand-metin)' }}
+                                >
+                                    Kayıt gir
+                                </button>
+                            }
+                        />
+                        <div className="mt-4 grid grid-cols-2 gap-2.5">
+                            {[
+                                { etiket: 'Soru', deger: hafta.questions },
+                                { etiket: 'Süre', deger: hafta.minutes >= 60 ? `${Math.floor(hafta.minutes / 60)}s ${hafta.minutes % 60}d` : `${hafta.minutes}d` },
+                                { etiket: 'İsabet', deger: hafta.accuracy != null ? `%${hafta.accuracy}` : '—' },
+                                { etiket: 'Aktif Gün', deger: `${hafta.activeDays}/7` },
+                            ].map((s) => (
+                                <div key={s.etiket} className="rounded-dmd bg-surface-2 border border-line px-3 py-2.5">
+                                    <p className="tip-mini text-ink-3 uppercase tracking-wider">{s.etiket}</p>
+                                    <p className="tip-h4 text-ink rakam mt-0.5">{s.deger}</p>
+                                </div>
+                            ))}
+                        </div>
+                        {gelisim && (
+                            <p className={cn(
+                                'mt-3 rounded-dsm px-3 py-2 tip-small font-semibold',
+                                gelisim.fark > 0 ? 'text-ok bg-ok-soft/50' : gelisim.fark < 0 ? 'text-warn bg-warn-soft/40' : 'text-ink-2 bg-surface-2'
+                            )}>
+                                {gelisim.mesaj}
+                            </p>
+                        )}
+                    </Card>
+                )}
+
+
+                {/* ── GÜNÜN ODAK ÖZETİ ────────────────────────────── */}
+                <Card ton="sade" className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <Flame size={16} className="text-warn" aria-hidden="true" />
+                        <span className="tip-small">
+                            Bugün <span className="rakam font-bold text-ink">{dailyPomodoros}</span> odak seansı
+                        </span>
+                    </div>
+                    <Button varyant="ghost" simge={ArrowRight} simgeSagda onClick={() => onGit?.('pomodoro')}>
+                        Odaklan
+                    </Button>
+                </Card>
+            </aside>
         </div>
     );
 }

@@ -207,14 +207,27 @@ export function OlcumKarti({
  * Payda YALNIZCA vadesi gelmiş etütlerdir; gelecek etüt oranı
  * düşürmez (bkz. gelisimAnalitik.programUyumu).
  */
-export function UyumHalkasi({ oran, planlanan, tamamlanan, birim = 'etüt', altMetin, boyut = 118, className }) {
+export function UyumHalkasi({ oran, planlanan, tamamlanan, birim = 'etüt', altMetin, boyut = 118, ton = 'durum', className }) {
     if (oran === null || oran === undefined) {
         return <VeriYok sebep="vadesi-gelmis-etut-yok" boyut="kucuk" className={className} />;
     }
     const r = (boyut - 14) / 2;
     const cevre = 2 * Math.PI * r;
     const dolu = Math.max(0, Math.min(100, oran));
-    const renk = dolu >= 80 ? 'var(--ok)' : dolu >= 60 ? 'var(--warn)' : 'var(--danger)';
+    /**
+     * İKİ HALKA TÜRÜ, İKİ RENK MANTIĞI.
+     *
+     * ton='durum'  → yeşil/amber/kırmızı. Program UYUMU gibi bir
+     *   değerlendirmede doğrudur: %40 uyum gerçekten kötüdür.
+     *
+     * ton='marka'  → hep marka rengi. GÜN İÇİ ilerlemede durum rengi
+     *   yanıltıcıdır: sabah 09:00'da günün %25'i bitmiş olması normaldir,
+     *   ama kırmızı halka öğrenciye "geride kaldın" der. Gün ilerledikçe
+     *   dolan bir çubuk değerlendirme değil, sayaçtır.
+     */
+    const renk = ton === 'marka'
+        ? 'var(--brand)'
+        : dolu >= 80 ? 'var(--ok)' : dolu >= 60 ? 'var(--warn)' : 'var(--danger)';
 
     return (
         <div className={cn('flex flex-col items-center gap-1.5', className)}>
@@ -537,13 +550,22 @@ export function RiskListesi({ riskler, enFazla = 6, className }) {
 export function MotivasyonSeridi({ metin, className }) {
     if (!metin) return null;
     return (
+        /* Renk MARKA ailesinden. Sabit indigo-mor degrade eski
+           tema kalıntısıydı; turuncu kimlikte tek mor blok olarak
+           göze batıyor ve hangi bilgiyi taşıdığı belirsizleşiyordu.
+           Şerit bir başarı bildirimi, kendi başına bir kategori değil. */
         <div className={cn(
-            'flex items-center gap-3 rounded-dmd px-4 py-3 on-color',
-            'bg-gradient-to-r from-indigo-500 to-purple-500',
+            'flex items-center gap-3 rounded-dmd px-4 py-3',
+            'border',
             className
-        )}>
-            <Sparkles size={18} className="shrink-0 text-white/90" />
-            <p className="tip-small font-semibold text-white m-0">{metin}</p>
+        )}
+            style={{
+                background: 'var(--brand-soft)',
+                borderColor: 'var(--brand-line)',
+            }}
+        >
+            <Sparkles size={18} className="shrink-0" style={{ color: 'var(--brand-metin)' }} />
+            <p className="tip-small font-bold m-0" style={{ color: 'var(--brand-metin)' }}>{metin}</p>
         </div>
     );
 }

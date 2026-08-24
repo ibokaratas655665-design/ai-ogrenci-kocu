@@ -28,7 +28,10 @@
        Sayfa zemini çok açık, hafif mavi; kartlar saf beyaz olduğu
        için ayrım renk farkından değil, kenar ve gölgeden gelir.
        (23.08.2026 yeniden tasarım: referans görselin zemini.) */
-    --bg: #F3F6FC;          /* sayfa zemini — buz mavisi */
+    /* Sayfa zemini. Buz mavisiydi (#F3F6FC) ve turuncu kimlikle
+       birlikte zıt sıcaklıkta duruyordu; referanstaki nötr-sıcak
+       griye çekildi. Kartlar hâlâ saf beyaz, ayrım korunuyor. */
+    --bg: #F6F7F9;
     --surface: #FFFFFF;     /* kart / panel */
     --surface-2: #F4F7FB;   /* kart içi girinti, tablo başlığı */
     --surface-3: #EAF0F8;   /* hover, seçili satır */
@@ -63,12 +66,30 @@
        indigoya taşındı (referans görsel); lacivert #16294A koç
        kenar çubuğu ve logo zemini olarak yaşıyor (--lacivert).
        İkincil renk marka turuncusu — beyaz yazıyla 4.9:1. */
-    --brand: #4F46E5;
-    --brand-soft: #EEF0FE;
-    --brand-line: #C9CDF9;
-    --brand-hover: #4338CA;
+    --brand: #EA580C;
+    --brand-soft: #FEEDE1;
+    --brand-line: #F7C6A2;
+    --brand-hover: #C2570A;
 
-    --lacivert: #16294A;    /* koç kenar çubuğu, logo zemini */
+    /**
+     * TURUNCU ÜSTÜNDE KÜÇÜK YAZI İÇİN AYRI TON.
+     *
+     * Ölçüldü (WCAG kontrast, beyaz yazıya karşı):
+     *   #F26522 → 3.15    #EA580C → 3.56    #C2570A → 4.50
+     *
+     * Yani referanstaki canlı turuncu, üstündeki küçük beyaz yazıyla
+     * AA sınırının (4.5) altında kalıyor. Çözüm iki tonlu: dolgu ve
+     * büyük kalın buton yazısı --brand ile (AA-large sınırı 3.0),
+     * küçük metin ya da beyaz zeminde turuncu yazı --brand-metin ile.
+     * Gözle ikisi ayırt edilmez, ölçümde fark eder.
+     */
+    --brand-metin: #C2570A;
+
+    /* Referanstaki krem hero bloğu — kart değil, zemin lekesi. */
+    --krem: #FDEEE0;
+    --krem-line: #F6D9BF;
+
+    --lacivert: #16232E;    /* alt gezinme, ikon daireleri, logo zemini */
 
     --accent: #C2570A;      /* marka turuncusu, yazı/dolgu güvenli */
     --accent-soft: #FDEEDF;
@@ -91,8 +112,8 @@
     /* ── Grafik serileri (5 ayırt edilebilir ton) ───────────
        Bu renkler grafik dolgusu olduğu kadar efsane ve etiket
        YAZISI olarak da kullanılıyor; hepsi açık zeminde AA üstü. */
-    --c1: #4F46E5;
-    --c2: #C2570A;
+    --c1: #EA580C;
+    --c2: #1D4ED8;
     --c3: #15803D;
     --c4: #7C3AED;
     --c5: #0E7490;
@@ -152,12 +173,16 @@
     --ink-3: #8892A6;       /*  5.4:1 */
     --ink-on: #FFFFFF;
 
-    --brand: #8B93F8;
-    --brand-soft: #232748;
-    --brand-line: #3A4180;
-    --brand-hover: #A5ABFA;
+    --brand: #FB8A4C;
+    --brand-soft: #33200F;
+    --brand-line: #6B4322;
+    --brand-hover: #FDA574;
+    --brand-metin: #FB8A4C;   /* koyu zeminde canlı ton zaten okunur */
 
-    --lacivert: #0D1A33;
+    --krem: #2A1D12;
+    --krem-line: #4A3220;
+
+    --lacivert: #101A22;
 
     --accent: #F5A05E;
     --accent-soft: #33230F;
@@ -178,8 +203,8 @@
 
     /* Seri renkleri grafik efsanesinde YAZI olarak da kullanılıyor;
        koyu zeminde AA'yı geçecek kadar açık tutuldu. */
-    --c1: #8B93F8;
-    --c2: #F5A05E;
+    --c1: #FB8A4C;
+    --c2: #7CA9FF;
     --c3: #4ADE80;
     --c4: #BFA8FF;
     --c5: #67D3E0;
