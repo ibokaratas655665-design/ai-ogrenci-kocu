@@ -298,7 +298,25 @@ const StudentDashboard = () => {
                 const gecen = Math.max(0, Math.round((buHafta - baslangic) / (7 * 86400000)));
                 const sure = Number(programConfig?.programDurationMonths) || 1;
                 const enFazlaHafta = sure * 4;
-                const index = Math.min(gecen, enFazlaHafta - 1);
+                let index = Math.min(gecen, enFazlaHafta - 1);
+                /**
+                 * ⚠️ HESAPLANAN HAFTA PROGRAMDA HİÇ OLMAYABİLİR.
+                 * Meta'daki başlangıç tarihi eski bir programdan kalmışsa
+                 * hesap 2.-3. haftayı gösterir; koçun YENİ programı ise
+                 * yalnız 1. haftaya yazılmıştır — Bugün ekranı boş kalır
+                 * ("koçun programı görünmüyor" belirtisi). Hücre anahtarları
+                 * taranır; hesaplanan hafta boşsa ondan önceki EN YAKIN dolu
+                 * haftaya, hiç yoksa ilk dolu haftaya çekilir.
+                 */
+                const dolu = new Set();
+                Object.keys(schedule || {}).forEach((k) => {
+                    const m = /^m(\d+)-w(\d+)-/.exec(k);
+                    if (m) dolu.add((Number(m[1]) - 1) * 4 + (Number(m[2]) - 1));
+                });
+                if (dolu.size > 0 && !dolu.has(index)) {
+                    const oncekiler = [...dolu].filter((i) => i < index);
+                    index = oncekiler.length ? Math.max(...oncekiler) : Math.min(...dolu);
+                }
                 setActiveMonth(Math.floor(index / 4) + 1);
                 setActiveWeek((index % 4) + 1);
             } catch { /* hesaplanamazsa 1/1 kalır */ }

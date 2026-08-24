@@ -451,12 +451,22 @@ class FirebaseSync {
                 // Initialize hash tracking
                 this.lastSyncHashes.set(data.key, getHash(data.value));
 
-                // 🔥 KURAL: Eğer yerel veri boşsa ([], {}, null) VEYA Firebase daha yeniyse → Firebase'i al
+                // 🔥 KURAL: Yeni cihaz VEYA Firebase daha yeniyse → Firebase'i al.
+                //
+                // ⚠️ "Yerel boşsa her koşulda bulutu al" KURALI KALDIRILDI:
+                // koç programda Temizle'ye basınca yerel değer bilinçli olarak
+                // `{}` olur ve damgalanır; bulut yazımı henüz yetişmeden sayfa
+                // yenilenirse eski kural buluttaki ESKİ programı geri
+                // getiriyordu ("Temizle çalışmıyor" belirtisi). Boş yerel
+                // yalnızca damga bulut kaydından ESKİYSE doldurulur — yani
+                // boşluk kasıtlı değil, ilk-açılış artığıysa. 30 sn tolerans,
+                // iyimser damganın (+5 sn) sunucu saatiyle farkını karşılar.
                 const isEmptyLocal = !localVal || localVal === '[]' || localVal === '{}' || localVal === '""';
                 const isFbNewer = fbTime > 0 && fbTime > localTime;
                 const isNewDevice = localTime === 0;
-                
-                if (isEmptyLocal || isNewDevice || isFbNewer) {
+                const isFbFresh = fbTime > 0 && fbTime > localTime - 30000;
+
+                if (isNewDevice || isFbNewer || (isEmptyLocal && isFbFresh)) {
                     localStorage.setItem(data.key, data.value);
                     if (fbTime) localStorage.setItem(`_fbtime_${data.key}`, String(fbTime));
                     else localStorage.setItem(`_fbtime_${data.key}`, String(Date.now()));
@@ -505,25 +515,37 @@ class FirebaseSync {
         }
     }
 
+    /**
+     * @returns {Promise<true|false|null>}
+     *   true  → bulut kaydı yazıldı
+     *   false → yazılMALIydı ama yazılamadı (oturum/sahiplik yok ya da
+     *           Firestore hatası) — çağıran kullanıcıyı UYARMALI
+     *   null  → yazım bilerek atlandı (duraklatılmış, değer yok,
+     *           değişmemiş, korumalı) — uyarı gerekmez
+     *
+     * Eskiden her yol sessizce `undefined` dönüyordu; koç "kaydettim"
+     * sanıyor, kayıt buluta hiç gitmemiş olabiliyordu (yenileyince ya da
+     * öğrenci tarafında "eski program" belirtisi).
+     */
     async writeKeyToFirebase(key, force = false) {
-        if (this.paused) return;
-        if (!this.userId) return;
+        if (this.paused) return null;
+        if (!this.userId) return false;
         /**
          * Sahiplik damgası olmadan yazım YAPILMAZ. Damgasız belge, kural
          * sıkılaştırıldıktan sonra kimsenin okuyamayacağı ölü bir kayıt olur.
          */
-        if (!this.sahipUid) return;
-        if (NEVER_SYNC.some(ns => key === ns || key.startsWith(ns))) return;
-        
+        if (!this.sahipUid) return false;
+        if (NEVER_SYNC.some(ns => key === ns || key.startsWith(ns))) return null;
+
         const value = localStorage.getItem(key);
-        if (value === null) return;
-        
+        if (value === null) return null;
+
         // 🔥 KORUMA: Boş dizilerin veya objelerin (ilk yüklemede oluşan) bulutu silmesini engelle
-        if ((value === '[]' || value === '{}' || value === '""') && !force) return;
+        if ((value === '[]' || value === '{}' || value === '""') && !force) return null;
 
         // 🛰️ Change-Detection: Only write if value actually changed from last sync
         const currentHash = getHash(value);
-        if (!force && this.lastSyncHashes.get(key) === currentHash) return;
+        if (!force && this.lastSyncHashes.get(key) === currentHash) return null;
 
         try {
             const bucketId = this.havuz;
@@ -539,9 +561,11 @@ class FirebaseSync {
             this.lastSyncHashes.set(key, currentHash);
             const optimisticTime = String(Date.now() + 5000);
             localStorage.setItem(`_fbtime_${key}`, optimisticTime);
+            return true;
         } catch (e) {
             console.error(`Firebase write error for ${key}:`, e.message);
             // Handle resource-exhausted by backing off if needed (SDK does some itself)
+            return false;
         }
     }
 
@@ -604,7 +628,7 @@ class FirebaseSync {
         }
     }
 
-    async syncKey(key) { await this.writeKeyToFirebase(key, true); }
+    async syncKey(key) { return this.writeKeyToFirebase(key, true); }
 
     /**
      * 🔬 TANI — canlı ortamda kimlik zinciri ve veri envanteri

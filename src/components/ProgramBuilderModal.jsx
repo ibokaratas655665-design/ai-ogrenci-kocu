@@ -410,16 +410,24 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
          * `yaz()` hem damgayı hem storage olayını üretir; olay sayesinde
          * açık duran öğrenci paneli de anında güncellenir.
          */
-        veriYaz(`program_schedule_${studentId}`, schedule);
-        veriYaz(`program_closed_slots_${studentId}`, closedSlots);
-
         /* baslangicTarihi: tarih kilidinin (§3) dayanağı — programın
            1. ay 1. haftası hangi takvim haftasına denk geliyor.
-           Var olan programda korunur; yoksa bu haftadan başlar. */
+           SÜREN programda korunur; ama depodaki eski program BOŞSA bu
+           YENİ bir programdır ve bugünden başlar. Eski davranış tarihi
+           her koşulda koruyordu; koç haftalar sonra yeni program yapınca
+           öğrencinin "Bugün" ekranı 2.-3. haftayı arıyor, koçun yazdığı
+           1. hafta hücrelerini HİÇ göremiyordu. (Depo okuması, aşağıdaki
+           yazımlardan ÖNCE yapılmalı — yoksa "eski program" hep dolu görünür.) */
         let baslangicTarihi;
         try {
-            baslangicTarihi = JSON.parse(localStorage.getItem(`program_meta_${studentId}`) || '{}').baslangicTarihi;
+            const eskiProgram = JSON.parse(localStorage.getItem(`program_schedule_${studentId}`) || '{}');
+            if (eskiProgram && Object.keys(eskiProgram).length > 0) {
+                baslangicTarihi = JSON.parse(localStorage.getItem(`program_meta_${studentId}`) || '{}').baslangicTarihi;
+            }
         } catch { /* yoksa aşağıda üretilir */ }
+
+        veriYaz(`program_schedule_${studentId}`, schedule);
+        veriYaz(`program_closed_slots_${studentId}`, closedSlots);
         veriYaz(`program_meta_${studentId}`, {
             programDurationMonths,
             dailySlotCount,
@@ -438,12 +446,59 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2500);
 
-        /* Tam senkron da tetiklenir (öğrenci mobilde anlık görsün).
-           Hata SESSİZCE yutulmaz: koç kaydın buluta gitmediğini bilmeli,
-           yoksa "kaydettim" sanıp veriyi kaybeder. */
-        firebaseSync.sync().catch((e) => {
-            bildir(`Program bu cihaza kaydedildi ama buluta gönderilemedi: ${e?.message || 'bağlantı yok'}. İnternet gelince tekrar kaydedin.`, 'uyari');
-        });
+        /* Bulut yazımı DOĞRULANIR. `firebaseSync.sync()` hataları içeride
+           yuttuğu için buradaki catch hiç çalışmıyordu; koç "kaydettim"
+           sanıyor, kayıt buluta gitmemiş olabiliyordu (öğrenci tarafında
+           "program görünmüyor", yenilemede "eski program" belirtileri).
+           Artık dört anahtar tek tek zorla gönderilir ve biri bile
+           başarısızsa koç açıkça uyarılır. */
+        (async () => {
+            try {
+                const sonuclar = await Promise.all([
+                    `program_schedule_${studentId}`,
+                    `program_closed_slots_${studentId}`,
+                    `program_meta_${studentId}`,
+                    `student_programs_${studentId}`,
+                ].map((k) => firebaseSync.syncKey(k)));
+                if (sonuclar.some((s) => s === false)) {
+                    bildir('Program bu cihaza kaydedildi ama BULUTA GÖNDERİLEMEDİ — öğrenci güncel programı göremez. İnternet/oturumu kontrol edip tekrar "Kaydet"e basın.', 'uyari');
+                }
+            } catch (e) {
+                bildir(`Program bu cihaza kaydedildi ama buluta gönderilemedi: ${e?.message || 'bağlantı yok'}. İnternet gelince tekrar kaydedin.`, 'uyari');
+            }
+        })();
+    };
+
+    /**
+     * KAYDEDİLMEMİŞ DEĞİŞİKLİK KORUMASI.
+     *
+     * Çizelge yalnızca React state'inde yaşar; "Kaydet"e basılmadan sayfa
+     * yenilenir ya da pencere kapatılırsa emek kaybolur ve depodaki ESKİ
+     * program geri görünür ("yaptığım program yenileyince kayboldu"
+     * belirtisinin ikinci kaynağı). Ekrandaki çizelge depodakinden
+     * farklıysa hem tarayıcı yenilemesinde hem pencere kapatılırken
+     * onay istenir.
+     */
+    const kaydedilmemisVarMi = React.useCallback(() => {
+        if (!studentId) return false;
+        try {
+            const depo = JSON.parse(localStorage.getItem(`program_schedule_${studentId}`) || '{}');
+            return JSON.stringify(depo) !== JSON.stringify(schedule);
+        } catch { return Object.keys(schedule).length > 0; }
+    }, [studentId, schedule]);
+
+    useEffect(() => {
+        const uyar = (e) => {
+            if (kaydedilmemisVarMi()) { e.preventDefault(); e.returnValue = ''; }
+        };
+        window.addEventListener('beforeunload', uyar);
+        return () => window.removeEventListener('beforeunload', uyar);
+    }, [kaydedilmemisVarMi]);
+
+    const kapatmayiDene = async () => {
+        if (kaydedilmemisVarMi()
+            && !(await onayla({ mesaj: 'Kaydedilmemiş program değişiklikleri var. Kaydetmeden çıkılsın mı?', tehlikeli: true }))) return;
+        onClose();
     };
 
     const handleCellClick = async (day, slotIndex) => {
@@ -843,6 +898,38 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         (acc, i) => acc + (i.konuEtut ?? 1) + (i.soruEtut ?? 0), 0,
     );
 
+    /** Program istatistikleri — çizelgenin bütününden (tüm haftalar). */
+    const programIstatistik = React.useMemo(() => {
+        const hucreler = Object.values(schedule || {}).filter(Boolean);
+        const dersler = new Set();
+        const turler = {};
+        hucreler.forEach((h) => {
+            const t = h.type || 'konu';
+            turler[t] = (turler[t] || 0) + 1;
+            if (['konu', 'soru', 'tekrar'].includes(t) && h.subject) dersler.add(h.subject);
+        });
+        return { toplam: hucreler.length, ders: dersler.size, turler };
+    }, [schedule]);
+
+    /**
+     * Görünen haftanın gün tarihleri (sütun başlıkları için).
+     * Programın başlangıç haftası + görünen ay/hafta kaydırması; meta
+     * yoksa bu haftadan sayılır (programProgress ile aynı hesap).
+     */
+    const haftaTarihleri = React.useMemo(() => {
+        try {
+            const baslangic = programProgress.programBaslangici(studentId);
+            const t = new Date(baslangic);
+            t.setDate(t.getDate() + ((activeMonth - 1) * (weeklyMode ? 1 : 4) + (activeWeek - 1)) * 7);
+            return DAYS.map((_, i) => {
+                const g = new Date(t);
+                g.setDate(t.getDate() + i);
+                return `${g.getDate()}.${g.getMonth() + 1}`;
+            });
+        } catch { return null; }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId, activeMonth, activeWeek, weeklyMode, schedule]);
+
     /**
      * İkincil araçlar (paylaş / temizle / etütleri aç / PDF).
      *
@@ -887,9 +974,29 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 if (!studentId) return;
                 veriYaz(`program_schedule_${studentId}`, {}, { zorla: true });
                 veriYaz(`student_programs_${studentId}`, {}, { zorla: true });
-                firebaseSync.sync().catch((e) => {
-                    bildir(`Program bu cihazda temizlendi ama buluta bildirilemedi: ${e?.message || 'bağlantı yok'}.`, 'uyari');
-                });
+                /* Başlangıç tarihi de sıfırlanır: temizlikten sonra yapılacak
+                   program YENİ programdır, bugünden başlamalı. Eski tarih
+                   kalırsa öğrencinin "Bugün" ekranı ileri haftaları arar ve
+                   yeni programın 1. haftasını hiç göremez. */
+                try {
+                    const eskiMeta = JSON.parse(localStorage.getItem(`program_meta_${studentId}`) || '{}');
+                    veriYaz(`program_meta_${studentId}`, {
+                        ...eskiMeta, baslangicTarihi: null, updatedAt: new Date().toISOString(),
+                    }, { zorla: true });
+                } catch { /* meta bozuksa bir sonraki kaydetme tazeler */ }
+                /* Bulut yazımı doğrulanır — sync() hataları içeride yutar,
+                   temizliğin buluta gitmediğini koç bilmeli (yoksa yenileyince
+                   eski program buluttan geri iner). */
+                (async () => {
+                    const sonuclar = await Promise.all([
+                        `program_schedule_${studentId}`,
+                        `student_programs_${studentId}`,
+                        `program_meta_${studentId}`,
+                    ].map((k) => firebaseSync.syncKey(k)));
+                    if (sonuclar.some((s) => s === false)) {
+                        bildir('Program bu cihazda temizlendi ama buluta BİLDİRİLEMEDİ — bağlantı gelince tekrar Temizle deyin, yoksa eski program geri inebilir.', 'uyari');
+                    }
+                })();
                 bildir('Program temizlendi.', 'basari');
             }} className="px-3 py-2 bg-danger/20 hover:bg-danger text-white rounded-lg text-sm font-bold transition">
                 Temizle
@@ -1023,7 +1130,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 <CheckCircle size={16} className="lg:mr-2" />
                                 <span className="hidden sm:inline">{saveSuccess ? '✓ Kaydedildi!' : 'Kaydet'}</span>
                             </button>
-                            <button onClick={onClose} aria-label="Kapat" className="p-2 hover:bg-surface/10 rounded-full shrink-0"><X size={24} /></button>
+                            <button onClick={kapatmayiDene} aria-label="Kapat" className="p-2 hover:bg-surface/10 rounded-full shrink-0"><X size={24} /></button>
                         </div>
                     </div>
 
@@ -1055,6 +1162,59 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                     </div>
                 </div>
 
+                {/* ── ÜST FİLTRE ÇUBUĞU (referans düzeni): Sınav Türü,
+                    Hedef, Ders Seçin ve Seçim Modu üstte yatay durur.
+                    Telefonda aynı denetimler kenar sütununda olduğundan
+                    yalnız masaüstünde gösterilir. ── */}
+                <div className="hidden lg:flex items-center gap-3 px-4 py-2.5 bg-surface border-b border-line shrink-0">
+                    <label className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-ink-3">Sınav Türü</span>
+                        <select
+                            value={selectedExam}
+                            onChange={(e) => { setSelectedExam(e.target.value); setSelectedSubject(''); }}
+                            className="text-xs font-bold border border-line rounded-lg px-2 py-1.5 bg-surface outline-none focus:border-brand"
+                        >
+                            {bolumler.map((b) => <option key={b.id} value={b.id}>{b.ad}</option>)}
+                        </select>
+                    </label>
+
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-ink-3">Hedef</span>
+                        <span className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-brand-soft text-brand border border-brand-line">
+                            {sinavId}{alanId ? ` · ${alanId}` : ''}
+                        </span>
+                    </div>
+
+                    <label className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-ink-3">Ders Seçin</span>
+                        <select
+                            value={selectedSubject}
+                            onChange={(e) => setSelectedSubject(e.target.value)}
+                            className="text-xs font-bold border border-line rounded-lg px-2 py-1.5 bg-surface outline-none focus:border-brand min-w-[150px]"
+                        >
+                            <option value="">— Ders —</option>
+                            {dersSecenekleri.map((d) => <option key={d.anahtar} value={d.anahtar}>{d.ad}</option>)}
+                        </select>
+                    </label>
+
+                    <div className="ml-auto flex items-center gap-2">
+                        <button
+                            onClick={() => { setSelectionMode(!selectionMode); setSelectedCells([]); }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${selectionMode ? 'bg-brand text-white' : 'bg-surface border border-line-2 text-ink-2 hover:bg-surface-3'}`}
+                        >
+                            <CheckSquare size={14} />
+                            {selectionMode ? 'Seçim Modundan Çık' : 'Seçim Modu (Manuel)'}
+                        </button>
+                        <button
+                            onClick={() => setSidebarTab(sidebarTab === 'ayarlar' ? 'icerik' : 'ayarlar')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${sidebarTab === 'ayarlar' ? 'bg-brand text-white' : 'bg-surface border border-line-2 text-ink-2 hover:bg-surface-3'}`}
+                            title="Program ölçüsü, kriterler ve etüt saatleri"
+                        >
+                            <Settings size={14} /> Ayarlar
+                        </button>
+                    </div>
+                </div>
+
                 <div className="flex flex-1 overflow-hidden min-h-0">
                     {/* 2. Sidebar (Subject/Topic Selector) */}
                     {/* 2. Kenar Çubuğu — sekmeli.
@@ -1064,32 +1224,19 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                     <div className={`w-full lg:w-96 bg-surface border-r border-line flex-col shrink-0 min-h-0 ${
                         mobilBolme === 'icerik' ? 'flex' : 'hidden'
                     } lg:flex`}>
-                        {/* ── Kenar çubuğu sekmeleri ─────────────────── */}
-                        <div className="grid grid-cols-3 shrink-0 bg-surface-3 border-b border-line">
-                            {[
-                                { id: 'icerik', label: 'İçerik', icon: Book },
-                                { id: 'bloklar', label: 'Bloklar', icon: Layers },
-                                { id: 'ayarlar', label: 'Ayarlar', icon: Settings },
-                            ].map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setSidebarTab(t.id)}
-                                    className={`flex items-center justify-center gap-1.5 py-3 text-xs font-black uppercase tracking-wide transition border-b-2 ${
-                                        sidebarTab === t.id
-                                            ? 'bg-surface text-brand border-indigo-600'
-                                            : 'text-ink-3 border-transparent hover:text-ink-2 hover:bg-surface-2'
-                                    }`}
-                                >
-                                    <t.icon size={14} /> {t.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* ══ İÇERİK: müfredat seçimi ve dağıtım listesi ══ */}
-                        <div className={sidebarTab === 'icerik' ? 'flex-1 flex flex-col overflow-hidden' : 'hidden'}>
-                        {/* TOPIC SELECTOR - SCROLLABLE */}
-                        <div className="flex-1 overflow-y-auto p-3 border-b border-line bg-surface">
+                        {/* ══ TEK SÜTUN (referans düzeni): Ders Ekle → Bloklar
+                            → Dağıtım Listesi → Kurallar → İstatistik.
+                            Sekmeli yapı kaldırıldı — sekmeler içerikleri
+                            birbirinden saklıyordu (ders seçilince konu listesi
+                            başka sekmede kalıyordu). Ayarlar, başlıktaki
+                            "Değiştir" düğmesiyle aynı sütunda açılır. ══ */}
+                        <div className={sidebarTab !== 'ayarlar' ? 'flex-1 flex flex-col overflow-y-auto custom-scrollbar' : 'hidden'}>
+                        {/* ── DERS EKLE ─────────────────────────────── */}
+                        <div className="p-3 border-b border-line bg-surface">
                             <div className="space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-brand flex items-center gap-1.5">
+                                    <Book size={12} /> Ders Ekle
+                                </p>
                                 {/* ── SINAV TÜRÜ ─────────────────────────
                                     Bölümler öğrencinin ALANINDAN gelir — Sözel
                                     öğrencisine AYT Fen konuları düşmez. */}
@@ -1168,6 +1315,102 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                         })}
                                 </div>
 
+                                {/* ── KONU LİSTESİ ─────────────────────────
+                                    Ders seçilince konular HEMEN ALTINDA açılır.
+                                    Eskiden bu liste ayrı bir "Bloklar" sekmesinde
+                                    saklıydı; koç ders seçiyor, konu listesini
+                                    bulamıyordu. */}
+                                {selectedSubject && availableTopics.length > 0 && (
+                                    <div className="rounded-xl border border-brand-line bg-brand-soft/40 p-2">
+                                        <div className="flex justify-between items-center px-0.5 pb-1.5">
+                                            <button onClick={handleSelectAll} className="text-[10px] text-brand font-bold hover:underline">
+                                                {selectedTopics.length === availableTopics.length ? 'Seçimi Kaldır' : 'Dersi Seç'}
+                                            </button>
+                                            {selectedTopics.length > 0 && (
+                                                <button onClick={addSelectedToQueue} className="px-2 py-1 bg-ok text-white rounded text-[10px] font-bold hover:bg-ok transition shadow-sm">
+                                                    {selectedTopics.length} Ekle
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-72 overflow-y-auto custom-scrollbar space-y-1 pr-0.5">
+                                            {availableTopics
+                                                .filter((t) => !dersKonuAra.trim()
+                                                    || String(t.ad).toLocaleLowerCase('tr-TR').includes(dersKonuAra.toLocaleLowerCase('tr-TR')))
+                                                .map((topic, idx) => {
+                                                const isActive = activeTool?.topic === topic.ad;
+                                                const isSelected = selectedTopics.some((t) => t.ad === topic.ad);
+                                                const kuyruktaVar = distributionQueue.some(
+                                                    (q) => q.bolum === selectedExam && q.ders === selectedSubject && q.konu === topic.ad,
+                                                );
+                                                const zorlukEtiketi = { 1: 'Kolay', 2: 'Orta', 3: 'Zor' }[topic.zorluk] || 'Orta';
+                                                const zorlukRengi = { 1: 'text-ok', 2: 'text-warn', 3: 'text-danger' }[topic.zorluk] || 'text-warn';
+
+                                                return (
+                                                    <div key={topic.ad || idx} className="flex gap-1 group">
+                                                        <div className="flex items-center justify-center pl-0.5">
+                                                            <button
+                                                                onClick={() => toggleTopicSelection(topic)}
+                                                                className={`p-1 rounded hover:bg-surface-3 transition ${isSelected ? 'text-brand' : 'text-ink-3'}`}
+                                                                aria-label={`${topic.ad} seç`}
+                                                            >
+                                                                {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                                                            </button>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleToolSelect(topic)}
+                                                            className={`flex-1 text-left px-2.5 py-2 rounded-lg text-[11px] font-semibold transition border min-w-0 ${isActive ? 'bg-brand text-white border-brand shadow-md' : 'bg-surface text-ink-2 border-line hover:bg-brand-soft hover:border-brand-line'}`}
+                                                        >
+                                                            <span className="flex items-center gap-1.5 min-w-0">
+                                                                <span className="truncate">{topic.ad}</span>
+                                                                {topic.bitti && (
+                                                                    <span
+                                                                        className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-ok-soft text-ok border border-ok/30"
+                                                                        title="Öğrenci bu konuyu tamamladı — tekrar/pekiştirme için yine seçebilirsiniz"
+                                                                    >
+                                                                        ✓ BİTTİ
+                                                                    </span>
+                                                                )}
+                                                                {!topic.bitti && topic.durum === 'tekrar' && (
+                                                                    <span className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-warn-soft text-warn border border-warn/30" title="Hedef soru doldu ama isabet düşük — tekrar gerekiyor">
+                                                                        ⚠ TEKRAR
+                                                                    </span>
+                                                                )}
+                                                            </span>
+                                                            <span className={`block mt-0.5 text-[9px] font-bold ${isActive ? 'text-white/80' : 'text-ink-3'}`}>
+                                                                <span className={isActive ? '' : zorlukRengi}>{zorlukEtiketi}</span>
+                                                                {' · '}sınavda ~{topic.agirlik} soru
+                                                                {topic.hedef != null && (
+                                                                    <> · {topic.soru}/{topic.hedef} soru çözüldü</>
+                                                                )}
+                                                            </span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (kuyruktaVar) return;
+                                                                const kayit = {
+                                                                    bolum: selectedExam, ders: selectedSubject,
+                                                                    dersAd: dersAdi(selectedSubject), konu: topic.ad,
+                                                                    agirlik: topic.agirlik, zorluk: topic.zorluk,
+                                                                    hedef: topic.hedef, kalanSoru: topic.kalanSoru, bitti: topic.bitti,
+                                                                    subject: dersAdi(selectedSubject), topic: topic.ad, exam: selectedExam,
+                                                                };
+                                                                kayit.konuEtut = konuEtutIhtiyaci(kayit);
+                                                                kayit.soruEtut = soruEtutIhtiyaci(kayit, kriterler);
+                                                                setDistributionQueue([...distributionQueue, kayit]);
+                                                            }}
+                                                            disabled={kuyruktaVar}
+                                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft flex items-center justify-center font-bold disabled:opacity-40"
+                                                            title={kuyruktaVar ? 'Bu konu listede zaten var' : 'Listeye Ekle'}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* 🔁 Geçen dönemin eksikleri — programı öğrencinin
                                     gerçekte yaptıklarıyla endekslemenin yolu */}
                                 {carryOver.length > 0 && (
@@ -1213,18 +1456,98 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                             </div>
                         </div>
 
-                        {/* Bulk Selection Actions */}
-                        <div className="px-3 pt-2 pb-1 flex justify-between items-center bg-surface-2">
-                            <div className="flex space-x-2">
-                                <button onClick={handleSelectAll} className="text-[10px] text-brand font-bold hover:underline">
-                                    {selectedTopics.length === availableTopics.length ? 'Seçimi Kaldır' : 'Dersi Seç'}
-                                </button>
+                        {/* ── HAZIR BLOKLAR & ELLE BOYAMA (eski "Bloklar"
+                            sekmesinin içeriği — artık aynı sütunda) ── */}
+                        <div className="p-3 bg-surface border-b border-line space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-ink-3">
+                                Hazır Bloklar — tıkla, sonra hücreye boya
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {STANDALONE_ACTIVITIES.map(id => {
+                                    const a = ACTIVITY_TYPES[id];
+                                    const c = a.color;
+                                    const isActive = activeTool?.type === id;
+                                    return (
+                                        <button
+                                            key={id}
+                                            title={a.description}
+                                            onClick={() => setActiveTool({
+                                                subject: a.label,
+                                                topic: DEFAULT_ACTIVITY_TOPIC[id] || '',
+                                                type: id,
+                                                exam: '',
+                                            })}
+                                            className="flex items-center gap-1.5 px-2 py-2 rounded-lg text-left transition active:scale-95"
+                                            style={{
+                                                backgroundColor: isActive ? c.border : c.bg,
+                                                color: isActive ? '#fff' : c.text,
+                                                border: `1.5px solid ${c.border}${isActive ? '' : '55'}`,
+                                                boxShadow: isActive ? `0 0 0 3px ${c.border}33` : 'none',
+                                            }}
+                                        >
+                                            <span className="text-sm leading-none">{a.icon}</span>
+                                            <span className="text-[10px] font-black leading-tight">{a.label}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            {selectedTopics.length > 0 && (
-                                <button onClick={addSelectedToQueue} className="px-2 py-1 bg-ok text-white rounded text-[10px] font-bold hover:bg-ok transition shadow-sm">
-                                    {selectedTopics.length} Ekle
-                                </button>
-                            )}
+
+                            <button
+                                onClick={() => setActiveTool(activeTool === 'eraser' ? null : 'eraser')}
+                                className={`w-full text-left px-3 py-2 rounded-xl border-2 transition flex items-center font-bold text-xs ${activeTool === 'eraser' ? 'border-danger bg-danger-soft text-danger' : 'border-dashed border-line-2 text-ink-2 hover:bg-surface-3'}`}
+                            >
+                                <Trash2 size={14} className="mr-2" /> Silgi — hücreye tıkla, sil
+                            </button>
+
+                            <details className="group">
+                                <summary className="text-xs font-bold text-brand cursor-pointer flex items-center justify-between outline-none">
+                                    <span className="flex items-center"><PlusCircle size={14} className="mr-1" /> Özel Ders / Konu Ekle</span>
+                                    <ChevronDown size={14} className="group-open:rotate-180 transition" />
+                                </summary>
+                                <div className="mt-2 space-y-2">
+                                    <input
+                                        type="text"
+                                        value={manualSubject}
+                                        onChange={e => setManualSubject(e.target.value)}
+                                        placeholder="Örn: Tekrar, Etüt, Okuma"
+                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={manualTopic}
+                                        onChange={e => setManualTopic(e.target.value)}
+                                        placeholder="Konu veya açıklama..."
+                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400"
+                                    />
+                                    <select
+                                        value={manualExam}
+                                        onChange={e => setManualExam(e.target.value)}
+                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400 bg-surface"
+                                    >
+                                        <option value="">Bölüm Seç (isteğe bağlı)</option>
+                                        {bolumler.map(b => (
+                                            <option key={b.id} value={b.id}>{b.ad}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={() => {
+                                            if (!manualSubject) return bildir("Ders adı girmelisiniz.");
+                                            setActiveTool({
+                                                subject: manualSubject,
+                                                topic: manualTopic || '', // Boş bırakılabilsin
+                                                color: 'bg-brand-soft border-brand-line text-brand',
+                                                exam: manualExam || ''
+                                            });
+                                            setManualSubject('');
+                                            setManualTopic('');
+                                            setManualExam('');
+                                        }}
+                                        className="w-full py-1.5 bg-brand-soft text-brand text-xs font-bold rounded hover:bg-brand-soft transition border border-brand-line"
+                                    >
+                                        Manuel Fırça Olarak Seç
+                                    </button>
+                                </div>
+                            </details>
                         </div>
 
                         {/* ══ PROGRAM HAFIZASI ══════════════════════════
@@ -1355,190 +1678,50 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     ))}
                                 </ul>
                             </div>
-                        </div>
-                        </div>
 
-                        {/* ══ BLOKLAR: hazır fırçalar ve elle boyama ══ */}
-                        <div className={sidebarTab === 'bloklar' ? 'flex-1 flex flex-col overflow-y-auto' : 'hidden'}>
-                        {/* 🎨 HAZIR AKTİVİTE FIRÇALARI */}
-                        <div className="p-3 bg-surface border-b border-line">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-ink-3 mb-2">
-                                Hazır Bloklar — tıkla, sonra hücreye boya
-                            </p>
-                            <div className="grid grid-cols-2 gap-1.5">
-                                {STANDALONE_ACTIVITIES.map(id => {
-                                    const a = ACTIVITY_TYPES[id];
-                                    const c = a.color;
-                                    const isActive = activeTool?.type === id;
-                                    return (
-                                        <button
-                                            key={id}
-                                            title={a.description}
-                                            onClick={() => setActiveTool({
-                                                subject: a.label,
-                                                topic: DEFAULT_ACTIVITY_TOPIC[id] || '',
-                                                type: id,
-                                                exam: '',
+                            {/* ── PROGRAM İSTATİSTİKLERİ (referans düzeni) ── */}
+                            <div className="mt-2 rounded-xl bg-surface border border-line p-2.5">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-ink-3 mb-1.5">Program İstatistikleri</p>
+                                {programIstatistik.toplam === 0 ? (
+                                    <p className="text-[10px] text-ink-3 italic">Henüz etüt yerleştirilmedi.</p>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <div className="rounded-lg bg-surface-2 px-2 py-1.5">
+                                            <p className="text-sm font-black text-ink leading-none">{programIstatistik.toplam}</p>
+                                            <p className="text-[8px] font-black uppercase tracking-wider text-ink-3 mt-0.5">Dolu Etüt</p>
+                                        </div>
+                                        <div className="rounded-lg bg-surface-2 px-2 py-1.5">
+                                            <p className="text-sm font-black text-ink leading-none">{programIstatistik.ders}</p>
+                                            <p className="text-[8px] font-black uppercase tracking-wider text-ink-3 mt-0.5">Farklı Ders</p>
+                                        </div>
+                                        {Object.entries(programIstatistik.turler)
+                                            .filter(([, n]) => n > 0)
+                                            .map(([t, n]) => {
+                                                const a = ACTIVITY_TYPES[t];
+                                                if (!a) return null;
+                                                return (
+                                                    <div key={t} className="flex items-center justify-between rounded-lg bg-surface-2 px-2 py-1">
+                                                        <span className="text-[9px] font-bold text-ink-2">{a.icon} {a.short}</span>
+                                                        <span className="text-[10px] font-black text-ink">{n}</span>
+                                                    </div>
+                                                );
                                             })}
-                                            className="flex items-center gap-1.5 px-2 py-2 rounded-lg text-left transition active:scale-95"
-                                            style={{
-                                                backgroundColor: isActive ? c.border : c.bg,
-                                                color: isActive ? '#fff' : c.text,
-                                                border: `1.5px solid ${c.border}${isActive ? '' : '55'}`,
-                                                boxShadow: isActive ? `0 0 0 3px ${c.border}33` : 'none',
-                                            }}
-                                        >
-                                            <span className="text-sm leading-none">{a.icon}</span>
-                                            <span className="text-[10px] font-black leading-tight">{a.label}</span>
-                                        </button>
-                                    );
-                                })}
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        {/* Manual Entry Section */}
-                        <div className="p-3 bg-surface border-b border-line">
-                            <details className="group">
-                                <summary className="text-xs font-bold text-brand cursor-pointer flex items-center justify-between outline-none">
-                                    <span className="flex items-center"><PlusCircle size={14} className="mr-1" /> Özel Ders / Konu Ekle</span>
-                                    <ChevronDown size={14} className="group-open:rotate-180 transition" />
-                                </summary>
-                                <div className="mt-2 space-y-2">
-                                    <input
-                                        type="text"
-                                        value={manualSubject}
-                                        onChange={e => setManualSubject(e.target.value)}
-                                        placeholder="Örn: Tekrar, Etüt, Okuma"
-                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400"
-                                    />
-                                    <input
-                                        type="text"
-                                        value={manualTopic}
-                                        onChange={e => setManualTopic(e.target.value)}
-                                        placeholder="Konu veya açıklama..."
-                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400"
-                                    />
-                                    <select
-                                        value={manualExam}
-                                        onChange={e => setManualExam(e.target.value)}
-                                        className="w-full text-xs p-1.5 border border-brand-line rounded outline-none focus:border-indigo-400 bg-surface"
-                                    >
-                                        <option value="">Bölüm Seç (isteğe bağlı)</option>
-                                        {bolumler.map(b => (
-                                            <option key={b.id} value={b.id}>{b.ad}</option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        onClick={() => {
-                                            if (!manualSubject) return bildir("Ders adı girmelisiniz.");
-                                            setActiveTool({
-                                                subject: manualSubject,
-                                                topic: manualTopic || '', // Boş bırakılabilsin
-                                                color: 'bg-brand-soft border-brand-line text-brand',
-                                                exam: manualExam || ''
-                                            });
-                                            setManualSubject('');
-                                            setManualTopic('');
-                                            setManualExam('');
-                                        }}
-                                        className="w-full py-1.5 bg-brand-soft text-brand text-xs font-bold rounded hover:bg-brand-soft transition border border-brand-line"
-                                    >
-                                        Manuel Fırça Olarak Seç
-                                    </button>
-                                </div>
-                            </details>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                            <button
-                                onClick={() => setActiveTool('eraser')}
-                                className={`w-full text-left px-3 py-2.5 rounded-xl border-2 transition flex items-center font-bold mb-4 ${activeTool === 'eraser' ? 'border-danger bg-danger-soft text-danger' : 'border-dashed border-line-2 text-ink-2 hover:bg-surface-3'}`}
-                            >
-                                <Trash2 size={16} className="mr-3" /> Silgi
-                            </button>
-
-                            {/* Konu satırı: zorluk, sınav ağırlığı, öğrencinin
-                                durumu ve BİTEN UYARISI. Uyarı seçimi ENGELLEMEZ —
-                                tekrar/pekiştirme için koç yine seçebilir. */}
-                            {availableTopics && availableTopics.length > 0 && availableTopics
-                                .filter((t) => !dersKonuAra.trim()
-                                    || String(t.ad).toLocaleLowerCase('tr-TR').includes(dersKonuAra.toLocaleLowerCase('tr-TR')))
-                                .map((topic, idx) => {
-                                const isActive = activeTool?.topic === topic.ad;
-                                const isSelected = selectedTopics.some((t) => t.ad === topic.ad);
-                                const kuyruktaVar = distributionQueue.some(
-                                    (q) => q.bolum === selectedExam && q.ders === selectedSubject && q.konu === topic.ad,
-                                );
-                                const zorlukEtiketi = { 1: 'Kolay', 2: 'Orta', 3: 'Zor' }[topic.zorluk] || 'Orta';
-                                const zorlukRengi = { 1: 'text-ok', 2: 'text-warn', 3: 'text-danger' }[topic.zorluk] || 'text-warn';
-
-                                return (
-                                    <div key={topic.ad || idx} className="flex gap-1 group">
-                                        <div className="flex items-center justify-center pl-1">
-                                            <button
-                                                onClick={() => toggleTopicSelection(topic)}
-                                                className={`p-1 rounded hover:bg-surface-3 transition ${isSelected ? 'text-brand' : 'text-ink-3'}`}
-                                                aria-label={`${topic.ad} seç`}
-                                            >
-                                                {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-                                            </button>
-                                        </div>
-                                        <button
-                                            onClick={() => handleToolSelect(topic)}
-                                            className={`flex-1 text-left px-2.5 py-2 rounded-lg text-[11px] font-semibold transition border min-w-0 ${isActive ? 'bg-brand text-white border-brand shadow-md' : 'bg-surface text-ink-2 border-line hover:bg-brand-soft hover:border-brand-line'}`}
-                                        >
-                                            <span className="flex items-center gap-1.5 min-w-0">
-                                                <span className="truncate">{topic.ad}</span>
-                                                {topic.bitti && (
-                                                    <span
-                                                        className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-ok-soft text-ok border border-ok/30"
-                                                        title="Öğrenci bu konuyu tamamladı — tekrar/pekiştirme için yine seçebilirsiniz"
-                                                    >
-                                                        ✓ BİTTİ
-                                                    </span>
-                                                )}
-                                                {!topic.bitti && topic.durum === 'tekrar' && (
-                                                    <span className="shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-warn-soft text-warn border border-warn/30" title="Hedef soru doldu ama isabet düşük — tekrar gerekiyor">
-                                                        ⚠ TEKRAR
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className={`block mt-0.5 text-[9px] font-bold ${isActive ? 'text-white/80' : 'text-ink-3'}`}>
-                                                <span className={isActive ? '' : zorlukRengi}>{zorlukEtiketi}</span>
-                                                {' · '}sınavda ~{topic.agirlik} soru
-                                                {topic.hedef != null && (
-                                                    <> · {topic.soru}/{topic.hedef} soru çözüldü</>
-                                                )}
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                if (kuyruktaVar) return;
-                                                const kayit = {
-                                                    bolum: selectedExam, ders: selectedSubject,
-                                                    dersAd: dersAdi(selectedSubject), konu: topic.ad,
-                                                    agirlik: topic.agirlik, zorluk: topic.zorluk,
-                                                    hedef: topic.hedef, kalanSoru: topic.kalanSoru, bitti: topic.bitti,
-                                                    subject: dersAdi(selectedSubject), topic: topic.ad, exam: selectedExam,
-                                                };
-                                                kayit.konuEtut = konuEtutIhtiyaci(kayit);
-                                                kayit.soruEtut = soruEtutIhtiyaci(kayit, kriterler);
-                                                setDistributionQueue([...distributionQueue, kayit]);
-                                            }}
-                                            disabled={kuyruktaVar}
-                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft flex items-center justify-center font-bold disabled:opacity-40"
-                                            title={kuyruktaVar ? 'Bu konu listede zaten var' : 'Listeye Ekle'}
-                                        >
-                                            +
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        </div>
-
-                        {/* ══ AYARLAR: ölçü, kriterler, etüt saatleri ══ */}
+                        {/* ══ AYARLAR: ölçü, kriterler, etüt saatleri.
+                            Başlıktaki "Değiştir" düğmesiyle açılır; sekme
+                            şeridi kaldırıldığı için başa dönüş düğmesi var. ══ */}
                         <div className={sidebarTab === 'ayarlar' ? 'flex-1 overflow-y-auto p-3 space-y-3 bg-surface-2' : 'hidden'}>
+                        <button
+                            onClick={() => setSidebarTab('icerik')}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-brand text-white text-xs font-black shadow hover:bg-brand-hover transition"
+                        >
+                            ← Ders Seçimine Dön
+                        </button>
                         {/* ── Program ölçüsü ─────────────────────────── */}
                         <div className="rounded-xl border border-line bg-surface p-3 space-y-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-ink-3">Program Ölçüsü</p>
@@ -1813,12 +1996,14 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 ))}
                             </div>
                             <div className="flex flex-wrap gap-2">
+                                {/* Telefonda görünür; masaüstünde aynı düğme üst
+                                    filtre çubuğunda durur (referans düzeni). */}
                                 <button
                                     onClick={() => {
                                         setSelectionMode(!selectionMode);
                                         setSelectedCells([]);
                                     }}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${selectionMode ? 'bg-brand text-ink' : 'bg-surface border border-line-2 text-ink-2 hover:bg-surface-3'}`}
+                                    className={`lg:hidden px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${selectionMode ? 'bg-brand text-ink' : 'bg-surface border border-line-2 text-ink-2 hover:bg-surface-3'}`}
                                 >
                                     <CheckSquare size={14} />
                                     {selectionMode ? 'Seçim Modundan Çık' : 'Seçim Modu (Manuel Seçim)'}
@@ -1910,12 +2095,12 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     <div className="rounded-xl bg-surface-inv text-white font-black py-3 text-center flex items-center justify-center text-[10px] tracking-[0.2em]">
                                         ETÜT
                                     </div>
-                                    {DAYS.map(day => {
+                                    {DAYS.map((day, gunIdx) => {
                                         const weekend = day === 'Cumartesi' || day === 'Pazar';
                                         return (
                                             <div
                                                 key={day}
-                                                className={`rounded-xl py-3 text-center font-black uppercase text-[11px] tracking-wide notranslate ${
+                                                className={`rounded-xl py-2 text-center font-black uppercase text-[11px] tracking-wide notranslate ${
                                                     weekend
                                                         ? 'bg-brand text-white'
                                                         : 'bg-surface-3 text-ink-2'
@@ -1923,6 +2108,11 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                 translate="no"
                                             >
                                                 {day}
+                                                {haftaTarihleri && (
+                                                    <span className={`block text-[9px] font-bold mt-0.5 normal-case tracking-normal ${weekend ? 'text-white/70' : 'text-ink-3'}`}>
+                                                        {haftaTarihleri[gunIdx]}
+                                                    </span>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -2052,8 +2242,12 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                                 })()}
                                                             </div>
                                                         ) : (
-                                                            <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-30 transition">
-                                                                <PlusCircle size={18} className="text-ink-3" />
+                                                            /* Boş hücre görünür davet taşır (referans düzeni):
+                                                               eskiden yalnız hover'da beliren ikon vardı, koç
+                                                               boş hücreye tıklanabileceğini fark etmiyordu. */
+                                                            <div className="h-full w-full flex flex-col items-center justify-center gap-1 opacity-35 group-hover:opacity-80 transition text-ink-3">
+                                                                <PlusCircle size={16} />
+                                                                <span className="text-[9px] font-bold">Etüt Ekle</span>
                                                             </div>
                                                         )}
                                                     </div>
