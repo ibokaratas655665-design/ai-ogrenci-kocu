@@ -264,27 +264,16 @@ export default function BugunEkrani({
     }, [simdi]);
 
     /**
-     * ETÜT SAAT ARALIKLARI — TÜRETİLMİŞ, KAYITLI DEĞİL.
+     * NOT — SAAT SÜTUNU YOK.
      *
-     * ⚠️ Programda etüt SAATİ tutulmuyor; yalnızca gün ve sıra var
-     * (m1-w1-Pazartesi-0). Referans görselde saat aralığı olduğu için
-     * burada varsayılan bir şemadan türetiliyor: ilk etüt 09:00,
-     * her etüt 60 dakika, aralarda 30 dakika ara.
-     *
-     * Bu bir VARSAYIMDIR, öğrencinin gerçek takvimi değil. Bu yüzden
-     * saat ikincil (soluk) yazılır ve etüt sırası birincil kalır —
-     * öğrenci saati kesin bir randevu sanmasın. Koç panelinde etüt
-     * saati alanı açılırsa burası o veriyi okur.
+     * Referans görselde etüt satırlarında saat aralığı vardı
+     * (09:00-10:00, 60 dk) ve bir süre varsayılan bir şemadan
+     * türetiliyordu. Kaldırıldı: programda etüt SAATİ tutulmuyor,
+     * yalnızca gün ve sıra var (m1-w1-Pazartesi-0). Türetilmiş saat
+     * öğrenciye kesin bir randevu gibi görünür ve olmayan bir
+     * taahhüdü varmış gibi gösterirdi. Yerine gerçek olan yazılıyor:
+     * kaçıncı etüt olduğu.
      */
-    const ETUT_BASLANGIC = 9 * 60;      // 09:00
-    const ETUT_SURE = 60;
-    const ETUT_ARA = 30;
-    const saatAraligi = (sira) => {
-        const bas = ETUT_BASLANGIC + sira * (ETUT_SURE + ETUT_ARA);
-        const bit = bas + ETUT_SURE;
-        const yaz = (dk) => `${String(Math.floor(dk / 60) % 24).padStart(2, '0')}:${String(dk % 60).padStart(2, '0')}`;
-        return { metin: `${yaz(bas)} - ${yaz(bit)}`, sure: ETUT_SURE, gecti: (simdi.getHours() * 60 + simdi.getMinutes()) > bit };
-    };
 
     /**
      * HAFTALIK PROGRAM DURUMU — üç kova, örtüşmez.
@@ -490,7 +479,6 @@ export default function BugunEkrani({
                                     {bugunEtutleri.map((e) => {
                                         const bitti = e.durum === 'done';
                                         const yeniIsaret = sonIsaretlenen === e.key;
-                                        const saat = saatAraligi(e.sira);
                                         const sirada = !bitti && sonraki?.key === e.key;
                                         return (
                                             <li key={e.key} className={cn('px-5 sm:px-6 py-3 flex items-center gap-3', bitti && 'bg-ok-soft/30')}>
@@ -518,11 +506,10 @@ export default function BugunEkrani({
                                                     </span>
                                                 </span>
 
-                                                {/* Saat TÜRETİLMİŞTİR (bkz. saatAraligi notu):
-                                                    bu yüzden soluk ve ikincil. */}
+                                                {/* Kaçıncı etüt — programda tutulan gerçek bilgi.
+                                                    Saat aralığı yok çünkü kaydedilmiyor. */}
                                                 <span className="hidden sm:block shrink-0 text-right">
-                                                    <span className="tip-mini text-ink-2 block tabular-nums">{saat.metin}</span>
-                                                    <span className="tip-mini text-ink-3 block">{saat.sure} dk</span>
+                                                    <span className="tip-mini text-ink-2 block tabular-nums font-bold">{e.sira + 1}. etüt</span>
                                                 </span>
 
                                                 <button
