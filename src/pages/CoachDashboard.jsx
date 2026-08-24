@@ -37,6 +37,7 @@ import StudentComparisonTable from '../components/coach/StudentComparisonTable';
 import StudentProgressComparison from '../components/coach/StudentProgressComparison';
 import { AICoachButton } from '../components/AICoachChat';
 import BulkMessageModal from '../components/coach/BulkMessageModal';
+import CoachInbox from '../components/coach/CoachInbox';
 import { CoachBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import KocGenelBakis from '../components/coach/KocGenelBakis';
@@ -189,6 +190,10 @@ const NAV_BY_SECTION = {
             label: 'İletişim ve Takip',
             accent: 'var(--c4)',
             items: [
+                /* 24.08.2026: koç öğrencileriyle tek ekrandan yazışamıyordu,
+                   her biri için StudentDetailPage'e tek tek girmesi
+                   gerekiyordu. Sohbet mantığı orasıyla birebir aynı. */
+                { id: 'inbox', icon: MODULE_ICONS.messages, label: 'Mesajlar', ortak: true },
                 { id: 'groups', icon: MODULE_ICONS.groups, label: 'Gruplar', perm: 'groups', ortak: true },
                 { id: 'whatsapp', icon: MODULE_ICONS.whatsapp, label: 'WhatsApp', perm: 'whatsapp', ortak: true },
                 { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevular', perm: 'appointments', ortak: true },
@@ -3497,6 +3502,9 @@ const CoachDashboard = () => {
                         )}
 
                         {/* NEW WORKING TABS */}
+                        {activeTab === 'inbox' && (
+                            <CoachInbox students={students} onOgrenciAc={(id) => navigate(`/coach/student/${id}`)} />
+                        )}
                         {activeTab === 'groups' && <GroupsTab students={students} setToast={setToast} bolum={bolum} />}
                         {activeTab === 'projects' && <ProjectsTab students={students} setToast={setToast} />}
                         {activeTab === 'leaderboard' && <LeaderboardTab students={students} />}

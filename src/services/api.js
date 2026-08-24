@@ -250,6 +250,34 @@ const api = {
                 }
             }
             return newMessage;
+        },
+
+        /* Koç bir öğrencinin sohbetini açtığında öğrenciden gelen
+           mesajları "okundu" işaretler — Genel Bakış'taki "Okunmamış
+           Mesaj" sayacı buna bakıyor (aksi hâlde hep artan bir sayı
+           olurdu). sendMessage ile aynı anahtar çözümlemesini kullanır. */
+        async markAsReadByCoach(studentId, studentInfo) {
+            const allMessages = safeParse('student_messages', {});
+            const coachStudents = safeParse('coach_students');
+            const student = studentInfo ||
+                coachStudents.find(s =>
+                    String(s.id) === String(studentId) ||
+                    String(s.schoolNumber) === String(studentId)
+                );
+            const keys = new Set([String(studentId)]);
+            if (student?.id) keys.add(String(student.id));
+            if (student?.schoolNumber) keys.add(String(student.schoolNumber));
+
+            let changed = false;
+            keys.forEach(k => {
+                if (!allMessages[k]) return;
+                allMessages[k] = allMessages[k].map(m => {
+                    if (m.sender === 'student' && !m.read) { changed = true; return { ...m, read: true }; }
+                    return m;
+                });
+            });
+            if (changed) yaz('student_messages', allMessages);
+            return changed;
         }
     },
 
