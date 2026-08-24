@@ -23,6 +23,29 @@ export const GamificationProvider = ({ children, userId }) => {
     // ── State ────────────────────────────────────────────────────
     const key = userId ? `gamification_${userId}` : 'gamification_guest';
 
+    /**
+     * MİSAFİR VERİSİNİ BİR KEZ DEVRAL.
+     *
+     * Sağlayıcı uzun süre AuthProvider'ın dışındaydı ve kimlik
+     * göremediği için herkesin ilerlemesi 'gamification_guest'e
+     * yazıldı. Sıra düzeltildiğinde o birikim öylece kaybolurdu.
+     *
+     * Kullanıcının kendi kutusu HENÜZ YOKSA misafir kutusu ona
+     * taşınır. Kendi kutusu varsa dokunulmaz — devralma yalnızca
+     * bir kez, boş kutuya yapılır.
+     */
+    useEffect(() => {
+        if (!userId) return;
+        try {
+            if (localStorage.getItem(key)) return;
+            const misafir = localStorage.getItem('gamification_guest');
+            if (!misafir) return;
+            localStorage.setItem(key, misafir);
+            setStats(JSON.parse(misafir));
+        } catch { /* bozuk kayıt varsa devralmadan devam */ }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId]);
+
     const [stats, setStats] = useState(() => {
         try {
             const saved = localStorage.getItem(key);

@@ -173,8 +173,20 @@ function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        <GamificationProvider>
+          {/* ⚠️ SIRA ÖNEMLİ — ÖLÇÜLMÜŞ BİR KUSUR.
+              GamificationProvider AuthProvider'ın DIŞINDAYDI ve `userId`
+              hiç verilmiyordu. Sağlayıcı da `userId` yoksa
+              'gamification_guest' anahtarına düşüyor. Sonuç: öğrencinin
+              XP'si, rozetleri ve serisi kendi hesabına değil ortak bir
+              misafir kutusuna yazılıyordu. Aynı cihazda iki öğrenci
+              (ya da koç ile öğrenci) aynı kutuyu paylaşıyordu.
+
+              Ölçüldü: gamification_test_ogr_1 içinde 1840 XP dururken
+              ekran 10 XP gösteriyordu — okunan anahtar guest'ti.
+
+              Artık Auth içinde ve kimlik köprüsüyle besleniyor. */}
           <AuthProvider>
+            <OyunlastirmaKopru>
             {/* Toast ve onay penceresi tek yerden; tarayıcının
                 alert/confirm diyaloglarının yerini alır */}
             <UIGeriBildirimProvider>
@@ -281,11 +293,24 @@ function App() {
             </HashRouter>
           </GlobalErrorBoundary>
             </UIGeriBildirimProvider>
+            </OyunlastirmaKopru>
         </AuthProvider>
-        </GamificationProvider>
       </NotificationProvider>
     </ThemeProvider>
   );
+}
+
+/**
+ * Oyunlaştırma köprüsü.
+ *
+ * `GamificationProvider` kullanıcı kimliğini prop olarak bekliyor ama
+ * `useAuth()` yalnızca AuthProvider'ın İÇİNDE çağrılabilir. Bu ince
+ * bileşen o sınırı geçirir: Auth'un içinde durur, kimliği okur ve
+ * sağlayıcıya verir.
+ */
+function OyunlastirmaKopru({ children }) {
+  const { user } = useAuth();
+  return <GamificationProvider userId={user?.id}>{children}</GamificationProvider>;
 }
 
 // Güvenlik Duvarı Bileşeni
