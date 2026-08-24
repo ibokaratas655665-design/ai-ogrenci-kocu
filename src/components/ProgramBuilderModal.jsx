@@ -10,7 +10,7 @@ import MARKA from '../data/marka';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { ACTIVITY_TYPES, STANDALONE_ACTIVITIES, getCellColor, getSubjectColor, getSubjectLabel, isActivityBlock, buildLegend } from '../data/programColors';
-import { programUret, KRITER_VARSAYILANLARI, konuEtutIhtiyaci, soruEtutIhtiyaci } from '../utils/programMotoru';
+import { programUret, programDenetle, KRITER_VARSAYILANLARI, konuEtutIhtiyaci, soruEtutIhtiyaci } from '../utils/programMotoru';
 import { SINAVLAR, dersAdi, ogrencininSinavi, ogrencininAlani, ogrencininBolumleri } from '../data/examTopics';
 import topics from '../services/topicProgressService';
 import programProgress from '../services/programProgressService';
@@ -177,6 +177,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     // Selection Mode States
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedCells, setSelectedCells] = useState([]);
+    /* Ders/konu arama — soldaki listeyi süzer (dropdown yerine görünür liste) */
+    const [dersKonuAra, setDersKonuAra] = useState('');
 
     /**
      * 🧠 Program kriterleri — Program Motoru 2.0'a geçilir ve
@@ -308,12 +310,44 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 for (const ders of h.dersler) {
                     for (const satir of ders.konular) {
                         harita[`${b.id}|${ders.ders}|${satir.konu}`] = satir;
+                        /* Program hücreleri dersin GÖRÜNEN adını taşır
+                           (subject: 'Matematik'); kartta durum gösterebilmek
+                           için ad bazlı anahtar da yazılır. */
+                        harita[`${b.id}|${dersAdi(ders.ders)}|${satir.konu}`] = satir;
                     }
                 }
             } catch { /* konu haritası okunamazsa uyarısız devam */ }
         }
         setKonuDurumHaritasi(harita);
     }, [studentId, sinavId, bolumler]);
+
+    /**
+     * ÖĞRENCİNİN GERÇEKLEŞEN ÇALIŞMASI — program_progress kaydı.
+     * Koç plan yapar (PLANLANDI), öğrenci etüdü işaretler (YAPILDI);
+     * kart bu ikisini ayrı gösterir. Öğrenci başka cihazda işaretlerse
+     * senkron storage olayı bu ekranı da tazeler.
+     */
+    const [ogrenciIlerleme, setOgrenciIlerleme] = useState({});
+    useEffect(() => {
+        if (!studentId) return;
+        const yukle = () => {
+            try { setOgrenciIlerleme(programProgress.getProgress(studentId) || {}); }
+            catch { setOgrenciIlerleme({}); }
+        };
+        yukle();
+        const dinle = (e) => { if (!e.key || String(e.key).startsWith('program_progress')) yukle(); };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, [studentId]);
+
+    /** Hücredeki konunun, öğrencinin konu takibindeki durumu (varsa). */
+    const konuDurumBul = (hucre) => {
+        if (!hucre?.topic || !hucre?.subject) return null;
+        if (!['konu', 'soru', 'tekrar'].includes(hucre.type || 'konu')) return null;
+        return konuDurumHaritasi[`${hucre.exam}|${hucre.subject}|${hucre.topic}`]
+            || konuDurumHaritasi[`${selectedExam}|${hucre.subject}|${hucre.topic}`]
+            || null;
+    };
 
     /** Seçili bölümün ders listesi (anahtar + görünen ad). */
     const dersSecenekleri = React.useMemo(() => {
@@ -605,6 +639,37 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 : `Program oluşturuldu: ${stats.toplamYerlesen} etüt yerleşti.`,
             ihlal ? 'uyari' : 'basari',
         );
+    };
+
+    /**
+     * PROGRAM KONTROLÜ — mevcut çizelgeyi motor kurallarına göre denetler.
+     * AKILLI DAĞIT bunu üretim sonrasında zaten yapıyor; bu düğme, koç
+     * ELLE değişiklik yaptıktan sonra da aynı denetimi çalıştırır:
+     * günlük ders/konu limitleri, sayısal-sözel dengesi, aynı dersin
+     * 2 bloktan uzun zinciri, ana ders eksiği, hafta yükü dengesizliği.
+     */
+    const handleProgramKontrol = () => {
+        if (!Object.keys(schedule).length) {
+            bildir('Denetlenecek program yok — önce etüt yerleştirin.', 'uyari');
+            return;
+        }
+        const uyarilar = programDenetle(schedule, {
+            kriterler,
+            gunler: DAYS,
+            aylar: weeklyMode ? 1 : programDurationMonths,
+            haftaPerAy: weeklyMode ? 1 : 4,
+            sinavId,
+            alanId,
+        });
+        setProgramUyarilari(uyarilar);
+        const ihlal = uyarilar.filter((u) => u.tur.startsWith('limit-')).length;
+        bildir(
+            uyarilar.length
+                ? `Denetim: ${uyarilar.length} bulgu${ihlal ? ` (${ihlal} kural ihlali)` : ''} — soldaki uyarı paneline bakın.`
+                : '✓ Program denetlendi: kural ihlali yok.',
+            uyarilar.length ? 'uyari' : 'basari',
+        );
+        if (uyarilar.length) setSidebarTab('icerik');
     };
 
 
@@ -1025,8 +1090,10 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                         {/* TOPIC SELECTOR - SCROLLABLE */}
                         <div className="flex-1 overflow-y-auto p-3 border-b border-line bg-surface">
                             <div className="space-y-2">
-                                {/* Bölümler öğrencinin ALANINDAN gelir — Sözel
+                                {/* ── SINAV TÜRÜ ─────────────────────────
+                                    Bölümler öğrencinin ALANINDAN gelir — Sözel
                                     öğrencisine AYT Fen konuları düşmez. */}
+                                <p className="text-[9px] font-black uppercase tracking-widest text-ink-3 px-0.5">Sınav Türü</p>
                                 <div className="flex gap-1 bg-surface-3 p-1 rounded-lg flex-wrap">
                                     {bolumler.map(b => (
                                         <button
@@ -1044,26 +1111,61 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     </p>
                                 )}
 
-                                <div className="flex gap-1">
-                                    <select
-                                        value={selectedSubject}
-                                        onChange={(e) => setSelectedSubject(e.target.value)}
-                                        className="flex-1 p-2 border border-line-2 rounded-lg text-xs font-medium outline-none focus:border-brand"
-                                    >
-                                        <option value="">Ders Seçiniz...</option>
-                                        {dersSecenekleri.map(d => (
-                                            <option key={d.anahtar} value={d.anahtar}>{d.ad}</option>
-                                        ))}
-                                    </select>
-                                    {selectedSubject && (
-                                        <button
-                                            onClick={handleAddSubjectTopics}
-                                            className="px-2 bg-brand-soft text-brand rounded-lg border border-brand-line hover:bg-brand-soft transition"
-                                            title={`Tüm ${dersAdi(selectedSubject)} konularını ekle`}
-                                        >
-                                            <Book size={16} />
-                                        </button>
-                                    )}
+                                {/* ── ARAMA ────────────────────────────── */}
+                                <input
+                                    value={dersKonuAra}
+                                    onChange={(e) => setDersKonuAra(e.target.value)}
+                                    placeholder="Ders veya konu ara..."
+                                    className="w-full p-2 border border-line-2 rounded-lg text-xs font-medium outline-none focus:border-brand bg-surface"
+                                />
+
+                                {/* ── DERS LİSTESİ ─────────────────────────
+                                    Dropdown yerine görünür liste: her ders
+                                    KENDİ program rengiyle (bir ders = bir renk,
+                                    programColors) + konu sayısıyla listelenir. */}
+                                <div className="rounded-xl border border-line overflow-hidden divide-y divide-line">
+                                    {dersSecenekleri
+                                        .filter((d) => {
+                                            if (!dersKonuAra.trim()) return true;
+                                            const a = dersKonuAra.toLocaleLowerCase('tr-TR');
+                                            /* Ders seçiliyken arama KONULARI süzer;
+                                               listede seçili dersi gizlemeyelim. */
+                                            if (d.anahtar === selectedSubject) return true;
+                                            return d.ad.toLocaleLowerCase('tr-TR').includes(a);
+                                        })
+                                        .map((d) => {
+                                            const renk = getSubjectColor(d.ad);
+                                            const seciliDers = selectedSubject === d.anahtar;
+                                            const bolum = bolumler.find((x) => x.id === selectedExam);
+                                            const konuKaynagi = bolum?.dersler?.[d.anahtar];
+                                            const konuSayisi = Array.isArray(konuKaynagi)
+                                                ? konuKaynagi.length
+                                                : Array.isArray(konuKaynagi?.konular) ? konuKaynagi.konular.length : null;
+                                            return (
+                                                <div key={d.anahtar} className={`flex items-center gap-2 pr-1.5 transition ${seciliDers ? 'bg-brand-soft' : 'bg-surface hover:bg-surface-2'}`}>
+                                                    <button
+                                                        onClick={() => setSelectedSubject(seciliDers ? '' : d.anahtar)}
+                                                        className="flex-1 min-w-0 flex items-center gap-2 px-2.5 py-2 text-left"
+                                                    >
+                                                        <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                            style={{ backgroundColor: renk.border }} />
+                                                        <span className={`text-[11px] font-bold truncate ${seciliDers ? 'text-brand' : 'text-ink'}`}>{d.ad}</span>
+                                                        {konuSayisi != null && (
+                                                            <span className="ml-auto shrink-0 text-[9px] font-bold text-ink-3">{konuSayisi} konu</span>
+                                                        )}
+                                                    </button>
+                                                    {seciliDers && (
+                                                        <button
+                                                            onClick={handleAddSubjectTopics}
+                                                            className="shrink-0 p-1.5 bg-surface text-brand rounded-lg border border-brand-line hover:bg-brand-soft transition"
+                                                            title={`Tüm ${d.ad} konularını dağıtım listesine ekle`}
+                                                        >
+                                                            <Book size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                 </div>
 
                                 {/* 🔁 Geçen dönemin eksikleri — programı öğrencinin
@@ -1235,6 +1337,24 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     </ul>
                                 </div>
                             )}
+
+                            {/* ── KURALLAR — motorun uyguladığı sabit ilkeler.
+                                Bilgi kartıdır; denetim "Program Kontrolü" ile yapılır. */}
+                            <div className="mt-2 rounded-xl bg-surface border border-line p-2.5">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-ink-3 mb-1.5">Kurallar</p>
+                                <ul className="space-y-1">
+                                    {[
+                                        'Sayısal–sözel ardışıklığı korunur.',
+                                        'Aynı ders en çok 2 etüt ardışık olabilir (blok).',
+                                        'Günlük ders ve yeni konu sınırları aşılmaz.',
+                                        'Program, öğrencinin konu takibi ve çalışmalarıyla eş güdümlüdür.',
+                                    ].map((k) => (
+                                        <li key={k} className="flex items-start gap-1.5 text-[10px] leading-snug text-ink-2">
+                                            <span className="text-ok font-black shrink-0">✓</span>{k}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         </div>
                         </div>
 
@@ -1340,7 +1460,10 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                             {/* Konu satırı: zorluk, sınav ağırlığı, öğrencinin
                                 durumu ve BİTEN UYARISI. Uyarı seçimi ENGELLEMEZ —
                                 tekrar/pekiştirme için koç yine seçebilir. */}
-                            {availableTopics && availableTopics.length > 0 && availableTopics.map((topic, idx) => {
+                            {availableTopics && availableTopics.length > 0 && availableTopics
+                                .filter((t) => !dersKonuAra.trim()
+                                    || String(t.ad).toLocaleLowerCase('tr-TR').includes(dersKonuAra.toLocaleLowerCase('tr-TR')))
+                                .map((topic, idx) => {
                                 const isActive = activeTool?.topic === topic.ad;
                                 const isSelected = selectedTopics.some((t) => t.ad === topic.ad);
                                 const kuyruktaVar = distributionQueue.some(
@@ -1889,10 +2012,44 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
 
                                                                 {/* Tekrar turu bilgisi */}
                                                                 {cellData.type === 'tekrar' && cellData.round && (
-                                                                    <span className="mt-auto pt-1 text-[8px] font-black opacity-50" style={{ color: c.text }}>
+                                                                    <span className="pt-1 text-[8px] font-black opacity-50" style={{ color: c.text }}>
                                                                         {cellData.round}. GÜN TEKRARI
                                                                     </span>
                                                                 )}
+
+                                                                {/* ── PLAN ↔ GERÇEKLEŞEN ────────────────
+                                                                    Konu takibi (öğrencinin gerçek çalışması)
+                                                                    ile öğrencinin etüt işareti kartta görünür:
+                                                                    koç planı ve gerçekleşeni tek bakışta okur. */}
+                                                                {(() => {
+                                                                    const durum = konuDurumBul(cellData);
+                                                                    const etutYapildi = ogrenciIlerleme[cellKey]?.status === 'done';
+                                                                    if (!durum && !etutYapildi) return null;
+                                                                    return (
+                                                                        <div className="mt-auto pt-1.5 flex flex-wrap gap-1">
+                                                                            {durum?.bitti && (
+                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-ok-soft text-ok border border-ok/30">
+                                                                                    ✓ KONU TAMAMLANDI
+                                                                                </span>
+                                                                            )}
+                                                                            {!durum?.bitti && durum?.durum === 'tekrar' && (
+                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-warn-soft text-warn border border-warn/30">
+                                                                                    ⚠ TEKRAR GEREKLİ
+                                                                                </span>
+                                                                            )}
+                                                                            {!durum?.bitti && durum?.durum !== 'tekrar' && (durum?.soru || 0) > 0 && (
+                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-surface/80 border border-line" style={{ color: c.text }}>
+                                                                                    ○ ÇALIŞILIYOR{durum.hedef != null ? ` · ${durum.soru}/${durum.hedef}` : ''}
+                                                                                </span>
+                                                                            )}
+                                                                            {etutYapildi && (
+                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-ok text-white">
+                                                                                    ✓ ETÜT YAPILDI
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         ) : (
                                                             <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-30 transition">
@@ -1908,6 +2065,19 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
 
                                 {/* ── Lejant ────────────────────────────── */}
                                 <ScheduleLegend schedule={schedule} month={activeMonth} week={activeWeek} />
+
+                                {/* ── ALT ÇUBUK: ipucu + program denetimi ── */}
+                                <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 justify-between rounded-xl border border-line bg-surface px-3 py-2.5">
+                                    <p className="text-[10px] text-ink-3 leading-snug">
+                                        <span className="font-black text-ink-2">İpucu:</span> Bir ders blok iken 2 etüt ardışık olabilir; aynı dersten daha uzun zincir kurallara takılır.
+                                    </p>
+                                    <button
+                                        onClick={handleProgramKontrol}
+                                        className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-black bg-brand-soft text-brand border border-brand-line hover:bg-brand hover:text-white transition"
+                                    >
+                                        <CheckCircle size={14} /> Program Kontrolü Yap
+                                    </button>
+                                </div>
 
                         </div>
                     </div>
