@@ -289,8 +289,10 @@ const UniversityScoresTab = () => {
       {toast && <div className="fixed top-8 left-1/2 -translate-x-1/2 z-notify px-6 py-3 rounded-full bg-surface border border-line text-ink text-sm font-bold flex items-center gap-2 shadow-2xl"><CheckCircle size={16} className="text-ok"/>{toast}</div>}
 
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-surface/40 backdrop-blur-xl border border-line p-8 rounded-[2rem]">
-        <div>
-          <h2 className="text-3xl font-black text-ink syne flex items-center gap-3 uppercase">
+        <div className="min-w-0">
+          {/* flex-wrap ŞART: sarımsız flex üç sözcüğü tek satıra kilitleyip
+              375px'te sayfayı ~490px yana taşırıyordu (ölçüldü). */}
+          <h2 className="text-2xl sm:text-3xl font-black text-ink syne flex flex-wrap items-center gap-3 uppercase">
             <div className="w-10 h-10 bg-gradient-to-br from-brand/20 to-accent/20 rounded-xl flex items-center justify-center"><GraduationCap className="text-brand" size={20}/></div>
             ÜNİVERSİTE <em className="not-italic text-brand">TABAN</em> PUANLARI
           </h2>

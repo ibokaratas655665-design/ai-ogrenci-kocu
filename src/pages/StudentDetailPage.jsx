@@ -402,7 +402,10 @@ const StudentDetailPage = () => {
                 <button onClick={() => navigate(-1)} className="p-2 bg-surface border border-line rounded-lg hover:bg-surface-2 transition shadow-sm">
                     <ChevronLeft size={20} className="text-ink-2" />
                 </button>
-                <div className="flex-1 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                {/* min-w-0 ŞART: flex öğesi küçülemeyince sekme şeridi
+                    kendi overflow-x-auto'suna hiç düşmüyor ve 375px'te
+                    sayfa ~700px yana taşıyordu (ölçüldü). */}
+                <div className="flex-1 min-w-0 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-ink">{student.name} {student.surname}</h1>
                         <p className="text-ink-2 text-sm">
@@ -471,7 +474,7 @@ const StudentDetailPage = () => {
                     )}
 
                     {/* Tab Switcher */}
-                    <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto">
+                    <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto max-w-full">
                         {[
                             { id: 'analiz', icon: Activity, label: 'Gelişim Analizi' },
                             { id: 'karne', icon: Award, label: 'Karne' },

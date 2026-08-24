@@ -507,10 +507,12 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                         alt: avgDone !== null ? `öğrenci tamamlama %${avgDone}` : 'tamamlama kaydı yok',
                     },
                 ].map(({ label, value, icon: Icon, acc, alt }) => (
-                    <div key={label} className="srf srf-accent p-4" style={{ '--acc': acc }}>
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="sec-icon" style={{ '--acc': acc }}><Icon size={16} /></span>
-                            <span className="num text-3xl">{value}</span>
+                    <div key={label} className="srf srf-accent p-4 min-w-0" style={{ '--acc': acc }}>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="sec-icon shrink-0" style={{ '--acc': acc }}><Icon size={16} /></span>
+                            {/* 375px'te iki sütunlu ızgarada %100 gibi değerler
+                                3xl boyutta 3px taşıyordu (ölçüldü). */}
+                            <span className="num text-2xl sm:text-3xl">{value}</span>
                         </div>
                         <p className="eyebrow">{label}</p>
                         {alt && <p className="text-[10px] text-ink-3 mt-0.5">{alt}</p>}
