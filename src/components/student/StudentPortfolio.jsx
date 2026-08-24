@@ -3,6 +3,7 @@
  * Rozetler + deneme gelişimi + tamamlanan görevler → paylaşılabilir PDF & görünüm
  */
 import React, { useState } from 'react';
+import { BADGES } from '../gamification/BadgeSystem';
 import { Star, TrendingUp, ClipboardList, Award, Download, Share2, Brain, Target, Zap, BookOpen, Medal } from 'lucide-react';
 import { AMBLEM_BASE64 } from '../../data/amblemBase64';
 import { bildir } from '../../services/uiGeriBildirim';
@@ -17,7 +18,18 @@ const StudentPortfolio = ({ student, examResults = [], tasks = [], gamStats = {}
     const [sharing, setSharing] = useState(false);
 
     const completedTasks = tasks.filter(t => t.completed || t.status === 'Tamamlandı');
-    const badges = gamStats?.badges || [];
+    /**
+     * ROZETLER — ALAN ADI KÖPRÜSÜ.
+     *
+     * Ölçüldü: oyunlaştırma bağlamı kazanılan rozetleri
+     * earnedBadgeIds (kimlik listesi) olarak tutuyor; burası ise
+     * hiç var olmamış bir "badges" alanını okuyordu. Sonuç: 12 rozet
+     * kazanılmışken portfolyo ve PDF hep "0 Rozet" gösteriyordu.
+     * Kimlikler BadgeSystem kataloğundan ada/ikona çözülür.
+     */
+    const badges = (gamStats?.earnedBadgeIds || [])
+        .map((id) => BADGES.find((x) => x.id === id))
+        .filter(Boolean);
     const xp = gamStats?.totalXP || 0;
     const streak = gamStats?.currentStreak || 0;
 

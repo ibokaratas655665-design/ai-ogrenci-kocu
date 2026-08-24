@@ -64,7 +64,9 @@ export const dersOzeti = (denemeler) => {
             if (!dersler.has(gorunen)) dersler.set(gorunen, { anahtar, ad: gorunen, netler: [], son: null });
             const kayit = dersler.get(gorunen);
             kayit.netler.push(sayi(s.net));
-            kayit.son = { dogru: sayi(s.correct), yanlis: sayi(s.wrong), bos: sayi(s.blank), net: sayi(s.net), denemeSira: i };
+            /* Koç kaydı correct/wrong/blank, öğrenci kaydı dogru/yanlis/bos
+               yazar — yalnız birini okumak öğrenci denemelerini 0/0/0 gösterir */
+            kayit.son = { dogru: sayi(s.correct ?? s.dogru), yanlis: sayi(s.wrong ?? s.yanlis), bos: sayi(s.blank ?? s.bos), net: sayi(s.net), denemeSira: i };
         });
     });
     return [...dersler.values()].map((k) => ({
@@ -83,6 +85,28 @@ export const trendSerisi = (denemeler) => denemeler.map((d, i) => {
     };
     Object.entries(d.subjects || {}).forEach(([anahtar, s]) => { nokta[anahtar] = sayi(s?.net); });
     return nokta;
+});
+
+/**
+ * Kombo grafik serisi: her deneme için D/Y/B toplamı + toplam net.
+ * Çubuklar hacmi (kaç soruya dokunuldu), çizgi sonucu (net) taşır.
+ * İki alan adı biçimi de okunur (koç: correct, öğrenci: dogru).
+ */
+export const komboSerisi = (denemeler) => denemeler.map((d, i) => {
+    let dogru = 0, yanlis = 0, bos = 0;
+    Object.values(d.subjects || {}).forEach((s) => {
+        if (!s || typeof s !== 'object') return;
+        dogru += sayi(s.correct ?? s.dogru);
+        yanlis += sayi(s.wrong ?? s.yanlis);
+        bos += sayi(s.blank ?? s.bos);
+    });
+    return {
+        sira: i + 1,
+        ad: d.examName || d.name || `Deneme ${i + 1}`,
+        tarih: d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
+        toplamNet: +sayi(d.totalNet).toFixed(2),
+        dogru, yanlis, bos,
+    };
 });
 
 /**

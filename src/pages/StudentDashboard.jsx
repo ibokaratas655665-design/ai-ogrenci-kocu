@@ -96,7 +96,7 @@ import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
-import { yaz, listeOku, nesneOku, oku } from '../services/veriDeposu';
+import { yaz, listeOku, nesneOku, oku , gorevleriGetir } from '../services/veriDeposu';
 
 
 // ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
@@ -442,27 +442,25 @@ const StudentDashboard = () => {
         catch (e) { console.error('Test sonuçları yüklenemedi:', e); }
     };
 
+    /**
+     * GÖREVLER — TEK OKUYUCU.
+     *
+     * Burada 'student_tasks' için el yapımı ikinci bir okuyucu vardı ve
+     * yalnızca nesne şeklini ({ogrenciId: [...]}) anlıyordu; anahtar dizi
+     * şeklindeyse ([{studentId,...}]) Object.keys '0','1','2' dönüyor,
+     * .filter nesnede patlıyor, catch yutuyor ve Görevler sekmesi
+     * "0 bekliyor" kalıyordu. Ölçüldü: depoda 3 görev dururken sekme
+     * "HENÜZ GÖREV ATANMADI" gösterdi.
+     *
+     * veriDeposu.gorevleriGetir iki şekli de tolere ediyor ve okul
+     * numarası eşleşmesi de burada tek yerden yapılıyor.
+     */
     const loadTasks = async () => {
         if (!user?.id) return;
         try {
-            const allTasks = nesneOku('student_tasks');
-            const userIdStr = String(user.id);
-            let myTasks = allTasks[userIdStr] || allTasks[user.id] || [];
+            let myTasks = gorevleriGetir(user.id);
             if (myTasks.length === 0 && user.schoolNumber) {
-                const bySchoolNo = Object.values(allTasks).flat().filter(t =>
-                    String(t.studentId) === String(user.schoolNumber) ||
-                    String(t.studentId) === String(user.id)
-                );
-                if (bySchoolNo.length > 0) myTasks = bySchoolNo;
-            }
-            if (myTasks.length === 0) {
-                Object.keys(allTasks).forEach(key => {
-                    const matched = (allTasks[key] || []).filter(t =>
-                        String(t.studentId) === String(user.id) ||
-                        String(t.studentId) === String(user.schoolNumber)
-                    );
-                    myTasks = [...myTasks, ...matched];
-                });
+                myTasks = gorevleriGetir(user.schoolNumber);
             }
             setTasks(myTasks);
         } catch (e) { console.error('Görevler yüklenemedi:', e); }
@@ -2176,7 +2174,7 @@ const StudentDashboard = () => {
                     <div className="icerik-gecis space-y-8">
                         <div>
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">BAŞARI PORTFOLYOSU</h1>
-                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELECEĞİN İÇİN BİRİKTİRDİĞİİ TÜM BAŞARILAR</p>
+                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELECEĞİN İÇİN BİRİKTİRDİĞİN TÜM BAŞARILAR</p>
                         </div>
                         <div className="premium-card p-1 sm:p-2 border-line">
                             <StudentPortfolio 
