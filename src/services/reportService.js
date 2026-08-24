@@ -67,6 +67,21 @@ const recordTime = (rec) =>
         || rec?.completedAt || rec?.assignedAt
     );
 
+/**
+ * GÖREVİN DÖNEM ZAMANI — recordTime'dan bilinçli olarak AYRI.
+ *
+ * recordTime, completedAt'i de sayıyor. Görevlerde bu istatistiği
+ * yanlar: 30 günden eski atanmış görevlerden AÇIK olanlar pencereden
+ * düşer (zaman damgaları eski), yeni TAMAMLANANLAR ise completedAt
+ * ile pencereye girer. Ölçüldü: 3 görevin 2'si tamamken koç paneli
+ * %100 gösterdi — açık görev hesaba hiç girmemişti.
+ *
+ * Dönem üyeliği görevin NE ZAMAN VAR OLDUĞUYLA ölçülür: atanma /
+ * oluşturulma, o yoksa son tarih. Tamamlanma anı üyelik ölçüsü olamaz.
+ */
+const taskTime = (t) =>
+    toTime(t?.createdAt || t?.assignedAt || t?.date || t?.tarih || t?.dueDate);
+
 const round = (n, d = 1) => {
     const f = Math.pow(10, d);
     return Math.round((Number(n) || 0) * f) / f;
@@ -526,7 +541,7 @@ export const buildStudentReport = (student, options = {}) => {
 
     // ── Görevler ────────────────────────────────────────────
     const allTasks = getStudentTasks(student);
-    const periodTasks = allTasks.filter((t) => recordTime(t) >= periodStart);
+    const periodTasks = allTasks.filter((t) => taskTime(t) >= periodStart);
     const doneTasks = periodTasks.filter(isTaskDone).length;
     const taskCompletion = periodTasks.length > 0 ? doneTasks / periodTasks.length : null;
     const overdueTasks = allTasks.filter(
@@ -807,7 +822,7 @@ export const buildRosterStatus = (students = []) => {
             : null;
 
         // ── Görevler ──
-        const tasks = getStudentTasks(student, allTasks).filter((t) => recordTime(t) >= weekAgo);
+        const tasks = getStudentTasks(student, allTasks).filter((t) => taskTime(t) >= weekAgo);
         const tasksDone = tasks.filter(isTaskDone).length;
         const taskCompletion = tasks.length ? tasksDone / tasks.length : null;
 

@@ -314,6 +314,10 @@ const StudentDashboard = () => {
     const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    /* Mesajlar ekranı üç sütun: solda kanal listesi (Koçum / Duyurular),
+       ortada seçili kanalın akışı, sağda bilgi paneli. Seçim cihaz-yerel
+       görünüm durumudur, bilerek senkronlanmaz. */
+    const [mesajKanal, setMesajKanal] = useState('sohbet');
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [apiKey, setApiKey] = useState('');
@@ -1879,9 +1883,27 @@ const StudentDashboard = () => {
 
                     const unreadCount = bulkMessages.filter(m => !m.read).length;
 
+                    /* Sohbetin karşı tarafının adı GERÇEK veriden: koçun
+                       gönderdiği son mesajın senderName'i. Koç hiç
+                       yazmadıysa genel "Koçum". */
+                    const kocAdi = [...messages].reverse().find((m) => m.sender !== 'student')?.senderName || 'Koçum';
+                    const sonSohbet = messages[messages.length - 1];
+                    const KANALLAR = [
+                        {
+                            id: 'sohbet', ad: kocAdi, ikon: User,
+                            alt: sonSohbet ? String(sonSohbet.text || '').slice(0, 44) : 'Koçunla birebir sohbet',
+                            rozet: 0,
+                        },
+                        {
+                            id: 'duyurular', ad: 'Duyurular', ikon: MessageSquare,
+                            alt: bulkMessages.length ? `${bulkMessages.length} duyuru` : 'Henüz duyuru yok',
+                            rozet: unreadCount,
+                        },
+                    ];
+
                     return (
-                        <div className="icerik-gecis space-y-10 pb-10">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="icerik-gecis space-y-6 pb-10">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">MESAJLARIM</h1>
                                     <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">BİLDİRİMLER VE KOÇ İLETİŞİMİ</p>
@@ -1889,19 +1911,53 @@ const StudentDashboard = () => {
                                 {unreadCount > 0 && (
                                     <button
                                         onClick={markAllRead}
-                                        className="h-12 px-6 bg-gradient-to-r from-brand/20 to-brand/10 hover:from-brand/30 hover:to-brand/20 border border-brand/30 text-brand rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-yavas flex items-center gap-3"
+                                        className="h-11 px-5 bg-brand-soft hover:bg-brand/15 border border-brand-line text-brand rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-yavas flex items-center gap-2"
                                     >
-                                        <CheckCircle size={16} /> TÜMÜNÜ OKUNDU İŞARETLE ({unreadCount})
+                                        <CheckCircle size={15} /> TÜMÜNÜ OKUNDU İŞARETLE ({unreadCount})
                                     </button>
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                                {/* Duyurular & Bildirimler */}
-                                <div className="lg:col-span-2 space-y-6">
+                            {/* ÜÇ SÜTUN — referansın sohbet düzeni: solda kanal
+                                listesi, ortada seçili akış, sağda bilgi paneli.
+                                Telefonda sırayla alt alta iner. */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                                {/* 1 · KANAL LİSTESİ */}
+                                <div className="lg:col-span-3 min-w-0 space-y-2">
+                                    {KANALLAR.map((k) => {
+                                        const secili = mesajKanal === k.id;
+                                        const Ikon = k.ikon;
+                                        return (
+                                            <button key={k.id} type="button" onClick={() => setMesajKanal(k.id)}
+                                                aria-pressed={secili}
+                                                className={`w-full flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${secili
+                                                    ? 'bg-brand-soft border-brand-line'
+                                                    : 'bg-surface border-line hover:border-brand/30'}`}>
+                                                <span className={`grid place-items-center w-10 h-10 rounded-full shrink-0 ${secili ? 'bg-brand text-white' : 'bg-surface-2 text-ink-3'}`}>
+                                                    <Ikon size={17} />
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className={`block text-sm font-black truncate ${secili ? 'text-brand' : 'text-ink'}`}>{k.ad}</span>
+                                                    <span className="block text-[11px] text-ink-3 truncate">{k.alt}</span>
+                                                </span>
+                                                {k.rozet > 0 && (
+                                                    <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-white text-[10px] font-black grid place-items-center">
+                                                        {k.rozet}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* 2 · AKTİF AKIŞ */}
+                                <div className="lg:col-span-6 min-w-0">
+                                {/* Duyuru akışı — kanal listesinden seçilince */}
+                                {mesajKanal === 'duyurular' && (
+                                <div className="space-y-4">
                                     <div className="flex items-center gap-4">
                                         <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">DUYURULAR ({bulkMessages.length})</h2>
-                                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                                        <div className="h-px flex-1 bg-line" />
                                     </div>
                                     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                                         {bulkMessages.length === 0 ? (
@@ -1963,32 +2019,26 @@ const StudentDashboard = () => {
                                         {unreadCount > 0 && (() => { setTimeout(markAllRead, 2000); return null; })()}
                                     </div>
                                 </div>
+                                )}
 
-                                {/* Sohbet Arayüzü */}
-                                <div className="lg:col-span-3 space-y-6">
-                                    <div className="flex items-center gap-4">
-                                        <h2 className="text-xs font-black text-ink-3 uppercase tracking-[0.3em]">KOÇUNLA SOHBET</h2>
-                                        <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                                    </div>
-                                    <div className="premium-card overflow-hidden flex flex-col border-brand/10 bg-transparent backdrop-blur-md" style={{ height: '600px' }}>
+                                {/* Sohbet penceresi */}
+                                {mesajKanal === 'sohbet' && (
+                                    <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col" style={{ height: '600px' }}>
                                         {/* Sohbet Header */}
-                                        <div className="p-5 border-b border-line bg-surface/5 flex items-center gap-4">
-                                            <div className="on-color w-12 h-12 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center p-[2px]">
+                                        <div className="p-4 sm:p-5 border-b border-line flex items-center gap-4">
+                                            <div className="on-color w-11 h-11 rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center p-[2px]">
                                                 <div className="w-full h-full rounded-full bg-surface flex items-center justify-center">
-                                                    <User size={20} className="text-brand" />
+                                                    <User size={19} className="text-brand" />
                                                 </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-bold text-ink text-sm syne uppercase tracking-wider">KOÇUMDAN</h3>
-                                                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                                                </div>
-                                                <p className="text-[10px] font-bold text-brand/60 uppercase tracking-widest mt-0.5">KOÇUN CANLI / AKTİF</p>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-ink text-sm syne uppercase tracking-wider truncate">{kocAdi}</h3>
+                                                <p className="text-[10px] font-bold text-ink-3 uppercase tracking-widest mt-0.5">KOÇUNLA BİREBİR SOHBET</p>
                                             </div>
                                         </div>
 
                                         {/* Sohbet Body */}
-                                        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-black/20 custom-scrollbar">
+                                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-surface-2/50 custom-scrollbar">
                                             {messages.length === 0 ? (
                                                 <div className="h-full flex flex-col items-center justify-center opacity-30 text-center">
                                                     <div className="w-20 h-20 bg-surface/5 rounded-full flex items-center justify-center mb-6">
@@ -2006,7 +2056,7 @@ const StudentDashboard = () => {
                                                         )}
                                                         <div className={`p-4 rounded-2xl text-sm font-medium leading-relaxed ${msg.sender === 'student'
                                                             ? 'bg-gradient-to-br from-brand to-brand-hover text-white rounded-br-none shadow-xl'
-                                                            : 'bg-surface/5 border border-line text-ink rounded-bl-none'
+                                                            : 'bg-surface border border-line text-ink rounded-bl-none'
                                                             }`}>
                                                             {msg.text}
                                                         </div>
@@ -2022,7 +2072,7 @@ const StudentDashboard = () => {
                                         </div>
 
                                         {/* Sohbet Input */}
-                                        <form onSubmit={handleSendMessage} className="p-4 bg-surface/5 border-t border-line flex gap-3">
+                                        <form onSubmit={handleSendMessage} className="p-4 bg-surface border-t border-line flex gap-3">
                                             <div className="flex-1 relative group">
                                                 <input
                                                     value={newMessage}
@@ -2040,6 +2090,52 @@ const StudentDashboard = () => {
                                             </button>
                                         </form>
                                     </div>
+                                )}
+                                </div>
+
+                                {/* 3 · BİLGİ PANELİ */}
+                                <div className="lg:col-span-3 min-w-0 space-y-4">
+                                    <div className="bg-surface border border-line rounded-2xl p-4 text-center">
+                                        <div className="on-color w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-brand to-accent flex items-center justify-center p-[2px]">
+                                            <div className="w-full h-full rounded-full bg-surface flex items-center justify-center">
+                                                <User size={22} className="text-brand" />
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-black text-ink mt-2 truncate">{kocAdi}</p>
+                                        <p className="text-[11px] text-ink-3 mt-0.5">Mesajların doğrudan koçuna gider; koçun yanıtı burada görünür.</p>
+                                    </div>
+                                    <div className="bg-surface border border-line rounded-2xl p-4 space-y-2.5">
+                                        <p className="tip-mini font-black uppercase tracking-wider text-ink-3">Özet</p>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-ink-2">Sohbet mesajı</span>
+                                            <span className="font-black tabular-nums text-ink">{messages.length}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-ink-2">Duyuru</span>
+                                            <span className="font-black tabular-nums text-ink">{bulkMessages.length}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-ink-2">Okunmamış</span>
+                                            <span className="font-black tabular-nums" style={{ color: unreadCount > 0 ? 'var(--brand)' : 'var(--ink)' }}>{unreadCount}</span>
+                                        </div>
+                                    </div>
+                                    {/* Son duyurular — tıklayınca duyuru kanalına geçer */}
+                                    {bulkMessages.length > 0 && (
+                                        <div className="bg-surface border border-line rounded-2xl p-4">
+                                            <p className="tip-mini font-black uppercase tracking-wider text-ink-3 mb-2">Son Duyurular</p>
+                                            <div className="space-y-2">
+                                                {bulkMessages.slice(0, 3).map((msg, i) => (
+                                                    <button key={msg.id || i} type="button" onClick={() => setMesajKanal('duyurular')}
+                                                        className="w-full text-left rounded-xl border border-line hover:border-brand/30 px-3 py-2 transition">
+                                                        <span className="block text-xs font-bold text-ink truncate">{msg.title || 'Koçtan mesaj'}</span>
+                                                        <span className="block text-[10px] text-ink-3 truncate">
+                                                            {msg.timestamp ? new Date(msg.timestamp).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : ''} · {String(msg.content || msg.text || '').slice(0, 48)}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
