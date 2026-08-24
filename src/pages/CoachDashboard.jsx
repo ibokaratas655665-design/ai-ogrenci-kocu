@@ -3296,7 +3296,17 @@ const CoachDashboard = () => {
                 <div className="flex-1 min-w-0">
 
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
-            <div className="pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos">
+            {/* Genel Bakış'ta eylem şeridi gizli; kabın dolgusu da onunla
+                            birlikte inmeli. Ölçüldü: şerit gizlendiğinde bu kap
+                            144 px yüksekliğinde BOŞ kalıyor (pt 112 + pb 32) ve
+                            logo ile sayfa başlığı arasında kocaman bir açıklık
+                            bırakıyordu. Sabit başlık 88 px; dolgu tam o kadar. */}
+            {/* Ölçüldü: bu kap zaten header'DAN SONRA, akışta başlıyor
+                (top = 89 px). Üstüne bir de 88 px dolgu ekliyor, içi ise
+                bomboştu — logo ile sayfa başlığı arasındaki açıklık buydu. */}
+                        <div className={activeTab === 'bugun'
+                            ? 'hidden'
+                            : 'pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos'}>
                 <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
                     {/* EYLEM ŞERİDİ — Genel Bakış'ta gizli.
                         "Öğrenci Ekle / Liste Yükle / Toplu Mesaj" her sekmenin üstünde
