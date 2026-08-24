@@ -292,7 +292,21 @@ export function programUret({
     /* ── 4. Konu → soru zincirleri ──────────────────────────── */
     const paylar = dersPaylari(konular, sinavId);
     const dersler = new Map(); // 'bolum:ders' → durum
-    for (const k of konular) {
+    /**
+     * ⚠️ HİÇ ÇALIŞILMAMIŞ KONULAR ZİNCİRİN BAŞINA.
+     *
+     * `konular` girdi sırasında (katalog sırası) geliyordu; bir dersin
+     * zaten `bitti:true` (daha önce çalışılmış) konuları ile YENİ
+     * eklenen `bitti:false` konusu karışık sırada olabiliyordu. Bitmiş
+     * konular zincirde ÖNCE gelirse hızla tamamlanıp tekrar kuyruğuna
+     * giriyor ve programın erken haftalarında o dersin İLK görünen
+     * hücreleri "tekrar" oluyordu — koç, henüz sırası gelmemiş yeni
+     * konuyu değil, eski bir konunun tekrarını "bu dersin ilk etüdü"
+     * sanıyordu. Kararlı sıralama: bitmemiş (gerçekten çalışılacak)
+     * konular her dersin zincirinde önce yer alır.
+     */
+    const siraliKonular = [...konular].sort((a, b) => (a.bitti ? 1 : 0) - (b.bitti ? 1 : 0));
+    for (const k of siraliKonular) {
         const anahtar = `${k.bolum}:${k.ders}`;
         if (!dersler.has(anahtar)) {
             dersler.set(anahtar, {
@@ -381,20 +395,38 @@ export function programUret({
          * ulaşana kadar dönülür. Böylece fazla kapasite bütün konulara
          * yayılır [§11, §12].
          */
+        /**
+         * ⚠️ DERS DENGESİZLİĞİ DÜZELTMESİ (25.08.2026)
+         *
+         * Eskiden iç döngü `d.zincir`'deki HER konuya birer soru etüdü
+         * ekliyordu — yani bir turda bir derse eklenen miktar o dersin
+         * KONU SAYISIYLA orantılıydı (18 konulu Türkçe bir turda 18
+         * birim tüketirken 5 konulu Din 5 birim tüketiyordu). `acik`
+         * tükenince döngü kırıldığı için yüksek paylı+çok konulu dersler
+         * kapasitenin çoğunu ilk birkaç turda yutuyor, ölçüldü: bir
+         * haftalık programda Türkçe'ye 17 etüt düşüyordu.
+         *
+         * Artık 2. TUR'daki desenle birebir aynı: her tam geçişte HER
+         * DERSE (konu sayısından bağımsız) en fazla BİR birim eklenir,
+         * o dersin kendi konuları arasında sırayla döner. Konu sayısı
+         * artık payı büyütmüyor; dersler arasında denge `sirali`
+         * sıralamasının (ağırlığa göre) ve tur sayısının belirlediği
+         * oranla korunuyor.
+         */
         let tavanTuru = 0;
+        const soruIndeksi = new Map(sirali.map((d) => [d.anahtar, 0]));
         while (acik > 0 && tavanTuru < M.SORU_ETUT_MAX) {
             tavanTuru++;
             let eklendi = false;
             for (const d of sirali) {
-                for (const z of d.zincir) {
-                    if (acik <= 0) break;
-                    if (z.tip !== 'konu' || !z.soruE) continue;
-                    if (z.soruE >= M.SORU_ETUT_MAX) continue;
-                    z.soruE += 1;
-                    acik -= 1;
-                    eklendi = true;
-                }
                 if (acik <= 0) break;
+                const uygunlar = d.zincir.filter((z) => z.tip === 'konu' && z.soruE && z.soruE < M.SORU_ETUT_MAX);
+                if (!uygunlar.length) continue;
+                const i = soruIndeksi.get(d.anahtar) % uygunlar.length;
+                soruIndeksi.set(d.anahtar, i + 1);
+                uygunlar[i].soruE += 1;
+                acik -= 1;
+                eklendi = true;
             }
             if (!eklendi) break;
         }
@@ -453,7 +485,7 @@ export function programUret({
         /* Ardışıklık sayaçları [talimat §5, §6] — aynı dersin ve aynı
            bilişsel grubun arka arkaya kaç etüt sürdüğü. 4+ blok
            (Türkçe·Türkçe·Türkçe·Türkçe) burada engellenir. */
-        let ardisikDers = 0, ardisikGrup = 0, sonGrup = null, sonKonuAdi = null;
+        let ardisikDers = 0, ardisikGrup = 0, sonGrup = null;
 
         const dersSigar = (dAd) => bugunDersler.has(dAd) || bugunDersler.size < kriterler.gunlukMaxDers;
         const konuSigar = (konuAd) => bugunKonular.has(konuAd) || bugunKonular.size < kriterler.gunlukMaxKonu;
@@ -503,7 +535,6 @@ export function programUret({
             if (dersSayilir(tip)) bugunDersler.add(d.ad);
             if (tip === 'konu') bugunKonular.add(is_.konu.konu);
             // Ardışıklık sayaçlarını güncelle (görünen ada göre)
-            const konuAdi = is_.konu?.konu ?? null;
             if (sonYerlesenDers?.ad === d.ad) {
                 ardisikDers += 1;
             } else {
@@ -512,7 +543,6 @@ export function programUret({
             ardisikGrup = (sonGrup === d.grup) ? ardisikGrup + 1 : 1;
             sonGrup = d.grup;
             sonYerlesenDers = d;
-            sonKonuAdi = is_.konu?.konu ?? null;
             const hIdx = g.haftaIndex;
             if (!haftaAnaDers.has(hIdx)) haftaAnaDers.set(hIdx, new Set());
             haftaAnaDers.get(hIdx).add(d.anahtar);
@@ -558,10 +588,24 @@ export function programUret({
                 });
             if (!tumAdaylar.length) break;
 
-            /* Ardışıklık süzgeci [§5]: aynı ders/grup üst üste sınırı
-               dolduysa o aday elenir. Hepsi elenirse sınır gevşetilir —
-               yoksa boş etüt kalır ve §9 (boş etüt yasağı) ihlal olur. */
+            /**
+             * Ardışıklık süzgeci [§5]: aynı ders/grup üst üste sınırı
+             * dolduysa o aday elenir. Hepsi elenirse sınır gevşetilir —
+             * yoksa boş etüt kalır ve §9 (boş etüt yasağı) ihlal olur.
+             *
+             * ⚠️ Eskiden grup süzgeci boşalınca TAMAMEN düşüyordu — yani
+             * `gunlukMaxDers` (vars. 3) yüzünden o gün açık kalan
+             * derslerin hepsi aynı bilişsel grupsa (örn. Matematik+Fizik,
+             * ikisi de "sayısal"), sınır sonsuza kadar aşılabiliyordu.
+             * Ölçüldü: 4-5-6 ardışık sayısal etüt. Artık önce sınır
+             * SADECE 1 birim gevşetilir (tam kaldırmak yerine); yalnızca
+             * o da yetmezse tamamen düşer.
+             */
             let adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d) && grupUygun(d));
+            if (!adaylar.length) {
+                const grupUygunGevsek = (d) => d.grup !== sonGrup || ardisikGrup < M.AYNI_GRUP_ARDISIK_EN_COK + 1;
+                adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d) && grupUygunGevsek(d));
+            }
             if (!adaylar.length) adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d));
             /* Gevşetme sırası önemli: ders sınırı dolduysa bile ÖNCE
                farklı bir ders denenir; aynı dersi üst üste uzatmak
@@ -588,15 +632,25 @@ export function programUret({
                 return b.token - a.token;
             });
 
-            /* İSTİSNA: aynı KONUNUN zinciri sürüyorsa blok tamamlanır
-               (konu → konu → soru → soru sürekliliği), ama yalnızca
-               esneme sınırına kadar — bu aday listenin başına alınır. */
+            /**
+             * İSTİSNA: aynı DERS art arda 2 etüt tamamlasın (AA-BB-CC),
+             * sonra başka derse geçilsin.
+             *
+             * ⚠️ Eskiden bu yalnızca aynı KONUNUN zinciri sürerken
+             * (`blokAcik` + aynı `sonKonuAdi`) tetikleniyordu. Katalogdaki
+             * konuların çoğu TEK etütlük olduğu için (bkz.
+             * `konuEtutIhtiyaci`) bu istisna neredeyse hiç devreye
+             * girmiyor, ilk konu biter bitmez sıralama kriteri #2
+             * (bilişsel grup dönüşümü) farklı derse geçmeyi ödüllendirip
+             * A-B-A-C-B tarzı serpiştirme üretiyordu. Artık koşul aynı
+             * KONUYA değil aynı DERSE bakıyor: konu bitse bile dersin
+             * zincirinde iş kaldıysa (bir sonraki konu) ve ardışıklık
+             * sınırı dolmadıysa aynı derse devam edilir.
+             */
             const sirali = [...adaylar];
             if (sonYerlesenDers
                 && sonYerlesenDers.zincir.length
                 && dersSigar(sonYerlesenDers.ad)
-                && sonYerlesenDers.zincir[0].blokAcik
-                && sonYerlesenDers.zincir[0].konu?.konu === sonKonuAdi
                 && ardisikDers < M.AYNI_DERS_ARDISIK_EN_COK) {
                 const is0 = sonYerlesenDers.zincir[0];
                 if (is0.tip !== 'konu' || konuSigar(is0.konu.konu)) {
