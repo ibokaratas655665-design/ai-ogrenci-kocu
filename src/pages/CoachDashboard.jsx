@@ -39,7 +39,6 @@ import { AICoachButton } from '../components/AICoachChat';
 import BulkMessageModal from '../components/coach/BulkMessageModal';
 import { CoachBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
-import KocBugun from '../components/coach/KocBugun';
 import KocGenelBakis from '../components/coach/KocGenelBakis';
 import { BolumHataSiniri } from '../components/ui';
 // 🆕 Yeni Koç Özellikleri

@@ -203,10 +203,24 @@ const StudentDetailPage = () => {
             // Öğrenci istatistikleri
             try {
                 const stats = nesneOku(`user_stats_${id}`);
+                /* totalXP/currentStreak/maxStreak burada hiçbir zaman
+                   yazılmaz — gerçek kaynak oyunlaştırma bağlamıdır.
+                   Yazıcı `gamification_<id>` kullanır; eski
+                   `gamification_stats_<id>` geçmiş kayıtlar için yedek
+                   (anahtar ayrılığı düzeltmesi, 24.08.2026 deseni). */
+                const gamYeni = nesneOku(`gamification_${id}`);
+                const gamStats = Object.keys(gamYeni).length ? gamYeni : nesneOku(`gamification_stats_${id}`);
                 const totalTime = parseInt(localStorage.getItem(`pomodoro_${id}_total`) || '0');
                 const dailyKey2 = `pomodoro_${id}_daily_${new Date().toDateString()}`;
                 const dailyPom = parseInt(localStorage.getItem(dailyKey2) || '0');
-                setStudentStats({ ...stats, totalStudyTime: totalTime, dailyPomodoros: dailyPom });
+                setStudentStats({
+                    ...stats,
+                    totalXP: gamStats.totalXP || 0,
+                    currentStreak: gamStats.currentStreak || 0,
+                    maxStreak: gamStats.maxStreak || 0,
+                    totalStudyTime: totalTime,
+                    dailyPomodoros: dailyPom,
+                });
             } catch { }
 
             // Test sonuçları

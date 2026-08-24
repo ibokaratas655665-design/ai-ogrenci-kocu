@@ -1130,7 +1130,7 @@ const StudentDashboard = () => {
                                 </div>
                                 <div className="flex items-center gap-1 bg-surface border border-line px-2 py-0.5 rounded-full">
                                     <Star size={12} className="text-accent" />
-                                    <span className="text-[10px] font-bold text-accent tracking-wider uppercase">SEVİYE {userStats.totalXP ? Math.floor(userStats.totalXP / 100) + 1 : 1}</span>
+                                    <span className="text-[10px] font-bold text-accent tracking-wider uppercase">SEVİYE {gamStats.totalXP ? Math.floor(gamStats.totalXP / 100) + 1 : 1}</span>
                                 </div>
                             </div>
                         </div>

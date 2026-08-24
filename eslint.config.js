@@ -17,7 +17,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
  *   UYARI → temizlik borcu. Görünür ama yayını engellemez.
  */
 export default defineConfig([
-    globalIgnores(['dist', 'dist-electron', 'android', 'electron']),
+    globalIgnores(['dist', 'dist-electron', 'android', 'android/**', 'electron', 'archive', 'yedek', 'docs']),
     {
         files: ['**/*.{js,jsx}'],
         extends: [
