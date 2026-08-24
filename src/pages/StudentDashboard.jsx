@@ -59,21 +59,17 @@ import ProgramKarnem from '../components/student/ProgramKarnem';
 import StudentTestsTab from '../components/StudentTestsTab';
 // 🌟 Yeni Gamification & Analytics
 import BadgeCollection, { XPBar, StreakCard } from '../components/gamification/BadgeSystem';
-import AdvancedAnalytics from '../components/charts/AdvancedAnalytics';
 import { useGamification } from '../context/GamificationContext';
 import { AICoachButton } from '../components/AICoachChat';
 // 🎯 Yeni 3 Özellik
 import PerformanceRadar from '../components/charts/PerformanceRadar';
 import PredictiveAnalytics from '../components/charts/PredictiveAnalytics';
-import YKSCountdownWidget from '../components/student/YKSCountdownWidget';
-import SubjectWeaknessAnalyzer from '../components/student/SubjectWeaknessAnalyzer';
 import XPLeaderboard from '../components/student/XPLeaderboard';
 import GoalSettingModule from '../components/student/GoalSettingModule';
-// 🆕 Yeni Özellikler
-import ExamCalendar from '../components/student/ExamCalendar';
-import AITopicSuggestions from '../components/student/AITopicSuggestions';
-import NetProgressChart from '../components/student/NetProgressChart';
-import NoteBook from '../components/student/NoteBook';
+/* AdvancedAnalytics / YKSCountdownWidget / SubjectWeaknessAnalyzer /
+   ExamCalendar / AITopicSuggestions / NetProgressChart / NoteBook
+   importları kaldırıldı (24.08.2026): yalnızca erişilemeyen ölü
+   sekmelerde kullanılıyorlardı. Dosyalar duruyor. */
 import ErrorNotebook from '../components/student/ErrorNotebook';
 import DailyStudyLog from '../components/student/DailyStudyLog';
 // 🆕 13 Madde İmplementasyonu
@@ -2494,56 +2490,10 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* ═══════════════ ANALİTİK ═══════════════ */}
-            {activeTab === 'analytics' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-10">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ANALİTİK MERKEZİ</h1>
-                            <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ZAYIF NOKTA VE PERFORMANS ÖNGÖRÜLERİ</p>
-                        </div>
-                        <AICoachButton
-                            studentData={{ name: user?.name, grade: user?.grade }}
-                            className="premium-button shadow-2xl h-12 px-6 text-[10px] font-black"
-                        />
-                    </div>
-
-                    {/* YKS Geri Sayım */}
-                    <div className="premium-card p-1 sm:p-2 border-line">
-                        <YKSCountdownWidget
-                            userId={user?.id}
-                            examData={examData}
-                            userGrade={user?.gradeLevel || user?.grade}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-10">
-                        {/* Zayıf Nokta Analizi */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">📊 DERS BAZINDA ANALİZ</h2>
-                                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                            </div>
-                            <div className="premium-card p-6 border-line">
-                                <SubjectWeaknessAnalyzer examData={examData} studentName={user?.name} />
-                            </div>
-                        </div>
-
-                        {/* Mevcut Gelişmiş Analitik */}
-                        {examData.length > 0 && (
-                            <div className="space-y-6">
-                                <div className="flex items-center gap-4">
-                                    <h2 className="text-xs font-black text-ink-2 uppercase tracking-[0.3em]">📈 GELİŞMİŞ ANALİTİK</h2>
-                                    <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                                </div>
-                                <div className="premium-card p-6 border-line">
-                                    <AdvancedAnalytics examData={examData} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* ANALİTİK sekmesi KALDIRILDI (24.08.2026): hiçbir nav
+                yolundan erişilemiyordu ('analytics' ne SEKME_GRUPLARI'nda
+                ne GECERLI_SEKMELER'de) — ölü koddu. İçerdiği bilgiler
+                Gelişimim merkezi + Deneme Analizi'nde zaten var. */}
 
             {/* ═══════════ GELİŞİMİM → Genel segmentinin devamı ═══════════
                 Degrade kartlar ve net grafiği merkez başlığının altında;
@@ -2558,39 +2508,11 @@ const StudentDashboard = () => {
                 Değerli parçalar üstteki panoya taşındı: program uyumu ve
                 istikrar çoklu halkaya, çalışma düzeni ısı haritasına. */}
 
-            {/* ═══════════════ TAKVİM ═══════════════ */}
-            {activeTab === 'calendar' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-8">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ETKİNLİK TAKVİMİ</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SINAVLAR VE ÖNEMLİ TARİHLER</p>
-                    </div>
-                    <div className="premium-card p-1 sm:p-2 border-line">
-                        <ExamCalendar userId={user?.id} />
-                    </div>
-                </div>
-            )}
-
-            {/* ═══════════════ AI KONU ÖNERİLERİ ═══════════════ */}
-            {activeTab === 'suggestions' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-10">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">AKILLI ÖNERİLER</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">YAPAY ZEKA DESTEKLİ ÇALIŞMA RASYONELİ</p>
-                    </div>
-                    <div className="space-y-10">
-                        <div className="premium-card p-1 sm:p-2 border-line">
-                            <AITopicSuggestions examData={examData} userId={user?.id} />
-                        </div>
-                        {examData.length > 0 && (
-                            <div className="premium-card p-8 border-line">
-                                <h3 className="text-sm font-black text-brand uppercase tracking-[0.2em] mb-6">NET GELİŞİM GRAFİĞİ</h3>
-                                <NetProgressChart examData={examData} userId={user?.id} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* TAKVİM ve AKILLI ÖNERİLER sekmeleri KALDIRILDI
+                (24.08.2026): ikisi de hiçbir nav yolundan erişilemiyordu —
+                ölü koddu. Sınav tarihi Bugün ekranındaki geri sayımda,
+                çalışma önerisi Deneme Analizi'ndeki Çalışma
+                Öncelikleri'nde yaşıyor. */}
 
             {/* ÇALIŞMALARIM → Günlük Kayıt segmenti */}
             {activeTab === 'calismalarim' && calisSegment === 'gunluk' && (
@@ -2606,18 +2528,8 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* ═══════════════ NOT DEFTERİ ═══════════════ */}
-            {activeTab === 'notebook' && (
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 icerik-gecis space-y-8">
-                    <div>
-                        <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">KİŞİSEL NOTLAR</h1>
-                        <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ÇALIŞMA NOTLARI VE HATIRLATICILAR</p>
-                    </div>
-                    <div className="premium-card p-1 sm:p-2 border-line min-h-[600px]">
-                        <NoteBook userId={user?.id} />
-                    </div>
-                </div>
-            )}
+            {/* NOT DEFTERİ sekmesi KALDIRILDI (24.08.2026): hiçbir nav
+                yolundan erişilemiyordu — ölü koddu. */}
 
 
             {/* ── Ayarlar Modalı (Premium) ── */}
