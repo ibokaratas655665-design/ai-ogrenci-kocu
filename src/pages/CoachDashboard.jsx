@@ -3298,6 +3298,12 @@ const CoachDashboard = () => {
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
             <div className="pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos">
                 <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* EYLEM ŞERİDİ — Genel Bakış'ta gizli.
+                        "Öğrenci Ekle / Liste Yükle / Toplu Mesaj" her sekmenin üstünde
+                        duruyordu. Genel Bakış bir DURUM ekranıdır: koç oraya ne olduğunu
+                        görmeye gelir, kayıt açmaya değil. Şerit ekranın en üstünü kaplayıp
+                        asıl içeriği aşağı itiyordu. Diğer sekmelerde yerinde duruyor. */}
+                    {activeTab !== 'bugun' && (
                     <div className="flex flex-wrap items-center justify-between gap-6 bg-surface/40 backdrop-blur-xl border border-line p-4 rounded-3xl">
                         <div className="flex flex-wrap gap-3">
                             <button 
@@ -3332,6 +3338,7 @@ const CoachDashboard = () => {
                             <span className="badge badge-neutral">{students.length} öğrenci</span>
                         </div>
                     </div>
+                    )}
 
                     {/* ── SEKME ÇUBUĞU ───────────────────────────────────────────
                         Eski hâli 24×24 karo butonlardan oluşuyordu; pasif olanlar
@@ -3372,37 +3379,20 @@ const CoachDashboard = () => {
                         {/* 📋 GENEL BAKIŞ — analiz merkezi + günlük iş listesi.
                             Üstte referans tasarımın panosu (öğrenci seç →
                             30 günlük görsel analiz), altta koçun iş listesi. */}
+                        {/* 📋 GENEL BAKIŞ — tek bileşen, tek ekran.
+                            Burada iki pano üst üste duruyordu: analiz panosu ve altında
+                            "Bugünkü İşlerin" listesi. İkisi de aynı verilerden besleniyor,
+                            aynı öğrenciyi iki kez sayıyordu; koç sayfayı iki kez okumak
+                            zorundaydı. Günlük iş bilgileri (öğrenci listesi, yükselenler,
+                            görevler, randevular) artık panonun kendi bloklarının içinde. */}
                         {activeTab === 'bugun' && (
-                            <div className="space-y-8">
                             <KocGenelBakis
                                 students={students}
                                 user={user}
-                                onKarneAc={(id) => navigate(`/coach/student/${id}`)}
-                            />
-                            <div className="pt-2 border-t border-line">
-                                <h3 className="tip-h4 mb-3">Bugünkü İşlerin</h3>
-                            <KocBugun
-                                kullanici={user}
-                                ogrenciler={students}
-                                mesajlar={safeParse('messages', [])}
-                                randevular={safeParse('appointments', [])}
-                                /**
-                                 * ⚠️ BURADA `|| s.approved === false` VARDI ve REDDEDİLEN
-                                 * kaydı da "onay bekliyor" sayıyordu: reddedilen öğrencide
-                                 * `approvalStatus='reddedildi'` ile birlikte `approved=false`
-                                 * de duruyor. Sonuç: Onay Merkezi "Onay Bekliyor 0,
-                                 * Reddedildi 1" derken bu kart "1 kayıt onayını bekliyor"
-                                 * diyordu; koç karta tıklayıp boş liste görüyordu.
-                                 *
-                                 * Artık tek doğruluk kaynağı `onayDurumu` — Onay Merkezi de
-                                 * aynı işlevi kullanıyor, iki ekran artık aynı sayıyı verir.
-                                 */
-                                onaylar={students.filter((s) => onayDurumu(s) === 'bekliyor')}
-                                onOgrenciAc={(s) => navigate(`/coach/student/${s.id}`)}
+                                gorevler={safeParse('coach_tasks', [])}
+                                onOgrenciAc={(id) => navigate(`/coach/student/${id}`)}
                                 onGit={(id) => { setActiveTab(id); okundu(id); }}
                             />
-                            </div>
-                            </div>
                         )}
 
                         {/* 📊 ANALİZ MERKEZİ — özet, risk, sıralama, hedefler, grafikler tek yerde */}

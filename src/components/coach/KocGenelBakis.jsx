@@ -23,6 +23,7 @@ import { listeOku } from '../../services/veriDeposu';
 import { buildClassReport } from '../../services/reportService';
 import { cn } from '../../lib/cn';
 import { MiniSeri } from '../charts/Analitik';
+import { DegisimListesi } from '../charts/Dagilim';
 
 /* Hata türü adları data/hataTurleri'nden — bkz. o dosyadaki not. */
 const PASTA_RENKLERI = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
@@ -130,34 +131,46 @@ const AyTakvimi = ({ isaretliGunler = new Set(), ay, onAy }) => {
     );
 };
 
-const DurumKarti = ({ baslik, aciklama, oran, altMetin }) => {
-    if (oran == null || !Number.isFinite(Number(oran))) return null;
-    const o = Math.max(0, Math.min(100, Math.round(Number(oran))));
-    const d = durumBul(o);
-    const R = 34, C = 2 * Math.PI * R;
+const DurumKarti = ({ baslik, aciklama, oran }) => {
+    /**
+     * VERİ YOKKEN DE ÇİZİLİR.
+     *
+     * Kart eskiden `oran == null` olduğunda hiç render edilmiyordu ve
+     * üçlü ızgarada bir göz boş kalıyordu — ölçüldü: görev kaydı
+     * olmayan sınıfta ekranın üçte biri beyaz duruyordu. Oysa "veri
+     * yok" da bir durumdur ve söylenmesi gerekir; kartın kaybolması
+     * koça hiçbir şey anlatmaz, yalnızca boşluk bırakır.
+     *
+     * Sahte sayı üretilmez: halka boş, ortada tire, durum "kayıt yok".
+     */
+    const vari = oran != null && Number.isFinite(Number(oran));
+    const o = vari ? Math.max(0, Math.min(100, Math.round(Number(oran)))) : 0;
+    const d = vari ? durumBul(o) : { ad: 'Kayıt yok', renk: 'var(--ink-3)' };
+    const R = 30, C = 2 * Math.PI * R;
 
     return (
-        <div className="card p-4 flex items-center gap-4">
+        <div className="card p-4 flex items-center gap-3">
             <div className="min-w-0 flex-1">
-                <h4 className="text-[15px] font-black text-ink leading-tight m-0">{baslik}</h4>
-                <p className="tip-caption mt-1 leading-snug">{aciklama}</p>
-                <span className="inline-flex items-center gap-1.5 mt-2.5 text-[11.5px] font-black"
+                <h4 className="text-[14px] font-black text-ink leading-tight m-0">{baslik}</h4>
+                <p className="tip-caption mt-1 leading-snug line-clamp-3">{aciklama}</p>
+                <span className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-black"
                     style={{ color: d.renk }}>
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.renk }} />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.renk }} />
                     {d.ad}
                 </span>
             </div>
-            <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
-                <svg width="84" height="84" className="-rotate-90" aria-hidden="true">
-                    <circle cx="42" cy="42" r={R} fill="none" stroke="var(--surface-3)" strokeWidth="11" />
-                    <circle cx="42" cy="42" r={R} fill="none" stroke={d.renk} strokeWidth="11" strokeLinecap="round"
-                        strokeDasharray={C} strokeDashoffset={C - (C * o) / 100}
-                        style={{ transition: 'stroke-dashoffset .6s ease' }} />
+            <div className="relative shrink-0" style={{ width: 74, height: 74 }}>
+                <svg width="74" height="74" className="-rotate-90" aria-hidden="true">
+                    <circle cx="37" cy="37" r={R} fill="none" stroke="var(--surface-3)" strokeWidth="10" />
+                    {vari && (
+                        <circle cx="37" cy="37" r={R} fill="none" stroke={d.renk} strokeWidth="10" strokeLinecap="round"
+                            strokeDasharray={C} strokeDashoffset={C - (C * o) / 100}
+                            style={{ transition: 'stroke-dashoffset .6s ease' }} />
+                    )}
                 </svg>
-                <span className="absolute inset-0 grid place-items-center text-[17px] font-black tabular-nums"
-                    style={{ color: d.renk }}>%{o}</span>
+                <span className="absolute inset-0 grid place-items-center text-[15px] font-black tabular-nums"
+                    style={{ color: d.renk }}>{vari ? `%${o}` : '—'}</span>
             </div>
-            {altMetin && <span className="sr-only">{altMetin}</span>}
         </div>
     );
 };
@@ -200,7 +213,7 @@ const BosVeri = ({ metin }) => (
     <div className="h-40 flex items-center justify-center text-sm text-ink-3 text-center px-4">{metin}</div>
 );
 
-export default function KocGenelBakis({ students = [], user }) {
+export default function KocGenelBakis({ students = [], user, gorevler = [], onOgrenciAc, onGit }) {
     /* Öğrenci seçici bu ekrandan kaldırıldı — ekran yalnızca SINIFA bakıyor.
        Tek öğrenci analizi Öğrenci Gelişim Analizi sekmesinde duruyor;
        aynı ekranın dropdown'a göre iki farklı şey göstermesi, koçun
@@ -276,6 +289,40 @@ export default function KocGenelBakis({ students = [], user }) {
             }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [students, surum, donemAdet]);
+
+    /**
+     * NET DEĞİŞİMİ — kim yükseliyor, kim geriliyor.
+     *
+     * "Bugünkü İşlerin" panosunda ayrı bir "Yükselenler" listesi vardı
+     * ve yalnızca ARTANLARI gösteriyordu. Koçun asıl bakması gereken
+     * düşenlerdir; yükselenler iyi haber, düşenler iştir. Tek listede
+     * ikisi birden, en çok değişen başta.
+     */
+    const netDegisimleri = useMemo(() => {
+        if (!sinif) return [];
+        const hepsi = [...(sinif.topPerformers || []), ...(sinif.atRisk || [])];
+        const gorulen = new Set();
+        return hepsi
+            .filter((r) => {
+                const k = String(r.student?.id ?? r.student?.name ?? '');
+                if (!k || gorulen.has(k)) return false;
+                gorulen.add(k);
+                return Number.isFinite(Number(r.exams?.lastNet)) && Number.isFinite(Number(r.exams?.prevNet));
+            })
+            .map((r) => ({
+                ad: r.student?.name || '—',
+                once: Number(r.exams.prevNet),
+                sonra: Number(r.exams.lastNet),
+                birim: '',
+            }));
+    }, [sinif]);
+
+    /** Koçun kendi açık görevleri — tamamlanmamış olanlar, en yakın tarih başta. */
+    const acikGorevler = useMemo(() => (
+        (gorevler || [])
+            .filter((g) => !g.completed && g.status !== 'Tamamlandı')
+            .sort((a, b) => String(a.sonTarih || a.dueDate || '9999').localeCompare(String(b.sonTarih || b.dueDate || '9999')))
+    ), [gorevler]);
 
     /**
      * YAKLAŞAN RANDEVULAR — bugünden sonrası, en yakın önce.
@@ -420,6 +467,16 @@ export default function KocGenelBakis({ students = [], user }) {
                             </div>
                         )}
 
+                        {/* ── Net değişimi ───────────────────────────
+                            Ayrı bir "Yükselenler" listesi vardı ve yalnızca
+                            artanları gösteriyordu. Düşenler koçun asıl işi;
+                            ikisi tek listede, en çok değişen başta. */}
+                        {netDegisimleri.length > 0 && (
+                            <Bolum baslik="Son Denemede Net Değişimi">
+                                <DegisimListesi satirlar={netDegisimleri} birim="" enFazla={6} />
+                            </Bolum>
+                        )}
+
                         {/* ── En yüksek netler ────────────────────────
                             buildClassReport zaten topPerformers üretiyordu
                             ama hiçbir ekran okumuyordu: hesaplanıp atılan
@@ -489,6 +546,78 @@ export default function KocGenelBakis({ students = [], user }) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* ── Öğrencilerim ───────────────────────────
+                            Panonun altındaki ayrı öğrenci listesi buraya
+                            taşındı: koç sınıfın gidişatına bakarken kimlerden
+                            söz edildiğini aynı ekranda görüyor. */}
+                        {students.length > 0 && (
+                            <div className="card p-4">
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                    <h3 className="tip-h4 m-0">Öğrencilerim</h3>
+                                    <span className="badge badge-neutral">{students.length}</span>
+                                </div>
+                                <div className="flex flex-col divide-y divide-line">
+                                    {students.slice(0, 6).map((o) => (
+                                        <button
+                                            key={o.id}
+                                            type="button"
+                                            onClick={() => onOgrenciAc?.(o.id)}
+                                            className="flex items-center gap-3 py-2.5 text-left hover:bg-surface-2 transition-colors rounded-dsm px-1 min-h-[44px]"
+                                        >
+                                            <span className="w-8 h-8 rounded-full grid place-items-center text-[12px] font-black shrink-0"
+                                                style={{ background: 'var(--brand-soft)', color: 'var(--brand-metin)' }}>
+                                                {String(o.name || '?').charAt(0).toUpperCase()}
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="tip-small font-bold text-ink block truncate">{o.name}</span>
+                                                {o.grade && <span className="tip-mini text-ink-3 block">{o.grade}. sınıf</span>}
+                                            </span>
+                                            <span className="tip-mini shrink-0" style={{ color: 'var(--brand-metin)' }}>Karne →</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {students.length > 6 && (
+                                    <button type="button" onClick={() => onGit?.('students')}
+                                        className="tip-caption font-bold mt-2 hover:underline"
+                                        style={{ color: 'var(--brand-metin)' }}>
+                                        {students.length - 6} öğrenci daha →
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── Görevlerim ─────────────────────────────
+                            Koçun kendi iş listesi. Boşken kart hiç
+                            çizilmiyor: "görev yok" satırı da yer kaplar. */}
+                        {acikGorevler.length > 0 && (
+                            <div className="card p-4">
+                                <div className="flex items-center justify-between gap-2 mb-3">
+                                    <h3 className="tip-h4 m-0">Görevlerim</h3>
+                                    <button type="button" onClick={() => onGit?.('coach-tasks')}
+                                        className="tip-caption font-bold hover:underline"
+                                        style={{ color: 'var(--brand-metin)' }}>Tümü</button>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {acikGorevler.slice(0, 4).map((g) => (
+                                        <div key={g.id} className="flex items-start gap-2.5">
+                                            <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                                                style={{ background: 'var(--brand)' }} />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="tip-small font-bold text-ink block truncate">
+                                                    {g.title || g.baslik || 'Görev'}
+                                                </span>
+                                                {(g.sonTarih || g.dueDate) && (
+                                                    <span className="tip-mini text-ink-3 block">
+                                                        son tarih {g.sonTarih || g.dueDate}
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* ── Takvim ────────────────────────────────── */}
                         <div className="card p-4">
