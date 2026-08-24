@@ -255,9 +255,18 @@ class FirebaseSync {
         this.paused = false;
     }
 
-    pause() { this.paused = true; }
+    /* Demo, bekleyen dinleyiciyi de kapatmalı: bayrak tek başına yazmayı
+       durduruyor ama açık kalan onSnapshot kimliksiz oturumda sürekli
+       permission-denied üretiyordu. */
+    pause() {
+        this.paused = true;
+        if (this.realtimeUnsubscribe) { this.realtimeUnsubscribe(); this.realtimeUnsubscribe = null; }
+    }
 
-    resume() { this.paused = false; }
+    resume() {
+        this.paused = false;
+        if (this.userId && !this.realtimeUnsubscribe) this.startRealtimeListener();
+    }
 
     /**
      * @param {object|string} kullanici Tam kullanıcı nesnesi (tercih edilen)
@@ -407,6 +416,14 @@ class FirebaseSync {
                     }
                 });
                 if (updatedCount > 0) console.log(`📡 Real-time Sync: ${updatedCount} keys updated`);
+            }, (e) => {
+                /* ⚠️ HATA GERİ ÇAĞRISI EKSİKTİ: kimliksiz oturumda (örn.
+                   demo) her sunucu yanıtı "Uncaught Error in snapshot
+                   listener: permission-denied" olarak konsola düşüyordu.
+                   SDK hata sonrası dinleyiciyi zaten sonlandırır; referans
+                   temizlenir ki resume/yeniden başlatma sağlıklı olsun. */
+                console.warn('Senkron dinleyicisi durdu:', e?.code || e?.message);
+                this.realtimeUnsubscribe = null;
             });
         } catch (e) { console.warn('Real-time listener error:', e.message); }
     }

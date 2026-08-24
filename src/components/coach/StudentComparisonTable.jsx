@@ -8,12 +8,12 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { listeOku, nesneOku } from '../../services/veriDeposu';
+import { listeOku, nesneOku, gorevHaritasi } from '../../services/veriDeposu';
 
 // ─── Yardımcı: v2 sonuçlarından öğrenci statsları hesapla ────
 const buildStudentStats = (students) => {
     const results = listeOku('v2_results_data');
-    const tasks = nesneOku('student_tasks');
+    const tasks = gorevHaritasi();
 
     const normTR = (s) => String(s || '').toLowerCase()
         .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ş/g, 's').replace(/Ş/g, 's')
@@ -264,7 +264,7 @@ const StudentComparisonTable = ({ students = [] }) => {
 
                     {filtered.length === 0 && (
                         <div className="text-center py-12 text-ink-3">
-                            <BarChart2 size={36} className="mx-auto mb-2 opacity-30"  animationDuration={300} />
+                            <BarChart2 size={36} className="mx-auto mb-2 opacity-30" />
                             <p className="text-sm">Eşleşen öğrenci bulunamadı</p>
                         </div>
                     )}
@@ -275,7 +275,7 @@ const StudentComparisonTable = ({ students = [] }) => {
             {viewMode === 'chart' && (
                 <div className="bg-surface rounded-2xl border border-line shadow-sm p-6">
                     <h3 className="font-black text-ink mb-4 text-sm flex items-center gap-2">
-                        <BarChart2 size={16} className="text-brand"  animationDuration={300} />
+                        <BarChart2 size={16} className="text-brand" />
                         Net Karşılaştırma (İlk 15)
                     </h3>
                     <ResponsiveContainer width="100%" height={320}>

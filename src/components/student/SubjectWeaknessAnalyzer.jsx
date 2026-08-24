@@ -205,7 +205,7 @@ const SubjectWeaknessAnalyzer = ({ examData = [], studentName = '' }) => {
     if (examData.length === 0) {
         return (
             <div className="bg-surface rounded-2xl border border-line shadow-sm p-10 text-center">
-                <BarChart2 size={40} className="mx-auto mb-3 text-ink-3"  animationDuration={300} />
+                <BarChart2 size={40} className="mx-auto mb-3 text-ink-3" />
                 <h3 className="text-base font-bold text-ink-2 mb-1">Henüz Analiz Yok</h3>
                 <p className="text-sm text-ink-3">Deneme sonuçların yüklendikçe zayıf noktalar otomatik hesaplanır.</p>
             </div>

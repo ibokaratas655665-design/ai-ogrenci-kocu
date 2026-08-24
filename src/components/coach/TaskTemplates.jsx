@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Plus, Save, Trash2, Send, ClipboardList, X, Check, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import { yaz, listeOku, nesneOku } from '../../services/veriDeposu';
+import { yaz, listeOku, nesneOku, gorevleriGetir, gorevleriKaydet } from '../../services/veriDeposu';
 
 const LS_KEY = 'task_templates';
 const DEFAULT_TEMPLATES = [
@@ -64,18 +64,20 @@ const TaskTemplates = ({ students = [], setToast }) => {
         if (selectedStudents.length === 0) { setToast?.('❌ En az bir öğrenci seçin'); return; }
         const tpl = templates.find(t => t.id === templateId);
         if (!tpl) return;
-        const existing = nesneOku('student_tasks');
+        /* ⚠️ nesneOku + toptan yaz KULLANILMAZ: depo dizi biçimindeyse
+           nesneOku {} döndürür ve yaz TÜM mevcut görevleri silerdi.
+           Merkezî gorevleriGetir/gorevleriKaydet iki biçimi de korur. */
         const now = new Date();
         selectedStudents.forEach(sid => {
             const key = String(sid);
-            if (!existing[key]) existing[key] = [];
-            tpl.tasks.forEach(task => {
+            const mevcut = gorevleriGetir(key);
+            const yeniler = tpl.tasks.map(task => {
                 const due = new Date(now);
                 due.setDate(due.getDate() + (task.dueDate || 7));
-                existing[key].push({ id: `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, studentId: key, title: task.title, priority: task.priority, dueDate: due.toISOString().split('T')[0], status: 'pending', completed: false, assignedAt: now.toISOString(), templateName: tpl.name });
+                return { id: `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, studentId: key, title: task.title, priority: task.priority, dueDate: due.toISOString().split('T')[0], status: 'pending', completed: false, assignedAt: now.toISOString(), templateName: tpl.name };
             });
+            gorevleriKaydet(key, [...mevcut, ...yeniler]);
         });
-        yaz('student_tasks', existing);
         window.dispatchEvent(new StorageEvent('storage', { key: 'student_tasks' }));
         setToast?.(`✅ "${tpl.name}" ${selectedStudents.length} öğrenciye atandı!`);
         setAssigningId(null); setSelectedStudents([]);

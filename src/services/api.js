@@ -145,10 +145,11 @@ const api = {
             await delay(50);
             const allMessages = safeParse('student_messages', {});
 
-            // Direkt key ile bul
-            if (allMessages[studentId] && allMessages[studentId].length > 0) {
-                return allMessages[studentId];
-            }
+            /* ⚠️ ERKEN DÖNÜŞ KALDIRILDI: kimlik anahtarı doluysa okul
+               numarası anahtarındaki mesajlar HİÇ birleşmiyordu — eski
+               kayıtları schoolNumber altında duran öğrencinin geçmişi
+               koç ekranında kayboluyordu. Her zaman tüm olası anahtarlar
+               birleştirilir (aşağıda tekilleştirme zaten var). */
 
             // students_db'den öğrenci bilgilerini al ve tüm olası key'leri dene
             const coachStudents = safeParse('coach_students');

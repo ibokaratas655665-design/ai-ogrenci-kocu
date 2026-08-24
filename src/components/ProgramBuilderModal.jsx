@@ -290,6 +290,14 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         [ogrenci, sinavId],
     );
 
+    /* İlk açılışta bölüm seçili gelsin: seçim yapılmadan ders listesi
+       boş kalıyor ve koç "ders listesi çalışmıyor" sanıyordu. Öğrencinin
+       ilk bölümü (TYT) otomatik seçilir; koç istediğinde değiştirir. */
+    useEffect(() => {
+        if (!selectedExam && bolumler.length) setSelectedExam(bolumler[0].id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bolumler]);
+
     /** Öğrencinin konu durumu: `${bolum}|${konuAnahtarı}` → satır. */
     useEffect(() => {
         if (!studentId || !bolumler.length) return;

@@ -2244,7 +2244,11 @@ const StudentDashboard = () => {
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HAFTALIK GELİŞİM VE DURUM ANALİZİ</p>
                         </div>
                         <div className="premium-card p-4 sm:p-8 border-line">
-                            <SelfAssessmentForm studentId={user?.id} studentName={user?.name} />
+                            {/* ⚠️ Bileşenin prop adları userId/userName —
+                                studentId geçilince kimlik undefined kalıyor,
+                                kayıt `..._undefined` anahtarına düşüyor ve
+                                koç panelindeki sayaç hep 0/6 görünüyordu. */}
+                            <SelfAssessmentForm userId={user?.id} userName={user?.name} />
                         </div>
                     </div>
                 )}

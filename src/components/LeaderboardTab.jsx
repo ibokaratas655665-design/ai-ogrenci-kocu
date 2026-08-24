@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trophy, Medal, Award, TrendingUp, Star } from 'lucide-react';
-import { listeOku, nesneOku } from '../services/veriDeposu';
+import { listeOku, nesneOku, gorevHaritasi } from '../services/veriDeposu';
 
 const LeaderboardTab = ({ students }) => {
     // Calculate scores from exam data
@@ -17,7 +17,7 @@ const LeaderboardTab = ({ students }) => {
                 : 0;
 
             // Get completed tasks
-            const tasks = nesneOku('student_tasks');
+            const tasks = gorevHaritasi();
             const studentTasks = tasks[student.id] || [];
             const completedTasks = studentTasks.filter(t => t.completed).length;
 

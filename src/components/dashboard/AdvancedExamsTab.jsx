@@ -1684,7 +1684,7 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                         <div className="px-5 pb-4">
                             <div className="bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl p-4">
                                 <h5 className="text-sm font-bold text-ink-2 mb-3 flex items-center gap-2">
-                                    <BarChart2 size={15} className="text-brand"  animationDuration={300} />
+                                    <BarChart2 size={15} className="text-brand" />
                                     Sınıf Karşılaştırması
                                 </h5>
                                 <div className="h-32">
@@ -2488,7 +2488,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             <div className="flex justify-between items-start flex-wrap gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-ink flex items-center gap-2">
-                        <BarChart2 className="text-c4" size={24}  animationDuration={300} />
+                        <BarChart2 className="text-c4" size={24} />
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-brand">
                             Deneme Merkezi
                         </span>
@@ -2603,7 +2603,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             ) : filteredTrials.length === 0 ? (
                 <div className="text-center py-16 bg-surface rounded-2xl border-2 border-dashed border-line">
                     <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <BarChart2 size={32} className="text-c4"  animationDuration={300} />
+                        <BarChart2 size={32} className="text-c4" />
                     </div>
                     <h3 className="text-lg font-bold text-ink-2 mb-2">
                         {examCategory === 'kazanim' ? `${kazanimGrade}. Sınıf kazanım testi yok` : `${examCategory} denemesi yok`}
@@ -2625,7 +2625,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center font-black">
-                                                <BarChart2 size={20}  animationDuration={300} />
+                                                <BarChart2 size={20} />
                                             </div>
                                             <div>
                                                 <h3 className="font-black text-ink text-base leading-tight">{examCategory} DENEMELERİ</h3>
@@ -2763,7 +2763,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                             <div className="animate-fade-in border-2 border-brand-line rounded-2xl overflow-hidden shadow-lg">
                                 <div className="on-color bg-gradient-to-r from-brand to-purple-600 px-5 py-3 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <BarChart2 size={18} className="text-ink-2"  animationDuration={300} />
+                                        <BarChart2 size={18} className="text-ink-2" />
                                         <h3 className="text-ink font-bold">{trial.name}</h3>
                                         <span className="bg-surface/20 text-ink text-xs font-bold px-2 py-0.5 rounded-full">{trial.examType}</span>
                                     </div>

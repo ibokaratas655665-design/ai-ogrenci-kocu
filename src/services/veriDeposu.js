@@ -267,6 +267,25 @@ export const gorevleriGetir = (ogrenciId = null) => {
     return Object.values(ham || {}).flat().filter(Boolean);
 };
 
+/**
+ * Görev deposunu HER ZAMAN {öğrenciId: [görevler]} nesnesi olarak döndürür.
+ * Koç panelindeki toplu okuyucular (sıralama, risk, kıyas, analitik)
+ * `nesneOku` kullanıyordu; depo dizi biçimindeyse nesneOku {} döndürür ve
+ * o ekranlar görevleri HİÇ görmezdi. Dizi biçimi studentId alanından
+ * gruplanarak normalize edilir.
+ */
+export const gorevHaritasi = () => {
+    const ham = oku(A.gorevler, NORMAL.nesne);
+    if (!Array.isArray(ham)) return ham || {};
+    const harita = {};
+    for (const g of ham) {
+        const k = String(g?.studentId ?? g?.ogrenciId ?? '');
+        if (!k) continue;
+        (harita[k] = harita[k] || []).push(g);
+    }
+    return harita;
+};
+
 export const gorevleriKaydet = (ogrenciId, gorevler) => {
     const ham = oku(A.gorevler, NORMAL.nesne);
     if (Array.isArray(ham)) {
@@ -312,7 +331,7 @@ export default {
     oku, listeOku, nesneOku, yaz, sil, izle,
     kayitGuncelle, kayitEkle, kayitSil,
     ogrencileriGetir, ogrenciGetir, ogrenciKaydet, ogrenciSil, ogrenciAlanGuncelle,
-    gorevleriGetir, gorevleriKaydet,
+    gorevleriGetir, gorevleriKaydet, gorevHaritasi,
     mesajlariGetir, mesajEkle,
     randevulariGetir, randevuKaydet, randevuSil,
     ayarlariGetir, ayarKaydet,

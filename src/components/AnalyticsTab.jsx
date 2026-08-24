@@ -5,12 +5,12 @@ import {
     ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, 
     PolarAngleAxis, PolarRadiusAxis, AreaChart, Area 
 } from 'recharts';
-import { listeOku, nesneOku } from '../services/veriDeposu';
+import { listeOku, nesneOku, gorevHaritasi } from '../services/veriDeposu';
 
 const AnalyticsTab = ({ students = [] }) => {
     const analytics = useMemo(() => {
         const v2Results = listeOku('v2_results_data');
-        const tasks = nesneOku('student_tasks');
+        const tasks = gorevHaritasi();
 
         const totalStudents = students.length;
         const activeStudents = students.filter(s => {

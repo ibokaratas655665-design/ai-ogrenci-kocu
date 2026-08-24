@@ -198,7 +198,10 @@ export const CoachSelfAssessmentView = ({ students }) => {
     })();
 
     const weekKey = WEEK_KEY();
-    const thisWeek = assessments.filter(a => a.week === weekKey);
+    /* Kimliksiz kayıtlar (prop hatası döneminden kalan `undefined`
+       kayıtları) sayaca ve listeye girmez — hangi öğrenciye ait olduğu
+       bilinemeyen kayıt "tamamladı" sayılamaz. */
+    const thisWeek = assessments.filter(a => a.week === weekKey && a.userId && a.userId !== 'undefined');
 
     return (
         <div className="space-y-4">

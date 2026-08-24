@@ -97,7 +97,7 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
     if (examResults.length === 0) {
         return (
             <div className="text-center py-14 text-ink-3">
-                <BarChart2 size={40} className="mx-auto mb-3 opacity-30"  animationDuration={300} />
+                <BarChart2 size={40} className="mx-auto mb-3 opacity-30" />
                 <p className="font-bold text-ink-2">Deneme Sonucu Yok</p>
                 <p className="text-sm mt-1">Deneme sonuçları yüklendiğinde karşılaştırma burada görünür.</p>
             </div>
@@ -137,7 +137,7 @@ const ExamComparisonMatrix = ({ examResults = [], studentName = '' }) => {
             {/* Grafik Tipi & Filtreler */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex gap-1 bg-surface-3 p-1 rounded-xl">
-                    {[['line', <Activity size={14} />, 'Trend'], ['bar', <BarChart2 size={14}  animationDuration={300} />, 'Sütun'], ['radar', <Layers size={14} />, 'Radar']].map(([type, icon, label]) => (
+                    {[['line', <Activity size={14} />, 'Trend'], ['bar', <BarChart2 size={14} />, 'Sütun'], ['radar', <Layers size={14} />, 'Radar']].map(([type, icon, label]) => (
                         <button
                             key={type}
                             onClick={() => setChartType(type)}

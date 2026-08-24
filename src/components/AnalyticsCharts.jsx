@@ -42,7 +42,7 @@ const AnalyticsCharts = ({ examData }) => {
     if (!examData || examData.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center p-10 bg-surface rounded-2xl border border-line h-48">
-                <BarChart2 size={36} className="text-ink-3 mb-3"  animationDuration={300} />
+                <BarChart2 size={36} className="text-ink-3 mb-3" />
                 <p className="text-ink-3 font-medium">Henüz deneme sonucu yok.</p>
                 <p className="text-xs text-ink-3 mt-1">Koçun deneme yüklediğinde grafikler burada belirecek.</p>
             </div>

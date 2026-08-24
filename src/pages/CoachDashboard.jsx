@@ -74,7 +74,7 @@ import { bildir, onayla } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
-import { oku, yaz, yaz as veriYaz, listeOku, nesneOku } from '../services/veriDeposu';
+import { oku, yaz, yaz as veriYaz, listeOku, nesneOku, gorevleriGetir, gorevleriKaydet } from '../services/veriDeposu';
 
 // 🛡️ Safe JSON Parser
 /**
@@ -1051,7 +1051,7 @@ const ExamsTab = ({ students, setToast }) => {
         <div className="space-y-8 icerik-gecis pb-20">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-ink flex items-center">
-                    <BarChart2 className="mr-2 text-c4" size={24}  animationDuration={300} />
+                    <BarChart2 className="mr-2 text-c4" size={24} />
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-brand">
                         Gelişmiş Deneme Analiz Merkezi
                     </span>
@@ -3093,8 +3093,9 @@ const CoachDashboard = () => {
 
     const handleAssignTask = (taskData) => {
         try {
-            // Get existing tasks from localStorage
-            const existingTasks = nesneOku('student_tasks');
+            /* ⚠️ nesneOku + toptan setItem KULLANILMAZ: depo dizi
+               biçimindeyse nesneOku {} döndürür ve kayıt TÜM mevcut
+               görevleri silerdi. Merkezî yardımcılar iki biçimi de korur. */
             const assignedTestsKey = (studentId) => `assigned_tests_${studentId}`;
 
             // Görev yükünü her öğrenci için kaydet
@@ -3115,12 +3116,9 @@ const CoachDashboard = () => {
                     completed: false
                 };
 
-                // Öğrencinin görev listesine ekle
+                // Öğrencinin görev listesine ekle (biçim korumalı)
                 const keyStr = String(studentId);
-                if (!existingTasks[keyStr]) {
-                    existingTasks[keyStr] = [];
-                }
-                existingTasks[keyStr].push(task);
+                gorevleriKaydet(keyStr, [...gorevleriGetir(keyStr), task]);
 
                 // 🆕 Inventory/Test ataması ise özel assigned_tests listesine de ekle
                 if (taskData.category === 'inventory' || taskData.category === 'test') {
@@ -3153,10 +3151,8 @@ const CoachDashboard = () => {
                 }
             });
 
-            // Save updated tasks
-            localStorage.setItem('student_tasks', JSON.stringify(existingTasks));
-
-            // Firebase'e hemen senkronize et
+            // gorevleriKaydet → veriDeposu.yaz zaten senkronu tetikliyor;
+            // yine de toplu atamada tek tur garanti edilir
             firebaseSync.sync().catch(() => { });
 
             // Öğrencilere bildirim düşür — bildirim paneli eskiden yalnızca

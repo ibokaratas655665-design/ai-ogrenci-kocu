@@ -415,7 +415,7 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                 {viewMode === 'table' && (
                     <>
                         <h3 className="font-bold text-ink-2 text-sm mb-4 flex items-center gap-2">
-                            <BarChart2 size={16} className="text-info"  animationDuration={300} />
+                            <BarChart2 size={16} className="text-info" />
                             Detay Karşılaştırma Tablosu
                         </h3>
                         <div className="overflow-x-auto">

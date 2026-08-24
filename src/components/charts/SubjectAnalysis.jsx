@@ -161,7 +161,7 @@ const SubjectAnalysis = ({ results, selectedExamId, onAddToProgram }) => {
                 {/* Visual Chart */}
                 <div className="lg:col-span-2 bg-surface p-6 rounded-2xl border border-line shadow-sm">
                     <h3 className="font-bold text-ink mb-6 flex items-center">
-                        <BarChart2 className="mr-2 text-brand"  animationDuration={300} />
+                        <BarChart2 className="mr-2 text-brand" />
                         {activeSubject} Konu Başarı Analizi
                     </h3>
                     <div className="h-80 w-full">

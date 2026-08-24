@@ -5,12 +5,12 @@ import {
     Bell, MessageSquare, Target, Zap, X, Send
 } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { yaz, listeOku, nesneOku } from '../../services/veriDeposu';
+import { yaz, listeOku, nesneOku, gorevHaritasi } from '../../services/veriDeposu';
 
 // ─── Risk Hesaplayıcı ───────────────────────────────────────
 const calcStudentRisk = (student) => {
     const results = listeOku('v2_results_data');
-    const tasks = nesneOku('student_tasks');
+    const tasks = gorevHaritasi();
 
     // Öğrencinin denemeleri
     const normTR = (s) => String(s || '').toLowerCase()

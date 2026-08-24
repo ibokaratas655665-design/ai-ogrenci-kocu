@@ -41,7 +41,7 @@ const NetTrendChart = ({ examData }) => {
 
     if (!data.length) return (
         <div className="flex items-center justify-center h-48 text-ink-3">
-            <div className="text-center"><BarChart2 size={32} className="mx-auto mb-2 opacity-30"  animationDuration={300} /><p className="text-sm">Deneme verisi yok</p></div>
+            <div className="text-center"><BarChart2 size={32} className="mx-auto mb-2 opacity-30" /><p className="text-sm">Deneme verisi yok</p></div>
         </div>
     );
 
@@ -251,7 +251,7 @@ const AdvancedAnalytics = ({ examData = [] }) => {
 
             {examData.length === 0 && (
                 <div className="bg-surface rounded-2xl p-16 text-center shadow-sm border border-line">
-                    <BarChart2 size={48} className="mx-auto mb-4 text-ink-3"  animationDuration={300} />
+                    <BarChart2 size={48} className="mx-auto mb-4 text-ink-3" />
                     <h3 className="font-bold text-ink-2 text-lg mb-2">Henüz analiz verisi yok</h3>
                     <p className="text-ink-3 text-sm">Koçun deneme sonuçlarını yüklediğinde burada görünecek.</p>
                 </div>

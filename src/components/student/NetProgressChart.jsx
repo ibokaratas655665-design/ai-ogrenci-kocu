@@ -89,7 +89,7 @@ const NetProgressChart = ({ examData = [], userId }) => {
     if (examData.length === 0) {
         return (
             <div className="bg-surface rounded-2xl p-8 shadow-sm border border-line text-center">
-                <BarChart2 size={48} className="text-ink-3 mx-auto mb-3"  animationDuration={300} />
+                <BarChart2 size={48} className="text-ink-3 mx-auto mb-3" />
                 <p className="font-bold text-ink-3">Henüz deneme sonucu yok</p>
                 <p className="text-sm text-ink-3 mt-1">Koçun deneme yüklediğinde grafikler burada görünecek</p>
             </div>

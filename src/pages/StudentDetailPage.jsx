@@ -24,7 +24,7 @@ import { gorebilir } from '../services/accessControl';
 import OgrenciGirisiAc from '../components/coach/OgrenciGirisiAc';
 import ParentQRModal from '../components/student/ParentQRModal';
 import Modal from '../components/ui/Modal';
-import { yaz, listeOku, nesneOku } from '../services/veriDeposu';
+import { yaz, listeOku, nesneOku, gorevleriGetir, gorevleriKaydet } from '../services/veriDeposu';
 import DenemeAnalizi from '../components/student/DenemeAnalizi';
 import OgrenciVeriYonetimi from '../components/coach/OgrenciVeriYonetimi';
 
@@ -182,9 +182,8 @@ const StudentDetailPage = () => {
                 try { setGuidanceResults(JSON.parse(savedGuidance)); } catch { }
             }
 
-            // Görevleri yükle
-            const allTasks = nesneOku('student_tasks');
-            setHomeworks(allTasks[id] || allTasks[String(id)] || []);
+            // Görevleri yükle — merkezi okuyucu iki depo biçimini de tanır
+            setHomeworks(gorevleriGetir(String(id)));
 
             // Programı yükle
             const scheduleKey = `program_schedule_${id}`;
@@ -358,24 +357,22 @@ const StudentDetailPage = () => {
         const updatedHomeworks = [...homeworks, newHomework];
         setHomeworks(updatedHomeworks);
 
-        // LocalStorage'a kaydet - öğrenciye ulaşsın (key her zaman string)
-        const allTasks = nesneOku('student_tasks');
+        /* Biçim korumalı merkezi kayıt: nesneOku dizi biçimli depoyu {}
+           sanıp tüm görevleri silebiliyordu. gorevleriKaydet →
+           veriDeposu.yaz: yerel + arayüz olayı + BULUT birlikte. */
         const keyStr = String(id);
-        if (!allTasks[keyStr]) allTasks[keyStr] = [];
-        allTasks[keyStr].push(newHomework);
-        // veriDeposu: yerel + arayüz olayı + BULUT. Eskiden yalnızca
-        // localStorage'a yazıyordu; yorumdaki "öğrenciye ulaşsın" ancak
-        // 2 dakikalık toplu turda gerçekleşiyor, koç sekmeyi kapatırsa
-        // görev öğrenciye HİÇ ulaşmıyordu.
-        yaz('student_tasks', allTasks);
+        gorevleriKaydet(keyStr, [...gorevleriGetir(keyStr), newHomework]);
 
         setShowHomeworkModal(false);
     };
 
-    // Calculate Days Left
-    const examDate = new Date('2025-06-20');
+    /* SINAVA KALAN GÜN — sabit '2025-06-20' kalmıştı ve karne
+       "-430 gün" gösteriyordu. YKS her yıl haziran ortasında yapılır;
+       bir sonraki haziran dönemi dinamik hesaplanır. */
     const today = new Date();
-    const daysLeft = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
+    const buYilinSinavi = new Date(`${today.getFullYear()}-06-14`);
+    const examDate = buYilinSinavi > today ? buYilinSinavi : new Date(`${today.getFullYear() + 1}-06-14`);
+    const daysLeft = Math.max(0, Math.ceil((examDate - today) / (1000 * 60 * 60 * 24)));
 
     if (notFound) {
         return (
