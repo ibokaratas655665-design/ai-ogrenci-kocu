@@ -151,10 +151,77 @@ const TON_VURGU = {
  * `veri={false}` geçilirse sayı hiç gösterilmez; yerine sebep yazar.
  * Bu, "0 soru çözdün" ile "kayıt girmedin" arasındaki farkı korur.
  */
+/**
+ * MİNİ SERİ — ölçüm kartının altındaki küçük grafik.
+ *
+ * Bir KPI kartı tek sayı gösterdiğinde o sayının nereden geldiği
+ * görünmez: 143 soru iyi mi kötü mü, artıyor mu azalıyor mu? Yüzde
+ * rozeti yönü söyler ama şekli söylemez — istikrarlı bir yükseliş ile
+ * son gün fırlamış bir sıçrama aynı "+%18" olarak okunur.
+ *
+ * Recharts kullanılmadı: bu boyutta (yükseklik 28-34 px, eksen yok,
+ * ipucu yok) kütüphane kurulumu çizilen şeyden ağır kalıyor.
+ *
+ * Boş ya da tek elemanlı seri hiçbir şey çizmez — iki nokta olmadan
+ * eğilim yoktur, düz bir çizgi çizmek uydurma olur.
+ */
+export function MiniSeri({ seri = [], tur = 'cizgi', renk = 'var(--brand)', yukseklik = 30, className }) {
+    const sayilar = (seri || []).map((v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0));
+    if (sayilar.length < 2) return null;
+
+    const enB = Math.max(...sayilar);
+    const enK = Math.min(...sayilar);
+    const aralik = enB - enK || 1;
+    const G = 100;                                   // viewBox genişliği (yüzde tabanlı)
+    const adim = G / (sayilar.length - 1);
+    const y = (v) => yukseklik - 2 - ((v - enK) / aralik) * (yukseklik - 6);
+
+    if (tur === 'cubuk') {
+        const bosluk = Math.min(2.4, adim * 0.34);
+        const gen = Math.max(1.2, adim - bosluk);
+        return (
+            <svg viewBox={`0 0 ${G} ${yukseklik}`} preserveAspectRatio="none"
+                className={cn('w-full block', className)} style={{ height: yukseklik }} aria-hidden="true">
+                {sayilar.map((v, i) => {
+                    const yy = y(v);
+                    return (
+                        <rect key={i} x={i * adim} y={yy} width={gen} height={Math.max(1.5, yukseklik - 2 - yy)}
+                            rx={Math.min(1.2, gen / 2)} fill={renk}
+                            opacity={i === sayilar.length - 1 ? 1 : 0.42} />
+                    );
+                })}
+            </svg>
+        );
+    }
+
+    const nokta = sayilar.map((v, i) => `${i * adim},${y(v)}`).join(' ');
+    const dolguId = `ms${Math.round(sayilar[0] * 7 + sayilar.length * 13)}`;
+
+    return (
+        <svg viewBox={`0 0 ${G} ${yukseklik}`} preserveAspectRatio="none"
+            className={cn('w-full block', className)} style={{ height: yukseklik }} aria-hidden="true">
+            {tur === 'dolgu' && (
+                <>
+                    <defs>
+                        <linearGradient id={dolguId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={renk} stopOpacity="0.28" />
+                            <stop offset="100%" stopColor={renk} stopOpacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <polygon points={`0,${yukseklik} ${nokta} ${G},${yukseklik}`} fill={`url(#${dolguId})`} />
+                </>
+            )}
+            <polyline points={nokta} fill="none" stroke={renk} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+    );
+}
+
 export function OlcumKarti({
     etiket, deger, birim = '', alt,
     degisim, degisimBirimi = '%', artisIyi = true,
     ton = 'marka', simge: Simge,
+    seri, seriTuru = 'cizgi', seriAlt,
     veri = true, sebep, bosMetin,
     yorum, yorumTonu = 'notr',
     className, children,
@@ -187,6 +254,18 @@ export function OlcumKarti({
                         )}
                     </div>
                     {alt && <p className="tip-mini text-ink-3 m-0">{alt}</p>}
+
+                    {/* Mini grafik ve etiketi kartın ALTINA sabitlenir:
+                        referansta bütün kartlarda bu satır aynı yükseklikte
+                        ve aynı hizada duruyor; şerit hâlinde yan yana
+                        dizildiklerinde göz tek çizgide gezinebiliyor. */}
+                    {seri && seri.length >= 2 && (
+                        <div className="mt-auto pt-2 flex items-end gap-3">
+                            <MiniSeri seri={seri} tur={seriTuru} renk={vurgu} className="flex-1 min-w-0" />
+                            {seriAlt && <span className="tip-mini text-ink-3 shrink-0 pb-0.5">{seriAlt}</span>}
+                        </div>
+                    )}
+
                     {children}
                     {yorum && <Yorum ton={yorumTonu}>{yorum}</Yorum>}
                 </>
@@ -571,6 +650,6 @@ export function MotivasyonSeridi({ metin, className }) {
 }
 
 export default {
-    Yorum, VeriYok, Degisim, OlcumKarti, UyumHalkasi,
+    Yorum, VeriYok, Degisim, OlcumKarti, UyumHalkasi, MiniSeri, SayiCubuklari,
     IsiHaritasi, DersCubuklari, GelisimZinciri, RiskListesi, MotivasyonSeridi,
 };

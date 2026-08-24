@@ -29,6 +29,7 @@ import {
 import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
+import { OlcumKarti } from '../components/charts/Analitik';
 import { getSummary } from '../services/studyLogService';
 import { istikrar } from '../services/gelisimAnalitik';
 import denemeKayitlari from '../services/denemeKayitlari';
@@ -1565,48 +1566,56 @@ const StudentDashboard = () => {
                             />
                         </div>
 
-                        {/* Bu Hafta — dört mini istatistik (gerçek kayıtlardan) */}
-                        <div>
-                            <p className="tip-label text-ink-3 mb-2">Bu Hafta</p>
-                            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                                <IstatistikCipi simge={ClipboardList} deger={merkezOzet.soru7} etiket="Soru Çözüldü" ton="mor" />
-                                <IstatistikCipi simge={Timer} deger={merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}d` : `${merkezOzet.dakika7}d`} etiket="Çalışma Süresi" ton="turuncu" />
-                                <IstatistikCipi simge={BookX} deger={merkezOzet.hatalar7} etiket="Hata Kaydı" ton="kirmizi" />
-                                <IstatistikCipi simge={BarChart2} deger={merkezOzet.deneme7} etiket="Deneme" ton="yesil" />
-                            </div>
+                        {/* BU HAFTA — dört ölçüm kartı.
+                            Önce dört sayaç çipiydi: yalnız sayı, bağlam yok.
+                            "143 soru" iyi mi kötü mü, artıyor mu azalıyor mu
+                            görünmüyordu; artış/azalış bilgisi ise ayrı bir
+                            "Gelişimim (Son 7 Gün)" kartında, sayılardan
+                            kopuk duruyordu. Referanstaki kalıpta üçü bir
+                            arada: sayı, önceki döneme göre değişim ve serinin
+                            şekli. Şekil önemli — istikrarlı yükseliş ile son
+                            gün fırlamış sıçrama aynı yüzdeyi verir. */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <OlcumKarti
+                                etiket="Soru Çözümü" simge={ClipboardList} ton="marka"
+                                deger={merkezOzet.soru7}
+                                degisim={merkezOzet.soruFark != null && merkezOzet.soru7 - merkezOzet.soruFark > 0
+                                    ? Math.round((merkezOzet.soruFark / (merkezOzet.soru7 - merkezOzet.soruFark)) * 100)
+                                    : undefined}
+                                alt="Son 7 gün"
+                                seri={merkezOzet.gunSerisi.map((g) => g.soru)}
+                                seriTuru="dolgu"
+                                seriAlt="7 gün"
+                            />
+                            <OlcumKarti
+                                etiket="Çalışma Süresi" simge={Timer} ton="uyari"
+                                deger={merkezOzet.dakika7 >= 60 ? Math.floor(merkezOzet.dakika7 / 60) : merkezOzet.dakika7}
+                                birim={merkezOzet.dakika7 >= 60 ? ' sa' : ' dk'}
+                                alt={merkezOzet.dakika7 >= 60 ? `${merkezOzet.dakika7 % 60} dk daha` : 'Son 7 gün'}
+                            />
+                            <OlcumKarti
+                                etiket="Hata Kaydı" simge={BookX} ton="kotu"
+                                deger={merkezOzet.hatalar7}
+                                alt="Bu hafta eklenen"
+                            />
+                            <OlcumKarti
+                                etiket="Son Net" simge={BarChart2} ton="iyi"
+                                deger={merkezOzet.sonNet != null ? merkezOzet.sonNet : '—'}
+                                degisim={merkezOzet.netFark != null && merkezOzet.sonNet - merkezOzet.netFark > 0
+                                    ? Math.round((merkezOzet.netFark / (merkezOzet.sonNet - merkezOzet.netFark)) * 100)
+                                    : undefined}
+                                alt={merkezOzet.deneme7 > 0 ? `Bu hafta ${merkezOzet.deneme7} deneme` : 'Son denemen'}
+                                seri={merkezOzet.netSerisi.map((x) => x.net)}
+                                seriTuru="cubuk"
+                                seriAlt={merkezOzet.netSerisi.length > 1 ? `${merkezOzet.netSerisi.length} deneme` : null}
+                            />
                         </div>
 
-                        {/* Gelişimim (Son 7 Gün) — delta + çizgi */}
-                        {(merkezOzet.gunSerisi.some((g) => g.soru > 0) || merkezOzet.netFark != null) && (
-                            <div className="card p-4 sm:p-5">
-                                <p className="tip-label text-ink-3">Gelişimim (Son 7 Gün)</p>
-                                <div className="flex items-end gap-6 mt-2">
-                                    {merkezOzet.netFark != null && (
-                                        <div>
-                                            <p className={cn('text-xl font-black syne', merkezOzet.netFark >= 0 ? 'text-ok' : 'text-danger')}>
-                                                {merkezOzet.netFark >= 0 ? '+' : ''}{merkezOzet.netFark}
-                                            </p>
-                                            <p className="tip-mini text-ink-3 uppercase tracking-wider">Net Değişimi</p>
-                                        </div>
-                                    )}
-                                    {merkezOzet.soruFark != null && (
-                                        <div>
-                                            <p className={cn('text-xl font-black syne', merkezOzet.soruFark >= 0 ? 'text-brand' : 'text-warn')}>
-                                                {merkezOzet.soruFark >= 0 ? '+' : ''}{merkezOzet.soruFark}
-                                            </p>
-                                            <p className="tip-mini text-ink-3 uppercase tracking-wider">Soru Artışı</p>
-                                        </div>
-                                    )}
-                                </div>
-                                {/* Buradaki 7 günlük soru alanı kaldırıldı: hemen
-                                    altındaki Günlük Kayıt bölümü AYNI seriyi zaten
-                                    çiziyor ve daha fazlasını veriyor (7/30 gün
-                                    seçici, tarihli ipucu, kitap sayfası). İki
-                                    özdeş eğri aynı ekranda iki ayrı ölçüm gibi
-                                    okunuyordu. Geriye eğrinin söylemediği iki
-                                    sayı kaldı: net değişimi ve soru artışı. */}
-                            </div>
-                        )}
+                        {/* "Gelişimim (Son 7 Gün)" delta kartı kaldırıldı:
+                            net değişimi ve soru artışı artık ait oldukları
+                            ölçüm kartlarının içinde, sayının hemen yanında.
+                            Ayrı kartta iken hangi sayıya ait oldukları
+                            okuyucunun çıkarımına bırakılmıştı. */}
 
                         {/* Güçlü alan / çalışılacak alan */}
                         {(merkezOzet.guclu || merkezOzet.gelisecek) && (
@@ -1657,29 +1666,49 @@ const StudentDashboard = () => {
 
                         {gelisimSegment === 'genel' && (
                             <>
-                                {/* Gelişim kartları — referans tasarımın 2x2 degrade dörtlüsü */}
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                                    <GelisimKarti
-                                        ton="mor" etiket="Netim" simge={TrendingUp}
+                {/* ÖLÇÜM ŞERİDİ.
+                                    Dört degrade renkli kart vardı: her biri farklı
+                                    bir renge boyanmıştı (mor, turuncu, yeşil, mavi)
+                                    ama renkler hiçbir şey anlatmıyordu — "Netim"in
+                                    mor, "İsabetim"in yeşil olmasının bir sebebi
+                                    yoktu. Dolgu renk aynı zamanda içindeki sayıyı
+                                    beyaza zorluyor ve mini grafik çizilemiyordu.
+
+                                    Referanstaki kalıp: beyaz kart, renkli küçük
+                                    ikon, büyük sayı, değişim rozeti, altta serinin
+                                    şekli. Renk artık yalnız ikonda ve anlam taşıyor
+                                    (iyi/uyarı/kötü/marka). */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                                    <OlcumKarti
+                                        etiket="Netim" simge={TrendingUp} ton="marka"
                                         deger={merkezOzet.sonNet != null ? merkezOzet.sonNet : '—'}
-                                        alt={merkezOzet.netFark != null
-                                            ? `${merkezOzet.netFark >= 0 ? '+' : ''}${merkezOzet.netFark} net · son deneme`
-                                            : 'Deneme girildikçe dolar'}
+                                        degisim={merkezOzet.netFark != null && merkezOzet.sonNet - merkezOzet.netFark > 0
+                                            ? Math.round((merkezOzet.netFark / (merkezOzet.sonNet - merkezOzet.netFark)) * 100)
+                                            : undefined}
+                                        alt={merkezOzet.sonNet != null ? 'Son deneme' : 'Deneme girildikçe dolar'}
+                                        seri={merkezOzet.netSerisi.map((x) => x.net)}
+                                        seriTuru="dolgu"
+                                        seriAlt={merkezOzet.netSerisi.length > 1 ? `${merkezOzet.netSerisi.length} deneme` : null}
                                     />
-                                    <GelisimKarti
-                                        ton="turuncu" etiket="Soru Çözümüm" simge={ClipboardList}
+                                    <OlcumKarti
+                                        etiket="Soru Çözümüm" simge={ClipboardList} ton="uyari"
                                         deger={merkezOzet.soru30}
                                         alt="Son 30 gün"
+                                        seri={merkezOzet.gunSerisi.map((g) => g.soru)}
+                                        seriTuru="cubuk"
+                                        seriAlt="son 7 gün"
                                     />
-                                    <GelisimKarti
-                                        ton="yesil" etiket="İsabetim" simge={Target}
-                                        deger={merkezOzet.isabet7 != null ? `%${merkezOzet.isabet7}` : '—'}
+                                    <OlcumKarti
+                                        etiket="İsabetim" simge={Target} ton="iyi"
+                                        deger={merkezOzet.isabet7 != null ? merkezOzet.isabet7 : '—'}
+                                        birim={merkezOzet.isabet7 != null ? '%' : ''}
                                         alt="Son 7 gün doğruluk"
                                     />
-                                    <GelisimKarti
-                                        ton="mavi" etiket="Çalışma Sürem" simge={Clock}
-                                        deger={merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}d` : `${merkezOzet.dakika7}d`}
-                                        alt="Son 7 gün"
+                                    <OlcumKarti
+                                        etiket="Çalışma Sürem" simge={Clock} ton="bilgi"
+                                        deger={merkezOzet.dakika7 >= 60 ? Math.floor(merkezOzet.dakika7 / 60) : merkezOzet.dakika7}
+                                        birim={merkezOzet.dakika7 >= 60 ? ' sa' : ' dk'}
+                                        alt={merkezOzet.dakika7 >= 60 ? `${merkezOzet.dakika7 % 60} dk daha · son 7 gün` : 'Son 7 gün'}
                                     />
                                 </div>
 
