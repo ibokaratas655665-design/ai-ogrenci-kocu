@@ -367,36 +367,9 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
 
 
             {/* ── Ders bazlı D/Y/B/net ───────────────────────────── */}
-            {dersler.length > 0 && (
-                <Bolum baslik="Son Deneme — Ders Dökümü" ikon={Target}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left text-ink-3 text-xs uppercase tracking-wider">
-                                    <th className="py-2 pr-3">Ders</th>
-                                    <th className="py-2 pr-3 text-right">D</th>
-                                    <th className="py-2 pr-3 text-right">Y</th>
-                                    <th className="py-2 pr-3 text-right">B</th>
-                                    <th className="py-2 pr-3 text-right">Net</th>
-                                    <th className="py-2 text-right">Ort. Net</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-line">
-                                {dersler.map((d) => (
-                                    <tr key={d.anahtar}>
-                                        <td className="py-2 pr-3 font-bold text-ink">{d.ad}</td>
-                                        <td className="py-2 pr-3 text-right" style={{ color: 'var(--ok)' }}>{d.son?.dogru ?? '—'}</td>
-                                        <td className="py-2 pr-3 text-right" style={{ color: 'var(--danger)' }}>{d.son?.yanlis ?? '—'}</td>
-                                        <td className="py-2 pr-3 text-right text-ink-3">{d.son?.bos ?? '—'}</td>
-                                        <td className="py-2 pr-3 text-right font-black text-ink">{d.son?.net ?? '—'}</td>
-                                        <td className="py-2 text-right text-ink-2">{d.ortalamaNet}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Bolum>
-            )}
+                {/* "Son Deneme — Ders Dökümü" tablosu kaldırıldı: üstündeki
+                    segmentli çubuk AYNI sayıları (doğru/yanlış/boş) gösteriyor
+                    ve oranları da veriyor. Tablo yalnızca rakam tekrarıydı. */}
 
             {/* ── Güçlü / zayıf / gelişen / gerileyen ────────────── */}
             {(guc.guclu.length > 0 || guc.gelisen.length > 0 || guc.gerileyen.length > 0) && (
