@@ -20,6 +20,7 @@ import {
 import { TrendingUp, TrendingDown, Target, AlertCircle, BarChart2, PlusCircle, Trash2, Timer, HelpCircle } from 'lucide-react';
 import { dersRengi } from '../charts/grafikTemasi';
 import { hataTuruAdi } from '../../data/hataTurleri';
+import { CokSegmentliCubuk } from '../charts/Dagilim';
 import { listeOku } from '../../services/veriDeposu';
 import {
     dersOzeti, trendSerisi,
@@ -273,6 +274,97 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                     </div>
                 </Bolum>
             )}
+
+                {/* DERSLERE GÖRE D / Y / B — referanstaki çok segmentli çubuk.
+                    Hemen altındaki tablo aynı sayıları rakamla veriyor ama
+                    ORANLARINI vermiyor: "18 doğru 6 yanlış" ile "6 doğru
+                    2 yanlış" tabloda benzer görünür, oysa biri üç kat daha
+                    çok soru demektir. Çubuklar aynı ölçekte olduğu için
+                    hem oran hem hacim tek bakışta okunur.
+
+                    Renkler durum renkleri: burada gösterilen şey ders
+                    kimliği değil, cevabın doğru/yanlış/boş oluşudur. */}
+                {dersler.some((d) => d.son) && (
+                    <Bolum baslik="Son Denemede Derslere Göre" ikon={Target}>
+                        <CokSegmentliCubuk
+                            satirlar={dersler.filter((d) => d.son).map((d) => ({
+                                ad: d.ad,
+                                segmentler: [
+                                    { ad: 'Doğru', deger: d.son.dogru, renk: 'var(--ok)' },
+                                    { ad: 'Yanlış', deger: d.son.yanlis, renk: 'var(--danger)' },
+                                    { ad: 'Boş', deger: d.son.bos, renk: 'var(--ink-3)' },
+                                ],
+                            }))}
+                            adGenislik={104}
+                            yukseklik={14}
+                            efsane={[
+                                { ad: 'Doğru', renk: 'var(--ok)' },
+                                { ad: 'Yanlış', renk: 'var(--danger)' },
+                                { ad: 'Boş', renk: 'var(--ink-3)' },
+                            ]}
+                        />
+                    </Bolum>
+                )}
+
+                {/* DENEME GEÇMİŞİ — referanstaki "Browse test results".
+                    Denemeler şimdiye kadar yalnızca grafiklerde nokta
+                    olarak vardı; hangi denemenin ne zaman yapıldığı ve
+                    kaç net getirdiği liste hâlinde hiçbir yerde yoktu.
+                    Satırdaki mini çubuk o denemenin bir öncekine göre
+                    yerini gösterir. */}
+                {seri.length > 0 && (
+                    <Bolum baslik={`Deneme Geçmişi · ${seri.length} kayıt`} ikon={BarChart2}>
+                        <div className="overflow-x-auto rounded-dmd border border-line">
+                            <table className="w-full text-left" style={{ minWidth: 460 }}>
+                                <thead>
+                                    <tr className="bg-surface-2">
+                                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Deneme</th>
+                                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Tarih</th>
+                                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Net</th>
+                                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Seyir</th>
+                                        <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Fark</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-line">
+                                    {[...seri].reverse().map((d, i, dizi) => {
+                                        /* Ters çevrildiği için "önceki" bir SONRAKİ satırdır */
+                                        const onceki = dizi[i + 1];
+                                        const fark = onceki ? +(d.toplamNet - onceki.toplamNet).toFixed(2) : null;
+                                        const enB = Math.max(...seri.map((x) => x.toplamNet), 1);
+                                        return (
+                                            <tr key={`${d.ad}-${d.sira}`} className="bg-surface">
+                                                <td className="px-3 py-2 text-[11.5px] font-bold text-ink truncate max-w-[160px]" title={d.ad}>
+                                                    {d.ad}
+                                                </td>
+                                                <td className="px-3 py-2 text-[11px] text-ink-3 whitespace-nowrap">{d.tarih || '—'}</td>
+                                                <td className="px-3 py-2 text-right text-[12.5px] font-black tabular-nums text-ink">
+                                                    {d.toplamNet}
+                                                </td>
+                                                <td className="px-3 py-2" style={{ width: 110 }}>
+                                                    <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                                                        <div className="h-full rounded-full"
+                                                            style={{ width: `${Math.round((d.toplamNet / enB) * 100)}%`, background: 'var(--brand)' }} />
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                    {fark === null ? (
+                                                        <span className="text-[11px] text-ink-3">ilk</span>
+                                                    ) : (
+                                                        <span className="text-[11px] font-black tabular-nums"
+                                                            style={{ color: fark > 0 ? 'var(--ok)' : fark < 0 ? 'var(--danger)' : 'var(--ink-3)' }}>
+                                                            {fark > 0 ? '↑' : fark < 0 ? '↓' : '–'} {Math.abs(fark)}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Bolum>
+                )}
+
 
             {/* ── Ders bazlı D/Y/B/net ───────────────────────────── */}
             {dersler.length > 0 && (
