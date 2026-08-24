@@ -29,8 +29,9 @@ import {
 import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
-import { OlcumKarti } from '../components/charts/Analitik';
+import { OlcumKarti, DersCubuklari } from '../components/charts/Analitik';
 import { CokluHalka } from '../components/charts/Dagilim';
+import { dersRengi } from '../components/charts/grafikTemasi';
 import { getSummary } from '../services/studyLogService';
 import { istikrar } from '../services/gelisimAnalitik';
 import denemeKayitlari from '../services/denemeKayitlari';
@@ -158,334 +159,9 @@ const CategoryIcon = ({ category }) => {
 };
 
 // ─── Deneme Detay Bileşeni ─────────────────────────────────────────
-const ExamDetailSection = ({ examData, permissions, user }) => {
-    const [selectedExam, setSelectedExam] = useState(null);
-    const [toastMsg, setToastMsg] = useState('');
-
-    /**
-     * ⚠️ BURAYA GÖVDE KİLİDİ EKLEME. Detay penceresi ortak `ui/Modal`
-     * ile açılıyor; kilidi Modal sayaçla yönetiyor. Eskiden burada duran
-     * ikinci kilit hem gereksizdi hem tehlikeliydi: temizliği `body`yi
-     * koşulsuz '' yapıyordu — başka bir pencere açıkken bile kilidi
-     * kaldırıyordu. MobileBottomNav'daki eşi telefonda tüm sekmelerin
-     * kaydırmasını kalıcı kilitlemişti (ayrıntı orada).
-     */
-
-    const showToast = (msg) => {
-        setToastMsg(msg);
-        setTimeout(() => setToastMsg(''), 3000);
-    };
-
-    const getSubjectNet = (exam, key) => {
-        if (exam[key] != null && !isNaN(parseFloat(exam[key]))) return parseFloat(exam[key]);
-        if (exam.subjects?.[key] != null) {
-            const v = exam.subjects[key];
-            if (typeof v === 'object') return parseFloat(v.net) || 0;
-            return parseFloat(v) || 0;
-        }
-        return null;
-    };
-
-    const handlePDF = (exam) => {
-        try {
-            // v2_results_data'dan tam veriyi bul
-            const v2Results = listeOku('v2_results_data');
-            const v2Trials = listeOku('v2_trials_data');
-            // Öğrenciye ait sonucu bul
-            const fullResult = v2Results.find(r => r.id === exam.id) || exam;
-            const trial = v2Trials.find(t => t.id === fullResult.trialId) || { name: exam.name, examType: exam.examType, date: exam.date };
-            const allStudentResults = v2Results.filter(r => r.trialId === fullResult.trialId);
-            generateStudentReport(fullResult, trial, allStudentResults);
-        } catch (e) {
-            showToast('PDF oluşturulurken hata: ' + e.message);
-        }
-    };
-
-    if (examData.length === 0) {
-        return (
-            <div className="icerik-gecis space-y-8">
-                <h1 className="text-3xl font-black text-ink syne tracking-tight">DENEME SONUÇLARIM</h1>
-                <div className="premium-card p-20 text-center border-dashed border-line">
-                    <div className="w-20 h-20 bg-surface/5 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-line">
-                        <BarChart2 size={40} className="text-ink-2" />
-                    </div>
-                    <h3 className="text-xl font-bold text-ink mb-3 syne">HENÜZ DENEME SONUCU YOK</h3>
-                    <p className="text-ink-3 text-sm max-w-sm mx-auto leading-relaxed">
-                        Koçun deneme sonuçlarını sisteme yüklediğinde performans analizlerini burada detaylı olarak görebileceksin.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="icerik-gecis space-y-8">
-            {toastMsg && (
-                <div className="fixed bottom-24 right-8 z-[100] premium-glass border-brand/30 text-ink px-6 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-3 icerik-gecis-up">
-                    <div className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-                    {toastMsg}
-                </div>
-            )}
-
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-black text-ink syne tracking-tight">DENEME SONUÇLARIM</h1>
-                    <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">PERFORMANS ANALİZİ VE GELİŞİM TAKİBİ</p>
-                </div>
-            </div>
-
-            {/* Özet istatistikler */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                {[
-                    { label: 'TOPLAM DENEME', value: examData.length, color: 'var(--highlight)', icon: ClipboardList },
-                    { label: 'EN YÜKSEK NET', value: Math.max(...examData.map(e => e.totalNet || 0)).toFixed(1), color: 'var(--accent)', icon: Award },
-                    { label: 'ORTALAMA NET', value: (examData.reduce((s, e) => s + (e.totalNet || 0), 0) / examData.length).toFixed(1), color: 'var(--c4)', icon: TrendingUp },
-                    { label: 'SON DURUM', value: examData[examData.length - 1]?.totalNet?.toFixed(1) || '-', color: 'var(--highlight)', icon: Zap },
-                ].map((s, i) => (
-                    <div key={i} className="premium-card p-6 relative overflow-hidden group">
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="p-2 bg-surface/5 rounded-lg border border-line">
-                                    <s.icon size={18} style={{ color: s.color }} />
-                                </div>
-                            </div>
-                            <div className="text-3xl font-black text-ink syne mb-1">{s.value}</div>
-                            <div className="text-[10px] font-black text-ink-3 uppercase tracking-widest">{s.label}</div>
-                        </div>
-                        <div className="absolute -bottom-6 -right-6 w-20 h-20 blur-3xl opacity-10 pointer-events-none" style={{ backgroundColor: s.color }} />
-                    </div>
-                ))}
-            </div>
-
-            {/* Performans Grafikleri */}
-            {permissions.canViewAnalytics && (
-                <div className="premium-card p-8 border-accent/20">
-                    <h2 className="text-xl font-black text-ink syne mb-8 flex items-center gap-3">
-                        <div className="p-2 bg-accent/10 rounded-lg">
-                            <TrendingUp size={20} className="text-accent" />
-                        </div>
-                        GELİŞİM GRAFİKLERİ
-                    </h2>
-                    <AnalyticsCharts examData={examData} />
-                </div>
-            )}
-
-            {/* Deneme Listesi */}
-            <div className="premium-card overflow-hidden border-line">
-                <div className="p-6 border-b border-line bg-surface/5 flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-black text-ink syne leading-tight">TÜM DENEMELER</h2>
-                        <p className="text-[10px] text-ink-2 font-bold uppercase tracking-wider mt-0.5">DETAYLI ANALİZ İÇİN TIKLAYINIZ</p>
-                    </div>
-                </div>
-                <div className="divide-y divide-white/5">
-                    {[...examData].reverse().map((exam, i) => {
-                        const tytSubs = [
-                            ['Türkçe', getSubjectNet(exam, 'turkce')],
-                            ['Matematik', getSubjectNet(exam, 'mat')],
-                            ['Fen', getSubjectNet(exam, 'fen')],
-                            ['Sosyal', getSubjectNet(exam, 'sosyal')],
-                        ].filter(([, v]) => v != null && v > 0);
-                        const aytSubs = [
-                            ['SAY', exam.sayNet, 'var(--highlight)'],
-                            ['EA', exam.eaNet, 'var(--accent)'],
-                            ['SÖZ', exam.sozNet, 'var(--c4)'],
-                            ['DİL', exam.dilNet, 'var(--warn)'],
-                        ].filter(([, v]) => v > 0);
-
-                        return (
-                            <div
-                                key={exam.id || i}
-                                className="p-6 hover:bg-surface/5 transition-all duration-yavas cursor-pointer group"
-                                onClick={() => setSelectedExam(exam)}
-                            >
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-5">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black border transition-all duration-yavas group-hover:scale-110 ${
-                                            exam.examType === 'AYT' 
-                                            ? 'bg-c4/10 text-c4 border-c4/20' 
-                                            : 'bg-accent/10 text-accent border-accent/20'
-                                        }`}>
-                                            {exam.examType || 'TYT'}
-                                        </div>
-                                        <div>
-                                            <p className="text-base font-bold text-ink group-hover:text-brand transition-colors syne">{exam.name || 'Deneme'}</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <span className="text-[10px] font-black text-ink-2 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <Calendar size={12} /> {exam.date ? new Date(exam.date).toLocaleDateString('tr-TR') : ''}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-right">
-                                            <p className="text-2xl font-black text-ink syne leading-none">{(exam.totalNet || 0).toFixed(1)}</p>
-                                            <p className="text-[10px] font-black text-accent tracking-[0.2em] mt-1.5 uppercase">TOPLAM NET</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handlePDF(exam); }}
-                                                className="w-10 h-10 bg-surface/5 hover:bg-brand/20 text-ink-3 hover:text-brand border border-line rounded-xl transition-all duration-yavas flex items-center justify-center"
-                                                title="PDF Karne İndir"
-                                            >
-                                                <Download size={18} />
-                                            </button>
-                                            <div className="w-10 h-10 bg-surface/5 text-ink-2 rounded-xl flex items-center justify-center border border-line group-hover:border-brand/30 group-hover:text-brand transition-all">
-                                                <ChevronRight size={18} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Net Detayları */}
-                                <div className="mt-4 flex flex-wrap gap-2 md:pl-20">
-                                    {(exam.examType !== 'AYT' ? tytSubs : aytSubs).map(([lbl, net]) => (
-                                        <span key={lbl} className="bg-surface/5 border border-line px-3 py-1 rounded-lg text-[10px] font-black text-ink-3 group-hover:border-brand/20 transition-all">
-                                            {lbl}: <span className="text-ink ml-1">{Number(net).toFixed(1)}</span>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Detay Modal - Premium Glass */}
-            {selectedExam && (
-                <Modal
-                    acik
-                    onClose={() => setSelectedExam(null)}
-                    baslikGizle
-                    genislik="xl"
-                    govdeClassName="p-0 flex flex-col overflow-hidden"
-                >
-                    {/* Header */}
-                    <div className="p-8 border-b border-line flex items-center justify-between shrink-0 bg-surface/80 backdrop-blur-xl">
-                        <div className="flex items-center gap-5">
-                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-sm font-black border ${
-                                selectedExam.examType === 'AYT' 
-                                ? 'bg-c4/20 text-c4 border-c4/30' 
-                                : 'bg-accent/20 text-accent border-accent/30'
-                            }`}>
-                                {selectedExam.examType || 'TYT'}
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-ink syne leading-tight">{selectedExam.name || 'Deneme'}</h3>
-                                <div className="flex items-center gap-3 mt-1.5">
-                                    <span className="text-xs font-bold text-ink-3 uppercase tracking-widest flex items-center gap-2">
-                                        <Calendar size={14} className="text-brand" />
-                                        {selectedExam.date ? new Date(selectedExam.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => handlePDF(selectedExam)}
-                                className="premium-button px-5 h-12 text-xs flex items-center gap-2"
-                            >
-                                <Download size={16} /> PDF KARNE
-                            </button>
-                            <button 
-                                onClick={() => setSelectedExam(null)} 
-                                className="w-12 h-12 bg-surface/5 hover:bg-danger/10 text-ink-3 hover:text-danger rounded-xl border border-line transition-all flex items-center justify-center"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 min-h-0 overflow-y-auto p-8 space-y-8 text-ink">
-                        {/* Özet Kartları */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center group hover:bg-brand/5 transition-all">
-                                <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2 group-hover:text-brand">TOPLAM NET</div>
-                                <div className="text-3xl font-black text-ink syne">{(selectedExam.totalNet || 0).toFixed(2)}</div>
-                            </div>
-                            {selectedExam.examType === 'AYT' ? (
-                                <>
-                                    {selectedExam.sayNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#a78bfa]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SAY NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sayNet).toFixed(1)}</div></div>}
-                                    {selectedExam.eaNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-accent/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">EA NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.eaNet).toFixed(1)}</div></div>}
-                                    {selectedExam.sozNet > 0 && <div className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-[#32a852]/5 transition-all"><div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2">SÖZ NET</div><div className="text-3xl font-black text-ink syne">{Number(selectedExam.sozNet).toFixed(1)}</div></div>}
-                                </>
-                            ) : (
-                                <>
-                                    {[['Türkçe', getSubjectNet(selectedExam, 'turkce'), 'var(--highlight)'], ['Matematik', getSubjectNet(selectedExam, 'mat'), 'var(--accent)'], ['Fen', getSubjectNet(selectedExam, 'fen'), 'var(--warn)'], ['Sosyal', getSubjectNet(selectedExam, 'sosyal'), 'var(--danger)']].filter(([, v]) => v != null).map(([lbl, net, color]) => (
-                                        <div key={lbl} className="bg-surface/5 border border-line rounded-3xl p-6 text-center hover:bg-surface/10 transition-all">
-                                            <div className="text-[10px] font-black text-ink-2 uppercase tracking-widest mb-2" style={{ color }}>{lbl.toUpperCase()}</div>
-                                            <div className="text-3xl font-black text-ink syne">{Number(net).toFixed(1)}</div>
-                                        </div>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-
-                        {/* Detaylı Liste */}
-                        <div className="bg-surface/5 border border-line rounded-3xl overflow-hidden p-6">
-                            <h4 className="text-sm font-black text-ink syne tracking-widest uppercase mb-6 flex items-center gap-3">
-                                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                                DERS BAZLI AYRINTILI ANALİZ
-                            </h4>
-                        
-                            <div className="space-y-3">
-                                {selectedExam.examType === 'AYT' ? (
-                                    [
-                                        ['EDEBIYAT', selectedExam.edebiyat],
-                                        ['AYT MATEMATIK', selectedExam.aytMat],
-                                        ['FIZIK', selectedExam.fizik],
-                                        ['KIMYA', selectedExam.kimya],
-                                        ['BIYOLOJI', selectedExam.biyoloji],
-                                        ['SOSYAL AYT', selectedExam.sosyalAYT],
-                                        ['DIL', selectedExam.dilNet],
-                                    ].filter(([, v]) => v != null && v > 0).map(([lbl, net]) => (
-                                        <div key={lbl} className="flex justify-between items-center bg-surface/5 px-6 py-4 rounded-2xl border border-line group hover:border-line transition-all">
-                                            <span className="text-xs font-bold text-ink-3 tracking-wider group-hover:text-ink transition-colors">{lbl}</span>
-                                            <span className="text-lg font-black text-accent syne">{Number(net).toFixed(2)}</span>
-                                        </div>
-                                    ))
-                                ) : selectedExam.subjects && Object.keys(selectedExam.subjects).length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-line">
-                                                    <th className="px-4 py-3 text-left text-[10px] font-black text-ink-2 uppercase tracking-widest">Ders</th>
-                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-accent uppercase tracking-widest">Doğru</th>
-                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-danger uppercase tracking-widest">Yanlış</th>
-                                                    <th className="px-4 py-3 text-center text-[10px] font-black text-brand uppercase tracking-widest">Net</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-white/5">
-                                                {Object.entries(selectedExam.subjects).map(([key, subj]) => {
-                                                    if (!subj) return null;
-                                                    const d = typeof subj === 'object' ? (subj.d ?? subj.dogru ?? '-') : '-';
-                                                    const y = typeof subj === 'object' ? (subj.y ?? subj.yanlis ?? '-') : '-';
-                                                    const net = typeof subj === 'object' ? (parseFloat(subj.net) || 0) : (parseFloat(subj) || 0);
-                                                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                                    return (
-                                                        <tr key={key} className="hover:bg-surface/5 transition-all">
-                                                            <td className="px-4 py-4 text-xs font-bold text-ink-3">{label}</td>
-                                                            <td className="px-4 py-4 text-center text-sm font-black text-ink">{d}</td>
-                                                            <td className="px-4 py-4 text-center text-sm font-black text-ink">{y}</td>
-                                                            <td className="px-4 py-4 text-center text-sm font-black text-brand syne">{net.toFixed(2)}</td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-10">
-                                        <p className="text-ink-2 text-xs font-bold tracking-widest uppercase">DETAYLI DERS VERİSİ BULUNAMADI</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </Modal>
-            )}
-        </div>
-    );
-};
+/* ExamDetailSection kaldırıldı: Netlerim referans düzenine geçince
+   hiçbir yerden çağrılmıyordu. Verdiği bilgiler (dört sayaç, net
+   eğrisi, deneme listesi) artık netOzet üzerinden tek kaynaktan. */
 
 // ─── Ana Bileşen ─────────────────────────────────────────────────
 const StudentDashboard = () => {
@@ -1147,6 +823,89 @@ const StudentDashboard = () => {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli: storage olayı yerel kayıtları tazeler
     }, [user?.id, examData, denemelerSirali, kayitSurumu]);
+
+    /**
+     * NETLERİM ÖZETİ — tek hesap, tek kaynak.
+     *
+     * Bu sekmede net verisi üç ayrı bileşende üç kez hesaplanıyordu
+     * (ExamDetailSection, ExamComparisonMatrix ve sayfa şeridi); her
+     * biri kendi ortalamasını, kendi "en yüksek"ini buluyordu. Aynı
+     * ekranda farklı sayılar çıkması an meselesiydi. Tek yerde.
+     *
+     * Ders yüzdesi NETE göre değil, o dersin KENDİ en iyisine göre:
+     * dersler farklı soru sayısına sahiptir, 12 net matematikte iyi
+     * Türkçede vasat olabilir. Dersler arası tek ölçü, kendi tavanı.
+     */
+    const netOzet = useMemo(() => {
+        const sirali = [...denemelerSirali];
+        const netler = sirali.map((e) => parseFloat(e.totalNet)).filter((x) => Number.isFinite(x));
+        if (!netler.length) {
+            return { adet: 0, enYuksek: null, ortalama: null, son: null, fark: null,
+                degisimYuzde: undefined, seri: [], noktalar: [], dersler: [], odak: [] };
+        }
+
+        const enYuksek = Math.max(...netler);
+        const son = netler[netler.length - 1];
+        const onceki = netler.length > 1 ? netler[netler.length - 2] : null;
+        const fark = onceki != null ? Math.round((son - onceki) * 10) / 10 : null;
+
+        const noktalar = sirali.map((e, i) => {
+            const t = e.date || e.uploadedAt;
+            return {
+                ad: e.examName || e.name || `Deneme ${i + 1}`,
+                net: Math.round((parseFloat(e.totalNet) || 0) * 10) / 10,
+                tarih: t ? new Date(t).toLocaleDateString('tr-TR') : '',
+            };
+        });
+
+        /* Ders kırılımı: son değer + kendi tavanı */
+        const harita = new Map();
+        sirali.forEach((e) => {
+            Object.entries(e.subjects || {}).forEach(([anahtar, v]) => {
+                const net = Number(v?.net);
+                if (!Number.isFinite(net)) return;
+                const ad = String(anahtar).trim();
+                if (!harita.has(ad)) harita.set(ad, { ad, netler: [], dogru: 0, yanlis: 0 });
+                const k = harita.get(ad);
+                k.netler.push(net);
+                k.dogru += Number(v?.correct) || 0;
+                k.yanlis += Number(v?.wrong) || 0;
+            });
+        });
+        /* Yüzde = İSABET ORANI (doğru / cevaplanan).
+           İlk denemede "son net / kendi tavanı" kullanılmıştı ama netler
+           yükselen bir öğrencide son deneme hep tavan olur ve bütün
+           dersler %100 çıkar — ölçüldü, beş dersin beşi de %100 gösterdi.
+           İsabet oranı derslerin farklı soru sayılarından bağımsızdır ve
+           gerçekten karşılaştırılabilir. */
+        const dersler = [...harita.values()].map((d) => {
+            const cevaplanan = d.dogru + d.yanlis;
+            const sonD = d.netler[d.netler.length - 1];
+            return {
+                ad: d.ad,
+                son: Math.round(sonD * 10) / 10,
+                dogru: d.dogru,
+                cevaplanan,
+                oran: cevaplanan > 0 ? Math.round((d.dogru / cevaplanan) * 100) : 0,
+            };
+        }).filter((d) => d.cevaplanan > 0).sort((a, b) => b.oran - a.oran);
+
+        return {
+            adet: netler.length,
+            enYuksek: Math.round(enYuksek * 10) / 10,
+            ortalama: Math.round((netler.reduce((t, x) => t + x, 0) / netler.length) * 10) / 10,
+            son: Math.round(son * 10) / 10,
+            fark,
+            degisimYuzde: onceki > 0 ? Math.round(((son - onceki) / onceki) * 100) : undefined,
+            seri: netler,
+            noktalar,
+            dersler,
+            /* En düşük üç ders — "neye odaklanmalıyım" sorusunun cevabı */
+            /* En düşük İSABETLİ üç ders — düşük net az soru çözmekten de
+               gelebilir; düşük isabet gerçekten bilgi eksiğidir. */
+            odak: [...dersler].sort((a, b) => a.oran - b.oran).slice(0, 3),
+        };
+    }, [denemelerSirali]);
 
     /**
      * ÇALIŞMA SERİSİ — TEK KAYNAK.
@@ -1839,13 +1598,133 @@ const StudentDashboard = () => {
                         )}
 
                         {gelisimSegment === 'netlerim' && (
-                            <div className="space-y-8">
-                                <ExamDetailSection examData={examData} permissions={permissions} user={user} />
-                                {examData.length >= 2 && (
-                                    <div className="card p-4 sm:p-6">
-                                        <ExamComparisonMatrix examResults={examData} studentName={user?.name} />
+                            /* NETLERİM — referans düzeni (Scholaro panosu).
+                               Burada üç katman üst üste duruyordu: dört sayaç, "Gelişim
+                               Grafikleri" bölümü (kendi içinde Çizgi/Fark sekmeli), "Tüm
+                               Denemeler" kart listesi ve ayrıca Trend/Sütun/Radar seçicili
+                               ikinci bir karşılaştırma paneli. Aynı net serisi üç ayrı
+                               grafikte çiziliyordu.
+                        
+                               Referans dört soru soruyor: genel durumum ne, hangi derste
+                               neredeyim, neye odaklanmalıyım, zamanla ne oldu. */
+                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
+                                <div className="xl:col-span-8 min-w-0 space-y-4">
+                                    {/* Dört ölçüm — referanstaki KPI şeridi */}
+                                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                                        <OlcumKarti etiket="Toplam Deneme" simge={BarChart2} ton="marka"
+                                            deger={netOzet.adet} alt="kayıtlı deneme" />
+                                        <OlcumKarti etiket="En Yüksek Net" simge={TrendingUp} ton="iyi"
+                                            deger={netOzet.enYuksek ?? '—'} alt="şimdiye kadar" />
+                                        <OlcumKarti etiket="Ortalama Net" simge={Target} ton="uyari"
+                                            deger={netOzet.ortalama ?? '—'} alt="tüm denemeler"
+                                            seri={netOzet.seri} seriTuru="cizgi" />
+                                        <OlcumKarti etiket="Son Net" simge={Clock} ton="bilgi"
+                                            deger={netOzet.son ?? '—'}
+                                            degisim={netOzet.degisimYuzde}
+                                            alt={netOzet.fark != null ? `${netOzet.fark >= 0 ? '+' : ''}${netOzet.fark} net` : 'ilk deneme'} />
                                     </div>
-                                )}
+
+                                    {/* İLERLEME EĞRİSİ — referanstaki "Your Progress".
+                                        Noktaların üstünde değer yazıyor: eksen okumak yerine
+                                        sayı doğrudan görünsün. */}
+                                    {netOzet.noktalar.length >= 2 && (
+                                        <div className="card p-4 sm:p-5">
+                                            <p className="tip-label text-ink-3">İlerlemem</p>
+                                            <p className="tip-caption mt-0.5 mb-3">Son {netOzet.noktalar.length} deneme · toplam net</p>
+                                            <div className="h-56">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={netOzet.noktalar} margin={{ top: 18, right: 10, bottom: 0, left: -20 }}>
+                                                        <defs>
+                                                            <linearGradient id="netIlerleme" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.26} />
+                                                                <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                                                        <XAxis dataKey="ad" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                        <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                        <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }} />
+                                                        <Area type="monotone" dataKey="net" name="Net" stroke="var(--brand)" strokeWidth={3}
+                                                            fill="url(#netIlerleme)" dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }}
+                                                            label={{ position: 'top', fontSize: 10, fill: 'var(--ink-2)', fontWeight: 700 }}
+                                                            animationDuration={300} />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Deneme listesi — tarih, net, seyir */}
+                                    {netOzet.noktalar.length > 0 && (
+                                        <div className="card p-4 sm:p-5">
+                                            <p className="tip-label text-ink-3 mb-3">Denemelerim</p>
+                                            <div className="overflow-x-auto rounded-dmd border border-line">
+                                                <table className="w-full text-left" style={{ minWidth: 420 }}>
+                                                    <thead>
+                                                        <tr className="bg-surface-2">
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Deneme</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Tarih</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Net</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Seyir</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-line">
+                                                        {[...netOzet.noktalar].reverse().map((d, i) => (
+                                                            <tr key={d.ad + i} className="bg-surface">
+                                                                <td className="px-3 py-2 text-[11.5px] font-bold text-ink truncate max-w-[170px]">{d.ad}</td>
+                                                                <td className="px-3 py-2 text-[11px] text-ink-3 whitespace-nowrap">{d.tarih || '—'}</td>
+                                                                <td className="px-3 py-2 text-right text-[12.5px] font-black tabular-nums text-ink">{d.net}</td>
+                                                                <td className="px-3 py-2" style={{ width: 110 }}>
+                                                                    <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                                                                        <div className="h-full rounded-full" style={{ width: `${Math.round((d.net / (netOzet.enYuksek || 1)) * 100)}%`, background: 'var(--brand)' }} />
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <aside className="xl:col-span-4 min-w-0 space-y-4">
+                                    {/* DERS PERFORMANSI — referanstaki "Subject Performance".
+                                        Ders ortalaması net olarak değil, o dersin EN İYİ
+                                        sonucuna göre yüzdeyle: dersler farklı soru sayısına
+                                        sahip, 12 net matematikte iyi Türkçede vasat olabilir. */}
+                                    {netOzet.dersler.length > 0 && (
+                                        <div className="card p-4 sm:p-5">
+                                            <p className="tip-label text-ink-3 mb-3">Ders Performansım</p>
+                                            <DersCubuklari
+                                                dersler={netOzet.dersler.map((d) => ({
+                                                    ders: d.ad, oran: d.oran, tamamlanan: d.dogru, planlanan: d.cevaplanan,
+                                                }))}
+                                                enFazla={8}
+                                            />
+                                            <p className="tip-mini text-ink-3 mt-3">Yüzde: isabet oranın · sağdaki sayı doğru/cevaplanan</p>
+                                        </div>
+                                    )}
+
+                                    {/* ODAK ALANLARI — referanstaki "Focus Areas".
+                                        En düşük üç ders. Kırmızı ton bilinçli: bu bir uyarı
+                                        değil öncelik listesi, ama gözün ilk gittiği yer olmalı. */}
+                                    {netOzet.odak.length > 0 && (
+                                        <div className="card p-4 sm:p-5" style={{ borderColor: 'color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                                            <p className="tip-label mb-1" style={{ color: 'var(--danger)' }}>Odak Alanlarım</p>
+                                            <p className="tip-caption mb-3">En çok kazanç buralarda</p>
+                                            <div className="flex flex-col gap-2.5">
+                                                {netOzet.odak.map((d) => (
+                                                    <div key={d.ad} className="flex items-center gap-2.5">
+                                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: dersRengi(d.ad) }} />
+                                                        <span className="tip-small text-ink font-bold flex-1 min-w-0 truncate">{d.ad}</span>
+                                                        <span className="tip-small font-black tabular-nums shrink-0" style={{ color: 'var(--danger)' }}>%{d.oran}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </aside>
                             </div>
                         )}
 
