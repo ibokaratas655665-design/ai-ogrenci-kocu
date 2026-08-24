@@ -74,7 +74,7 @@ import { bildir, onayla } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
-import { oku, yaz, listeOku, nesneOku } from '../services/veriDeposu';
+import { oku, yaz, yaz as veriYaz, listeOku, nesneOku } from '../services/veriDeposu';
 
 // 🛡️ Safe JSON Parser
 /**
@@ -439,16 +439,53 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
         }
     };
 
+    /**
+     * PROGRAM SİLME — kaydetmenin tam tersi olmak zorunda.
+     *
+     * İKİ KUSUR ÖLÇÜLDÜ VE GİDERİLDİ:
+     *
+     * 1. EKSİK ANAHTAR. Kaydetme yolu çizelgeyi İKİ anahtara birden
+     *    yazıyor (ProgramBuilderModal: `program_schedule_` ve
+     *    `student_programs_`; ikincisi konu takibi köprüsü için).
+     *    Silme yolu yalnızca birincisini siliyordu. Sonuç: koç programı
+     *    sildikten sonra öğrenci panelinde çizelge kayboluyor ama
+     *    Gelişim ekranı, program karnesi ve konu takibi silinmiş
+     *    programı okumaya devam ediyordu — uyum yüzdesi hesaplanıyor,
+     *    "programda" rozeti duruyordu. Ekranlar birbirini yalanlıyordu.
+     *
+     * 2. HAM removeItem. `veriDeposu` zinciri atlandığı için
+     *    `_fbtime_` damgası oluşmuyordu. Açılışta senkron katmanı
+     *    `localTime === 0` görüp kaydı "bu cihazda hiç yok" sayıyor
+     *    (isNewDevice) ve BULUTTAKİ KOPYAYI geri yazıyordu: silinen
+     *    program kendiliğinden geri geliyordu.
+     *
+     * Doğrusu, "Temizle" düğmesinin zaten kullandığı desendir: boş
+     * nesneyi `veriYaz` ile yazmak. Bu hem damgayı hem storage olayını
+     * üretir, hem de buluta "burası artık boş" der.
+     */
     const handleDeleteProgram = async (studentId, studentName) => {
-        if (await onayla({ mesaj: `${studentName} adlı öğrencinin ders programını silmek istediğinize emin misiniz?`, tehlikeli: true })) {
-            localStorage.removeItem(`program_schedule_${studentId}`);
-            localStorage.removeItem(`program_closed_slots_${studentId}`);
-            localStorage.removeItem(`program_meta_${studentId}`);
-            localStorage.removeItem(`program_${studentId}_monthly_grid`);
-            localStorage.removeItem(`program_${studentId}`);
-            setToast(`${studentName} adlı öğrencinin programı silindi.`);
-            setPreviewStudentId(null);
-        }
+        if (!(await onayla({ mesaj: `${studentName} adlı öğrencinin ders programını silmek istediğinize emin misiniz?`, tehlikeli: true }))) return;
+
+        /* Çizelgenin yazıldığı HER anahtar — kaydetme yoluyla birebir aynı liste. */
+        [
+            `program_schedule_${studentId}`,
+            `student_programs_${studentId}`,
+            `program_closed_slots_${studentId}`,
+            `program_kriterleri_${studentId}`,
+            `program_meta_${studentId}`,
+            `program_${studentId}_monthly_grid`,
+            `program_${studentId}`,
+        ].forEach((anahtar) => veriYaz(anahtar, {}, { zorla: true }));
+
+        /* Silme buluta da gitmeli; gitmezse başka bir cihaz programı
+           geri getirir. Hata sessizce yutulmaz — koç bilmeli. */
+        firebaseSync.sync().catch((e) => {
+            bildir(`Program bu cihazda silindi ama buluta bildirilemedi: ${e?.message || 'bağlantı yok'}.`, 'uyari');
+        });
+
+        setToast(`${studentName} adlı öğrencinin programı silindi.`);
+        setPreviewStudentId(null);
+        setTazelik((x) => x + 1);
     };
 
     return (
