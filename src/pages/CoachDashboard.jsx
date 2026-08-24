@@ -2619,6 +2619,28 @@ const CoachDashboard = () => {
         } catch { /* ignore */ }
     }, [activeTab]);
 
+    /**
+     * URL → SEKME yönü (öğrenci panelindeki 8f0b37d düzeltmesinin koç
+     * karşılığı). Yukarıdaki etki sekme değişince URL'yi yazıyordu ama
+     * TERSİ yoktu: adres çubuğuna ?sekme=programs yazmak, geri/ileri
+     * tuşu ya da dışarıdan gelen derin bağlantı ekranı değiştirmiyordu.
+     * Döngü riski yok: replaceState hashchange TETİKLEMEZ.
+     */
+    useEffect(() => {
+        const dinle = () => {
+            try {
+                const yeni = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
+                if (!yeni) return;
+                const gecerli = new Set(
+                    Object.values(NAV_BY_SECTION).flat().flatMap((g) => g.items.map((i) => i.id))
+                );
+                if (gecerli.has(yeni)) setActiveTab(yeni);
+            } catch { /* bozuk hash görmezden gelinir */ }
+        };
+        window.addEventListener('hashchange', dinle);
+        return () => window.removeEventListener('hashchange', dinle);
+    }, []);
+
     // Bölüm değişince o bölümde olmayan sekmede kalınmaz
     const bolumGruplari = NAV_BY_SECTION[bolum] || NAV_BY_SECTION.kocluk;
 

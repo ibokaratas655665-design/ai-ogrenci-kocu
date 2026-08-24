@@ -175,10 +175,15 @@ const generateCoachNotifications = (students, tasks, messages) => {
     // Aktif olmayan öğrenciler (3+ gün giriş yapmamış)
     const inactiveStudents = students.filter(s => {
         try {
-            const gamKey = `gamification_stats_${s.id || s.schoolNumber}`;
-            const gam = nesneOku(gamKey);
-            if (!gam.lastActivityDate) return false;
-            const daysSince = (now - new Date(gam.lastActivityDate)) / (1000 * 60 * 60 * 24);
+            /* Yazıcı `gamification_<id>` + `lastStudyDate` kullanır; eski
+               anahtar ve alan adı yedek olarak okunur (anahtar ayrılığı
+               düzeltmesi, 24.08.2026). */
+            const kimlik = s.id || s.schoolNumber;
+            const yeni = nesneOku(`gamification_${kimlik}`);
+            const gam = Object.keys(yeni).length ? yeni : nesneOku(`gamification_stats_${kimlik}`);
+            const sonTarih = gam.lastStudyDate || gam.lastActivityDate;
+            if (!sonTarih) return false;
+            const daysSince = (now - new Date(sonTarih)) / (1000 * 60 * 60 * 24);
             return daysSince >= 3;
         } catch { return false; }
     });

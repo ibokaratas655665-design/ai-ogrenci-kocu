@@ -193,8 +193,10 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                 (mini seri) kartın altında. */}
             {seri.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                    {/* Etiketler bakışa göre: öğrenci kendi ekranında "Netim",
+                        koç aynı bileşeni öğrenci ADINA okur. */}
                     <OlcumKarti
-                        etiket="Son Netim" simge={TrendingUp} ton="marka"
+                        etiket={bakis === 'koc' ? 'Son Net' : 'Son Netim'} simge={TrendingUp} ton="marka"
                         deger={seri[seri.length - 1].toplamNet}
                         degisim={sonDegisim !== null ? sonDegisim : undefined}
                         degisimBirimi="" artisIyi
@@ -204,17 +206,19 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                         seriAlt={seri.length > 1 ? `${seri.length} deneme` : null}
                     />
                     <OlcumKarti
-                        etiket="Ortalama Netim" simge={Target} ton="bilgi"
+                        etiket={bakis === 'koc' ? 'Ortalama Net' : 'Ortalama Netim'} simge={Target} ton="bilgi"
                         deger={ortalamaNet ?? '—'}
                         alt={tur === 'all' ? 'Tüm denemeler' : `${tur} denemeleri`}
                     />
                     <OlcumKarti
-                        etiket="Deneme Sayım" simge={ClipboardList} ton="iyi"
+                        etiket={bakis === 'koc' ? 'Deneme Sayısı' : 'Deneme Sayım'} simge={ClipboardList} ton="iyi"
                         deger={seri.length}
-                        alt={manuelKayitlar.length ? `${manuelKayitlar.length} kaydı kendim girdim` : 'Koçumun girdiği sonuçlar'}
+                        alt={bakis === 'koc'
+                            ? (manuelKayitlar.length ? `${manuelKayitlar.length} kaydı öğrenci girdi` : 'Koç kayıtları')
+                            : (manuelKayitlar.length ? `${manuelKayitlar.length} kaydı kendim girdim` : 'Koçumun girdiği sonuçlar')}
                     />
                     <OlcumKarti
-                        etiket="Konu Hatam" simge={AlertCircle} ton={toplamHata > 0 ? 'uyari' : 'iyi'}
+                        etiket={bakis === 'koc' ? 'Konu Hatası' : 'Konu Hatam'} simge={AlertCircle} ton={toplamHata > 0 ? 'uyari' : 'iyi'}
                         deger={toplamHata}
                         alt={konu.konular.length ? `${konu.konular.length} farklı konuda` : 'Hata defteri temiz'}
                     />

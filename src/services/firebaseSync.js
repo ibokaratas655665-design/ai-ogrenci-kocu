@@ -151,7 +151,14 @@ const DYNAMIC_KEY_PATTERNS = [
     /^test_results_/,
     /^test_result_[a-z0-9_]+_/,
     /^assigned_tests_/,
-    /^gamification_stats_/,
+    /**
+     * ⚠️ ANAHTAR AYRILIĞI (24.08.2026'da bulundu): yazıcı
+     * (GamificationContext) `gamification_<id>` yazar; eski desen yalnız
+     * `gamification_stats_` idi — XP/rozet/seri buluta HİÇ gitmiyordu.
+     * `gamification_guest` bilerek dışarıda: girişsiz cihaz verisi
+     * kimseye ait değildir, buluta taşınmaz.
+     */
+    /^gamification_(?!guest$)/,
     /^user_stats_/,
     // pomodoro_log_ dardı: pomodoro_<id>_total ve _daily_<tarih> kapsam dışı kalıyordu
     /^pomodoro_/,

@@ -5,8 +5,12 @@ import { nesneOku } from '../../services/veriDeposu';
 // ─── Liderlik Puanı Hesapla ──────────────────────────────────
 const calcLeaderScore = (student) => {
     try {
-        const gamKey = `gamification_stats_${student.id || student.schoolNumber}`;
-        const gamData = nesneOku(gamKey);
+        /* Yazıcı `gamification_<id>` kullanır; eski `gamification_stats_`
+           anahtarı geçmiş kayıtlar için yedek (anahtar ayrılığı
+           düzeltmesi, 24.08.2026). */
+        const kimlik = student.id || student.schoolNumber;
+        const yeni = nesneOku(`gamification_${kimlik}`);
+        const gamData = Object.keys(yeni).length ? yeni : nesneOku(`gamification_stats_${kimlik}`);
 
         const xp = Number(gamData.totalXP || 0);
         const streak = Number(gamData.currentStreak || 0);

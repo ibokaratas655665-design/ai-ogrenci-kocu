@@ -66,6 +66,11 @@ export const GamificationProvider = ({ children, userId }) => {
     const [pendingBadge, setPendingBadge] = useState(null);
 
     // ── Persist ───────────────────────────────────────────────────
+    /* BİLEREK ham setItem: bu etki her stats değişiminde koşar; yaz()
+       kullanmak her XP kazanımında anlık bulut yazması + sentetik
+       storage olayı üretirdi. Anahtar DYNAMIC_KEY_PATTERNS kapsamında
+       (^gamification_) olduğu için 2 dakikalık toplu senkron turunda
+       buluta gider — XP için yeterli tazelik. */
     useEffect(() => {
         try { localStorage.setItem(key, JSON.stringify(stats)); } catch { /* ignore */ }
     }, [stats, key]);

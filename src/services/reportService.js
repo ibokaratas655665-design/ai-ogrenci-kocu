@@ -560,7 +560,11 @@ export const buildStudentReport = (student, options = {}) => {
     const studyDelta = prevStudyMinutes > 0 ? studyMinutes - prevStudyMinutes : null;
 
     // ── Oyunlaştırma ────────────────────────────────────────
-    const gam = safeParse(`gamification_stats_${student?.id}`, {});
+    // Yazıcı (GamificationContext) `gamification_<id>` kullanır;
+    // eski `gamification_stats_<id>` anahtarı geçmiş kayıtlar için
+    // yedek olarak okunur (anahtar ayrılığı düzeltmesi, 24.08.2026).
+    const gamYeni = safeParse(`gamification_${student?.id}`, null);
+    const gam = gamYeni || safeParse(`gamification_stats_${student?.id}`, {});
 
     // ── Son aktivite ────────────────────────────────────────
     // Günlük çalışma kaydı ve program işaretlemeleri de aktivitedir;
