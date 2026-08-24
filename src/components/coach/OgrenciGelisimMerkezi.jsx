@@ -12,9 +12,14 @@
  * mevcut anahtarları okur.
  */
 import React, { useMemo } from 'react';
-import { LayoutGrid, PencilLine, BookX, BarChart2, ChevronRight } from 'lucide-react';
+import { LayoutGrid, PencilLine, BookX, BarChart2, ChevronRight, ClipboardCheck, Timer } from 'lucide-react';
 import SectionTabs from '../shared/SectionTabs';
 import KocDegerlendirme from './KocDegerlendirme';
+/* 24.08.2026: Öz Değerlendirme ve Pomodoro Takip üst menüden buraya
+   taşındı — ikisi de öğrencinin ürettiği kayıtların koç görünümü,
+   yani bu merkezin doğal bölümleri. */
+import { CoachSelfAssessmentView } from '../student/SelfAssessment';
+import { CoachPomodoroView } from '../student/SubjectPomodoro';
 import { buildClassReport, buildRosterStatus } from '../../services/reportService';
 
 const StatKart = ({ etiket, deger, altyazi, vurgu }) => (
@@ -68,6 +73,8 @@ export default function OgrenciGelisimMerkezi({ students = [], onOgrenciAc }) {
         { id: 'gunluk', icon: PencilLine, label: 'Günlük Kayıt', title: 'Günlük Kayıt Değerlendirmesi', description: 'Öğrencinin soru çözüm düzeni ve ders dağılımı' },
         { id: 'hata', icon: BookX, label: 'Hata Defteri', title: 'Hata Defteri Değerlendirmesi', description: 'Hata trendi, tekrar eden konular ve öğrencinin açıklamaları' },
         { id: 'deneme', icon: BarChart2, label: 'Deneme Analizi', title: 'Deneme Analizi Değerlendirmesi', description: 'Net gelişimi, güçlü/zayıf dersler ve hata nedenleri' },
+        { id: 'oz', icon: ClipboardCheck, label: 'Öz Değerlendirme', title: 'Haftalık Öz Değerlendirmeler', description: 'Öğrencilerin kendi haftalarına verdiği notlar ve yorumları' },
+        { id: 'odak', icon: Timer, label: 'Pomodoro', title: 'Odaklanma Takibi', description: 'Öğrencilerin ders bazlı pomodoro seansları (son 7 gün)' },
     ];
 
     return (
@@ -125,6 +132,8 @@ export default function OgrenciGelisimMerkezi({ students = [], onOgrenciAc }) {
                     {active === 'gunluk' && <KocDegerlendirme students={students} tur="gunluk" />}
                     {active === 'hata' && <KocDegerlendirme students={students} tur="hata" />}
                     {active === 'deneme' && <KocDegerlendirme students={students} tur="deneme" />}
+                    {active === 'oz' && <CoachSelfAssessmentView students={students} />}
+                    {active === 'odak' && <CoachPomodoroView students={students} />}
                 </>
             )}
         </SectionTabs>

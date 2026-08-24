@@ -62,10 +62,10 @@ import { SINAV_LISTESI, alanListesi, ogrencininSinavi } from '../data/examTopics
 import coachTasks from '../services/coachTaskService';
 import TabBadge from '../components/shared/TabBadge';
 import useTabBadges from '../hooks/useTabBadges';
-import { CoachSelfAssessmentView } from '../components/student/SelfAssessment';
+/* CoachSelfAssessmentView ve CoachPomodoroView importları kaldırıldı:
+   OgrenciGelisimMerkezi kendi içinde import ediyor (24.08.2026). */
 import { CoachAppointmentManager } from '../components/coach/AppointmentSystem';
 import StudentGoalsPanel from '../components/coach/StudentGoalsPanel';
-import { CoachPomodoroView } from '../components/student/SubjectPomodoro';
 import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
@@ -159,8 +159,11 @@ const NAV_BY_SECTION = {
                    onarıldı: öğrenci yazmaları (öz değerlendirme, pomodoro,
                    konu ilerleme, test sonuçları, hedefler) buluta hiç
                    gitmiyordu — ham setItem'lar yaz()'a çevrildi. */
-                { id: 'self-assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
-                { id: 'pomodoro-tracker', icon: MODULE_ICONS.pomodoro, label: 'Pomodoro Takip' },
+                /* 24.08.2026: 'self-assessment' ve 'pomodoro-tracker'
+                   üst menüden kalktı — ikisi de tek pencerelik ince
+                   görünümlerdi ve Öğrenci Gelişim Merkezi'nin bölümü
+                   oldular. Eski ?sekme= bağlantıları geçerlilik
+                   süzgecinden 'bugun'a düşer. */
                 /* Öğrencinin telefonda girdiği üç kayıt türünün KOÇ
                    değerlendirme ekranları — öğrenci ekranının kopyası
                    değil, zaman içi değişim analizi (KocDegerlendirme). */
@@ -3483,9 +3486,8 @@ const CoachDashboard = () => {
                         {activeTab === 'remote' && <RemoteCoachingTab students={students} setToast={setToast} />}
                         { activeTab === 'university-scores' && <UniversityScoresTab /> }
 
-                        {/* 🌟 PREMIUM MODÜLLER */}
-                        {activeTab === 'self-assessment' && <CoachSelfAssessmentView students={students} />}
-                        {activeTab === 'pomodoro-tracker' && <CoachPomodoroView students={students} />}
+                        {/* Öz Değerlendirme ve Pomodoro Takip artık Öğrenci
+                            Gelişim Merkezi'nin bölümleri (24.08.2026). */}
                         {activeTab === 'gelisim-merkezi' && (
                             <OgrenciGelisimMerkezi
                                 students={students}
