@@ -248,6 +248,29 @@ const StudentDashboard = () => {
     }, [activeTab]);
 
     /**
+     * URL → SEKME yönü. Ölçüldü: yukarıdaki etki sekme değişince URL'yi
+     * yazıyordu ama TERSİ yoktu — adres çubuğuna ?sekme=program yazmak,
+     * tarayıcının geri/ileri tuşu ya da dışarıdan gelen derin bağlantı
+     * hash'i değiştiriyor, ekran ise 'home'da kalıyordu. On bir sekmenin
+     * on biri de aynı içeriği gösteriyordu.
+     *
+     * Döngü riski yok: sekmeyeGit → setActiveTab → yukarıdaki etki
+     * replaceState kullanıyor ve replaceState hashchange TETİKLEMEZ.
+     */
+    useEffect(() => {
+        const dinle = () => {
+            try {
+                const yeni = new URLSearchParams(window.location.hash.split('?')[1] || '').get('sekme');
+                if (!yeni) return;
+                if (HUB_ESLEME[yeni] || GECERLI_SEKMELER.includes(yeni)) sekmeyeGit(yeni);
+            } catch { /* bozuk hash görmezden gelinir */ }
+        };
+        window.addEventListener('hashchange', dinle);
+        return () => window.removeEventListener('hashchange', dinle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    /**
      * V1.1 — Bugün kartındaki koç mesajı, mesaj AÇILINCA düşsün.
      * Mesajlar sekmesi açıldığında cihaza görülme damgası yazılır;
      * BugunEkrani damgadan eski mesajı göstermez. Damga yalnızca
