@@ -25,11 +25,14 @@ import {
     PlayCircle, Flame, Trophy, Plus, Check, XCircle,
     Download, FileText, Eye, Moon, Sun, BookX, PencilLine, User,
     MoreHorizontal, Timer, NotebookPen, Medal
-} from 'lucide-react';
+, CalendarCheck } from 'lucide-react';
 import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
-import { OlcumKarti, DersCubuklari } from '../components/charts/Analitik';
+import { OlcumKarti, DersCubuklari, UyumHalkasi } from '../components/charts/Analitik';
+import Card from '../components/ui/Card';
+import KartBasligi from '../components/ui/KartBasligi';
+import { getCellColor } from '../data/programColors';
 import { CokluHalka } from '../components/charts/Dagilim';
 import { dersRengi } from '../components/charts/grafikTemasi';
 import { getSummary } from '../services/studyLogService';
@@ -823,6 +826,33 @@ const StudentDashboard = () => {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli: storage olayı yerel kayıtları tazeler
     }, [user?.id, examData, denemelerSirali, kayitSurumu]);
+
+    /**
+     * BUGÜNÜN ETÜTLERİ — Odak ekranının iş listesi.
+     *
+     * Pomodoro sayacı "ne kadar odaklandım" sorusunu yanıtlıyor ama
+     * "neye odaklanacağım" sorusunu yanıtlamıyordu; öğrenci sayacı
+     * başlatmadan önce Program sekmesine gidip bakmak zorundaydı.
+     * Aynı çizelge, salt okunur.
+     */
+    const bugunEtutListesi = useMemo(() => {
+        const GUNLER = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const bugunAdi = GUNLER[new Date().getDay()];
+        const onek = `m${activeMonth}-w${activeWeek}-${bugunAdi}-`;
+        const ilerleme = programProgress.getProgress(user?.id) || {};
+        return Object.entries(schedule || {})
+            .filter(([k, v]) => k.startsWith(onek) && v && (v.topic || v.subject))
+            .map(([k, v]) => ({
+                key: k,
+                sira: Number(k.split('-').pop()) || 0,
+                ders: v.subject || '',
+                konu: v.topic || v.subject || '',
+                renk: getCellColor(v)?.accent || 'transparent',
+                bitti: ilerleme[k]?.status === 'done',
+            }))
+            .sort((a, b) => a.sira - b.sira);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [schedule, activeMonth, activeWeek, user?.id]);
 
     /**
      * NETLERİM ÖZETİ — tek hesap, tek kaynak.
@@ -2008,8 +2038,79 @@ const StudentDashboard = () => {
                             <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ODAKLANMA MERKEZİ</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">DERS BAZLI POMODORO VE ZAMAN YÖNETİMİ</p>
                         </div>
-                        <div className="premium-card p-1 sm:p-2 border-line">
-                            <SubjectPomodoro studentId={user?.id} onComplete={handlePomodoroComplete} />
+                        {/* İKİ SÜTUN — referansın yerleşimi.
+                            Ekranda yalnızca sayaç vardı: "kaç seans yaptım",
+                            "hedefim ne", "şimdi hangi derse odaklanacağım"
+                            sorularının hiçbiri yanıtlanmıyordu. Sayaç solda,
+                            hedef ve iş listesi sağda. */}
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
+                            <div className="xl:col-span-8 min-w-0">
+                                <div className="premium-card p-1 sm:p-2 border-line">
+                                    <SubjectPomodoro studentId={user?.id} onComplete={handlePomodoroComplete} />
+                                </div>
+                            </div>
+
+                            <aside className="xl:col-span-4 min-w-0 space-y-4">
+                                {/* GÜNLÜK HEDEF — referanstaki "Daily Target".
+                                    Dört seans (100 dakika) günlük varsayılan hedef:
+                                    pomodoro yönteminin kendi ritmi 25 dk + mola,
+                                    dördüncüden sonra uzun mola. Hedef uydurma bir
+                                    sayı değil, yöntemin kendi döngüsü. */}
+                                <Card>
+                                    <KartBasligi simge={Timer} baslik="Günlük Hedefin"
+                                        alt={`${dailyPomodoros} / 4 seans · ${dailyPomodoros * 25} dakika odak`} />
+                                    <div className="mt-4 flex items-center gap-4">
+                                        <UyumHalkasi
+                                            oran={Math.min(100, Math.round((dailyPomodoros / 4) * 100))}
+                                            tamamlanan={dailyPomodoros}
+                                            planlanan={4}
+                                            birim="seans"
+                                            ton="marka"
+                                            boyut={86}
+                                            className="shrink-0"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Toplam</p>
+                                            <p className="text-xl font-black text-ink tabular-nums m-0 mt-0.5">
+                                                {userStats.pomodorosCompleted || 0}
+                                                <span className="tip-mini text-ink-3 font-bold ml-1">seans</span>
+                                            </p>
+                                            <p className="tip-mini text-ink-3 m-0 mt-1">
+                                                {Math.round(((userStats.pomodorosCompleted || 0) * 25) / 60)} saat odaklanma
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* BUGÜNÜN ETÜTLERİ — referanstaki ders hedefleri
+                                    listesi. Sayaç "ne kadar" der ama "neye"
+                                    demez; programdaki etütler o boşluğu doldurur.
+                                    Tamamlananlar üstü çizili, sıradaki vurgulu. */}
+                                {bugunEtutListesi.length > 0 && (
+                                    <Card dolgu="yok">
+                                        <div className="px-5 pt-5 pb-3 sm:px-6">
+                                            <KartBasligi simge={CalendarCheck} baslik="Bugün Ne Çalışacağım"
+                                                alt={`${bugunEtutListesi.length} etüt planlı`} />
+                                        </div>
+                                        <ul className="divide-y divide-line border-t border-line">
+                                            {bugunEtutListesi.map((e) => (
+                                                <li key={e.key} className="px-5 sm:px-6 py-2.5 flex items-center gap-3">
+                                                    <span aria-hidden="true" className="w-1 self-stretch rounded-full shrink-0"
+                                                        style={{ backgroundColor: e.renk }} />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className={cn('tip-small block truncate',
+                                                            e.bitti ? 'text-ink-3 line-through' : 'text-ink font-bold')}>
+                                                            {e.konu}
+                                                        </span>
+                                                        <span className="tip-mini text-ink-3 block truncate">{e.ders}</span>
+                                                    </span>
+                                                    {e.bitti && <span className="badge badge-ok shrink-0">bitti</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Card>
+                                )}
+                            </aside>
                         </div>
                     </div>
                 )}
