@@ -10,6 +10,10 @@ import { listeOku, nesneOku, yaz } from '../../services/veriDeposu';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+/* substring(0,3) kısaltması ÇAKIŞIYORDU: Pazartesi→"Paz" (Pazar ile),
+   Cumartesi→"Cum" (Cuma ile). Takvimde hafta "Paz Sal Çar Per Cum Cum
+   Paz" görünüyordu. Standart Türkçe kısaltmalar elle verilir. */
+const DAYS_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 const getWeekDates = (offset = 0) => {
     const now = new Date();
@@ -147,7 +151,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                     return (
                         <div key={i} className={`rounded-xl border ${isToday ? 'border-brand-line bg-brand-soft' : 'border-line bg-surface'} p-2 min-h-20`}>
                             <p className={`text-[10px] font-black text-center mb-1 ${isToday ? 'text-brand' : 'text-ink-2'}`}>
-                                {DAYS[i].substring(0, 3)}<br />
+                                {DAYS_KISA[i]}<br />
                                 <span className="text-xs">{date.getDate()}</span>
                             </p>
                             <div className="space-y-0.5">
@@ -184,7 +188,11 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                             </div>
                             <button
                                 onClick={() => {
-                                    const updated = appointments.filter((_, j) => j !== i);
+                                    /* ⚠️ i, HAFTALIK listenin indeksi — ana
+                                       `appointments` dizisinin değil. İndeksle
+                                       silmek başka haftanın randevusunu
+                                       siliyordu; kayıt kimliğiyle silinir. */
+                                    const updated = appointments.filter((x) => x !== a);
                                     setAppointments(updated);
                                     yaz(ANAHTAR_RANDEVU, updated);
                                 }}
@@ -227,7 +235,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                                     onClick={() => setNewSlot(s => ({ ...s, dayIndex: i }))}
                                     className={`text-xs py-2 rounded-xl font-bold transition ${newSlot.dayIndex === i ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
                                 >
-                                    {DAYS[i].substring(0, 3)}<br />
+                                    {DAYS_KISA[i]}<br />
                                     <span className="text-[10px] opacity-70">{d.getDate()}</span>
                                 </button>
                             ))}

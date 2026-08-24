@@ -2189,12 +2189,15 @@ const StudentDashboard = () => {
                                         />
                                         <div className="min-w-0 flex-1">
                                             <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Toplam</p>
+                                            {/* Tek kaynak: oyunlaştırma bağlamı. userStats'ın
+                                                kendi kopyası ayrı besleniyordu ve burada 0
+                                                gösteriyordu — aynı sayının iki kaynağı olmaz. */}
                                             <p className="text-xl font-black text-ink tabular-nums m-0 mt-0.5">
-                                                {userStats.pomodorosCompleted || 0}
+                                                {gamStats.pomodorosCompleted || 0}
                                                 <span className="tip-mini text-ink-3 font-bold ml-1">seans</span>
                                             </p>
                                             <p className="tip-mini text-ink-3 m-0 mt-1">
-                                                {Math.round(((userStats.pomodorosCompleted || 0) * 25) / 60)} saat odaklanma
+                                                {Math.round(((gamStats.pomodorosCompleted || 0) * 25) / 60)} saat odaklanma
                                             </p>
                                         </div>
                                     </div>

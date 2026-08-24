@@ -27,6 +27,12 @@ const ANAHTARLAR = [
     'student_groups', 'guidance_sessions', 'pdr_archive', 'coach_tasks',
     'managed_coaches', 'appointments', 'whatsapp_messages', 'user_session',
     'coach_active_section', 'pdr_materials', 'coach_subscriptions',
+    /* Demo bunları TOHUMLAMAZ ama ziyaretçi gerçek ekranlarda gezerken
+       BUNLARA YAZABİLİR (günlük kayıt, hata defteri, deneme analizi,
+       mesajlar). Listede olmayınca demoda girilenler çıkışta geri
+       alınmıyor, gerçek verinin arasına karışıyordu. */
+    'study_log', 'error_notebook', 'deneme_analizleri',
+    'messages', 'student_messages',
 ];
 
 export const demoAktifMi = () => {
