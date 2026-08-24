@@ -3,7 +3,7 @@ import {
     Calendar, Clock, Settings, Download, Save, CheckCircle, X,
     Layers, Minus, Plus, Shuffle, Book, Trash2, Share2, RefreshCw,
     CheckSquare, Square, PlusCircle, Globe, ChevronDown,
-    Unlock, CalendarDays, CalendarRange,
+    Unlock, CalendarDays, CalendarRange, Lightbulb,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import MARKA from '../data/marka';
@@ -299,6 +299,19 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
         if (!selectedExam && bolumler.length) setSelectedExam(bolumler[0].id);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bolumler]);
+
+    /* Öğrencinin soru/deneme verisine göre zayıf çıkan konular —
+       koç program kurarken manuel TopicTracker'a bakmak zorunda
+       kalmasın diye kısa bir öneri listesi (bildirim niteliğinde,
+       otomatik ekleme yapmaz). */
+    const onerilenKonular = React.useMemo(() => {
+        if (!studentId || !sinavId || !bolumler.length) return [];
+        try {
+            return topics.sonrakiKonular(studentId, sinavId, 5, undefined, bolumler);
+        } catch {
+            return [];
+        }
+    }, [studentId, sinavId, bolumler]);
 
     /** Öğrencinin konu durumu: `${bolum}|${konuAnahtarı}` → satır. */
     useEffect(() => {
@@ -1256,6 +1269,29 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     <p className="text-[10px] text-ink-3 px-0.5">
                                         {sinavId}{alanId ? ` · ${alanId}` : ''} — konular öğrencinin alanına göre listeleniyor.
                                     </p>
+                                )}
+
+                                {/* ── ÖNERİLEN KONULAR ──────────────────────
+                                    Öğrencinin soru/deneme verisine göre zayıf
+                                    çıkan konular — bilgi amaçlı, otomatik
+                                    ekleme yapmaz. */}
+                                {onerilenKonular.length > 0 && (
+                                    <div className="rounded-lg border border-warn/30 bg-warn-soft p-2 space-y-1.5">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-warn flex items-center gap-1">
+                                            <Lightbulb size={11} /> Önerilen Konular
+                                        </p>
+                                        <div className="flex flex-wrap gap-1">
+                                            {onerilenKonular.map((k, i) => (
+                                                <span
+                                                    key={`${k.ders}-${k.konu}-${i}`}
+                                                    title={`${k.bolum} · ${k.ders} · ${topics.DURUMLAR[k.durum]?.ad || k.durum}`}
+                                                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-surface border border-line text-ink-2"
+                                                >
+                                                    {k.konu}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
 
                                 {/* ── ARAMA ────────────────────────────── */}

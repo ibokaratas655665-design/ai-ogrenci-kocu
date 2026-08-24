@@ -6,7 +6,7 @@ import {
     FileText, Activity, X, Send, ClipboardList, Layers, BarChart2, Award
 } from 'lucide-react';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
     BarChart, Bar
 } from 'recharts';
@@ -125,23 +125,6 @@ const StudentDetailPage = () => {
     // CRITICAL: Bu dizinin isimleri ProgramBuilderModal.jsx'teki DAYS ile birebir aynı olmalı!
     const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
     const DAYS_LABEL = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
-    /**
-     * Net gelişim grafiği — GERÇEK deneme kayıtlarından.
-     * Eski sürümde burada sabit (Ocak-Mayıs) örnek veri çiziliyordu;
-     * koç, öğrencinin karnesinde uydurma bir grafik görüyordu.
-     */
-    const netGelisimi = React.useMemo(() => {
-        const zaman = (r) => new Date(r.date || r.uploadedAt || 0).getTime();
-        return [...examResults]
-            .filter((r) => Number.isFinite(parseFloat(r.totalNet)))
-            .sort((a, b) => zaman(a) - zaman(b))
-            .slice(-10)
-            .map((r) => ({
-                name: r.name || r.trialName || new Date(zaman(r)).toLocaleDateString('tr-TR'),
-                net: Math.round(parseFloat(r.totalNet) * 100) / 100,
-            }));
-    }, [examResults]);
 
     // Tüm verileri yükleyen merkezi fonksiyon
     const loadAllData = useCallback(() => {
@@ -805,28 +788,10 @@ const StudentDetailPage = () => {
 
                 {activeTab === 'academic' && (
                     <div className="space-y-8 animate-fade-in">
-                        {/* Net gelişimi — öğrencinin gerçek deneme kayıtları */}
-                        {netGelisimi.length >= 2 && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-lg font-bold text-ink mb-6 flex items-center">
-                                    <TrendingUp className="mr-2 text-brand" size={20} />
-                                    Net Gelişimi (Son {netGelisimi.length} Deneme)
-                                </h3>
-                                <div className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={netGelisimi}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Line type="monotone" dataKey="net" stroke="var(--brand)" strokeWidth={3} dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} name="Toplam Net" animationDuration={300} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        )}
+                        {/* Net gelişimi — aşağıdaki DenemeAnalizi kendi kombo
+                            grafiğinde (çubuk=D/Y, çizgi=net) zaten çiziyor;
+                            ayrı bir "Net Gelişimi" kartı aynı veriyi tekrar
+                            gösteriyordu, kaldırıldı. */}
 
                         {/* Gelişmiş Deneme Analizleri */}
                         <div className="space-y-8">

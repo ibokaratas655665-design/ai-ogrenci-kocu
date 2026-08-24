@@ -168,7 +168,7 @@ const NAV_BY_SECTION = {
                    değil, zaman içi değişim analizi (KocDegerlendirme). */
                 /* 22.08.2026: üç değerlendirme sekmesi tek merkezde
                    birleşti — sınıf geneli kesit de burada. */
-                { id: 'gelisim-merkezi', icon: MODULE_ICONS.analysis, label: 'Öğrenci Gelişim Merkezi' },
+                { id: 'gelisim-merkezi', icon: MODULE_ICONS.analysis, label: 'Günlük Takip Merkezi' },
             ],
         },
         {
