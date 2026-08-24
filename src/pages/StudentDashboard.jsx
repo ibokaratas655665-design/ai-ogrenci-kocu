@@ -666,8 +666,13 @@ const StudentDashboard = () => {
      * (nesne ya da düz dizi) korunur.
      */
     const handleCompleteTask = (taskId) => {
+        /* ⚠️ nesneOku KULLANILMAZ: o, diziyi {} olarak normalize eder.
+           Aşağıdaki Array.isArray dalı tam da dizi biçimli kayıt için
+           var; nesneOku ile o dal HİÇ çalışmıyordu — dizi biçimli
+           depoda görev tamamlamak yalnızca ekranı güncelliyor, kalıcı
+           olmuyordu. Ham okunur, biçim ayrımını bu işleyici yapar. */
         let ham;
-        try { ham = nesneOku('student_tasks'); }
+        try { ham = oku('student_tasks', {}) || {}; }
         catch { ham = {}; }
 
         const isaretle = (t) => (
