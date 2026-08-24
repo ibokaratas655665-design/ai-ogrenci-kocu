@@ -12,10 +12,10 @@ import {
     CalendarDays, Target, ChevronDown,
 } from 'lucide-react';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import studyLog from '../../services/studyLogService';
-import { izgaraOzellikleri, eksenOzellikleri, ANIMASYON } from '../charts/grafikTemasi';
+import { izgaraOzellikleri, eksenOzellikleri, ANIMASYON, dersRengi } from '../charts/grafikTemasi';
 import { getSubjectColor, getSubjectLabel } from '../../data/programColors';
 import Modal from '../ui/Modal';
 import { ogrencininDersleri, dersinKonulari } from '../../utils/dersKonu';
@@ -40,6 +40,56 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
 
     const today = useMemo(() => studyLog.getToday(studentId), [studentId, version]);
     const summary = useMemo(() => studyLog.getSummary(studentId, range), [studentId, range, version]);
+    /**
+     * GÜN × DERS KIRILIMI — yığılmış çubuğun kaynağı.
+     *
+     * `getSummary` iki ayrı özet veriyor: gün gün TOPLAM (byDay) ve ders
+     * ders TOPLAM (bySubject). İkisinin kesişimi — "salı günü hangi derse
+     * kaç soru" — hiçbir yerde yoktu, dolayısıyla grafik yalnızca günlük
+     * toplamı çizebiliyordu. Oysa aynı 40 soru tek derse de dağılmış
+     * olabilir dört derse de; ikisi çok farklı çalışma günleridir.
+     *
+     * Kesişim burada, mevcut kayıtlardan türetilir. Yeni depo açılmaz,
+     * hiçbir şey yazılmaz — `getEntries` zaten okunan listedir.
+     */
+    const gunDers = useMemo(() => {
+        const gunler = summary.byDay.map((g) => g.date);
+        const kume = new Set(gunler);
+        const satir = new Map(gunler.map((d) => [d, { date: d, _toplam: 0 }]));
+        const dersSay = new Map();
+
+        studyLog.getEntries(studentId).forEach((e) => {
+            if (e.kind === 'kitap' || !kume.has(e.date)) return;
+            const ders = String(e.subject || '').trim() || 'Diğer';
+            const adet = (Number(e.correct) || 0) + (Number(e.wrong) || 0) + (Number(e.blank) || 0);
+            if (!adet) return;
+            const r = satir.get(e.date);
+            r[ders] = (r[ders] || 0) + adet;
+            r._toplam += adet;
+            dersSay.set(ders, (dersSay.get(ders) || 0) + adet);
+        });
+
+        /* En çok çalışılan altı ders ayrı çizilir, kalanı "Diğer"de
+           toplanır: yedinci renkten sonra yığın okunaksız hâle geliyor. */
+        const sirali = [...dersSay.entries()].sort((a, b) => b[1] - a[1]);
+        const gorunen = sirali.slice(0, 6).map(([ad]) => ad);
+        const gizli = sirali.slice(6).map(([ad]) => ad);
+
+        if (gizli.length) {
+            satir.forEach((r) => {
+                let t = 0;
+                gizli.forEach((ad) => { t += r[ad] || 0; delete r[ad]; });
+                if (t) r['Diğer'] = (r['Diğer'] || 0) + t;
+            });
+        }
+
+        return {
+            veri: [...satir.values()],
+            dersler: gizli.length ? [...gorunen, 'Diğer'] : gorunen,
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- version bilinçli tetikleyici
+    }, [studentId, range, version, summary.byDay]);
+
     const todayEntries = useMemo(
         () => studyLog.getEntries(studentId, { date: studyLog.todayKey() }),
         [studentId, version]
@@ -139,7 +189,9 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
                         <CalendarDays size={12} /> Son {range} Gün
                     </p>
                     <div className="flex gap-1">
-                        {[7, 30].map((r) => (
+                        {/* 90 gün eklendi: aralıklı tekrar takvimi 90 güne
+                            kadar uzuyor, öğrenci o pencereyi göremiyordu. */}
+                        {[7, 30, 90].map((r) => (
                             <button
                                 key={r}
                                 onClick={() => setRange(r)}
@@ -170,40 +222,59 @@ const DailyStudyLog = ({ studentId, ogrenci = null }) => {
                     Alan grafiği aynı veriyi ölçülebilir kılar: ölçekli y ekseni,
                     tarihli ipucu, sürekli bir eğri. Trend soru sayısıyladır;
                     kitap sayfası ipucunda ayrıca yazar. */}
-                {summary.questions > 0 && (
-                    <div className="h-40 mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={summary.byDay} margin={{ top: 6, right: 8, bottom: 0, left: -22 }}>
-                                <defs>
-                                    <linearGradient id="gunlukTrend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
-                                        <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid {...izgaraOzellikleri()} />
-                                <XAxis
-                                    dataKey="date"
-                                    tickFormatter={(d) => String(d).slice(5).replace('-', '.')}
-                                    minTickGap={18}
-                                    {...eksenOzellikleri()}
-                                />
-                                <YAxis allowDecimals={false} {...eksenOzellikleri()} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }}
-                                    labelFormatter={(d) => d}
-                                    formatter={(v, ad, o) => [
-                                        o?.payload?.pages ? `${v} soru · ${o.payload.pages} sayfa` : `${v} soru`,
-                                        'Çalışma',
-                                    ]}
-                                />
-                                <Area
-                                    type="monotone" dataKey="questions" name="Soru"
-                                    stroke="var(--brand)" strokeWidth={2.5}
-                                    fill="url(#gunlukTrend)" dot={{ r: 2.5 }}
-                                    animationDuration={ANIMASYON}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                {/* GÜN GÜN, DERS DERS.
+                    Buradaki eğri yalnızca günlük TOPLAMI çiziyordu: 40 soruluk
+                    bir gün tek derse mi dağıldı dört derse mi görünmüyordu.
+                    Yığılmış çubukta her segment bir ders ve rengi programdaki
+                    ders rengi — çizelgede mavi görünen Matematik burada da mavi.
+                    Çubuğun toplam yüksekliği eski eğrinin verdiği bilgiyi
+                    zaten taşıyor, üstüne kırılımı ekliyor. */}
+                {summary.questions > 0 && gunDers.dersler.length > 0 && (
+                    <div className="mb-4">
+                        <div className="h-44">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={gunDers.veri} margin={{ top: 6, right: 8, bottom: 0, left: -22 }}
+                                    barCategoryGap={range > 14 ? 2 : 6}>
+                                    <CartesianGrid {...izgaraOzellikleri()} />
+                                    <XAxis
+                                        dataKey="date"
+                                        tickFormatter={(d) => String(d).slice(5).replace('-', '.')}
+                                        minTickGap={range > 14 ? 28 : 12}
+                                        {...eksenOzellikleri()}
+                                    />
+                                    <YAxis allowDecimals={false} {...eksenOzellikleri()} />
+                                    <Tooltip
+                                        cursor={{ fill: 'var(--surface-2)' }}
+                                        contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }}
+                                        formatter={(v, ad) => [`${v} soru`, ad]}
+                                    />
+                                    {gunDers.dersler.map((ders, i) => (
+                                        <Bar
+                                            key={ders}
+                                            dataKey={ders}
+                                            stackId="g"
+                                            name={ders}
+                                            fill={ders === 'Diğer' ? 'var(--ink-3)' : dersRengi(ders)}
+                                            /* Yalnız en üstteki segment yuvarlanır;
+                                               her segment yuvarlanırsa yığın kopuk görünür. */
+                                            radius={i === gunDers.dersler.length - 1 ? [4, 4, 0, 0] : 0}
+                                            animationDuration={ANIMASYON}
+                                        />
+                                    ))}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                        {/* Efsane grafiğin ALTINDA ve yatay: yedi derse kadar
+                            tek satırda sığıyor, üstte olsa başlıkla yarışırdı. */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                            {gunDers.dersler.map((ders) => (
+                                <span key={ders} className="inline-flex items-center gap-1.5 text-[10px] font-bold text-ink-2">
+                                    <span className="w-2 h-2 rounded-full"
+                                        style={{ background: ders === 'Diğer' ? 'var(--ink-3)' : dersRengi(ders) }} />
+                                    {ders}
+                                </span>
+                            ))}
+                        </div>
                     </div>
                 )}
 
