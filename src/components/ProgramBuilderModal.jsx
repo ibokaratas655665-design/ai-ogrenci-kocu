@@ -26,6 +26,7 @@ const DEFAULT_ACTIVITY_TOPIC = {
     deneme: 'Deneme Sınavı',
     analiz: 'Yanlış analizi + hata defteri',
     paragraf: 'Günlük paragraf (20 soru)',
+    problem: 'Günlük problem/işlem pratiği',
     kitap: 'Serbest okuma (30 dk)',
     mola: 'Yetişemediklerini tamamla',
 };
@@ -1867,7 +1868,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                             { key: 'soruEtutleriAcik', label: 'Konu → Soru çözümü', hint: 'Konu bitince hedef soruya göre soru etüdü' },
                                             { key: 'tekrarAcik', label: 'Aralıklı tekrar', hint: `+${kriterler.tekrarAraliklari.join(', +')}. günlerde geri getirme` },
                                             { key: 'denemeAcik', label: 'Haftalık deneme + analiz', hint: 'Süre gerçek sınavdan hesaplanır' },
-                                            { key: 'paragrafAcik', label: 'Günlük paragraf', hint: 'Hafta içi, günün ilk yarısı' },
+                                            { key: 'paragrafAcik', label: 'Günlük paragraf', hint: 'Her gün (hafta sonu dahil), günün ilk etüdü' },
+                                            { key: 'problemlerAcik', label: 'Günlük problemler', hint: 'Matematik ağırlıklı — günün sondan 2. etüdü' },
                                             { key: 'kitapAcik', label: 'Kitap okuma', hint: 'Günün son etüdü' },
                                             { key: 'gunTekrariAcik', label: 'Günün tekrarı', hint: 'Gün sonunda o günün geri getirme provası' },
                                         ].map(o => (

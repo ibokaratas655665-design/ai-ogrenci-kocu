@@ -85,6 +85,17 @@ export const ACTIVITY_TYPES = {
         color: { bg: '#DCFCE7', border: '#166534', text: '#14532D', accent: '#166534' },
         description: 'Serbest okuma — kelime dağarcığı ve okuma hızı',
     },
+    problem: {
+        id: 'problem',
+        label: 'Problemler',
+        short: 'PROBLEM',
+        icon: '🧮',
+        // Kahverengi-turuncu: hiçbir ders/aktivite bu tonu kullanmıyor,
+        // Matematik'in mavisinden bilerek ayrık (Paragraf da Türkçe'nin
+        // kırmızısından ayrık — ekstra bloklar ders renginden bağımsız).
+        color: { bg: '#FFF7ED', border: '#7C2D12', text: '#431407', accent: '#7C2D12' },
+        description: 'Günlük problem/işlem pratiği (Matematik ağırlıklı)',
+    },
     mola: {
         id: 'mola',
         label: 'Esnek / Telafi',
@@ -96,10 +107,10 @@ export const ACTIVITY_TYPES = {
     },
 };
 
-export const ACTIVITY_ORDER = ['konu', 'soru', 'tekrar', 'deneme', 'analiz', 'paragraf', 'kitap', 'mola'];
+export const ACTIVITY_ORDER = ['konu', 'soru', 'tekrar', 'deneme', 'analiz', 'paragraf', 'problem', 'kitap', 'mola'];
 
 /** Ders gerektirmeyen, tek başına programa eklenebilen aktiviteler. */
-export const STANDALONE_ACTIVITIES = ['tekrar', 'deneme', 'analiz', 'paragraf', 'kitap', 'mola'];
+export const STANDALONE_ACTIVITIES = ['tekrar', 'deneme', 'analiz', 'paragraf', 'problem', 'kitap', 'mola'];
 
 // ════════════════════════════════════════════════════════════
 //  Ders renkleri
@@ -319,32 +330,35 @@ export const getCellColor = (cell) => {
     if (!cell) return null;
 
     const type = cell.type || 'konu';
+
+    /**
+     * ⚠️ 25.08.2026: 'tekrar' tipi İKİ farklı şeyi karıştırıyordu.
+     *
+     *  1) "Günün Tekrarı" — gün sonu genel provası, `subject` sabit bir
+     *     metin ("Günün Tekrarı"), `round: 0`. Bunun kendi sabit rengi
+     *     doğrudur (bir derse ait değil).
+     *  2) Bir KONUNUN aralıklı tekrarı (örn. Türkçe/Sözcükte Anlam'ın
+     *     +7. gün provası) — `subject` GERÇEK ders adı, `round` pozitif
+     *     bir sayı (tekrar aralığı: 1/7/30 gün). Bu hücre "bir ders =
+     *     bir renk" kuralına tabi olmalı; ikisi de aynı sabit turuncuyu
+     *     aldığı için koç aynı dersin konu/soru/tekrar kutucuklarının
+     *     farklı renkte olduğunu fark etti (round ile ayrıştırılmadan
+     *     hepsi ACTIVITY_TYPES.tekrar'ın sabit rengine düşüyordu).
+     */
+    if (type === 'tekrar' && cell.round) return getSubjectColor(cell.subject);
+
     const activity = ACTIVITY_TYPES[type];
 
     if (activity?.color) return activity.color;
 
-    const base = getSubjectColor(cell.subject);
-    if (type === 'soru') {
-        // Soru çözümü: aynı ders ailesi, daha doygun görünüm
-        return { ...base, bg: mix(base.bg, base.accent, 0.18) };
-    }
-    return base;
+    /* ⚠️ 25.08.2026: 'soru' türü eskiden kendi rengini `mix()` ile
+       koyulaştırıyordu — aynı dersin konu/soru/tekrar kutucukları farklı
+       tonda görünüyordu ("bir ders = bir renk" kuralını ihlal ediyordu,
+       koç ekran görüntüsünde işaretledi). Tip zaten simge + etiketle
+       (📘 KONU / ✏️ SORU / 🔁 TEKRAR) ayrışıyor; renk sadece DERSE bağlı
+       kalmalı. */
+    return getSubjectColor(cell.subject);
 };
-
-/** İki hex rengi oranla karıştırır (0 = a, 1 = b). */
-function mix(a, b, ratio) {
-    const pa = hexToRgb(a);
-    const pb = hexToRgb(b);
-    if (!pa || !pb) return a;
-    const c = (k) => Math.round(pa[k] + (pb[k] - pa[k]) * ratio);
-    return `#${[c('r'), c('g'), c('b')].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function hexToRgb(hex) {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex).trim());
-    if (!m) return null;
-    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
-}
 
 /** Programda kullanılan tüm dersler + aktiviteler için lejant verisi. */
 export const buildLegend = (schedule = {}) => {

@@ -354,10 +354,13 @@ export const DONEMLIK_TEKRAR_GUN = 90;   // uzun programlarda isteğe bağlı 4.
    Ekstralar DERS SAYILMAZ (günlük ders limitine girmez) ama etüt
    kapasitesi tüketir.                                               */
 export const EKSTRA_KONUM = {
-    paragraf: 'ilk',    // yüksek dikkat işi — erken dilim [7]
-    problem:  'ilk',    // yüksek işlem yükü — erken dilim [7]
-    tekrar:   'son',    // günün tekrarı — gün sonu pekiştirme [4][7]
-    kitap:    'son',    // serbest okuma — düşük yük, gün kapanışı
+    paragraf: 'ilk',      // yüksek dikkat işi — erken dilim [7]
+    /* 25.08.2026: 'ilk' idi ama hiç yerleştirme kodu yoktu (tanımlı,
+       hiç okunmuyordu). Koç isteği: günün SONDAN 2. etüdü — kitap
+       okuma (gün kapanışı, 'son') ondan hemen önce. */
+    problem:  'sondan2',  // günün kapanışına yakın, kitaptan hemen önce
+    tekrar:   'son',      // günün tekrarı — gün sonu pekiştirme [4][7]
+    kitap:    'son',      // serbest okuma — düşük yük, gün kapanışı
     analiz:   'deneme-sonrasi', // deneme ile aynı gün, hemen ardından [6]
 };
 

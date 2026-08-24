@@ -42,6 +42,7 @@ export const KRITER_VARSAYILANLARI = {
     analizEtut: M.ANALIZ_ETUT,
     esnekHaftalik: M.ESNEK_ETUT_HAFTALIK,   // 0..4, koç belirler
     paragrafAcik: true,
+    problemlerAcik: false,    // opsiyonel — koç Ayarlar'dan açar (25.08.2026)
     kitapAcik: true,
     gunTekrariAcik: false,     // günün tekrarı (gün sonu) — kapasite yer
     tekrarAcik: true,
@@ -175,6 +176,13 @@ export function programUret({
         if (!g.acik.length) return null;
         if (konum === 'son') return g.acik.pop();
         if (konum === 'orta') return g.acik.splice(Math.floor(g.acik.length / 2), 1)[0];
+        /* 'sondan2' — Problemler bloğu için: günün SON'dan bir önceki
+           boş etüdü. Yalnızca 1 boşluk kaldıysa 'son'a düşer (kitap
+           okuma her zaman gerçek son etüde öncelikli). */
+        if (konum === 'sondan2') {
+            if (g.acik.length < 2) return g.acik.pop();
+            return g.acik.splice(g.acik.length - 2, 1)[0];
+        }
         return g.acik.shift();
     };
 
@@ -250,10 +258,21 @@ export function programUret({
 
     /* ── 3. Ekstralar — ders sayılmaz [7] ───────────────────── */
     for (const g of gunListesi) {
-        const haftaSonu = g.gun === 'Cumartesi' || g.gun === 'Pazar';
-        if (kriterler.paragrafAcik && !haftaSonu && g.acik.length >= 3) {
+        /* ⚠️ 25.08.2026: Paragraf kuralı Cumartesi/Pazar'ı DIŞLIYORDU —
+           koç bunu hafta sonu da uygulanacak şekilde istedi (ilk etüt
+           kuralı her gün geçerli). Ekstralar zincir/tekrar
+           yerleştirmesinden ÖNCE (adım 3, adım 4/5'ten önce) çalıştığı
+           için pozisyonu güvenle her gün alır. */
+        if (kriterler.paragrafAcik && g.acik.length >= 3) {
             const h = al(g, EKSTRA_KONUM.paragraf);
             yaz(h, { subject: 'Paragraf', type: 'paragraf', exam: '', topic: 'Günlük paragraf çözümü' });
+        }
+        /* Problemler — opsiyonel (25.08.2026), koç Ayarlar'dan açar.
+           Kitap'tan ÖNCE yerleştirilir ki 'sondan2' hesaplanırken
+           kitabın 'son' hücresi henüz alınmamış olsun. */
+        if (kriterler.problemlerAcik && g.acik.length >= 3) {
+            const h = al(g, EKSTRA_KONUM.problem);
+            yaz(h, { subject: 'Problemler', type: 'problem', exam: '', topic: 'Günlük problem/işlem pratiği' });
         }
         if (kriterler.kitapAcik && g.acik.length >= 2) {
             const h = al(g, EKSTRA_KONUM.kitap);
@@ -481,6 +500,14 @@ export function programUret({
         if (!g.acik.length) continue;
         const bugunDersler = new Set();       // konu/soru/tekrar dersleri
         const bugunKonular = new Set();       // farklı KONU çalışması
+        /* Bir ders bloğu bitip BAŞKA derse geçildiğinde o ders bu güne
+           kapanır — aynı gün İÇİNDE tekrar sıraya girmez. Eskiden
+           `dersSigar` yalnızca "bugün kullanıldı mı" bakıyordu, "bitti
+           mi" bakmıyordu; blok bitip 1-2 farklı ders araya girdikten
+           sonra sıralama kriterleri (özellikle token/pay) aynı derse
+           GERİ DÖNÜLMESİNE izin verebiliyordu. Ölçüldü: bir günde aynı
+           ders için 2 ayrı 2'li blok (toplam 4 etüt) oluşuyordu. */
+        const bitenBugun = new Set();
         let sonYerlesenDers = null;
         /* Ardışıklık sayaçları [talimat §5, §6] — aynı dersin ve aynı
            bilişsel grubun arka arkaya kaç etüt sürdüğü. 4+ blok
@@ -538,6 +565,8 @@ export function programUret({
             if (sonYerlesenDers?.ad === d.ad) {
                 ardisikDers += 1;
             } else {
+                // Ders değişti — önceki ders bu gün için KAPANDI.
+                if (sonYerlesenDers?.ad) bitenBugun.add(sonYerlesenDers.ad);
                 ardisikDers = 1;
             }
             ardisikGrup = (sonGrup === d.grup) ? ardisikGrup + 1 : 1;
@@ -588,6 +617,14 @@ export function programUret({
                 });
             if (!tumAdaylar.length) break;
 
+            /* Bugün bir kez blok tamamlayıp BIRAKILMIŞ dersler, başka
+               seçenek varken aynı güne tekrar girmez — "Türkçe·Türkçe ·
+               Matematik · Türkçe·Türkçe" gibi aynı derse günde birden
+               fazla kez dönülmesi engellenir. Havuz boşalırsa (o gün
+               için gerçekten başka iş kalmadıysa) düşer. */
+            const tazeAdaylar = tumAdaylar.filter((d) => !bitenBugun.has(d.ad));
+            const havuz = tazeAdaylar.length ? tazeAdaylar : tumAdaylar;
+
             /**
              * Ardışıklık süzgeci [§5]: aynı ders/grup üst üste sınırı
              * dolduysa o aday elenir. Hepsi elenirse sınır gevşetilir —
@@ -601,17 +638,17 @@ export function programUret({
              * SADECE 1 birim gevşetilir (tam kaldırmak yerine); yalnızca
              * o da yetmezse tamamen düşer.
              */
-            let adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d) && grupUygun(d));
+            let adaylar = havuz.filter((d) => ardisiklikUygun(d) && grupUygun(d));
             if (!adaylar.length) {
                 const grupUygunGevsek = (d) => d.grup !== sonGrup || ardisikGrup < M.AYNI_GRUP_ARDISIK_EN_COK + 1;
-                adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d) && grupUygunGevsek(d));
+                adaylar = havuz.filter((d) => ardisiklikUygun(d) && grupUygunGevsek(d));
             }
-            if (!adaylar.length) adaylar = tumAdaylar.filter((d) => ardisiklikUygun(d));
+            if (!adaylar.length) adaylar = havuz.filter((d) => ardisiklikUygun(d));
             /* Gevşetme sırası önemli: ders sınırı dolduysa bile ÖNCE
                farklı bir ders denenir; aynı dersi üst üste uzatmak
                ancak başka ders hiç kalmadıysa kabul edilir. */
-            if (!adaylar.length) adaylar = tumAdaylar.filter((d) => d.ad !== sonYerlesenDers?.ad);
-            if (!adaylar.length) adaylar = tumAdaylar;
+            if (!adaylar.length) adaylar = havuz.filter((d) => d.ad !== sonYerlesenDers?.ad);
+            if (!adaylar.length) adaylar = havuz;
 
             const anaSirasi = (d) => {
                 const i = anaDersAnahtarlari.indexOf(d.anahtar);
@@ -819,9 +856,24 @@ export function programUret({
             const grupUyanlar = farkliOlan.filter((d) => grupKomsuUygun(idx, d.grup));
             const dersAdaylari = grupUyanlar.length ? grupUyanlar : farkliOlan;
 
-            // 1) Bekleyen tekrar — gündeki dersler ya da yeni açılabilir ders
+            /**
+             * 1) Bekleyen tekrar — gündeki dersler ya da yeni açılabilir ders.
+             *
+             * ⚠️ KRİTİK: `vadeGun` kontrolü EKSİKTİ. 5a (yukarıda) vadesi
+             * gelmemiş tekrarı atlıyordu ama bu doldurma turu HİÇ vade
+             * bakmadan kuyruktaki İLK uygun kaydı alıyordu. Sonuç: bir
+             * konunun tekrarı (o konu bu HAFTA İÇİNDE bitince kuyruğa
+             * girer) daha erken bir güne — hatta kaynak konunun kendi
+             * 'konu' etüdünden ÖNCEKİ bir güne — yerleşebiliyordu. Ölçüldü:
+             * Pazartesi "Tekrar Matematik", Salı "Konu Matematik" — aynı
+             * konunun tekrarı kendi başlangıcından ÖNCE görünüyordu. Bu
+             * doldurma adımı yalnızca VADESİ GELMİŞ (g.gunIndex'e kadar)
+             * tekrarları kullanmalı; henüz gelmemişse soru/esnek dolgusuna
+             * düşer, bu ADIL ve BEKLENEN davranıştır.
+             */
             const tekrarUygun = (x) => (
-                (gunDersleri.has(x.ders.ad) || yeniDersAcilabilir) && komsuUygun(idx, x.ders.ad)
+                x.vadeGun <= g.gunIndex
+                && (gunDersleri.has(x.ders.ad) || yeniDersAcilabilir) && komsuUygun(idx, x.ders.ad)
             );
             // Önce grup kuralına da uyan tekrar aranır, yoksa herhangi biri
             let tIdx = tekrarKuyrugu.findIndex(
