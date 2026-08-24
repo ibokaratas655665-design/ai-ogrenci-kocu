@@ -30,9 +30,60 @@ import { api } from '../../services/api';
 import { bildir } from '../../services/uiGeriBildirim';
 import { cn } from '../../lib/cn';
 import { hataTuruAdi } from '../../data/hataTurleri';
+import { MiniSeri } from '../charts/Analitik';
 
 /* Hata türü adları data/hataTurleri'nden — bkz. o dosyadaki not. */
 const PASTA_RENKLERI = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+
+/**
+ * DURUM KARTI — referanstaki "Present Class / Home Work / Project Submit"
+ * üçlüsünün karşılığı.
+ *
+ * Kalıbın işe yarayan yanı yüzdenin YANINDA bir yargı bulunması:
+ * "%60" tek başına iyi mi kötü mü söylemez, "Zayıf" söyler. Eşikler
+ * tek yerde tanımlı ki üç kart aynı ölçüyle konuşsun.
+ *
+ * Halka rengi durumu taşır (iyi/uyarı/kötü); bu bir DEĞERLENDİRME
+ * göstergesidir, gün içi sayaç değil — kırmızı burada doğrudur.
+ */
+const DURUM_ESIK = [
+    { alt: 80, ad: 'Çok iyi', renk: 'var(--ok)' },
+    { alt: 55, ad: 'Geliştirilmeli', renk: 'var(--warn)' },
+    { alt: -1, ad: 'Zayıf', renk: 'var(--danger)' },
+];
+const durumBul = (oran) => DURUM_ESIK.find((d) => oran >= d.alt) || DURUM_ESIK[2];
+
+const DurumKarti = ({ baslik, aciklama, oran, altMetin }) => {
+    if (oran == null || !Number.isFinite(Number(oran))) return null;
+    const o = Math.max(0, Math.min(100, Math.round(Number(oran))));
+    const d = durumBul(o);
+    const R = 34, C = 2 * Math.PI * R;
+
+    return (
+        <div className="card p-4 flex items-center gap-4">
+            <div className="min-w-0 flex-1">
+                <h4 className="text-[15px] font-black text-ink leading-tight m-0">{baslik}</h4>
+                <p className="tip-caption mt-1 leading-snug">{aciklama}</p>
+                <span className="inline-flex items-center gap-1.5 mt-2.5 text-[11.5px] font-black"
+                    style={{ color: d.renk }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.renk }} />
+                    {d.ad}
+                </span>
+            </div>
+            <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
+                <svg width="84" height="84" className="-rotate-90" aria-hidden="true">
+                    <circle cx="42" cy="42" r={R} fill="none" stroke="var(--surface-3)" strokeWidth="11" />
+                    <circle cx="42" cy="42" r={R} fill="none" stroke={d.renk} strokeWidth="11" strokeLinecap="round"
+                        strokeDasharray={C} strokeDashoffset={C - (C * o) / 100}
+                        style={{ transition: 'stroke-dashoffset .6s ease' }} />
+                </svg>
+                <span className="absolute inset-0 grid place-items-center text-[17px] font-black tabular-nums"
+                    style={{ color: d.renk }}>%{o}</span>
+            </div>
+            {altMetin && <span className="sr-only">{altMetin}</span>}
+        </div>
+    );
+};
 const GRAFIK_STIL = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 };
 const GUN_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -486,23 +537,101 @@ export default function KocGenelBakis({ students = [], user, onKarneAc }) {
 
             {/* ══ SINIF GENELİ (öğrenci seçilmemiş) ══ */}
             {!secili && sinif && (
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                    {[
-                        { etiket: 'Öğrenci', deger: sinif.studentCount, simge: Activity },
-                        { etiket: 'Bu Hafta Aktif', deger: sinif.activeCount, simge: TrendingUp },
-                        { etiket: 'Ort. Son Net', deger: sinif.avgNet ?? '—', simge: BarChart2 },
-                        { etiket: 'Görev Tamamlama', deger: sinif.avgCompletionPct != null ? `%${sinif.avgCompletionPct}` : '—', simge: ClipboardList },
-                        { etiket: 'Yüksek Risk', deger: sinif.atRisk.length, simge: AlertTriangle },
-                    ].map((k) => (
-                        <div key={k.etiket} className="card p-4">
-                            <div className="flex items-center justify-between gap-2">
-                                <p className="tip-label text-ink-3">{k.etiket}</p>
-                                <k.simge size={15} className="text-ink-3" />
+                <>
+                    {/* ── ÜÇ DURUM KARTI ────────────────────────────
+                        Beş sayaç vardı: "Öğrenci 12", "Aktif 8", "Risk 3"…
+                        Her biri doğru ama hiçbiri YARGI içermiyordu; koç
+                        "8 aktif" görüp bunun iyi mi kötü mü olduğunu kendi
+                        hesaplıyordu. Referanstaki kalıpta yüzde, halka ve
+                        sözlü değerlendirme bir arada.
+
+                        Üç oran birbirinden bağımsız; toplamları anlamsızdır,
+                        bu yüzden üç ayrı halka — tek donut değil. */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <DurumKarti
+                            baslik="Haftalık Katılım"
+                            aciklama={`${sinif.studentCount} öğrencinin ${sinif.activeCount} tanesi son 7 günde kayıt girdi.`}
+                            oran={sinif.studentCount ? (sinif.activeCount / sinif.studentCount) * 100 : null}
+                        />
+                        <DurumKarti
+                            baslik="Görev Tamamlama"
+                            aciklama="Atanan görevlerin sınıf ortalamasındaki tamamlanma oranı."
+                            oran={sinif.avgCompletionPct}
+                        />
+                        <DurumKarti
+                            baslik="Risk Dışı Öğrenci"
+                            aciklama={sinif.atRisk.length
+                                ? `${sinif.atRisk.length} öğrenci yüksek riskli; ilk bakılacak yer burası.`
+                                : 'Yüksek riskli öğrenci yok.'}
+                            oran={sinif.studentCount
+                                ? ((sinif.studentCount - sinif.atRisk.length) / sinif.studentCount) * 100
+                                : null}
+                        />
+                    </div>
+
+                    {/* ── EN İYİ BEŞ ÖĞRENCİ ────────────────────────
+                        Referanstaki "Top Student's Progress" şeridi.
+                        buildClassReport zaten topPerformers üretiyordu ama
+                        hiçbir ekran okumuyordu — hesaplanıp atılan bir
+                        listeydi. Kart başına: net, öğrenci, deneme sayısı ve
+                        net serisinin şekli. */}
+                    {sinif.topPerformers?.length > 0 && (
+                        <Bolum baslik="En Yüksek Netler">
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                                {sinif.topPerformers.map((r) => {
+                                    /* Seri kaynağı exams.history: rapor zaten son on
+                                       denemeyi eskiden yeniye sıralı tutuyor. */
+                                    const seri = (r.exams?.history || [])
+                                        .map((x) => (typeof x === 'number' ? x : Number(x?.net)))
+                                        .filter((x) => Number.isFinite(x));
+                                    return (
+                                        <div key={r.student?.id || r.student?.name}
+                                            className="rounded-dmd border border-line bg-surface p-3 flex flex-col gap-1.5">
+                                            <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Son Net</p>
+                                            <p className="text-2xl font-black tabular-nums leading-none m-0"
+                                                style={{ color: 'var(--brand-metin)' }}>
+                                                {r.exams?.lastNet ?? '—'}
+                                            </p>
+                                            <p className="tip-small font-bold text-ink truncate m-0" title={r.student?.name}>
+                                                {r.student?.name || '—'}
+                                            </p>
+                                            {seri.length >= 2
+                                                ? <MiniSeri seri={seri} tur="dolgu" renk="var(--brand)" yukseklik={26} className="mt-auto" />
+                                                : <p className="tip-mini text-ink-3 m-0 mt-auto">tek deneme</p>}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            <p className="text-2xl font-black text-ink syne rakam mt-1.5">{k.deger}</p>
-                        </div>
-                    ))}
-                </div>
+                        </Bolum>
+                    )}
+
+                    {/* Riskli öğrenciler — eylem gerektiren tek liste */}
+                    {sinif.atRisk.length > 0 && (
+                        <Bolum baslik={`Öncelikli Öğrenciler · ${sinif.atRisk.length}`}>
+                            <div className="flex flex-col divide-y divide-line">
+                                {sinif.atRisk.slice(0, 6).map((r) => (
+                                    <button
+                                        key={r.student?.id}
+                                        type="button"
+                                        onClick={() => setSeciliId(String(r.student?.id || ''))}
+                                        className="flex items-center gap-3 py-2.5 text-left hover:bg-surface-2 transition-colors rounded-dsm px-1 min-h-[48px]"
+                                    >
+                                        <span className="w-8 h-8 rounded-full bg-danger-soft text-danger grid place-items-center text-[12px] font-black shrink-0">
+                                            {(r.student?.name || '?').charAt(0).toUpperCase()}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="tip-small font-bold text-ink block truncate">{r.student?.name}</span>
+                                            <span className="tip-mini text-ink-3 block truncate">
+                                                {r.risk?.reasons?.[0] || 'Risk gerekçesi kayıtlı değil'}
+                                            </span>
+                                        </span>
+                                        <span className="badge badge-danger shrink-0">risk {r.risk?.score ?? '—'}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </Bolum>
+                    )}
+                </>
             )}
             {!secili && (
                 <p className="tip-caption text-center">
