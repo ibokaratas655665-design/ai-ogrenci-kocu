@@ -54,6 +54,19 @@ const CoachTaskCenter = ({ user, setToast, sekmeler = [], onSekmeyeGit }) => {
 
     const liste = gorunum === 'atadiklarim' ? atadiklarim : banaAtanan;
 
+    /* Ölçüm şeridi — aktif görünümün özeti (Tasarım 2.0 kalıbı).
+       Sayılar listeden türetilir, ayrı bir kaynak yok. */
+    const ozet = useMemo(() => {
+        const bugun = new Date().toISOString().slice(0, 10);
+        const acikMi = (g) => g.durum !== 'tamam' && g.durum !== 'iptal';
+        return {
+            toplam: liste.length,
+            acik: liste.filter(acikMi).length,
+            geciken: liste.filter((g) => acikMi(g) && g.sonTarih && g.sonTarih < bugun).length,
+            tamam: liste.filter((g) => g.durum === 'tamam').length,
+        };
+    }, [liste]);
+
     const durumGuncelle = (id, durum) => {
         if (gorevler.durumDegistir(id, durum)) {
             yenile();
@@ -90,6 +103,21 @@ const CoachTaskCenter = ({ user, setToast, sekmeler = [], onSekmeyeGit }) => {
                         <Plus size={14} /> Görev Ata
                     </button>
                 )}
+            </div>
+
+            {/* ── Ölçüm şeridi ───────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                    { etiket: 'Toplam Görev', deger: ozet.toplam, renk: 'var(--brand)' },
+                    { etiket: 'Açık', deger: ozet.acik, renk: 'var(--info)' },
+                    { etiket: 'Geciken', deger: ozet.geciken, renk: ozet.geciken > 0 ? 'var(--danger)' : 'var(--ink-3)' },
+                    { etiket: 'Tamamlanan', deger: ozet.tamam, renk: 'var(--ok)' },
+                ].map((k) => (
+                    <div key={k.etiket} className="bg-surface border border-line rounded-2xl px-4 py-3">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-ink-3">{k.etiket}</p>
+                        <p className="text-2xl font-black tabular-nums mt-0.5" style={{ color: k.renk }}>{k.deger}</p>
+                    </div>
+                ))}
             </div>
 
             {/* ── Görünüm anahtarı ───────────────────────── */}

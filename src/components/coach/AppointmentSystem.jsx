@@ -126,6 +126,27 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                 </button>
             </div>
 
+            {/* Ölçüm şeridi — Tasarım 2.0 kalıbı: bu haftanın özeti */}
+            <div className="grid grid-cols-3 gap-3">
+                {(() => {
+                    const haftaAnahtarlari = new Set(weekDates.map((d) => d.toISOString().split('T')[0]));
+                    const haftaSlotlari = Object.entries(bolumSlotlari)
+                        .filter(([k]) => haftaAnahtarlari.has(k.split('_')[0]));
+                    const dolu = haftaSlotlari.filter(([, slot]) =>
+                        appointments.some((a) => a.date === slot.date && a.hour === slot.hour)).length;
+                    return [
+                        { etiket: 'Bu Hafta Müsait Saat', deger: haftaSlotlari.length, renk: 'var(--brand)' },
+                        { etiket: 'Alınan Randevu', deger: weekAppts.length, renk: 'var(--ok)' },
+                        { etiket: 'Boş Saat', deger: Math.max(0, haftaSlotlari.length - dolu), renk: 'var(--info)' },
+                    ].map((k) => (
+                        <div key={k.etiket} className="bg-surface border border-line rounded-2xl px-4 py-3">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-ink-3">{k.etiket}</p>
+                            <p className="text-2xl font-black tabular-nums mt-0.5" style={{ color: k.renk }}>{k.deger}</p>
+                        </div>
+                    ));
+                })()}
+            </div>
+
             {/* Hafta Navigasyon */}
             <div className="flex items-center justify-between bg-surface-2 rounded-2xl p-3">
                 <button onClick={() => setWeekOffset(w => w - 1)} className="p-2 rounded-xl hover:bg-surface transition">
