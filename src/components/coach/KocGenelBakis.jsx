@@ -47,12 +47,12 @@ const DURUM_ESIK = [
 const durumBul = (oran) => DURUM_ESIK.find((d) => oran >= d.alt) || DURUM_ESIK[2];
 
 /**
- * YILDIZ — sınıf içi göreli konum.
+ * YILDIZ — öğrenciler arası göreli konum.
  *
  * Referanstaki beş yıldız "Achieved" etiketiyle birlikte duruyor.
  * Bizde mutlak bir hedef yok, dolayısıyla yıldızı uydurmak yerine
- * SINIF İÇİ konuma bağladım: en yüksek nete göre oran. Beş yıldız
- * "mükemmel" demez, "sınıfın en üstü" der — ve bu ölçülebilir bir
+ * ÖĞRENCİLER ARASI konuma bağladım: en yüksek nete göre oran. Beş yıldız
+ * "mükemmel" demez, "öğrencilerin en üstü" der — ve bu ölçülebilir bir
  * ifadedir. Alt metinde sıra numarası da yazılı ki yıldızın neyi
  * temsil ettiği tahmine kalmasın.
  */
@@ -363,7 +363,7 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
                   Gelişim Analizi) duruyor; burada yalnızca SINIF var. */}
             <div>
                 <h2 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase m-0">Genel Bakış</h2>
-                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">SINIFIN GİDİŞATI VE GÜNÜN PLANI</p>
+                <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">ÖĞRENCİLERİN GİDİŞATI VE GÜNÜN PLANI</p>
             </div>
             {sinif && (
                 /* İKİ SÜTUN — referansın yerleşimi.
@@ -373,7 +373,7 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
                    görmek için grafiklerin altına kadar kaydırıyordu. */
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
 
-                    {/* ═══ SOL: SINIFIN GİDİŞATI ═══ */}
+                    {/* ═══ SOL: ÖĞRENCİLERİN GİDİŞATI ═══ */}
                     <div className="xl:col-span-8 min-w-0 space-y-4">
 
                         {/* ── Üç durum kartı ─────────────────────────
@@ -413,9 +413,9 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
                             <div className="card p-4 sm:p-5">
                                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                                     <div className="min-w-0">
-                                        <h3 className="tip-h4 m-0">Sınıf Gelişimi</h3>
+                                        <h3 className="tip-h4 m-0">Öğrenci Gelişimi</h3>
                                         <p className="tip-caption mt-0.5">
-                                            Son {sinifSerisi.length} deneme · ortalama ve sınıf içi açıklık
+                                            Son {sinifSerisi.length} deneme · ortalama ve öğrenciler arası açıklık
                                         </p>
                                     </div>
                                     <div className="segmentli shrink-0" role="group" aria-label="Deneme penceresi">
@@ -451,7 +451,7 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
                                             <Area type="monotone" dataKey="enDusuk" name="En düşük"
                                                 stroke="var(--danger)" strokeWidth={1.5} strokeDasharray="4 3"
                                                 fill="transparent" dot={false} animationDuration={300} />
-                                            <Area type="monotone" dataKey="ortalama" name="Sınıf ortalaması"
+                                            <Area type="monotone" dataKey="ortalama" name="Öğrenci ortalaması"
                                                 stroke="var(--brand)" strokeWidth={3} fill="url(#sinifOrt)"
                                                 dot={{ r: 3.5, fill: 'var(--brand)' }} activeDot={{ r: 5.5 }}
                                                 animationDuration={300} />
@@ -510,7 +510,7 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
                                                     {r.exams?.lastNet ?? '—'}
                                                     <span className="tip-mini text-ink-3 font-bold ml-1">net</span>
                                                 </p>
-                                                {/* Yıldız sınıf içi konumdur, mutlak başarı değil */}
+                                                {/* Yıldız öğrenciler arası konumdur, mutlak başarı değil */}
                                                 <Yildizlar oran={(r.exams?.lastNet || 0) / (enUst || 1)} />
                                                 {seri.length >= 2
                                                     ? <MiniSeri seri={seri} tur="dolgu" renk="var(--brand)" yukseklik={26} className="mt-auto" />
