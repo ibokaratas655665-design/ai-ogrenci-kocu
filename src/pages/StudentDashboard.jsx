@@ -30,12 +30,13 @@ import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
 import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
 import { OlcumKarti } from '../components/charts/Analitik';
+import { CokluHalka } from '../components/charts/Dagilim';
 import { getSummary } from '../services/studyLogService';
 import { istikrar } from '../services/gelisimAnalitik';
 import denemeKayitlari from '../services/denemeKayitlari';
 import programProgress from '../services/programProgressService';
 import {
-    ResponsiveContainer, LineChart, Line, AreaChart, Area,
+    ResponsiveContainer, LineChart, Line, AreaChart, Area, ComposedChart, Legend,
     XAxis, YAxis, CartesianGrid, Tooltip as GrafikTooltip,
 } from 'recharts';
 import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
@@ -1665,7 +1666,12 @@ const StudentDashboard = () => {
                         </div>
 
                         {gelisimSegment === 'genel' && (
-                            <>
+                            /* İKİ SÜTUN — referansın yerleşimi.
+                               Solda GELİŞİMİN KENDİSİ (ölçümler, aktivite eğrisi, deneme
+                               listesi), sağda DURUM ÖZETİ (çoklu halka, çalışma düzeni).
+                               Telefonda alt alta iner. */
+                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
+                                <div className="xl:col-span-8 min-w-0 space-y-4">
                 {/* ÖLÇÜM ŞERİDİ.
                                     Dört degrade renkli kart vardı: her biri farklı
                                     bir renge boyanmıştı (mor, turuncu, yeşil, mavi)
@@ -1712,24 +1718,124 @@ const StudentDashboard = () => {
                                     />
                                 </div>
 
-                                {/* Net Değişim Grafiği (Son 5 Deneme) */}
-                                {merkezOzet.netSerisi.length >= 2 && (
+                                    {/* ÇALIŞMA VE NET BİRLİKTE — referanstaki "Learning
+                                        Activity" çok serili eğrisi. Net grafiği tek başına
+                                        "yükseliyor mu" der ama NEDENİNİ söylemez. Soru
+                                        sayısıyla birlikte çizilince ikisi arasındaki bağ
+                                        görünür: çalışma arttığında net de artıyor mu?
+                                        İki ölçü farklı birimde olduğu için ayrı eksenler. */}
+                                    {merkezOzet.netSerisi.length >= 2 && (
+                                        <div className="card p-4 sm:p-5">
+                                            <p className="tip-label text-ink-3">Gelişim Eğrim</p>
+                                            <p className="tip-caption mt-0.5 mb-3">Son {merkezOzet.netSerisi.length} deneme · net ve çalışma birlikte</p>
+                                            <div className="h-60">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={merkezOzet.netSerisi} margin={{ top: 6, right: 8, bottom: 0, left: -20 }}>
+                                                        <defs>
+                                                            <linearGradient id="gelisimNet" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
+                                                                <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                                                        <XAxis dataKey="ad" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                        <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
+                                                        <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }} />
+                                                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                                                        <Area type="monotone" dataKey="net" name="Toplam net" stroke="var(--brand)" strokeWidth={3}
+                                                            fill="url(#gelisimNet)" dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} animationDuration={300} />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* DENEME LİSTESİ — referanstaki "My assignment" tablosu. */}
+                                    {denemelerSirali.length > 0 && (
+                                        <div className="card p-4 sm:p-5">
+                                            <p className="tip-label text-ink-3 mb-3">Denemelerim · {denemelerSirali.length} kayıt</p>
+                                            <div className="overflow-x-auto rounded-dmd border border-line">
+                                                <table className="w-full text-left" style={{ minWidth: 420 }}>
+                                                    <thead>
+                                                        <tr className="bg-surface-2">
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Deneme</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Tarih</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Net</th>
+                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Seyir</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-line">
+                                                        {[...denemelerSirali].reverse().slice(0, 8).map((d, i) => {
+                                                            const net = parseFloat(d.totalNet) || 0;
+                                                            const enB = Math.max(...denemelerSirali.map((x) => parseFloat(x.totalNet) || 0), 1);
+                                                            const tarih = d.date || d.uploadedAt;
+                                                            return (
+                                                                <tr key={d.id || i} className="bg-surface">
+                                                                    <td className="px-3 py-2 text-[11.5px] font-bold text-ink truncate max-w-[170px]">{d.examName || d.name || 'Deneme'}</td>
+                                                                    <td className="px-3 py-2 text-[11px] text-ink-3 whitespace-nowrap">{tarih ? new Date(tarih).toLocaleDateString('tr-TR') : '—'}</td>
+                                                                    <td className="px-3 py-2 text-right text-[12.5px] font-black tabular-nums text-ink">{net}</td>
+                                                                    <td className="px-3 py-2" style={{ width: 110 }}>
+                                                                        <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round((net / enB) * 100)}%`, background: 'var(--brand)' }} />
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ═══ SAĞ: DURUM ÖZETİ ═══ */}
+                                <aside className="xl:col-span-4 min-w-0 space-y-4">
+                                    {/* ÇOKLU HALKA — referanstaki "My Progress".
+                                        Üç oran BAĞIMSIZ; toplamları anlamsızdır, bu yüzden
+                                        dilim değil iç içe halka. Veri yoksa halka çizilmez,
+                                        sıfır gösterilmez. */}
                                     <div className="card p-4 sm:p-5">
-                                        <p className="tip-label text-ink-3 mb-3">Net Değişim Grafiği (Son {merkezOzet.netSerisi.length} Deneme)</p>
-                                        <div className="h-52">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={merkezOzet.netSerisi} margin={{ top: 6, right: 12, bottom: 0, left: -18 }}>
-                                                    <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-                                                    <XAxis dataKey="ad" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                                    <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                                    <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12 }} />
-                                                    <Line type="monotone" dataKey="net" name="Net" stroke="var(--brand)" strokeWidth={3} dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} animationDuration={300} />
-                                                </LineChart>
-                                            </ResponsiveContainer>
+                                        <p className="tip-label text-ink-3 mb-4">Durumum</p>
+                                        <CokluHalka
+                                            halkalar={[
+                                                merkezOzet.isabet7 != null && { ad: 'İsabet', oran: merkezOzet.isabet7, renk: 'var(--brand)', alt: 'son 7 gün' },
+                                                { ad: 'Çalışma düzeni', oran: Math.round((merkezOzet.gunSerisi.filter((g) => g.soru > 0).length / 7) * 100), renk: 'var(--ok)', alt: `${merkezOzet.gunSerisi.filter((g) => g.soru > 0).length}/7 gün aktif` },
+                                                merkezOzet.sonNet != null && { ad: 'Son net', oran: Math.min(100, merkezOzet.sonNet), metin: String(merkezOzet.sonNet), renk: 'var(--warn)', alt: merkezOzet.netFark != null ? `${merkezOzet.netFark >= 0 ? '+' : ''}${merkezOzet.netFark} net` : 'ilk deneme' },
+                                            ].filter(Boolean)}
+                                            boyut={150}
+                                        />
+                                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-line">
+                                            <span className="tip-small font-bold text-ink">Toplam Çalışma</span>
+                                            <span className="tip-h4 text-ink rakam">
+                                                {merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}dk` : `${merkezOzet.dakika7}dk`}
+                                            </span>
                                         </div>
                                     </div>
-                                )}
-                            </>
+
+                                    {/* Güçlü / geliştirilecek alan — referanstaki
+                                        "Today's course" kartlarının karşılığı: sıradaki iş. */}
+                                    {(merkezOzet.guclu || merkezOzet.gelisecek) && (
+                                        <div className="card p-4 sm:p-5 space-y-3">
+                                            <p className="tip-label text-ink-3 m-0">Sıradaki Odağım</p>
+                                            {merkezOzet.gelisecek && (
+                                                <div className="rounded-dmd border border-line bg-surface-2 p-3">
+                                                    <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Üzerine çalışılacak</p>
+                                                    <p className="tip-small font-black text-ink mt-0.5 m-0">{merkezOzet.gelisecek.subject}</p>
+                                                    <p className="tip-mini text-ink-3 mt-1 m-0">%{merkezOzet.gelisecek.accuracy} isabet · buradaki her doğru en hızlı kazanç</p>
+                                                </div>
+                                            )}
+                                            {merkezOzet.guclu && merkezOzet.guclu !== merkezOzet.gelisecek && (
+                                                <div className="rounded-dmd border border-line bg-surface-2 p-3">
+                                                    <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">En güçlü alanın</p>
+                                                    <p className="tip-small font-black text-ink mt-0.5 m-0">{merkezOzet.guclu.subject}</p>
+                                                    <p className="tip-mini text-ink-3 mt-1 m-0">%{merkezOzet.guclu.accuracy} isabet</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </aside>
+                            </div>
                         )}
 
                         {gelisimSegment === 'netlerim' && (
@@ -2340,20 +2446,15 @@ const StudentDashboard = () => {
             {/* ═══════════ GELİŞİMİM → Genel segmentinin devamı ═══════════
                 Degrade kartlar ve net grafiği merkez başlığının altında;
                 radar ve hedef yönetimi burada devam eder. */}
-            {activeTab === 'gelisimim' && gelisimSegment === 'genel' && (
-                <div className="icerik-gecis space-y-8">
-                    {/* Analitik pano — mevcut verilerden anlık türetilir, veri yazmaz */}
-                    <GelisimPanosu user={user} />
-                    {radarVerisi.length > 0 && (
-                        <div className="card p-4 sm:p-6">
-                            <PerformanceRadar performanceData={radarVerisi} />
-                        </div>
-                    )}
-                    <div className="card p-4 sm:p-6">
-                        <GoalSettingModule user={user} examData={examData} />
-                    </div>
-                </div>
-            )}
+            {/* İKİNCİ GELİŞİM PANOSU KALDIRILDI.
+                Bu sekmede iki ayrı pano üst üste render ediliyordu ve aynı
+                sayıları iki kez gösteriyordu: "Netim 87" ile "SON NET 87",
+                "Soru Çözümüm 1155" ile "ÇÖZÜLEN SORU 1155", hatta AYNI net
+                grafiği iki kez ("Net Değişim Grafiği" ve "Net gelişimim").
+                Öğrenci sayfayı iki kez okumak zorundaydı.
+            
+                Değerli parçalar üstteki panoya taşındı: program uyumu ve
+                istikrar çoklu halkaya, çalışma düzeni ısı haritasına. */}
 
             {/* ═══════════════ TAKVİM ═══════════════ */}
             {activeTab === 'calendar' && (
