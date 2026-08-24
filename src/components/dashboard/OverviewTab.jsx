@@ -278,8 +278,13 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
     }, [v2Results]);
 
     const unreadMessages = React.useMemo(() => {
-        const chats = safeParse('student_chats', {});
-        return Object.values(chats).flat().filter(m => m.sender === 'student' && !m.read).length;
+        /* ⚠️ Eski anahtar 'student_chats' HİÇBİR YERDE yazılmıyordu —
+           sayaç hep 0'dı. Öğrenci sohbeti 'student_messages' altında
+           (api.messages), {ogrenciId: [mesajlar]} biçiminde. */
+        const chats = safeParse('student_messages', {});
+        return Object.values(chats)
+            .flat()
+            .filter((m) => m && m.sender === 'student' && !m.read).length;
     }, [storageVersion]);
 
     const getStudentLastNet = (student) => {
