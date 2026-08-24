@@ -22,8 +22,9 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend as GrafikEfsane, ResponsiveContainer,
 } from 'recharts';
 import { SayiCubuklari } from '../charts/Analitik';
+import { SegmentliDonut, CokSegmentliCubuk } from '../charts/Dagilim';
 import { izgaraOzellikleri, eksenOzellikleri, ANIMASYON, dersRengi } from '../charts/grafikTemasi';
-import { hataTrendi } from '../../utils/denemeAnalizi';
+import { hataTrendi, konuHatalari } from '../../utils/denemeAnalizi';
 
 const LS_KEY = 'error_notebook';
 
@@ -162,6 +163,41 @@ const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
      * çözülen çizgisi olmadan çabanın karşılığı görünmez.
      */
     const trend = useMemo(() => hataTrendi(myEntries), [myEntries]);
+
+    /**
+     * KONU KIRILIMI — hangi konuda kaç hata, kaçı çözüldü.
+     *
+     * `konuHatalari` aylar önce yazılmıştı ve yalnızca Deneme Analizi
+     * ile koç panelinde kullanılıyordu; hatanın girildiği ekranda
+     * konu dökümü yoktu. Öğrenci "Türkçe'de 9 hatam var" görüyor ama
+     * "hangi konuda" sorusunu ancak listeyi tek tek okuyarak
+     * yanıtlayabiliyordu.
+     *
+     * Yeni hesap kurulmadı, mevcut fonksiyon bağlandı.
+     */
+    const konu = useMemo(() => konuHatalari(myEntries), [myEntries]);
+
+    /**
+     * DURUM DAĞILIMI — üç kova, bir bütün.
+     *
+     * Üstteki dört sayaç (tekrar / aktif / öğrenildi / toplam) bu
+     * bütünü sayı olarak veriyor ama ORANINI vermiyordu: 38 kaydın
+     * 9'unun öğrenilmiş olması iyi mi kötü mü, sayıya bakarak
+     * anlaşılmıyor. Donut payları tek bakışta gösterir.
+     *
+     * Kovalar ÖRTÜŞMEZ: bir kayıt ya öğrenilmiştir, ya tekrar zamanı
+     * gelmiştir, ya da beklemededir. Örtüşseler toplam yanlış olurdu.
+     */
+    const durumDagilimi = useMemo(() => {
+        const ogrenildi = myEntries.filter((e) => e.mastered).length;
+        const vadesi = myEntries.filter((e) => !e.mastered && (e.nextReviewAt ?? 0) <= now).length;
+        const bekleyen = myEntries.length - ogrenildi - vadesi;
+        return [
+            { ad: 'Tekrar zamanı geldi', deger: vadesi, renk: 'var(--danger)' },
+            { ad: 'Sırada bekliyor', deger: bekleyen, renk: 'var(--warn)' },
+            { ad: 'Kalıcı öğrenildi', deger: ogrenildi, renk: 'var(--ok)' },
+        ];
+    }, [myEntries, now]);
 
     // ── Eylemler ─────────────────────────────────────────────
     const addEntry = (form) => {
@@ -334,7 +370,15 @@ const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
                         Hata Desenim · {stats.active} açık kayıt
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Durum donutu: dört sayaç bütünü sayıyla veriyor,
+                            oranını vermiyordu. */}
+                        <SegmentliDonut
+                            parcalar={durumDagilimi}
+                            ortaEtiket="Kayıt"
+                            boyut={118}
+                            kalinlik={16}
+                        />
                         {stats.byType.length > 1 && (
                             <div>
                                 <p className="text-[11px] font-bold text-ink-2 mb-2">Hata Tipine Göre</p>
@@ -367,6 +411,88 @@ const ErrorNotebook = ({ studentId, readOnly = false, ogrenci = null }) => {
                             </div>
                         )}
                     </div>
+
+                    {/* KONUYA GÖRE — açık / öğrenildi kırılımı.
+                        Ders kırılımı "nerede zorlanıyorum"u ders düzeyinde
+                        yanıtlıyor; çalışılacak şey ise konudur. Segmentler
+                        aynı ölçekte: 2 hatalı bir konu 9 hatalı konudan
+                        kısa görünür, oranları değil miktarları karşılaştırılır. */}
+                    {konu.konular.length > 1 && (
+                        <div>
+                            <p className="text-[11px] font-bold text-ink-2 mb-2">Konuya Göre</p>
+                            <CokSegmentliCubuk
+                                satirlar={konu.konular.slice(0, 6).map((k) => ({
+                                    ad: k.konu,
+                                    segmentler: [
+                                        { ad: 'Açık', deger: k.sayi - k.cozulen, renk: 'var(--danger)' },
+                                        { ad: 'Öğrenildi', deger: k.cozulen, renk: 'var(--ok)' },
+                                    ],
+                                }))}
+                                adGenislik={116}
+                                efsane={[
+                                    { ad: 'Açık', renk: 'var(--danger)' },
+                                    { ad: 'Öğrenildi', renk: 'var(--ok)' },
+                                ]}
+                            />
+                        </div>
+                    )}
+
+                    {/* İYİLEŞTİRME ALANLARI — referanstaki tablo.
+                        İki ve daha fazla kez tekrar eden konular; tek seferlik
+                        hata dikkatsizlik olabilir, tekrar edeni konu eksiğidir.
+                        Satırdaki düğme o konuyu listede süzer — öneri değil,
+                        doğrudan eylem. */}
+                    {konu.tekrarEden.length > 0 && (
+                        <div>
+                            <p className="text-[11px] font-bold text-ink-2 mb-2">
+                                İyileştirme Alanları · tekrar eden {konu.tekrarEden.length} konu
+                            </p>
+                            <div className="overflow-x-auto rounded-dmd border border-line">
+                                <table className="w-full text-left" style={{ minWidth: 420 }}>
+                                    <thead>
+                                        <tr className="bg-surface-2">
+                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 w-10">#</th>
+                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Ders</th>
+                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Konu</th>
+                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Açık</th>
+                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Eylem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-line">
+                                        {konu.tekrarEden.slice(0, 8).map((k, i) => (
+                                            <tr key={`${k.ders}|${k.konu}`} className="bg-surface">
+                                                <td className="px-3 py-2 text-[11px] text-ink-3 tabular-nums">{i + 1}</td>
+                                                <td className="px-3 py-2">
+                                                    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-ink">
+                                                        <span className="w-2 h-2 rounded-full shrink-0"
+                                                            style={{ background: dersRengi(k.ders) }} />
+                                                        {k.ders || '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2 text-[11.5px] text-ink-2">{k.konu}</td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <span className="text-[11px] font-black tabular-nums"
+                                                        style={{ color: k.sayi - k.cozulen > 0 ? 'var(--danger)' : 'var(--ok)' }}>
+                                                        {k.sayi - k.cozulen}/{k.sayi}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSubjectFilter(k.ders || 'all'); setSearch(k.konu); setView('all'); }}
+                                                        className="text-[11px] font-bold hover:underline min-h-[32px] px-1"
+                                                        style={{ color: 'var(--brand-metin)' }}
+                                                    >
+                                                        Listede aç
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
 
                     {trend.length >= 2 && (
                         <div>
