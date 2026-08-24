@@ -90,7 +90,15 @@ export default function ProgramKarnem({ studentId }) {
         try {
             const bas = programBaslangici(studentId);
             const tarihCoz = bas ? (k) => hucreTarihi(k, bas) : null;
-            const uyum = programUyumu(studentId, { tarihCoz });
+            /* ⚠️ 25.08.2026: `gun` penceresi YOKTU — programın başından
+               bugüne TÜM haftaların kümülatif ortalamasıydı. 10 aylık bir
+               programda ilk haftalar kötü geçmişse halka sonsuza dek o
+               kötü ortalamayı taşıyordu ve hiç sıfırlanmıyordu. Genel/
+               kümülatif yüzde yalnızca KONU LİSTESİ ilerlemesi için
+               anlamlıdır (bkz. TopicTracker); PROGRAM uyumu haftalık
+               pencerede ölçülmeli — BugunEkrani'nin "Bu Haftaki Programın"
+               kartıyla aynı 7-günlük pencere. */
+            const uyum = programUyumu(studentId, { tarihCoz, gun: 7 });
             return {
                 uyum,
                 seri: tarihCoz ? uyumSerisi(studentId, { tarihCoz, hafta: 8 }) : [],
@@ -119,9 +127,9 @@ export default function ProgramKarnem({ studentId }) {
             <Card>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
-                        <h3 className="tip-h4 m-0">Program Uyumum</h3>
+                        <h3 className="tip-h4 m-0">Bu Haftaki Program Uyumum</h3>
                         <p className="tip-caption mt-0.5">
-                            Günü gelmiş etütler üzerinden — gelecek etütler sayılmaz
+                            Son 7 gün, günü gelmiş etütler üzerinden — gelecek etütler sayılmaz
                         </p>
                     </div>
                 </div>

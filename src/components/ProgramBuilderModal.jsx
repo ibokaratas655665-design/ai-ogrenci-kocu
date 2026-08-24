@@ -1241,9 +1241,39 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                             → Dağıtım Listesi → Kurallar → İstatistik.
                             Sekmeli yapı kaldırıldı — sekmeler içerikleri
                             birbirinden saklıyordu (ders seçilince konu listesi
-                            başka sekmede kalıyordu). Ayarlar, başlıktaki
-                            "Değiştir" düğmesiyle aynı sütunda açılır. ══ */}
-                        <div className={sidebarTab !== 'ayarlar' ? 'flex-1 flex flex-col overflow-y-auto custom-scrollbar' : 'hidden'}>
+                            başka sekmede kalıyordu).
+                            ⚠️ 25.08.2026: Ayarlar artık bu sütunu GİZLEMİYOR —
+                            ayrı bir kayan panel (bkz. aşağıdaki AYARLAR
+                            bloğu) olarak ÜSTÜNE açılıyor. Koç ayarlara
+                            bakmak için ders seçimini kaybetmiyor. */}
+                        <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+                        {/* ── AKTİF ARAÇ GÖSTERGESİ ─────────────────────
+                            25.08.2026: activeTool tek bir "fırça" — konu,
+                            hazır blok, silgi ve manuel ekleme dördü de bu
+                            değişkeni paylaşıyor; biri seçilince öbürü
+                            SESSİZCE iptal oluyordu. Koç aşağı kaydırıp
+                            farklı bir bölüme baktığında hangi aracın hâlâ
+                            "yüklü" olduğunu göremiyordu. Bu şerit sabit
+                            (sticky) durur, sütun ne kadar kaydırılırsa
+                            kaydırılsın her zaman görünür. */}
+                        {activeTool && (
+                            <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-brand text-white text-xs font-bold shadow">
+                                <span className="opacity-80 shrink-0">Aktif araç:</span>
+                                <span className="truncate">
+                                    {activeTool === 'eraser'
+                                        ? '🧹 Silgi — hücreye tıkla, sil'
+                                        : `${activeTool.subject}${activeTool.topic ? ' · ' + activeTool.topic : ''}`}
+                                </span>
+                                <button
+                                    onClick={() => setActiveTool(null)}
+                                    className="ml-auto shrink-0 p-1 rounded-full hover:bg-white/20"
+                                    title="Aracı bırak"
+                                    aria-label="Aktif aracı bırak"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
                         {/* ── DERS EKLE ─────────────────────────────── */}
                         <div className="p-3 border-b border-line bg-surface">
                             <div className="space-y-2">
@@ -1749,15 +1779,32 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                         </div>
 
                         {/* ══ AYARLAR: ölçü, kriterler, etüt saatleri.
-                            Başlıktaki "Değiştir" düğmesiyle açılır; sekme
-                            şeridi kaldırıldığı için başa dönüş düğmesi var. ══ */}
-                        <div className={sidebarTab === 'ayarlar' ? 'flex-1 overflow-y-auto p-3 space-y-3 bg-surface-2' : 'hidden'}>
-                        <button
-                            onClick={() => setSidebarTab('icerik')}
-                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-brand text-white text-xs font-black shadow hover:bg-brand-hover transition"
-                        >
-                            ← Ders Seçimine Dön
-                        </button>
+                            Başlıktaki "Değiştir" düğmesiyle açılır.
+                            ⚠️ 25.08.2026: artık sütunu EZMİYOR — sağdan kayan
+                            bağımsız bir panel. Arkaplan tıklaması / X /
+                            "Kapat" ile kapanır, ders seçimi sütunu altta
+                            olduğu gibi durur (state kaybolmaz). */}
+                        {sidebarTab === 'ayarlar' && (
+                            <div
+                                className="fixed inset-0 z-[1310] flex justify-end bg-black/40 animate-fade-in"
+                                onClick={() => setSidebarTab('icerik')}
+                            >
+                                <div
+                                    className="w-full sm:w-96 h-full bg-surface shadow-2xl overflow-y-auto p-3 space-y-3"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-sm font-black text-ink flex items-center gap-1.5">
+                                            <Settings size={15} className="text-brand" /> Ayarlar
+                                        </p>
+                                        <button
+                                            onClick={() => setSidebarTab('icerik')}
+                                            aria-label="Ayarları kapat"
+                                            className="p-1.5 rounded-lg hover:bg-surface-3 text-ink-2"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
                         {/* ── Program ölçüsü ─────────────────────────── */}
                         <div className="rounded-xl border border-line bg-surface p-3 space-y-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-ink-3">Program Ölçüsü</p>
@@ -1990,7 +2037,9 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 })}
                             </div>
                         </div>
-                        </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 3. Main Schedule Grid — telefonda yalnızca "Program"
