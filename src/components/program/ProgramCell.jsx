@@ -57,52 +57,45 @@ const ProgramCell = ({
                 boxShadow: selected ? 'inset 0 0 0 3px #4F46E5' : undefined,
             }}
         >
-            {cell && !closed && (
-                <span
-                    style={{
-                        position: 'absolute', left: 0, top: 0, bottom: 0,
-                        width: s.stripe, backgroundColor: c.border,
-                    }}
-                />
-            )}
+            {/* Sol renk şeridi kaldırıldı: aynı ders rengini hem şerit
+                hem de başlıktaki nokta taşıyordu. Referansta kimlik
+                noktada; hücre içi yatay alan da şeride harcanmıyor. */}
 
             {closed ? (
                 <div className="h-full w-full flex flex-col items-center justify-center text-danger">
                     <span style={{ fontSize: s.topic + 8 }}>🔒</span>
                 </div>
             ) : cell ? (
-                <div className="flex flex-col h-full" style={{ paddingLeft: s.stripe + 2 }}>
-                    {showActivityBadge && (
-                        <div className="flex items-center justify-between gap-1" style={{ marginBottom: 3 }}>
+                <div className="flex flex-col h-full">
+                    {/* SATIR 1 — nokta + ders adı, referanstaki gibi.
+                        Ders rengi hem noktada hem yazıda; etkinlik türü
+                        (konu/soru/tekrar) sağ uçta yalnız ikonuyla durur.
+                        Eskiden tür, ders adının ÜSTÜNDE dolgulu bir rozetti
+                        ve iki satır yer kaplayıp asıl bilgiyi aşağı itiyordu. */}
+                    <div className="flex items-center gap-1.5" style={{ marginBottom: 3 }}>
+                        <span
+                            aria-hidden="true"
+                            style={{
+                                width: s.badge - 1, height: s.badge - 1, borderRadius: 999,
+                                backgroundColor: c.border, flex: 'none',
+                            }}
+                        />
+                        <span
+                            className="font-black tracking-tight leading-none truncate"
+                            style={{ fontSize: s.subject, color: c.border }}
+                        >
+                            {getSubjectLabel(toStr(cell.subject))}
+                        </span>
+                        {showActivityBadge && (
                             <span
-                                className="inline-flex items-center gap-1 font-black rounded-md tracking-wider"
-                                style={{
-                                    fontSize: s.badge,
-                                    padding: '1px 4px',
-                                    backgroundColor: `${c.border}22`,
-                                    color: c.text,
-                                }}
+                                className="ml-auto leading-none"
+                                style={{ fontSize: s.badge + 2, opacity: 0.75 }}
+                                title={activity.label || activity.short}
                             >
-                                <span style={{ fontSize: s.badge + 1, lineHeight: 1 }}>{activity.icon}</span>
-                                {activity.short}
+                                {activity.icon}
                             </span>
-                            {cell.exam && (
-                                <span
-                                    className="font-black rounded tracking-wide"
-                                    style={{ fontSize: s.badge, padding: '1px 3px', backgroundColor: 'rgba(255,255,255,0.7)', color: '#64748B' }}
-                                >
-                                    {cell.exam}
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    <span
-                        className="font-black uppercase tracking-tight leading-none"
-                        style={{ fontSize: s.subject, color: c.border, marginBottom: 2 }}
-                    >
-                        {getSubjectLabel(toStr(cell.subject))}
-                    </span>
+                        )}
+                    </div>
 
                     {cell.topic && (
                         <span
@@ -110,6 +103,18 @@ const ProgramCell = ({
                             style={{ fontSize: s.topic, lineHeight: 1.25, color: c.text }}
                         >
                             {toStr(cell.topic)}
+                        </span>
+                    )}
+
+                    {cell.exam && (
+                        <span
+                            className="mt-auto font-black tracking-wide self-start rounded"
+                            style={{
+                                fontSize: s.badge, padding: '1px 4px', marginTop: 3,
+                                backgroundColor: 'rgba(255,255,255,.72)', color: '#64748B',
+                            }}
+                        >
+                            {cell.exam}
                         </span>
                     )}
 

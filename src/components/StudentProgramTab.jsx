@@ -16,6 +16,32 @@ import { bildir } from '../services/uiGeriBildirim';
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAY_SHORT = { Pazartesi: 'Pzt', Salı: 'Sal', Çarşamba: 'Çar', Perşembe: 'Per', Cuma: 'Cum', Cumartesi: 'Cmt', Pazar: 'Paz' };
 
+/**
+ * GÜN BAŞLIĞINDA TAKVİM TARİHİ.
+ *
+ * Çizelge yalnızca "PAZARTESİ, SALI…" yazıyordu. Program on aylık
+ * olabildiği için öğrenci hangi haftaya baktığını başlıktan
+ * anlayamıyor, ay ve hafta düğmelerinden geri sayarak buluyordu.
+ * Tarih zaten hesaplanabiliyor — programProgressService.hucreTarihi
+ * aynı takvim mantığını etüt kilidi için kullanıyor; burada da
+ * o kaynak okunur, ikinci bir hesap kurulmaz.
+ */
+const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+
+const gunTarihi = (baslangic, ay, hafta, gunIndex) => {
+    if (!baslangic) return null;
+    const t = new Date(baslangic);
+    t.setDate(t.getDate() + ((ay - 1) * 4 + (hafta - 1)) * 7 + gunIndex);
+    t.setHours(0, 0, 0, 0);
+    return t;
+};
+
+const bugunMu = (t) => {
+    if (!t) return false;
+    const b = new Date(); b.setHours(0, 0, 0, 0);
+    return t.getTime() === b.getTime();
+};
+
 // (Eski round-robin dağıtım motoru ve AI Planlayıcı 23.08.2026'da
 //  kaldırıldı — program üretimi tek yerde: utils/programMotoru.js,
 //  yalnız koç panelinde.)
@@ -211,18 +237,53 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
                     </div>
                     <div className="overflow-x-auto">
                         <div className="min-w-[680px]">
-                            <div className="grid border-b-2 border-line" style={{ gridTemplateColumns: '80px repeat(7,1fr)' }}>
-                                <div className="bg-surface-inv text-white font-bold p-3 text-center text-xs flex items-center justify-center uppercase tracking-widest">ETÜT</div>
-                                {DAYS.map(day => (
-                                    <div key={day} className="bg-surface-2 font-black p-2 text-center border-l border-line text-[11px] text-ink-2 uppercase tracking-wider notranslate" translate="no">
-                                        {day}
-                                    </div>
-                                ))}
+                            <div className="grid pb-2" style={{ gridTemplateColumns: '80px repeat(7,1fr)' }}>
+                                <div />
+                                {DAYS.map((day, gi) => {
+                                    const t = gunTarihi(baslangic, activeMonth, activeWeek, gi);
+                                    const bugun = bugunMu(t);
+                                    return (
+                                        <div key={day} className="px-1">
+                                            {/* Gün adı üstte soluk, tarih altta büyük — referanstaki
+                                                kutu başlık. Bugün turuncu zeminle işaretlenir; hangi
+                                                sütunda olduğumuz tek bakışta görünsün. */}
+                                            <div
+                                                className="rounded-dmd py-2 px-1 text-center transition-colors"
+                                                style={{
+                                                    background: bugun ? 'var(--brand)' : 'var(--surface-2)',
+                                                    border: `1px solid ${bugun ? 'var(--brand)' : 'var(--line)'}`,
+                                                }}
+                                            >
+                                                <p className="text-[10px] font-bold uppercase tracking-wider m-0 notranslate"
+                                                    translate="no"
+                                                    style={{ color: bugun ? 'rgba(255,255,255,.85)' : 'var(--ink-3)' }}>
+                                                    {DAY_SHORT[day] || day}
+                                                </p>
+                                                <p className="text-base font-black leading-none mt-0.5 m-0 tabular-nums"
+                                                    style={{ color: bugun ? '#fff' : 'var(--ink)' }}>
+                                                    {t ? t.getDate() : '—'}
+                                                </p>
+                                                {t && (
+                                                    <p className="text-[9px] font-bold m-0 mt-0.5"
+                                                        style={{ color: bugun ? 'rgba(255,255,255,.8)' : 'var(--ink-3)' }}>
+                                                        {AY_KISA[t.getMonth()]}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             {Array.from({ length: safeSlotCount }, (_, si) => (
-                                <div key={si} className="grid border-b border-line last:border-0" style={{ gridTemplateColumns: '80px repeat(7,1fr)' }}>
-                                    <div className="bg-surface-2 text-ink-3 text-xs p-2 text-center border-r border-line flex items-center justify-center font-semibold">
-                                        {si + 1}. Etüt
+                                <div key={si} className="grid" style={{ gridTemplateColumns: '80px repeat(7,1fr)' }}>
+                                    {/* Etüt numarası: eskiden her satırda kenarlıklı gri
+                                        bir hücreydi ve ızgarayı tablo gibi gösteriyordu.
+                                        Referansta saat sütunu kenarlıksız, yumuşak bir
+                                        şerittir; satırları ayıran şey çizgi değil boşluktur. */}
+                                    <div className="flex items-center justify-center px-1 py-1">
+                                        <span className="w-full text-center rounded-dsm bg-surface-2 py-2 text-[11px] font-black text-ink-3 tabular-nums">
+                                            {si + 1}.
+                                        </span>
                                     </div>
                                     {DAYS.map(day => {
                                         const cellKey = `m${activeMonth}-w${activeWeek}-${day}-${si}`;

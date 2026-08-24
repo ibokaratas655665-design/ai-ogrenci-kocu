@@ -2066,16 +2066,27 @@ const StudentDashboard = () => {
                                 KOÇUNUN HAZIRLADIĞI ÇALIŞMA PROGRAMI
                             </p>
                         </div>
-                        {/* Karne ÖNCE gelir: "ne kadar uydum" sorusu
-                            "hangi gün ne var" sorusundan önce cevaplanır.
-                            Çizelge zaten aşağıda, tam hâliyle duruyor. */}
-                        <ProgramKarnem studentId={user?.id} />
-                        <div className="card p-1 sm:p-2">
-                            <StudentProgramTab
-                                schedule={schedule}
-                                programConfig={programConfig}
-                                user={user}
-                            />
+                        {/* MASAÜSTÜNDE ÇİZELGE VE KARNE YAN YANA.
+                            Karne tam genişlikte, çizelgenin ÜSTÜNDE duruyordu:
+                            öğrenci uyum yüzdesine bakıp programı görmek için
+                            aşağı kaydırıyor, ikisini karşılaştırmak için geri
+                            çıkıyordu. Referanstaki düzen gibi ana içerik solda,
+                            özet sağda dar sütunda. Telefonda alt alta iner ve
+                            çizelge önce gelir — küçük ekranda "bugün ne var"
+                            sorusu önceliklidir. */}
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
+                            <div className="xl:col-span-8 min-w-0 order-1">
+                                <div className="card p-1 sm:p-2">
+                                    <StudentProgramTab
+                                        schedule={schedule}
+                                        programConfig={programConfig}
+                                        user={user}
+                                    />
+                                </div>
+                            </div>
+                            <div className="xl:col-span-4 min-w-0 order-2">
+                                <ProgramKarnem studentId={user?.id} />
+                            </div>
                         </div>
                     </div>
                 )}
