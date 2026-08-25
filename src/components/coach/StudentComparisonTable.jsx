@@ -55,7 +55,7 @@ const buildStudentStats = (students) => {
 const SortHeader = ({ label, field, sortBy, sortDir, onSort }) => (
     <button
         onClick={() => onSort(field)}
-        className={`flex items-center gap-1 font-bold text-xs uppercase tracking-wide transition whitespace-nowrap ${sortBy === field ? 'text-brand' : 'text-ink-2 hover:text-ink-2'}`}
+        className={`flex items-center gap-1 font-semibold text-xs uppercase tracking-wider transition whitespace-nowrap ${sortBy === field ? 'text-brand' : 'text-ink-3 hover:text-ink-2'}`}
     >
         {label}
         {sortBy === field
@@ -179,10 +179,10 @@ const StudentComparisonTable = ({ students = [] }) => {
                         <thead className="bg-surface-2 border-b border-line">
                             <tr>
                                 <th className="px-4 py-3 text-left">
-                                    <span className="text-xs font-bold text-ink-3 uppercase">Sıra</span>
+                                    <span className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Sıra</span>
                                 </th>
                                 <th className="px-4 py-3 text-left">
-                                    <span className="text-xs font-bold text-ink-3 uppercase">Öğrenci</span>
+                                    <span className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Öğrenci</span>
                                 </th>
                                 <th className="px-3 py-3 text-center">
                                     <SortHeader label="Son Net" field="lastNet" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
@@ -204,7 +204,7 @@ const StudentComparisonTable = ({ students = [] }) => {
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-line">
                             {filtered.map((s, idx) => (
                                 <tr key={s.id} className="hover:bg-brand-soft/50 transition group">
                                     <td className="px-4 py-3">

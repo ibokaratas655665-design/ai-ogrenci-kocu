@@ -172,8 +172,8 @@ const AnalyticsCharts = ({ examData }) => {
                 )}
             </div>
 
-            {/* ── Sekme Seçici ── */}
-            <div className="flex gap-2 flex-wrap">
+            {/* ── Sekme Seçici — underline tarzı ── */}
+            <div className="flex gap-5 flex-wrap border-b border-line">
                 {[
                     { key: 'progress', label: '📈 Gelişim Çizgisi' },
                     { key: 'delta', label: '📊 Deneme Arası Fark' },
@@ -182,9 +182,9 @@ const AnalyticsCharts = ({ examData }) => {
                     <button
                         key={tab.key}
                         onClick={() => setView(tab.key)}
-                        className={`px-3 py-1.5 rounded-xl text-sm font-bold transition ${view === tab.key
-                            ? 'bg-brand text-white shadow-sm'
-                            : 'bg-surface-3 text-ink-2 hover:bg-surface-3'}`}
+                        className={`-mb-px px-0.5 py-2.5 border-b-2 text-sm transition ${view === tab.key
+                            ? 'border-brand text-brand font-semibold'
+                            : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'}`}
                     >
                         {tab.label}
                     </button>
@@ -311,17 +311,17 @@ const AnalyticsCharts = ({ examData }) => {
                             <div className="mt-4 overflow-x-auto">
                                 <table className="min-w-full text-xs">
                                     <thead>
-                                        <tr className="bg-surface-2">
-                                            <th className="px-3 py-2 text-left font-bold text-ink-2">Deneme</th>
-                                            <th className="px-3 py-2 text-center font-bold text-brand">Toplam Net</th>
-                                            <th className="px-3 py-2 text-center font-bold text-ink-2">Türkçe</th>
-                                            <th className="px-3 py-2 text-center font-bold text-ink-2">Mat</th>
-                                            <th className="px-3 py-2 text-center font-bold text-ink-2">Fen</th>
-                                            <th className="px-3 py-2 text-center font-bold text-ink-2">Sosyal</th>
-                                            <th className="px-3 py-2 text-center font-bold text-ink-2">Δ</th>
+                                        <tr className="bg-surface-2 border-b border-line">
+                                            <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-brand">Toplam Net</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Türkçe</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Mat</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Fen</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Sosyal</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Δ</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
+                                    <tbody className="divide-y divide-line">
                                         {tytWithDelta.map((row, i) => (
                                             <tr key={i} className="hover:bg-surface-2">
                                                 <td className="px-3 py-2 font-medium text-ink-2 max-w-[120px] truncate">{row.name}</td>

@@ -205,7 +205,7 @@ const TrialsPage = () => {
 
             <div className="max-w-6xl mx-auto">
                 {/* Tabs */}
-                <div className="flex space-x-2 mb-6 border-b border-line pb-1 overflow-x-auto">
+                <div className="flex mb-6 border-b border-line overflow-x-auto">
                     {[
                         { id: 'tests', label: 'Deneme Sınavları', icon: Target },
                         { id: 'results', label: 'Sonuçlarım', icon: CheckCircle },
@@ -214,9 +214,9 @@ const TrialsPage = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`pb-3 px-4 font-bold transition flex items-center whitespace-nowrap ${activeTab === tab.id
-                                ? 'text-brand border-b-2 border-indigo-600 bg-brand-soft/50 rounded-t-lg'
-                                : 'text-ink-3 hover:text-ink-2 hover:bg-surface-2 rounded-t-lg'}`}
+                            className={`-mb-px pb-3 px-0.5 mr-5 border-b-2 transition flex items-center whitespace-nowrap ${activeTab === tab.id
+                                ? 'text-brand border-brand font-semibold'
+                                : 'text-ink-3 border-transparent hover:text-ink-2 font-medium'}`}
                         >
                             <tab.icon size={16} className="mr-2" />
                             {tab.label}

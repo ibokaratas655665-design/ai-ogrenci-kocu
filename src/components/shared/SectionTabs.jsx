@@ -33,20 +33,20 @@ const SectionTabs = ({ id, sections, children, accent = 'var(--brand)' }) => {
 
     return (
         <div className="space-y-5">
-            {/* Şerit */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            {/* Şerit — underline tarzı (25.08.2026) */}
+            <div className="flex gap-5 overflow-x-auto no-scrollbar border-b border-line">
                 {sections.map((s) => {
                     const isActive = s.id === active;
                     return (
                         <button
                             key={s.id}
                             onClick={() => select(s.id)}
-                            className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all ${
+                            className={`group relative -mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-xs whitespace-nowrap transition-all ${
                                 isActive
-                                    ? 'text-ink-on shadow-lg'
-                                    : 'bg-surface/[0.04] text-ink-3 hover:text-ink-2 hover:bg-surface/[0.07]'
+                                    ? 'font-semibold'
+                                    : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
                             }`}
-                            style={isActive ? { backgroundColor: accent, boxShadow: `0 8px 24px -8px ${accent}` } : undefined}
+                            style={isActive ? { borderColor: accent, color: accent } : undefined}
                         >
                             {s.icon && <s.icon size={14} />}
                             {s.label}
@@ -54,8 +54,8 @@ const SectionTabs = ({ id, sections, children, accent = 'var(--brand)' }) => {
                                 <span
                                     className="px-1.5 py-0.5 rounded-md text-[10px] font-black"
                                     style={{
-                                        backgroundColor: isActive ? 'rgba(0,0,0,0.15)' : `${accent}22`,
-                                        color: isActive ? 'var(--bg)' : accent,
+                                        backgroundColor: isActive ? `${accent}1F` : 'var(--surface-3)',
+                                        color: isActive ? accent : 'var(--ink-3)',
                                     }}
                                 >
                                     {s.badge}

@@ -1204,17 +1204,17 @@ const ExamsTab = ({ students, setToast }) => {
                                         {/* Tablo */}
                                         <div className="overflow-x-auto">
                                             <table className="min-w-full text-xs">
-                                                <thead><tr className="bg-surface-2">
-                                                    <th className="px-3 py-2 text-left font-bold text-ink-2">Deneme</th>
-                                                    <th className="px-3 py-2 text-center text-ink-2">Tarih</th>
-                                                    <th className="px-3 py-2 text-center font-bold text-c4">Ort. Net</th>
-                                                    <th className="px-3 py-2 text-center text-ok">Türkçe</th>
-                                                    <th className="px-3 py-2 text-center text-info">Matematik</th>
-                                                    <th className="px-3 py-2 text-center text-warn">Fen</th>
-                                                    <th className="px-3 py-2 text-center text-c5">Sosyal</th>
-                                                    <th className="px-3 py-2 text-center font-bold text-ink-2">Δ</th>
+                                                <thead><tr className="bg-surface-2 border-b border-line">
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c4">Ort. Net</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ok">Türkçe</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-info">Matematik</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-warn">Fen</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c5">Sosyal</th>
+                                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Δ</th>
                                                 </tr></thead>
-                                                <tbody className="divide-y divide-gray-50">
+                                                <tbody className="divide-y divide-line">
                                                     {withDelta(tytData).map((row, i) => (
                                                         <tr key={i} className="hover:bg-surface-2">
                                                             <td className="px-3 py-2 font-medium text-ink-2 max-w-[130px] truncate">{row.name}</td>
@@ -1506,18 +1506,18 @@ const ExamsTab = ({ students, setToast }) => {
                         {expandedTrialId === trial.id && (
                             <div className="overflow-x-auto border-t border-line icerik-gecis">
                                 <table className="min-w-full divide-y divide-line">
-                                    <thead className="bg-surface">
+                                    <thead className="bg-surface-2 border-b border-line">
                                         <tr>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2">Öğrenci</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2">TYT Toplam</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2 hidden md:table-cell">Tr</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2 hidden md:table-cell">Mat</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2 hidden md:table-cell">Fen</th>
-                                            <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2 hidden md:table-cell">Sos</th>
-                                            <th className="px-4 py-2 text-right text-xs font-semibold text-ink-2">Detay</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">Öğrenci</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">TYT Toplam</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3 hidden md:table-cell">Tr</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3 hidden md:table-cell">Mat</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3 hidden md:table-cell">Fen</th>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3 hidden md:table-cell">Sos</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-ink-3">Detay</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50 text-sm">
+                                    <tbody className="divide-y divide-line text-sm">
                                         {exams.filter(e => {
                                             if (e.trialId !== trial.id) return false;
                                             if (!studentSearchQuery) return true;
@@ -1627,12 +1627,12 @@ const ExamsTab = ({ students, setToast }) => {
                                 </h4>
                                 <div className="overflow-hidden rounded-xl border border-line">
                                     <table className="min-w-full divide-y divide-line">
-                                        <thead className="bg-surface-2">
+                                        <thead className="bg-surface-2 border-b border-line">
                                             <tr>
-                                                <th className="px-4 py-2 text-left text-xs font-semibold text-ink-2">Ders</th>
-                                                <th className="px-4 py-2 text-center text-xs font-semibold text-ok">Doğru</th>
-                                                <th className="px-4 py-2 text-center text-xs font-semibold text-danger">Yanlış</th>
-                                                <th className="px-4 py-2 text-center text-xs font-semibold text-brand">Net</th>
+                                                <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">Ders</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-ok">Doğru</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-danger">Yanlış</th>
+                                                <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-brand">Net</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-line bg-surface text-sm">
@@ -1993,15 +1993,15 @@ const ManageCoachesTab = ({ setToast }) => {
                 ) : (
                     <table className="min-w-full divide-y divide-line">
                         <thead>
-                            <tr className="bg-surface-2">
-                                <th className="px-5 py-3 text-left text-xs font-bold text-ink-2 uppercase">Koç</th>
-                                <th className="px-5 py-3 text-left text-xs font-bold text-ink-2 uppercase hidden md:table-cell">Telefon</th>
-                                <th className="px-5 py-3 text-left text-xs font-bold text-ink-2 uppercase">Rol</th>
-                                <th className="px-5 py-3 text-left text-xs font-bold text-ink-2 uppercase hidden lg:table-cell">İzinler</th>
-                                <th className="px-5 py-3 text-right text-xs font-bold text-ink-2 uppercase">İşlemler</th>
+                            <tr className="bg-surface-2 border-b border-line">
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider">Koç</th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider hidden md:table-cell">Telefon</th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider">Rol</th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider hidden lg:table-cell">İzinler</th>
+                                <th className="px-5 py-3 text-right text-xs font-semibold text-ink-3 uppercase tracking-wider">İşlemler</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-line">
                             {coaches.map(coach => (
                                 <tr
                                     key={coach.id}
@@ -3333,7 +3333,7 @@ const CoachDashboard = () => {
                 bomboştu — logo ile sayfa başlığı arasındaki açıklık buydu. */}
                         <div className={activeTab === 'bugun'
                             ? 'hidden'
-                            : 'pt-20 lg:pt-28 pb-6 lg:pb-8 relative overflow-hidden atmos'}>
+                            : 'pt-6 lg:pt-8 pb-6 lg:pb-8 relative overflow-hidden atmos'}>
                 <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
                     {/* EYLEM ŞERİDİ — Genel Bakış'ta gizli.
                         "Öğrenci Ekle / Liste Yükle / Toplu Mesaj" her sekmenin üstünde

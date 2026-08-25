@@ -482,7 +482,7 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
             <OverviewCharts students={students} results={v2Results} statusById={statusById} />
 
             <div className="premium-card p-6 bg-surface border-line">
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-8">
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-6">
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center border border-brand/20"><Users className="text-brand" size={20} /></div>
                         <h3 className="text-xl font-black text-ink syne uppercase">Öğrenci <em className="not-italic text-brand">Portfolyo</em> Yönetimi</h3>
@@ -664,11 +664,11 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                                 <th className="px-6 py-5 text-right text-[10px] font-black text-ink-3 uppercase tracking-widest">İŞLEM</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-line">
                             {filteredStudents.map((s) => {
                                 const st = statusFor(s);
                                 return (
-                                <tr key={s.id} className="hover:bg-surface/[0.02] transition-colors group">
+                                <tr key={s.id} className="hover:bg-surface-2 transition-colors group">
                                     <td className="px-6 py-5">
                                         <span className="text-[10px] font-black text-ink-3 bg-surface/5 border border-line px-3 py-1.5 rounded-xl">#{s.schoolNumber || '---'}</span>
                                     </td>

@@ -60,41 +60,43 @@
     margin-top: 2px;
 }
 
-/* ── 2. Hap segment seçici ────────────────────────────────── */
+/* ── 2. Sekme şeridi — "underline" tarzı (25.08.2026) ───────
+   Eskiden dolu-hap segment seçiciydi; kurumsal güncellemeyle
+   diğer sekme şeritleriyle (.tab-row) aynı dile taşındı: şeridin
+   altında ince bir hat, aktif sekmenin altında canlı marka çizgisi. */
 .segmentli {
     display: inline-flex;
-    gap: 4px;
-    padding: 4px;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: 999px;
+    gap: 20px;
     max-width: 100%;
     overflow-x: auto;
     scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
 }
 .segmentli::-webkit-scrollbar { display: none; }
 
 .seg-dugme {
     flex-shrink: 0;
-    padding: 8px 16px;
-    border-radius: 999px;
+    padding: 8px 2px 10px;
+    margin-bottom: -1px;
+    border-radius: 0;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--ink-3);
     white-space: nowrap;
     border: none;
+    border-bottom: 2px solid transparent;
     background: transparent;
     cursor: pointer;
     min-height: 36px;
-    transition: background-color var(--sure-hizli) ease, color var(--sure-hizli) ease,
-                box-shadow var(--sure-hizli) ease;
+    transition: color var(--sure-hizli) ease, border-color var(--sure-hizli) ease;
 }
-.seg-dugme:hover { color: var(--ink); }
+.seg-dugme:hover { color: var(--ink-2); }
 .seg-dugme:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .seg-dugme.seg-on {
-    background: var(--brand);
-    color: #fff;
-    box-shadow: var(--sh-1);
+    background: transparent;
+    color: var(--brand-metin);
+    border-color: var(--brand);
+    font-weight: 700;
 }
 
 /* ── 3. Mini istatistik çipi (Bu Hafta şeridi) ────────────── */

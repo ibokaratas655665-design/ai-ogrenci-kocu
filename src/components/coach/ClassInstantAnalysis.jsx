@@ -263,7 +263,7 @@ const ClassInstantAnalysis = ({ students = [], trials = [], results: propsResult
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-line text-xs text-ink-3 font-bold uppercase">
+                                    <tr className="bg-surface-2 border-b border-line text-xs text-ink-3 font-semibold uppercase tracking-wider">
                                         <th className="text-left py-2 px-2">#</th>
                                         <th className="text-left py-2 px-2">Öğrenci</th>
                                         <th className="text-center py-2 px-2">Sınıf</th>

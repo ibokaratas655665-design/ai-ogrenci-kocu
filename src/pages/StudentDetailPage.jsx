@@ -470,8 +470,8 @@ const StudentDetailPage = () => {
                         />
                     )}
 
-                    {/* Tab Switcher */}
-                    <div className="bg-surface p-1 rounded-xl flex space-x-1 shadow-sm border border-line overflow-x-auto max-w-full">
+                    {/* Tab Switcher — underline tarzı */}
+                    <div className="flex gap-5 border-b border-line overflow-x-auto max-w-full">
                         {[
                             { id: 'analiz', icon: Activity, label: 'Gelişim Analizi' },
                             { id: 'karne', icon: Award, label: 'Karne' },
@@ -486,7 +486,7 @@ const StudentDetailPage = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`relative px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1 ${activeTab === tab.id ? 'bg-brand-soft text-brand' : 'text-ink-2 hover:text-ink-2'
+                                className={`relative -mb-px px-0.5 py-2.5 border-b-2 text-xs whitespace-nowrap transition flex items-center gap-1 ${activeTab === tab.id ? 'border-brand text-brand font-semibold' : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
                                     }`}
                             >
                                 <tab.icon size={14} /> {tab.label}

@@ -1180,7 +1180,7 @@ const StudentDashboard = () => {
                     BUGÜN · PROGRAM · ÇALIŞMALARIM · GELİŞİMİM · DAHA FAZLA.
                     Araçlar "Daha Fazla" sayfasında gruplanır. */}
                 <div className="hidden lg:block border-t border-line bg-page/50 backdrop-blur-md">
-                    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center overflow-x-auto no-scrollbar gap-1 py-1.5 h-14">
+                    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center overflow-x-auto no-scrollbar gap-1 h-14 border-b border-line">
                         {SEKME_GRUPLARI[0].items.map(tab => {
                             const secili = activeTab === tab.id;
                             return (
@@ -1189,12 +1189,12 @@ const StudentDashboard = () => {
                                     onClick={() => { sekmeyeGit(tab.id); okundu(tab.id); }}
                                     aria-current={secili ? 'page' : undefined}
                                     className={cn(
-                                        'relative shrink-0 flex items-center gap-2 px-4 min-h-[44px] rounded-pill tip-tab whitespace-nowrap',
-                                        'transition-colors duration-hizli',
+                                        'relative shrink-0 flex items-center gap-2 px-3.5 pt-1 min-h-[44px] tip-tab whitespace-nowrap',
+                                        'border-b-2 transition-colors duration-hizli',
                                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                                         secili
-                                            ? 'bg-brand text-white font-bold shadow-kart'
-                                            : 'text-ink-3 hover:text-ink hover:bg-surface-3'
+                                            ? 'border-brand text-brand font-semibold'
+                                            : 'border-transparent text-ink-3 hover:text-ink-2'
                                     )}
                                 >
                                     <tab.icon size={16} strokeWidth={secili ? 2.2 : 1.75} />
@@ -1208,12 +1208,12 @@ const StudentDashboard = () => {
                             onClick={() => sekmeyeGit('daha-fazla')}
                             aria-current={activeTab === 'daha-fazla' ? 'page' : undefined}
                             className={cn(
-                                'relative shrink-0 flex items-center gap-2 px-4 min-h-[44px] rounded-pill tip-tab whitespace-nowrap',
-                                'transition-colors duration-hizli',
+                                'relative shrink-0 flex items-center gap-2 px-3.5 pt-1 min-h-[44px] tip-tab whitespace-nowrap',
+                                'border-b-2 transition-colors duration-hizli',
                                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                                 activeTab === 'daha-fazla' || ARAC_GRUBU.items.some((t) => t.id === activeTab)
-                                    ? 'bg-brand text-white font-bold shadow-kart'
-                                    : 'text-ink-3 hover:text-ink hover:bg-surface-3'
+                                    ? 'border-brand text-brand font-semibold'
+                                    : 'border-transparent text-ink-3 hover:text-ink-2'
                             )}
                         >
                             <MoreHorizontal size={16} />

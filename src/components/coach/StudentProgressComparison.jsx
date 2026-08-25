@@ -421,15 +421,15 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-line">
+                                    <tr className="bg-surface-2 border-b border-line">
                                         {['Öğrenci', 'Sınıf', 'Deneme', 'Son Net', 'Ort.', 'Maks.', 'Değişim', 'Trend'].map(h => (
-                                            <th key={h} className="text-left py-2 px-2 text-xs font-bold text-ink-3 uppercase">{h}</th>
+                                            <th key={h} className="text-left py-2 px-2 text-xs font-semibold text-ink-3 uppercase tracking-wider">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rankingData.map((sd, i) => (
-                                        <tr key={sd.student.id} className="border-b border-gray-50 hover:bg-surface-2 transition">
+                                        <tr key={sd.student.id} className="border-b border-line hover:bg-surface-2 transition">
                                             <td className="py-2.5 px-2">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-ink text-[10px] font-black"

@@ -71,10 +71,10 @@ const CurriculumManager = () => {
     return (
         <div className="bg-surface rounded-2xl border border-line p-6 space-y-6">
             <h3 className="text-lg font-bold text-ink">Müfredat ve Kaynak Yönetimi</h3>
-            <div className="flex gap-2 pb-4 border-b border-line overflow-x-auto">
+            <div className="flex gap-5 border-b border-line overflow-x-auto">
                 {EXAM_TYPES.map(type => (
                     <button key={type} onClick={() => setSelectedExam(type)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap ${selectedExam === type ? 'bg-brand text-ink' : 'bg-surface-3 text-ink-2'}`}>
+                        className={`-mb-px px-0.5 py-2.5 border-b-2 text-sm whitespace-nowrap transition ${selectedExam === type ? 'border-brand text-brand font-semibold' : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'}`}>
                         {type}
                     </button>
                 ))}
@@ -685,19 +685,19 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                         {/* Tablo */}
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-xs">
-                                <thead><tr className="bg-surface-2">
-                                    <th className="px-3 py-2 text-left font-bold text-ink-2">Deneme</th>
-                                    <th className="px-3 py-2 text-center text-ink-2">Tarih</th>
-                                    <th className="px-3 py-2 text-center font-bold text-c4">Ort. Net</th>
+                                <thead><tr className="bg-surface-2 border-b border-line">
+                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
+                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
+                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c4">Ort. Net</th>
                                     {activeExamType === 'TYT' && <>
-                                        <th className="px-3 py-2 text-center text-brand">Türkçe</th>
-                                        <th className="px-3 py-2 text-center text-ok">Matematik</th>
-                                        <th className="px-3 py-2 text-center text-warn">Fen</th>
-                                        <th className="px-3 py-2 text-center text-c5">Sosyal</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-brand">Türkçe</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ok">Matematik</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-warn">Fen</th>
+                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c5">Sosyal</th>
                                     </>}
-                                    <th className="px-3 py-2 text-center text-ink-2">Katılımcı</th>
+                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Katılımcı</th>
                                 </tr></thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-line">
                                     {trendData.map((row, i) => (
                                         <tr key={i} className="hover:bg-surface-2">
                                             <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
@@ -797,14 +797,14 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                         {/* Tablo */}
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-xs">
-                                <thead><tr className="bg-surface-2">
-                                    <th className="px-3 py-2 text-left font-bold text-ink-2">Deneme</th>
-                                    <th className="px-3 py-2 text-center text-ink-2">Tarih</th>
+                                <thead><tr className="bg-surface-2 border-b border-line">
+                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
+                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
                                     {displaySubjects.map(s => (
-                                        <th key={s} className="px-3 py-2 text-center font-bold" style={{ color: LINE_COLORS[s] || '#6b7280' }}>{s}</th>
+                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: LINE_COLORS[s] || '#6b7280' }}>{s}</th>
                                     ))}
                                 </tr></thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-line">
                                     {subjectTrendData.map((row, i, arr) => (
                                         <tr key={i} className="hover:bg-surface-2">
                                             <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
@@ -1819,7 +1819,7 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                                             <th className="px-3 py-2.5 text-right text-xs font-bold text-ink-3">İşlem</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50 text-sm bg-surface">
+                                    <tbody className="divide-y divide-line text-sm bg-surface">
                                         {[...activeResults]
                                             .sort((a, b) => {
                                                 if (!a || !b) return 0;
@@ -2515,23 +2515,24 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                 </div>
             </div>
 
-            {/* ── Kategori Sekmeleri ── */}
-            <div className="flex gap-3 flex-wrap">
+            {/* ── Kategori Sekmeleri — underline tarzı (25.08.2026) ── */}
+            <div className="flex gap-5 flex-wrap border-b border-line">
                 {EXAM_TYPES.map(type => {
                     const count = numberedTrials.filter(t => t.examType === type).length;
+                    const secili = examCategory === type;
                     return (
                         <button
                             key={type}
                             onClick={() => { setExamCategory(type); setExpandedTrialId(null); }}
-                            className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all border-2 ${examCategory === type
-                                ? 'bg-gradient-to-r from-purple-600 to-brand text-white border-purple-600 shadow-lg shadow-purple-200'
-                                : 'bg-surface text-ink-2 border-line hover:border-[color-mix(in_srgb,var(--c4)_35%,transparent)] hover:text-c4'
+                            className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${secili
+                                ? 'border-c4 text-c4 font-semibold'
+                                : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
                                 }`}
                         >
                             <GraduationCap size={16} />
                             {type}
                             {count > 0 && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${examCategory === type ? 'bg-surface/20 text-ink' : 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4'
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${secili ? 'bg-[color-mix(in_srgb,var(--c4)_16%,var(--surface))] text-c4' : 'bg-surface-3 text-ink-3'
                                     }`}>{count}</span>
                             )}
                         </button>
@@ -2541,9 +2542,9 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                 {/* Kazanım Testi */}
                 <button
                     onClick={() => { setExamCategory('kazanim'); setExpandedTrialId(null); }}
-                    className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all border-2 ${examCategory === 'kazanim'
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-ink border-ok shadow-lg shadow-emerald-200'
-                        : 'bg-surface text-ink-2 border-line hover:border-ok hover:text-ok'
+                    className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${examCategory === 'kazanim'
+                        ? 'border-ok text-ok font-semibold'
+                        : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
                         }`}
                 >
                     <ListChecks size={16} />
@@ -2553,9 +2554,9 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                 {/* Müfredat / PDF Merkez */}
                 <button
                     onClick={() => { setExamCategory('curriculum'); setExpandedTrialId(null); }}
-                    className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all border-2 ${examCategory === 'curriculum'
-                        ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-ink border-pink-500 shadow-lg shadow-pink-200'
-                        : 'bg-surface text-ink-2 border-line hover:border-[color-mix(in_srgb,var(--c5)_35%,transparent)] hover:text-c5'
+                    className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${examCategory === 'curriculum'
+                        ? 'border-c5 text-c5 font-semibold'
+                        : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
                         }`}
                 >
                     <Layers size={16} />

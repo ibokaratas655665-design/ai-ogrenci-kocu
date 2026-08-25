@@ -118,7 +118,7 @@ const ClassRanking = ({ students = [] }) => {
             <div className="relative">
                 <Search size={14} className="absolute left-3 top-2.5 text-ink-3" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Öğrenci ara..."
-                    className="pl-9 pr-3 py-2 w-full text-sm border border-line rounded-xl outline-none focus:ring-2 focus:ring-indigo-400" />
+                    className="pl-9 pr-3 py-2 w-full text-sm border border-line rounded-xl outline-none focus:ring-2 focus:ring-brand" />
             </div>
 
             {/* Tablo */}
@@ -127,21 +127,21 @@ const ClassRanking = ({ students = [] }) => {
                     <table className="min-w-full">
                         <thead className="bg-surface-2 border-b border-line">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-ink-2 uppercase w-12">Sıra</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-ink-2 uppercase">Öğrenci</th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-ink-2 uppercase cursor-pointer hover:text-brand" onClick={() => toggleSort('lastNet')}>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider w-12">Sıra</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-ink-3 uppercase tracking-wider">Öğrenci</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-ink-3 uppercase tracking-wider cursor-pointer hover:text-brand" onClick={() => toggleSort('lastNet')}>
                                     <span className="flex items-center justify-center gap-1">Son Net <SortIcon field="lastNet" /></span>
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-ink-2 uppercase cursor-pointer hover:text-brand hidden sm:table-cell" onClick={() => toggleSort('avgNet')}>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-ink-3 uppercase tracking-wider cursor-pointer hover:text-brand hidden sm:table-cell" onClick={() => toggleSort('avgNet')}>
                                     <span className="flex items-center justify-center gap-1">Ort. Net <SortIcon field="avgNet" /></span>
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-ink-2 uppercase hidden md:table-cell cursor-pointer hover:text-brand" onClick={() => toggleSort('bestNet')}>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-ink-3 uppercase tracking-wider hidden md:table-cell cursor-pointer hover:text-brand" onClick={() => toggleSort('bestNet')}>
                                     <span className="flex items-center justify-center gap-1">En Yüksek <SortIcon field="bestNet" /></span>
                                 </th>
-                                <th className="px-4 py-3 text-center text-xs font-bold text-ink-2 uppercase">Trend</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-ink-3 uppercase tracking-wider">Trend</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-line">
                             {withData.map((d, idx) => {
                                 const rank = idx + 1;
                                 const medal = MEDAL_COLORS[rank];

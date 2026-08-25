@@ -514,25 +514,39 @@ select option {
 .tbl tbody tr:hover { background: var(--surface-3); }
 .tbl tbody tr:last-child td { border-bottom: none; }
 
-/* ── Sekmeler ─────────────────────────────────────────────── */
-.tab {
-    padding: .5rem .9rem;
-    border-radius: 10px;
-    font-size: .76rem;
-    font-weight: 700;
-    color: var(--ink-3);
-    background: transparent;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    transition: background-color var(--sure-hizli) ease, color var(--sure-hizli) ease, border-color var(--sure-hizli) ease;
+/* ── Sekmeler — "underline" tarzı (25.08.2026 kurumsal güncelleme) ──
+   Eskiden dolu-hap (pill) stiliydi: aktif sekme yumuşak marka
+   zeminiyle doluyordu. Artık alt çizgili modern kurumsal tarz: aktif
+   sekmenin altında canlı bir çizgi, pasifler gri + hover'da koyulaşır.
+   Sekme ŞERİDİNİN kendisi (.tab-row) boydan boya ince bir hatla
+   ayrılır — sekmeler o hattın ÜSTÜNE oturur (kenarlıkları çakışır). */
+.tab-row {
+    display: flex;
+    gap: 1.25rem;
+    border-bottom: 1px solid var(--line);
 }
 
-.tab:hover { color: var(--ink); background: var(--surface-3); }
+.tab {
+    padding: .65rem .1rem;
+    margin-bottom: -1px;   /* .tab-row'un alt çizgisiyle çakışsın */
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--ink-3);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    border-radius: 0;
+    transition: color var(--sure-hizli) ease, border-color var(--sure-hizli) ease;
+}
+
+.tab:hover { color: var(--ink-2); background: transparent; }
 
 .tab-active {
-    color: var(--brand);
-    background: var(--brand-soft);
-    border-color: var(--brand-line);
+    color: var(--brand-metin);
+    background: transparent;
+    border-color: var(--brand);
+    font-weight: 700;
 }
 
 /* ── Ayraç ────────────────────────────────────────────────── */
