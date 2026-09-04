@@ -171,7 +171,8 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 Canlı ile dizgi farkı 604 → ~48'e indi; kalanların tamamı derleme biçim
 farkı (aynı metin farklı literal bölünmüş) — davranışsal eksik tespit
 edilmedi. Kalan düşük öncelikli işler:
-- [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
+- [x] TESPIT (05.09): canli srf ailesi = charts/Analitik + Dagilim in
+      minified hali (15/15 bilesen ayni imzayla eslesti) - kayip degilmis
 - [x] PDF kişiye özel bölüm tamamlandı (6d kapandı)
 - [x] Mesaj/görev ekranları uçtan uca test edildi (05.09): koç→öğrenci ve
       öğrenci→koç mesaj + zil bildirimi + okundu işaretleri + görev
