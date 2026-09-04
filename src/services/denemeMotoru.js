@@ -382,6 +382,7 @@ export const pdfYukle = async ({ dataUrl, ad, klasor = 'denemeler' }) => {
             import('../firebaseConfig'),
         ]);
         const storage = getStorage(app);
+        if (!storage) return { basarili: false, hata: 'Storage başlatılamadı.' };
         const guvenliAd = String(ad || 'dosya').replace(/[^\w.\-]+/g, '_').slice(-80);
         const yol = `${klasor}/${auth?.currentUser?.uid || 'anon'}/${Date.now()}_${guvenliAd}`;
         const dosyaRef = ref(storage, yol);

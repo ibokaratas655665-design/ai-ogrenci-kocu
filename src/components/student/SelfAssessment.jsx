@@ -8,11 +8,11 @@ import { bildir } from '../../services/uiGeriBildirim';
 import { listeOku, yaz } from '../../services/veriDeposu';
 
 const QUESTIONS = [
-    { id: 'motivation',  label: 'Bu hafta motivasyonumu nasıl değerlendiriyorum?', icon: Zap,       color: 'amber' },
-    { id: 'study',       label: 'Planlı çalışmaya ne kadar bağlı kaldım?',         icon: Brain,     color: 'indigo' },
-    { id: 'understand',  label: 'Öğrendiklerimi ne kadar iyi kavradım?',            icon: TrendingUp,color: 'emerald' },
-    { id: 'stress',      label: 'Bu hafta stres seviyem (1=düşük, 5=yüksek)',       icon: Heart,     color: 'rose' },
-    { id: 'confidence',  label: 'Sınava olan özgüvenim nasıl?',                     icon: Star,      color: 'purple' },
+    { id: 'motivation',  short: 'Motivasyon',     label: 'Bu hafta motivasyonumu nasıl değerlendiriyorum?', icon: Zap,       color: 'amber' },
+    { id: 'study',       short: 'Planlı Çalışma', label: 'Planlı çalışmaya ne kadar bağlı kaldım?',         icon: Brain,     color: 'indigo' },
+    { id: 'understand',  short: 'Kavrama',        label: 'Öğrendiklerimi ne kadar iyi kavradım?',            icon: TrendingUp,color: 'emerald' },
+    { id: 'stress',      short: 'Stres',          label: 'Bu hafta stres seviyem (1=düşük, 5=yüksek)',       icon: Heart,     color: 'rose' },
+    { id: 'confidence',  short: 'Özgüven',        label: 'Sınava olan özgüvenim nasıl?',                     icon: Star,      color: 'purple' },
 ];
 
 const COLOR = {
