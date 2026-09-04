@@ -90,6 +90,28 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [ ] "Her sorunun görselini optik formun yanında göster" modu (PDF'i soru soru
       kesme gerektirir — büyük iş, bilinçli ertelendi)
 
+## ⚠️ ALTIN KURAL (kullanıcı talimatı, 04.09)
+Eski güncellemelerde BİLEREK silinen/değiştirilen şeyler geri getirilmez.
+Tek doğruluk kaynağı: bugünkü CANLI sürümün derlenmiş paketleri
+(`D:\yedekler\AL KOÇ\alkoc-canli-yedek-2026-09-04`). Kurtarılan sohbet
+(`sohbetler\master-denetim.txt`) yalnız bağlam/niyet içindir — bir özellik
+ancak canlı pakette VARSA inşa edilir; sohbette geçip canlıda olmayan her
+şey (ara tasarımlar, sonradan sökülenler: "Sistemi Paylaş", üst kart grid,
+"Yaklaşan Randevular", header düğmeleri vb.) BİLİNÇLİ ÇÖP sayılır.
+
+## Kurtarılan sohbetten çıkan büyük resim (04.09 son oturum)
+Kayıp pencere sanılandan büyük: oturum başında bile 45 dosyalık commit'siz
+delta vardı; oturum içinde bf47c87 (137 dosya, +14228/−1808) ve 1fea634
+dahil birden çok YEREL commit yapıldı, hiçbiri push edilmedi. Kapsam:
+master denetim (8 ajanlı audit), kokpit/tek-ekran dönüşümü, 3B tasarım dili
+(kutu-3b/liste-3b/topbar), akademik takvim (tatil verisi + ayarlardan
+düzenleme), birleşik veri hattı (birlesikTrials/birlesikResults,
+matchResultsForStudent), granular ders analitiği, çözüm davranışı analitiği,
+demo zenginleştirme, Günlük Takip Merkezi, Denemeler tabı yeniden düzeni
+(sol liste + sağ grafikler + TrialCard), Program Kurucu son tasarımı,
+giriş inputları temizliği, ve final 5'li paket. Hepsi canlı pakette mevcut;
+fazlar hâlinde canlıdan geri taşınacak.
+
 ## Çalışma yöntemi
 - Referans: canlı yedekteki minified paketler — davranış ve metinler birebir oradan alınır.
 - Her maddede: uygula → `npm run build` → commit; faz sonunda push.
