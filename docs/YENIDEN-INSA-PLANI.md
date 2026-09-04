@@ -13,13 +13,14 @@ klasöründe kalır); rehberlik ayrı bir uygulama olarak geliştirilmektedir.
 öğrenci detay istatistik kartları, görev atama) 25.08 kaynağında ZATEN VAR çıktı — kayıp
 sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste doğrulanmış gerçek kayıptır.
 
-## Faz 1 — Küçük net işler (ısınma)
-- [ ] Öğrenci Bugün ekranı öneri hattı: konu haritasından "hata-analizi" dikkat kartı
-      ("Tamamlandı ✓ ama denemelerde N hata"), Hata Defteri'nden "review-due" kartı
-      ("Bu hatanın tekrar zamanı geldi."), konu haritasından "oncelik-onerisi" kartı
-- [ ] Mobil bölüm gezinme şeridi (ModuleIcons): ok düğmeleri ("Önceki bölüm" /
-      "Sonraki bölüm"), aktif bölüme kayan hap listesi, nokta göstergesi
-- [ ] StudentDetailPage: hedef düzenlemede "Öğrenci kaydı bulunamadı" hata yolu
+## Faz 1 — Küçük net işler (ısınma) ✅ (04.09.2026)
+- [x] Konu motoru v2 (topicProgressService): `konuRisk` + `konuOncelik` skorlayıcıları,
+      `deneme_analizleri` deposu entegrasyonu, topluOzet'e `topOncelik` + `tamamHatali`
+- [x] Öğrenci Bugün ekranı öneri hattı (services/bugunOnerileri + "Önerilen Odaklar" kartı):
+      "hata-analizi" dikkat kartı, "review-due" tekrar kartı, "oncelik-onerisi" kartı
+- [x] Mobil bölüm gezinme şeridi (`BolumSeridi`, ui/Gelisim): ok düğmeleri ("Önceki bölüm" /
+      "Sonraki bölüm"), aktif bölüme kayan hap listesi, nokta göstergesi; iki merkezde aktif
+- [x] StudentDetailPage: hedef artık kalıcı kaydediliyor + "Öğrenci kaydı bulunamadı" hata yolu
 
 ## Faz 2 — Kompakt Program Kurucu paneli
 - [ ] Ders seçici (— Ders — açılır listesi) + "Dersin Tümünü Ekle (N)" düğmesi

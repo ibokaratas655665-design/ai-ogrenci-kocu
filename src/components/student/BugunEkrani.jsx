@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-    Play, ArrowRight, MessageSquare, Flame, CalendarCheck, Sparkles, Target, ChevronRight, PencilLine, BookX, BarChart3, Clock, Timer, BookOpen,
+    Play, ArrowRight, MessageSquare, Flame, CalendarCheck, Sparkles, Target, ChevronRight, PencilLine, BookX, BarChart3, Clock, Timer, BookOpen, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import Card from '../ui/Card';
@@ -16,6 +16,8 @@ import { programUyumu, calismaOzeti, istikrar, motivasyon, gunlukSeri } from '..
 import { MotivasyonSeridi, UyumHalkasi, IsiHaritasi } from '../charts/Analitik';
 import { getSummary, getToday } from '../../services/studyLogService';
 import { bildir } from '../../services/uiGeriBildirim';
+import { bugunOnerileri } from '../../services/bugunOnerileri';
+import { anahtar } from '../../services/topicProgressService';
 
 /**
  * 🌅 BUGÜN EKRANI
@@ -152,6 +154,32 @@ export default function BugunEkrani({
 
     /** Sıradaki adım: işaretlenmemiş ilk etüt. */
     const sonraki = bugunEtutleri.find((e) => e.durum !== 'done');
+
+    /**
+     * "Şimdi neye bakmalısın?" önerileri — programın DIŞINDAN gelen en fazla
+     * üç kart: denemede dökülen "bitmiş" konu, tekrar vadesi gelen hata,
+     * konu motorunun en acil önerisi. Bugünkü programda zaten görünen konu
+     * önerilmez (aynı işi iki kez söylemek güven kaybettirir).
+     */
+    const oneriler = useMemo(() => {
+        try {
+            return bugunOnerileri(kullanici, {
+                programKonular: new Set(
+                    bugunEtutleri.map((e) => anahtar(e.konu)).filter(Boolean)
+                ),
+            });
+        } catch {
+            return { items: [], reviewToplam: 0, reviewFazla: 0 };
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kullanici?.id, bugunEtutleri]);
+
+    /** Öneri türü → görsel dil ve dokununca gidilecek ekran. */
+    const ONERI_GORUNUM = {
+        'dikkat': { ikon: AlertTriangle, ton: 'var(--warn)', zemin: 'var(--warn-soft)', etiket: 'Dikkat', hedef: 'deneme-analizi', eylem: 'İncele' },
+        'review-due': { ikon: BookX, ton: 'var(--danger)', zemin: 'var(--danger-soft)', etiket: 'Tekrar Zamanı', hedef: 'error-notebook', eylem: 'Tekrar Et' },
+        'oncelik-onerisi': { ikon: Sparkles, ton: 'var(--brand-metin)', zemin: 'var(--brand-soft)', etiket: 'Önerilen Konu', hedef: 'topics', eylem: 'Çalış' },
+    };
 
     /** Bugün ve geçmiş vadeli açık görevler. */
     const bugunSonu = useMemo(() => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; }, []);
@@ -547,6 +575,59 @@ export default function BugunEkrani({
                             </>
                         )}
                     </Card>
+
+                    {/* ─── ÖNERİLEN ODAKLAR ───
+                        Plan listesi "bugün ne yapacağım"ı, bu kart "plan
+                        dışında neye bakmalıyım"ı söyler. Veri yoksa kart
+                        hiç çıkmaz — boş öneri kutusu güven vermez. */}
+                    {oneriler.items.length > 0 && (
+                        <Card dolgu="yok">
+                            <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
+                                <h3 className="text-[13px] sm:text-sm font-black text-ink uppercase tracking-[0.06em] m-0">
+                                    Önerilen Odaklar
+                                </h3>
+                                {oneriler.reviewFazla > 0 && (
+                                    <span className="tip-mini text-ink-3 shrink-0">
+                                        +{oneriler.reviewFazla} hata daha tekrar bekliyor
+                                    </span>
+                                )}
+                            </div>
+                            <ul className="divide-y divide-line border-t border-line">
+                                {oneriler.items.map((o) => {
+                                    const g = ONERI_GORUNUM[o.type] || ONERI_GORUNUM['oncelik-onerisi'];
+                                    const Ikon = g.ikon;
+                                    return (
+                                        <li key={`${o.type}-${o.topic || o.reason}`}
+                                            className="px-5 sm:px-6 py-3 flex items-center gap-3">
+                                            <span aria-hidden="true"
+                                                className="shrink-0 w-11 h-11 rounded-dmd grid place-items-center"
+                                                style={{ background: g.zemin, color: g.ton }}>
+                                                <Ikon size={18} />
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="tip-mini font-black uppercase tracking-wider block"
+                                                    style={{ color: g.ton }}>
+                                                    {g.etiket}{o.subject ? ` · ${o.subject}` : ''}
+                                                </span>
+                                                {o.topic && (
+                                                    <span className="tip-small font-bold text-ink block truncate">{o.topic}</span>
+                                                )}
+                                                <span className="tip-mini text-ink-3 block">{o.reason}</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => onGit?.(g.hedef)}
+                                                className="shrink-0 rounded-full px-4 py-2 text-[12px] font-black border text-ink-2 hover:bg-surface-2 transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                                                style={{ borderColor: 'var(--line)' }}
+                                            >
+                                                {g.eylem}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </Card>
+                    )}
 
                     {/* ─── ALT ÜÇLÜ: koç notu · bekleyenler · hızlı işlemler ─── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

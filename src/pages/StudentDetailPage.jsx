@@ -112,6 +112,36 @@ const StudentDetailPage = () => {
 
     const [target, setTarget] = useState('Tıp Fakültesi');
     const [isEditingTarget, setIsEditingTarget] = useState(false);
+
+    /**
+     * Hedef satır içinde düzenlenir; odak çıkınca KALICI kaydedilir.
+     * Eskiden yalnız ekran durumunda değişiyordu — sayfa yenilenince
+     * koçun yazdığı hedef kayboluyordu.
+     */
+    const hedefKaydet = () => {
+        setIsEditingTarget(false);
+        const yeni = String(target || '').trim();
+        const eski = String(student?.target || '').trim();
+        if (!student || yeni === eski) return;
+        try {
+            const hepsi = listeOku('coach_students');
+            const i = hepsi.findIndex((s) => s && s.id != null && String(s.id) === String(student.id));
+            if (i === -1) {
+                // Kayıt bu arada silinmiş olabilir — ekrandaki değeri geri al
+                setTarget(eski || 'Hedef Belirlenmedi');
+                bildir(hataAnlat(new Error('Öğrenci kaydı bulunamadı'), 'kaydet'), 'hata');
+                return;
+            }
+            hepsi[i] = { ...hepsi[i], target: yeni };
+            localStorage.setItem('coach_students', JSON.stringify(hepsi));
+            window.dispatchEvent(new StorageEvent('storage', { key: 'coach_students' }));
+            window.firebaseSync?.syncKey?.('coach_students');
+            setStudent((s) => (s ? { ...s, target: yeni } : s));
+            bildir('Hedef kaydedildi.', 'basari');
+        } catch (e) {
+            bildir(hataAnlat(e, 'kaydet'), 'hata');
+        }
+    };
     const [notFound, setNotFound] = useState(false);
     const [programData, setProgramData] = useState({ schedule: {}, config: {} });
     const [prgWeek, setPrgWeek] = useState(1);
@@ -560,8 +590,8 @@ const StudentDetailPage = () => {
                                         type="text"
                                         value={target}
                                         onChange={(e) => setTarget(e.target.value)}
-                                        onBlur={() => setIsEditingTarget(false)}
-                                        onKeyDown={(e) => e.key === 'Enter' && setIsEditingTarget(false)}
+                                        onBlur={hedefKaydet}
+                                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
                                         autoFocus
                                         className="font-bold text-ink text-sm border-b border-brand outline-none bg-transparent w-32"
                                     />

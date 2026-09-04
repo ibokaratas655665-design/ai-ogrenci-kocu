@@ -298,6 +298,119 @@ export const konuDurumu = (tanim, { soru, program, elle, olcut = VARSAYILAN_OLCU
     };
 };
 
+// ══════════════════════════════════════════════════════════════
+//  Konu risk ve öncelik skorlayıcıları
+// ══════════════════════════════════════════════════════════════
+
+const ZORLUK_FAKTORU = { 1: 0.8, 2: 1, 3: 1.3 };
+const sayi = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const sinirla = (v, alt, ust) => Math.max(alt, Math.min(ust, v));
+
+/* Risk üç bileşenin ağırlıklı toplamıdır; toplam ağırlıkla normalize
+   edilir ki tek bileşen dolu olduğunda bile 0-100 bandı kullanılabilsin. */
+const RISK_AGIRLIK = { deneme: 0.35, isabet: 0.3, hedef: 0.2 };
+const RISK_AGIRLIK_TOPLAMI = RISK_AGIRLIK.deneme + RISK_AGIRLIK.isabet + RISK_AGIRLIK.hedef;
+
+export const riskSeviyesi = (skor) => (
+    skor >= 80 ? 'kritik' : skor >= 60 ? 'yuksek' : skor >= 30 ? 'orta' : 'dusuk'
+);
+
+/**
+ * Bir konunun risk skoru (0-100) ve gerekçeleri.
+ *
+ * Girdi, konuDurumu çıktısının üzerine deneme analizi sayaçları eklenmiş
+ * hâlidir: { ...konuDurumu, denemeHatasi, denemeKayitSayisi }.
+ *
+ * Bileşenler:
+ *  - deneme hataları (en ağır sinyal — gerçek sınav davranışı)
+ *  - konu isabeti (yeterli örneklem varsa: en az 10 cevaplanmış soru)
+ *  - hedefe uzaklık (hiç başlanmamış konu cezalandırılmaz; p=0)
+ * Zorluk çarpan olarak en sona uygulanır: zor konuda aynı belirti daha risklidir.
+ */
+export const konuRisk = (k = {}) => {
+    const hata = sayi(k.denemeHatasi);
+    const kayit = sayi(k.denemeKayitSayisi);
+    const dogru = sayi(k.dogru);
+    const yanlis = sayi(k.yanlis);
+    const cozulen = sayi(k.soru);
+    const hedef = sayi(k.hedef);
+    const basari = k.basari == null ? null : sayi(k.basari);
+    const zorluk = sayi(k.zorluk) || 2;
+    const nedenler = [];
+
+    let deneme = Math.min(1, hata / 8);
+    // Aynı hata birden çok denemede tekrarlanıyorsa tesadüf değildir
+    if (hata > 0 && kayit >= 2) deneme = Math.min(1, deneme * 1.25);
+    if (hata > 0) {
+        nedenler.push(kayit >= 2
+            ? `Denemelerde ${hata} konu hatası (${kayit} ayrı deneme)`
+            : `Denemelerde ${hata} konu hatası`);
+    }
+
+    const orneklemYeterli = dogru + yanlis >= 10 && basari != null;
+    const isabet = orneklemYeterli ? sinirla((100 - basari) / 100, 0, 1) : 0;
+    if (orneklemYeterli && basari < 60) nedenler.push(`Konu isabeti %${Math.round(basari)}`);
+
+    const hedefVar = hedef > 0 && Number.isFinite(hedef);
+    const tamamlanma = hedefVar ? Math.min(1, cozulen / hedef) : 1;
+    let uzaklik = hedefVar ? sinirla(1 - tamamlanma, 0, 1) : 0;
+    if (cozulen === 0) uzaklik = 0; // başlanmamış konu risk değil, plan işidir
+    if (hedefVar && uzaklik >= 0.5) {
+        nedenler.push(`Hedefin yalnız %${Math.round(tamamlanma * 100)}'i tamamlandı`);
+    }
+
+    const ham = RISK_AGIRLIK.deneme * deneme + RISK_AGIRLIK.isabet * isabet + RISK_AGIRLIK.hedef * uzaklik;
+    const faktor = ZORLUK_FAKTORU[zorluk] ?? 1;
+    const skor = sinirla(Math.round((ham / RISK_AGIRLIK_TOPLAMI) * faktor * 100), 0, 100);
+
+    if (zorluk >= 3 && skor > 0) nedenler.push('Konu zor seviyede');
+    if (k.durum === 'tekrar') nedenler.push('Yeterince çözülmüş ama isabet düşük (tekrar gerekli)');
+
+    return { skor, seviye: riskSeviyesi(skor), nedenler };
+};
+
+/** Son çalışmadan bu yana geçen sürenin öncelik katkısı. */
+const tazelikPuani = (sonTarih, bugun) => {
+    if (bugun == null || !Number.isFinite(bugun)) return { deger: 0.5, neden: null };
+    if (!sonTarih) return { deger: 0.7, neden: 'Bu konuda hiç soru çözülmemiş' };
+    const t = Date.parse(sonTarih);
+    if (!Number.isFinite(t)) return { deger: 0.5, neden: null };
+    const gun = Math.floor((bugun - t) / 86400000);
+    if (!Number.isFinite(gun) || gun < 0) return { deger: 0.5, neden: null };
+    if (gun <= 7) return { deger: 0.1, neden: null };
+    if (gun <= 21) return { deger: 0.5, neden: `${gun} gündür çalışılmadı` };
+    return { deger: 1, neden: `${gun} gündür çalışılmadı` };
+};
+
+/**
+ * "Şimdi hangi konuya çalışmalı?" skoru (0-100).
+ * Risk (%50) + programda sarkan iş (%30) + tazelik (%20).
+ * 'tekrar' durumundaki konu tabandan 55'e çekilir: tekrar bekleyen konu
+ * hiçbir zaman listenin dibine düşmez.
+ */
+export const konuOncelik = (k = {}, { konuRisk: hazirRisk = null, bugun = null } = {}) => {
+    const risk = hazirRisk || konuRisk(k);
+    const riskPay = sinirla(sayi(risk.skor) / 100, 0, 1);
+    const programda = sayi(k.programda);
+    const yapildi = sayi(k.programYapildi);
+    const sarkan = programda > 0 && yapildi < programda ? 1 : 0;
+    const tazelik = tazelikPuani(k.sonTarih, bugun);
+
+    let skor = sinirla(Math.round(100 * (0.5 * riskPay + 0.3 * sarkan + 0.2 * tazelik.deger)), 0, 100);
+    const tekrarMi = k.durum === 'tekrar';
+    if (tekrarMi && skor < 55) skor = 55;
+
+    const nedenler = [];
+    if (tekrarMi) nedenler.push({ agirlik: 1, metin: 'Tekrar gerekli — öncelikli gözden geçir' });
+    if (sarkan) nedenler.push({ agirlik: 0.3, metin: 'Programda tamamlanmamış çalışma var' });
+    if (tazelik.neden) nedenler.push({ agirlik: 0.2 * tazelik.deger, metin: tazelik.neden });
+    if (risk.seviye === 'yuksek' || risk.seviye === 'kritik') {
+        nedenler.push({ agirlik: 0.5 * riskPay, metin: `Risk seviyesi ${risk.seviye === 'kritik' ? 'kritik' : 'yüksek'}` });
+    }
+
+    return { skor, nedenler: nedenler.sort((a, b) => b.agirlik - a.agirlik).map((n) => n.metin) };
+};
+
 /**
  * Bir öğrencinin belirli sınav-bölüm için konu listesi ve durumları.
  *
@@ -500,6 +613,28 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
     const kayitlar = guvenliJson('study_log', []);
     const ilerlemeDepo = guvenliJson('program_progress', {}) || {};
     const elleDepo = oku();
+    const bugun = Date.now();
+
+    /* Deneme analizlerindeki konu hataları: öğrenci → topicId → sayaçlar.
+       Kayıtlar deneme analiz akışından gelir (konuHatalari: [{topicId, adet}]);
+       depo boşsa harita boş kalır, özet eskisi gibi çalışır. */
+    const denemeKayitlari = guvenliJson('deneme_analizleri', []);
+    const denemeHarita = new Map();
+    (Array.isArray(denemeKayitlari) ? denemeKayitlari : []).forEach((dk) => {
+        const sid = String(dk.studentId);
+        const tarih = dk.tarih || (dk.olusturma ? String(dk.olusturma).slice(0, 10) : null);
+        (Array.isArray(dk.konuHatalari) ? dk.konuHatalari : []).forEach((h) => {
+            if (!h || !h.topicId) return;
+            if (!denemeHarita.has(sid)) denemeHarita.set(sid, new Map());
+            const ic = denemeHarita.get(sid);
+            const adet = Number(h.adet) || 0;
+            const m = ic.get(h.topicId) || { adet: 0, kayit: 0, sonHataTarihi: null };
+            m.adet += adet;
+            m.kayit += 1;
+            if (adet > 0 && tarih && (!m.sonHataTarihi || tarih > m.sonHataTarihi)) m.sonHataTarihi = tarih;
+            ic.set(h.topicId, m);
+        });
+    });
 
     // Soru kayıtlarını tek geçişte öğrenci → konu haritasına indir
     const soruHarita = new Map();
@@ -548,24 +683,52 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
 
         const soru = soruHarita.get(sid) || new Map();
         const elle = elleDepo[sid] || {};
+        const denemeOgr = denemeHarita.get(sid);
 
         let toplamKonu = 0, tamam = 0, tekrar = 0, calisilan = 0;
+        const oncelikler = [];
+        const hataliTamamlar = [];
 
         bolumListesi.forEach((b) => {
             Object.entries(b.dersler).forEach(([ders, konular]) => {
                 konular.forEach((t) => {
                     const ad = typeof t === 'string' ? t : t.ad;
                     const a = anahtar(ad);
+                    const kimlik = konuKimligi(sinav, b.id, ders, ad);
                     const d = konuDurumu(t, {
                         soru: soru.get(a),
                         program: prgHarita.get(a),
-                        elle: isaretBul(elle, konuKimligi(sinav, b.id, ders, ad), a),
+                        elle: isaretBul(elle, kimlik, a),
                         olcut,
                     });
                     toplamKonu += 1;
                     if (d.tamam) tamam += 1;
                     else if (d.durum === 'tekrar') tekrar += 1;
                     else if (d.durum === 'calisiliyor') calisilan += 1;
+
+                    /* Deneme hatalarıyla zenginleştirilmiş kayıt üzerinden
+                       risk + öncelik: "şimdi neye çalışmalı?" ve "bitti ama
+                       denemede dökülüyor" listelerinin hammaddesi. */
+                    const dh = denemeOgr?.get(kimlik);
+                    const genis = {
+                        ...d,
+                        denemeHatasi: dh?.adet || 0,
+                        denemeKayitSayisi: dh?.kayit || 0,
+                    };
+                    const risk = konuRisk(genis);
+                    const oncelik = konuOncelik(genis, { konuRisk: risk, bugun });
+                    oncelikler.push({
+                        ders: dersAdi(ders), konu: d.konu,
+                        oncelik: oncelik.skor, riskSeviye: risk.seviye,
+                        neden: oncelik.nedenler[0] || risk.nedenler[0] || null,
+                    });
+                    if (d.tamam && genis.denemeHatasi > 0) {
+                        hataliTamamlar.push({
+                            ders: dersAdi(ders), konu: d.konu,
+                            denemeHatasi: genis.denemeHatasi,
+                            sonHataTarihi: dh?.sonHataTarihi || null,
+                        });
+                    }
                 });
             });
         });
@@ -573,6 +736,9 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
         cikti.set(sid, {
             sinav, toplamKonu, tamam, tekrar, calisilan,
             oran: toplamKonu ? Math.round((tamam / toplamKonu) * 100) : 0,
+            // En acil 3 konu ve "tamamlandı ✓ ama denemelerde hata" ilk 3'ü
+            topOncelik: oncelikler.sort((x, y) => y.oncelik - x.oncelik).slice(0, 3),
+            tamamHatali: hataliTamamlar.sort((x, y) => y.denemeHatasi - x.denemeHatasi).slice(0, 3),
         });
     });
 

@@ -28,7 +28,7 @@ import {
 , CalendarCheck } from 'lucide-react';
 import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
-import { GelisimKarti, IstatistikCipi, SegmentliSecim } from '../components/ui/Gelisim';
+import { GelisimKarti, IstatistikCipi, SegmentliSecim, BolumSeridi } from '../components/ui/Gelisim';
 import { OlcumKarti, DersCubuklari, UyumHalkasi } from '../components/charts/Analitik';
 import Card from '../components/ui/Card';
 import KartBasligi from '../components/ui/KartBasligi';
@@ -1388,14 +1388,27 @@ const StudentDashboard = () => {
                                 <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Çalışmalarım</h1>
                                 <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GÜNLÜK KAYIT · HATA DEFTERİ · DENEME ANALİZİ</p>
                             </div>
-                            <SegmentliSecim
-                                etiket="Çalışma aracı seç"
-                                deger={calisSegment}
+                            {/* Masaüstünde hap seçici; telefonda oklu şerit —
+                                dörtlü hap dar ekranda taşıyordu (bkz. BolumSeridi) */}
+                            <div className="hidden lg:block">
+                                <SegmentliSecim
+                                    etiket="Çalışma aracı seç"
+                                    deger={calisSegment}
+                                    onSec={setCalisSegment}
+                                    ogeler={[
+                                        { id: 'gunluk', etiket: 'Günlük Kayıt' },
+                                        { id: 'hata', etiket: 'Hata Defteri' },
+                                        { id: 'deneme', etiket: 'Deneme Analizi' },
+                                    ]}
+                                />
+                            </div>
+                            <BolumSeridi
+                                aktif={calisSegment}
                                 onSec={setCalisSegment}
-                                ogeler={[
-                                    { id: 'gunluk', etiket: 'Günlük Kayıt' },
-                                    { id: 'hata', etiket: 'Hata Defteri' },
-                                    { id: 'deneme', etiket: 'Deneme Analizi' },
+                                bolumler={[
+                                    { id: 'gunluk', baslik: 'Günlük Kayıt' },
+                                    { id: 'hata', baslik: 'Hata Defteri' },
+                                    { id: 'deneme', baslik: 'Deneme Analizi' },
                                 ]}
                             />
                         </div>
@@ -1485,15 +1498,27 @@ const StudentDashboard = () => {
                                 <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Gelişimim</h1>
                                 <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİMİN GERÇEK VERİLERLE TAKİPTE</p>
                             </div>
-                            <SegmentliSecim
-                                etiket="Gelişim görünümü seç"
-                                deger={gelisimSegment}
+                            <div className="hidden lg:block">
+                                <SegmentliSecim
+                                    etiket="Gelişim görünümü seç"
+                                    deger={gelisimSegment}
+                                    onSec={setGelisimSegment}
+                                    ogeler={[
+                                        { id: 'genel', etiket: 'Genel' },
+                                        { id: 'netlerim', etiket: 'Netlerim' },
+                                        { id: 'konularim', etiket: 'Konularım' },
+                                        { id: 'rozetlerim', etiket: 'Rozetlerim' },
+                                    ]}
+                                />
+                            </div>
+                            <BolumSeridi
+                                aktif={gelisimSegment}
                                 onSec={setGelisimSegment}
-                                ogeler={[
-                                    { id: 'genel', etiket: 'Genel' },
-                                    { id: 'netlerim', etiket: 'Netlerim' },
-                                    { id: 'konularim', etiket: 'Konularım' },
-                                    { id: 'rozetlerim', etiket: 'Rozetlerim' },
+                                bolumler={[
+                                    { id: 'genel', baslik: 'Genel' },
+                                    { id: 'netlerim', baslik: 'Netlerim' },
+                                    { id: 'konularim', baslik: 'Konularım' },
+                                    { id: 'rozetlerim', baslik: 'Rozetlerim' },
                                 ]}
                             />
                         </div>
