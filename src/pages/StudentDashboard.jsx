@@ -71,6 +71,8 @@ import GoalSettingModule from '../components/student/GoalSettingModule';
    importları kaldırıldı (24.08.2026): yalnızca erişilemeyen ölü
    sekmelerde kullanılıyorlardı. Dosyalar duruyor. */
 import ErrorNotebook from '../components/student/ErrorNotebook';
+import DenemeCoz from '../components/student/DenemeCoz';
+import denemeMotoru from '../services/denemeMotoru';
 import DailyStudyLog from '../components/student/DailyStudyLog';
 // 🆕 13 Madde İmplementasyonu
 import MotivationNotifications from '../components/student/MotivationNotifications';
@@ -205,7 +207,7 @@ const StudentDashboard = () => {
     const GECERLI_SEKMELER = [
         'home', 'program', 'calismalarim', 'gelisimim', 'daha-fazla',
         'tasks', 'pomodoro', 'assessment',
-        'messages', 'appointments', 'tests', 'portfolio',
+        'messages', 'appointments', 'tests', 'deneme-coz', 'portfolio',
     ];
     const urlSekme = (() => {
         try {
@@ -1046,6 +1048,9 @@ const StudentDashboard = () => {
                 { id: 'assessment', icon: MODULE_ICONS.assessment, label: 'Öz Değerlendirme' },
                 { id: 'appointments', icon: MODULE_ICONS.appointments, label: 'Randevu' },
                 { id: 'tests', icon: MODULE_ICONS.tests, label: 'Envanter', badge: assignedTests.filter(t => t.status === 'pending').length },
+                /* 04.09: uygulama içi deneme motoru — koçun atadığı denemeler
+                   uygulamada çözülür; rozet çözülmemiş atama sayısıdır. */
+                { id: 'deneme-coz', icon: MODULE_ICONS.tests, label: 'Deneme Çöz', badge: denemeMotoru.ogrenciyeAtananlar(user?.id).filter((a) => !a.cozuldu).length },
                 { id: 'portfolio', icon: MODULE_ICONS.portfolio, label: 'Portfolyo' },
             ],
         },
@@ -1860,6 +1865,13 @@ const StudentDashboard = () => {
                 )}
 
                 {/* ═══════════════ TESTLERİM + REHBERLİK ═══════════════ */}
+                {/* 📝 Uygulama içi deneme çözümü (04.09 yeniden inşa) */}
+                {activeTab === 'deneme-coz' && (
+                    <div className="icerik-gecis">
+                        <DenemeCoz user={user} setToast={(m, t) => bildir(m, t === 'error' ? 'hata' : 'basari')} />
+                    </div>
+                )}
+
                 {activeTab === 'tests' && (
                     <div className="icerik-gecis space-y-8">
                         <div>

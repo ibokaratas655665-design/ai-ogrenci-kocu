@@ -46,14 +46,23 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       ortalaması çizgisi kaldırıldı; radar "Ders Net Profili" oldu (ders bazlı gerçek
       netler, sıfırlar süzülür), puan grafiği yalnız gerçek seriyi çizer
 
-## Faz 4 — AI deneme okuma akışı (en büyük parça)
-- [ ] Koç tarafı: "Soru Kitapçığı (PDF)" + "Cevap Anahtarı PDF Yükle" (boyut göstergesi)
-- [ ] "AI ile Oku" + "Anahtarı Ayrıştır" (Gemini; anahtar biçimi: şıkların BİTİŞİK dizisi,
-      A–E doğrulama) + "Sorulardan Konuları AI ile Çıkar"
-- [ ] Ayarlarda Gemini API anahtarı alanı ("✅ Gemini anahtarı kaydedildi")
-- [ ] Öğrenci tarafı: kitapçık görüntüleyici ("Kitapçık yükleniyor…", hata durumunda
-      '"Tam ekran" ile açmayı deneyin'), "etüt · dokun & başla", "Denemeyi Kaydet",
-      Hata Defteri'nde "Tekrar Çöz"
+## Faz 4 — Uygulama içi deneme motoru ✅ (04.09.2026)
+- [x] services/denemeMotoru: kaynak/atama/oturum yaşam döngüsü, otomatik puanlama
+      (ders + konu kırılımı), çözüm davranışı istatistiği (soru başına süre, en uzun
+      soru, cevap değişimi, ilk ders), sonuçların deneme_analizleri merkezine yazımı,
+      PDF saklama (data-URI ↔ Firebase Storage) + bağlantı çözücü, koç dönütü deposu
+- [x] services/geminiOkuma: cevap anahtarı okuma (JSON şemalı), kitapçıktan konu
+      çıkarma, kitapçık+anahtar eşleştirme; anahtar `gemini_api_key` (Koçluk
+      Asistanı'yla ortak), model gemini-3.6-flash
+- [x] Koç: "Sınav Oluştur" ekranı (nav: sinav-olustur) — form + AI okuma kutusu
+      (inline Gemini anahtar kurulumu, Dosya Seç / Fotoğraf Çek) + "Anahtarı Ayrıştır"
+      (Ders: ABCDE / Ders | Konu: ABCDE) + düzenlenebilir önizleme + kaynak listesi +
+      atama modalı (kontrollü açılış tarihi) + geri alma
+- [x] Öğrenci: "Deneme Çöz" sekmesi (rozet: çözülmemiş atama sayısı) — atanan
+      denemeler + koç dönütü kartı; çözüm ekranı (pdfjs kitapçık görüntüleyici /
+      iframe, optik form, karalama tuvali, Önceki/Sonraki/Bitir & Gönder);
+      sonuç ekranı (net, ders kırılımı, çözüm istatistiği, "Cevap Anahtarını Gör",
+      "Tekrar Çöz")
 
 ## Faz 5 — İçerik ve altyapı
 - [ ] AGS ve KPSS sınav türleri + içerik setleri (`AGS|EB|rehberlik|…`, `KPSS|EB|…`
