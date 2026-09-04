@@ -1281,7 +1281,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                             : distributionQueue.length
                                                 ? 'bg-brand-soft border-brand-line text-brand hover:bg-brand-soft'
                                                 : 'bg-surface border-line-2 text-ink-2 hover:bg-surface-3'}`}
-                                        title="Seçilen konular (dağıtım listesi) — ağırlıkları ayarla ve dağıt"
+                                        title="Seçilen konular (dağıtım listesi) — ağırlıkları ayarla"
                                     >
                                         <Layers size={13} /> Liste ({distributionQueue.length})
                                         <ChevronDown size={12} className={`transition ${acikPanel === 'liste' ? 'rotate-180' : ''}`} />

@@ -49,6 +49,7 @@ import TaskTemplates from '../components/coach/TaskTemplates';
 import ClassRanking from '../components/coach/ClassRanking';
 // 🚀 12 Madde Geliştirme
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
+import SenkronDurumu from '../components/ui/SenkronDurumu';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import { notifyMany } from '../services/notificationService';
@@ -3243,6 +3244,9 @@ const CoachDashboard = () => {
                         birkaç kez kullanılan bir işlem — üst şeritte, çıkışın
                         yanında durmamalı. */}
                     <div className="flex items-center gap-2 relative z-10">
+                        {/* Bulut senkron durumu — "kaydettim mi?" görünür cevabı */}
+                        <SenkronDurumu />
+
                         {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
                             düşsün, panel ayakta kalsın */}
                         <BolumHataSiniri bolumAdi="Bildirimler">

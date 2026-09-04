@@ -89,6 +89,7 @@ import StudentPortfolio from '../components/student/StudentPortfolio';
 import ExamComparisonMatrix from '../components/student/ExamComparisonMatrix';
 import { OfflineBanner, useOfflineStatus } from '../services/offlineSync';
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
+import SenkronDurumu from '../components/ui/SenkronDurumu';
 import VividKpi from '../components/shared/VividKpi';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
@@ -1164,6 +1165,9 @@ const StudentDashboard = () => {
                             Tema, ayarlar ve çıkış kullanıcı menüsüne indi —
                             dördü yan yana dururken dar ekranda çıkış düğmesi
                             dışarı taşıyordu. */}
+                        {/* Bulut senkron durumu — "kaydettim mi?" görünür cevabı */}
+                        <SenkronDurumu />
+
                         {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
                             düşsün, panel ayakta kalsın */}
                         <BolumHataSiniri bolumAdi="Bildirimler">

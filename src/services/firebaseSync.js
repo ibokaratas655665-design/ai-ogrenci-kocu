@@ -257,6 +257,9 @@ class FirebaseSync {
         this.autoSyncInterval = null;
         this.debounceTimer = null;
         this.isSyncing = false;
+        /* 04.09: senkron durumu + başarısız yazımların yeniden deneme kuyruğu */
+        this._durum = 'bosta';
+        this._retryKuyrugu = new Map();
         this.realtimeUnsubscribe = null;
         this.lastSyncHashes = new Map(); // key -> hash
         // Demo sürümü açıkken buluta HİÇBİR yazma yapılmaz; aksi hâlde
@@ -570,28 +573,88 @@ class FirebaseSync {
             this.lastSyncHashes.set(key, currentHash);
             const optimisticTime = String(Date.now() + 5000);
             localStorage.setItem(`_fbtime_${key}`, optimisticTime);
+            this._retryCikar(key);
             return true;
         } catch (e) {
             console.error(`Firebase write error for ${key}:`, e.message);
-            // Handle resource-exhausted by backing off if needed (SDK does some itself)
+            /* 04.09 (canlı eşleme): başarısız yazım SESSİZCE KAYBOLMAZ —
+               anahtar yeniden deneme kuyruğuna girer (üstel geri çekilme),
+               topbar rozeti "Bekliyor (N)" gösterir. */
+            this._retryEkle(key);
             return false;
         }
+    }
+
+    /* ── Senkron durumu + yeniden deneme kuyruğu (04.09 canlı eşleme) ──
+       Durumlar: bosta · kaydediliyor · kaydedildi · bekliyor · hata.
+       'senkron-durum' olayı {durum, bekleyen} taşır; SenkronDurumu
+       rozeti bunu dinler. */
+    _durumBildir(durum) {
+        this._durum = durum;
+        if (typeof window !== 'undefined') {
+            try {
+                window.dispatchEvent(new CustomEvent('senkron-durum', {
+                    detail: { durum, bekleyen: this._retryKuyrugu.size },
+                }));
+            } catch { /* olay yayılamazsa rozet bir sonraki değişimde yakalar */ }
+        }
+    }
+
+    senkronDurumu() {
+        return { durum: this._durum, bekleyen: this._retryKuyrugu?.size || 0 };
+    }
+
+    _retryEkle(key) {
+        if (!key) return;
+        const kayit = this._retryKuyrugu.get(key) || { deneme: 0, zaman: null };
+        if (kayit.zaman) { clearTimeout(kayit.zaman); kayit.zaman = null; }
+        kayit.deneme += 1;
+        if (kayit.deneme > 5) {
+            // 5 deneme tükendi — kuyrukta kalır ama artık zamanlayıcı kurulmaz;
+            // kullanıcıya kalıcı "Bağlantı sorunu" gösterilir.
+            this._retryKuyrugu.set(key, kayit);
+            this._durumBildir('hata');
+            return;
+        }
+        const gecikme = Math.min(60000, 3000 * Math.pow(2, kayit.deneme - 1));
+        kayit.zaman = setTimeout(() => {
+            try { this.writeKeyToFirebase(key, true); } catch { /* sıradaki denemede */ }
+        }, gecikme);
+        this._retryKuyrugu.set(key, kayit);
+        this._durumBildir('bekliyor');
+    }
+
+    _retryCikar(key) {
+        const kayit = this._retryKuyrugu.get(key);
+        if (!kayit) return;
+        if (kayit.zaman) clearTimeout(kayit.zaman);
+        this._retryKuyrugu.delete(key);
+        this._durumBildir(this._retryKuyrugu.size ? 'bekliyor' : 'kaydedildi');
+    }
+
+    _retryDurdur() {
+        for (const kayit of this._retryKuyrugu.values()) {
+            if (kayit.zaman) clearTimeout(kayit.zaman);
+        }
+        this._retryKuyrugu.clear();
     }
 
     async saveToFirebase() {
         if (this.paused) return;
         if (!this.userId || this.isSyncing) return;
         this.isSyncing = true;
+        this._durumBildir('kaydediliyor');
         try {
             const dynamicKeys = getDynamicKeys();
             const allKeys = [...new Set([...SYNC_KEYS, ...dynamicKeys])];
-            
+
             // Use for...of for sequential writes to avoid SDK write-stream exhaustion
             for (const key of allKeys) {
                 await this.writeKeyToFirebase(key);
             }
         } catch (e) { }
         this.isSyncing = false;
+        this._durumBildir(this._retryKuyrugu.size ? 'bekliyor' : 'kaydedildi');
     }
 
     async deleteKey(key) {
@@ -873,12 +936,14 @@ class FirebaseSync {
     destroy() {
         if (this.autoSyncInterval) clearInterval(this.autoSyncInterval);
         if (this.realtimeUnsubscribe) this.realtimeUnsubscribe();
+        this._retryDurdur();
         this.userId = null;
         this.havuz = null;
         // Çıkışta sahiplik kimliği de temizlenmeli; kalırsa bir sonraki
         // kullanıcı önceki kullanıcının havuzuna yazabilir.
         this.sahipUid = null;
         this.lastSyncHashes.clear();
+        this._durumBildir('bosta');
         this.isInitialized = false;
     }
 }
