@@ -27,8 +27,17 @@
  * hiçbir neden otomatik tahmin edilmez.
  */
 import { listeOku, yaz } from './veriDeposu';
+import { alanListesi } from '../data/examTopics';
+import { kayitKimlikCoz } from './konuKatalogu';
 
 const ANAHTAR = 'deneme_analizleri';
+
+/* AYT kaydında alan (SAY/EA/SOZ) → katalogdaki AYT_ bölümü. */
+const aytBolumu = (alan) => {
+    if (!alan) return null;
+    const kayit = alanListesi('YKS').find((a) => a.id === alan || a.kisa === alan);
+    return (kayit?.bolumler || []).find((b) => String(b).startsWith('AYT_')) || null;
+};
 
 /** TYT/AYT net kuralı: 4 yanlış 1 doğruyu götürür. */
 export const netHesapla = (dogru, yanlis) =>
@@ -78,13 +87,24 @@ export const kaydet = ({ studentId, studentName, ad, tur, alan = null, tarih, su
         dersler: dersOzet,
         konuHatalari: (konuHatalari || [])
             .filter((h) => h.ders && h.konu && (Number(h.adet) || 0) > 0)
-            .map((h) => ({
-                ders: String(h.ders).trim(),
-                konu: String(h.konu).trim(),
-                adet: Number(h.adet) || 1,
-                nedenler: Array.isArray(h.nedenler) ? h.nedenler.filter(Boolean) : [],
-                not: String(h.not || '').trim(),
-            })),
+            .map((h) => {
+                const temiz = {
+                    ders: String(h.ders).trim(),
+                    konu: String(h.konu).trim(),
+                    adet: Number(h.adet) || 1,
+                    nedenler: Array.isArray(h.nedenler) ? h.nedenler.filter(Boolean) : [],
+                    not: String(h.not || '').trim(),
+                };
+                /* 04.09: hata, kayıt ANINDA kanonik konu kimliğine bağlanır —
+                   yalnız KESİN eşleşme (MATCH/ALIAS) yazılır; tahmin yok. */
+                const bolum = tur === 'AYT' ? aytBolumu(alan) : tur === 'TYT' ? 'TYT' : null;
+                const cozum = kayitKimlikCoz(bolum
+                    ? { kaynakDepo: 'deneme_konuHatalari', examId: 'YKS', bolumId: bolum, subject: temiz.ders, ad: temiz.konu }
+                    : { kaynakDepo: 'deneme_konuHatalari', exam: tur || 'TYT', subject: temiz.ders, ad: temiz.konu });
+                return (cozum.eslemeTip === 'MATCH' || cozum.eslemeTip === 'ALIAS') && cozum.oneriTopicId
+                    ? { ...temiz, topicId: cozum.oneriTopicId }
+                    : temiz;
+            }),
         degerlendirme: degerlendirme || null,
         olusturma: new Date().toISOString(),
     };

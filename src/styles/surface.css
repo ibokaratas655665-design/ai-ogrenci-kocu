@@ -850,6 +850,73 @@ table tbody tr { transition: background-color var(--sure-hizli) ease; }
 table tbody tr:hover { background: var(--surface-3); }
 
 /* ══════════════════════════════════════════════════════════════════════
+   13b. 3B KUTU DİLİ — 04.09 yeniden inşa (canlı eşleme)
+
+   Kart ve liste satırları hafif degrade zemin + iç ışık + katmanlı
+   gölgeyle "kabarık" durur; hover varyantı 1px kalkar.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.kutu-3b {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 4%), var(--surface));
+    box-shadow:
+        inset 0 1px 0 var(--lit-soft),
+        0 1px 2px -1px rgba(var(--cast), .25),
+        0 6px 14px -8px rgba(var(--cast), .4);
+}
+
+.kutu-3b-hover {
+    transition: transform var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease;
+}
+
+.kutu-3b-hover:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 var(--lit),
+        0 3px 8px -2px rgba(var(--cast), .3),
+        0 12px 24px -10px rgba(var(--cast), .5);
+}
+
+/* 3B liste — satırlar ayrık, kabarık kartlar hâlinde */
+.liste-3b {
+    border-collapse: separate;
+    border-spacing: 0 7px;
+}
+
+.liste-3b thead th {
+    background: transparent;
+    box-shadow: none;
+    border: 0;
+}
+
+.liste-3b tbody tr {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 3%), var(--surface));
+    box-shadow:
+        inset 0 1px 0 var(--lit-soft),
+        0 1px 2px -1px rgba(var(--cast), .22),
+        0 6px 14px -9px rgba(var(--cast), .4);
+    transition: transform var(--sure-hizli) ease, box-shadow var(--sure-hizli) ease;
+}
+
+.liste-3b tbody tr:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 5%), var(--surface));
+    box-shadow:
+        inset 0 1px 0 var(--lit),
+        0 3px 8px -2px rgba(var(--cast), .3),
+        0 12px 24px -10px rgba(var(--cast), .5);
+}
+
+.liste-3b tbody td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.liste-3b tbody td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    14. TEK EKRAN (KOKPİT) GÖVDESİ — 04.09 yeniden inşa
 
    Masaüstünde panel "kokpit" gibi çalışır: sayfa kaydırılmaz, yalnız

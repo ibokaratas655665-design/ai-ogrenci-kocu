@@ -111,14 +111,17 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       "Konu Dagilimi (Sinif Geneli)"
 - [ ] PDF'e kişi seçiliyken "Konu Gelisimi - <öğrenci>" + "Koc Donutu" bölümü
       (kapsam/dönüt durumu KonuAnaliziPaneli içinde — durum yukarı taşınmalı, küçük iş)
-### 6e — Ayarlar taşıma + akademik takvim (SIRADA)
-- [ ] OBP Yönetimi (OBPManager) + Müfredat & Kaynaklar (CurriculumManager)
-      Denemeler'den Ayarlar'a ("Deneme Kaynakları (OBP & Müfredat)" glass-card,
-      "artık Denemeler sekmesinde değil burada yönetilir" metniyle) — canlı ~252k
-- [ ] "Sınav Takvimi" kartı: her sınav+yıl için gerçek tarih girişi (countdown /
-      Öğrenci 360 / kalan süre bu merkezden okur; girilmeyen yıl "tanımlanmadı")
-- [ ] "Takvim (Tatiller & Eğitim-Öğretim)" kartı: dinî bayram + öğretim yılı
-      tarihleri düzenleyici (app_settings.takvim; ulusal bayramlar sabit)
+### 6e — Ayarlar taşıma + akademik takvim ✅ (04.09.2026, 86c9352)
+- [x] services/akademikTakvim: ulusal bayramlar, dinî/öğretim varsayılanları
+      (tahmini bayraklı), gunBilgisi, merkezî sınav tarihleri (sinavTarihi —
+      tanımlanmayan yıl için tarih UYDURMAZ)
+- [x] OBP Yönetimi + Müfredat & Kaynaklar Ayarlar'a taşındı ("Deneme Kaynakları
+      (OBP & Müfredat)" kartı); Denemeler'de tür listesinden çıkarıldı
+- [x] "Sınav Takvimi" kartı: sınav+yıl → gerçek tarih (ekle/güncelle/sil)
+- [x] "Takvim (Tatiller & Eğitim-Öğretim)" kartı: dinî bayram + öğretim yılı
+      düzenleyici (yıl/dönem ekle, varsayılana dön)
+- [ ] gunBilgisi/sinavTarihi TÜKETİCİLERİ (Genel Bakış takvimi, countdown,
+      Öğrenci 360 kalan-süre) sonraki Genel Bakış diliminde bağlanacak
 
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"

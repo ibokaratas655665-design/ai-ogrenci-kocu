@@ -29,6 +29,7 @@ import {
     dersAdi as dersAdiKatalog, hedefSoruHesapla, ZORLUK_ADI,
     konuKimligi, bolumBul,
 } from '../data/examTopics';
+import { eskiKimliktenTopicId } from './konuKatalogu';
 
 const KEY = 'topic_progress';
 
@@ -708,8 +709,11 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
 
                     /* Deneme hatalarıyla zenginleştirilmiş kayıt üzerinden
                        risk + öncelik: "şimdi neye çalışmalı?" ve "bitti ama
-                       denemede dökülüyor" listelerinin hammaddesi. */
-                    const dh = denemeOgr?.get(kimlik);
+                       denemede dökülüyor" listelerinin hammaddesi.
+                       04.09: deneme hataları KATALOG topicId'siyle saklanır;
+                       eski kimlik köprüden geçirilmeden bulunamaz. */
+                    const katalogId = eskiKimliktenTopicId(kimlik);
+                    const dh = katalogId ? denemeOgr?.get(katalogId) : undefined;
                     const genis = {
                         ...d,
                         denemeHatasi: dh?.adet || 0,
