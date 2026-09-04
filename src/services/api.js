@@ -1,4 +1,6 @@
 import { yaz } from './veriDeposu';
+import mesajKanali from './mesajKanali';
+import { notify } from './notificationService';
 // Mock Service Layer - Gelecekte gerçek API'ye dönüşecek yapı
 // Tüm veri işlemleri buradan yönetilir. Şu an localStorage kullanıyor.
 
@@ -140,144 +142,72 @@ const api = {
     },
 
     messages: {
-        // Öğrencinin mesajlarını tüm olası key'lerle ara
-        async getMessages(studentId, studentInfo) {
-            await delay(50);
-            const allMessages = safeParse('student_messages', {});
-
-            /* ⚠️ ERKEN DÖNÜŞ KALDIRILDI: kimlik anahtarı doluysa okul
-               numarası anahtarındaki mesajlar HİÇ birleşmiyordu — eski
-               kayıtları schoolNumber altında duran öğrencinin geçmişi
-               koç ekranında kayboluyordu. Her zaman tüm olası anahtarlar
-               birleştirilir (aşağıda tekilleştirme zaten var). */
-
-            // students_db'den öğrenci bilgilerini al ve tüm olası key'leri dene
-            const coachStudents = safeParse('coach_students');
-            const student = studentInfo ||
-                coachStudents.find(s =>
-                    String(s.id) === String(studentId) ||
-                    String(s.schoolNumber) === String(studentId)
-                );
-
-            const keysToTry = new Set([String(studentId)]);
-            if (student) {
-                if (student.id) keysToTry.add(String(student.id));
-                if (student.schoolNumber) keysToTry.add(String(student.schoolNumber));
-            }
-
-            // Tüm key'leri dene, mesajları birleştir
-            let combined = [];
-            keysToTry.forEach(k => {
-                if (allMessages[k]) combined = [...combined, ...allMessages[k]];
-            });
-
-            // Deduplication
-            const seen = new Set();
-            combined = combined.filter(m => {
-                const key = m.id || m.timestamp;
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
-
-            return combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        },
-
-        async sendMessage(studentId, message, studentSchoolNumber) {
-            await delay(50);
-            const allMessages = safeParse('student_messages', {});
-
-            const newMessage = {
-                id: Date.now(),
-                ...message,
-                timestamp: new Date().toISOString()
-            };
-
-            // Hem id hem schoolNumber'a yaz (her ikisi de geçerli key)
-            const keysToWrite = [String(studentId)];
-            if (studentSchoolNumber && String(studentSchoolNumber) !== String(studentId)) {
-                keysToWrite.push(String(studentSchoolNumber));
-            }
-            // coach_students'tan schoolNumber'ı bul
+        /* 04.09 (canlı eşleme): mesajlar yön-ayrımlı mesajKanali'na taşındı
+           (msg_c2s_/msg_s2c_ + okundu haritaları). Eski student_messages
+           kayıtları konusmaOku içinde sohbete katılmaya devam eder.
+           NOT: eski "AI otomatik yanıt" (sahte Koç cevabı) bilinçli olarak
+           KALDIRILDI — koç adına uydurma mesaj üretilmez. */
+        _sid(studentId, studentInfo) {
             try {
                 const coachStudents = safeParse('coach_students');
-                const found = coachStudents.find(s =>
+                const student = studentInfo || coachStudents.find(s =>
                     String(s.id) === String(studentId) ||
-                    String(s.schoolNumber) === String(studentId)
-                );
-                if (found?.schoolNumber) keysToWrite.push(String(found.schoolNumber));
-                if (found?.id) keysToWrite.push(String(found.id));
-            } catch { }
-
-            const uniqueKeys = [...new Set(keysToWrite)];
-            uniqueKeys.forEach(k => {
-                if (!allMessages[k]) allMessages[k] = [];
-                // Aynı mesajı çift yazma
-                if (!allMessages[k].find(m => m.id === newMessage.id)) {
-                    allMessages[k].push(newMessage);
-                }
-            });
-
-            yaz('student_messages', allMessages);
-
-            // StorageEvent tetikle
-            try {
-                window.dispatchEvent(new StorageEvent('storage', {
-                    key: 'student_messages',
-                    newValue: JSON.stringify(allMessages),
-                    storageArea: localStorage,
-                }));
-            } catch (_) { }
-
-            // Auto-reply (AI)
-            if (message.sender === 'student') {
-                const lowerText = message.text.toLowerCase();
-                let replyText = null;
-                if (lowerText.includes('merhaba') || lowerText.includes('selam')) {
-                    replyText = "Merhaba! Bugün nasılsın? Çalışmalarında yardımcı olabileceğim bir şey var mı? 😊";
-                } else if (lowerText.includes('motivasyon') || lowerText.includes('sıkıldım')) {
-                    replyText = "Her adım önemli! Biraz mola ver ve tekrar odaklan. Sana güveniyorum 💪";
-                } else if (lowerText.includes('net') || lowerText.includes('sınav') || lowerText.includes('deneme')) {
-                    replyText = "En son deneme sonuçlarını görmek için 'Denemelerim' sekmesine bakabilirsin. Hangi derste zorlanıyorsun?";
-                }
-                if (replyText) {
-                    setTimeout(() => {
-                        const aiMsg = { id: Date.now() + 1, sender: 'coach', text: replyText, senderName: 'Koç', timestamp: new Date().toISOString() };
-                        const cur = safeParse('student_messages', {});
-                        uniqueKeys.forEach(k => { if (!cur[k]) cur[k] = []; cur[k].push(aiMsg); });
-                        yaz('student_messages', cur);
-                    }, 1500);
-                }
+                    String(s.schoolNumber) === String(studentId));
+                return String(student?.id || studentId);
+            } catch {
+                return String(studentId);
             }
-            return newMessage;
         },
 
-        /* Koç bir öğrencinin sohbetini açtığında öğrenciden gelen
-           mesajları "okundu" işaretler — Genel Bakış'taki "Okunmamış
-           Mesaj" sayacı buna bakıyor (aksi hâlde hep artan bir sayı
-           olurdu). sendMessage ile aynı anahtar çözümlemesini kullanır. */
-        async markAsReadByCoach(studentId, studentInfo) {
-            const allMessages = safeParse('student_messages', {});
-            const coachStudents = safeParse('coach_students');
-            const student = studentInfo ||
-                coachStudents.find(s =>
-                    String(s.id) === String(studentId) ||
-                    String(s.schoolNumber) === String(studentId)
-                );
-            const keys = new Set([String(studentId)]);
-            if (student?.id) keys.add(String(student.id));
-            if (student?.schoolNumber) keys.add(String(student.schoolNumber));
+        async getMessages(studentId, studentInfo) {
+            await delay(50);
+            return mesajKanali.konusmaOku(this._sid(studentId, studentInfo));
+        },
 
-            let changed = false;
-            keys.forEach(k => {
-                if (!allMessages[k]) return;
-                allMessages[k] = allMessages[k].map(m => {
-                    if (m.sender === 'student' && !m.read) { changed = true; return { ...m, read: true }; }
-                    return m;
-                });
-            });
-            if (changed) yaz('student_messages', allMessages);
-            return changed;
+        /**
+         * @param {*} studentId  öğrenci kimliği / okul no
+         * @param {*} message    { sender:'coach'|'student', text, senderName }
+         * @param {*} aliciKocId öğrenci gönderiminde bildirimin gideceği koç kimliği
+         */
+        async sendMessage(studentId, message, aliciKocId) {
+            await delay(50);
+            const student = safeParse('coach_students').find(s =>
+                String(s.id) === String(studentId) ||
+                String(s.schoolNumber) === String(studentId));
+            const sid = String(student?.id || studentId);
+
+            const kayit = message.sender === 'coach'
+                ? mesajKanali.kocMesajEkle(sid, { text: message.text, senderName: message.senderName })
+                : mesajKanali.ogrenciMesajEkle(sid, { text: message.text, senderName: message.senderName });
+
+            // Alıcıya zil bildirimi — koç→öğrenci her zaman; öğrenci→koç
+            // yalnız çağıran koç kimliğini verdiyse.
+            try {
+                const toUserId = message.sender === 'coach'
+                    ? sid
+                    : (aliciKocId != null ? String(aliciKocId) : null);
+                if (toUserId) {
+                    notify({
+                        toUserId,
+                        type: 'message',
+                        title: message.sender === 'coach'
+                            ? 'Koçunuzdan yeni mesaj'
+                            : `${message.senderName || 'Öğrenci'} mesaj gönderdi`,
+                        body: String(message.text || '').slice(0, 80),
+                        action: { tab: message.sender === 'coach' ? 'messages' : 'inbox' },
+                    });
+                }
+            } catch { /* bildirim düşmezse mesaj yine gitti */ }
+
+            return kayit;
+        },
+
+        async markAsReadByCoach(studentId, studentInfo) {
+            return mesajKanali.kocOkudu(this._sid(studentId, studentInfo));
+        },
+
+        async markAsReadByStudent(studentId, studentInfo) {
+            return mesajKanali.ogrenciOkudu(this._sid(studentId, studentInfo));
         }
     },
 

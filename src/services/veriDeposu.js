@@ -45,6 +45,8 @@
  *     CRDT gibi bir çözüm bu ürün için aşırıdır.
  */
 
+import gorevDeposu from './gorevDeposu';
+
 const NORMAL = { dizi: [], nesne: {} };
 
 /** Depo olayları — bileşenler bunu dinleyerek tazelenir. */
@@ -253,48 +255,26 @@ export const ogrenciAlanGuncelle = (id, alanlar) =>
  * biçim varsayan eski kod, tamamlanan görevlerin kaybolmasına yol
  * açmıştı.
  */
-export const gorevleriGetir = (ogrenciId = null) => {
-    const ham = oku(A.gorevler, NORMAL.nesne);
-    if (Array.isArray(ham)) {
-        return ogrenciId == null
-            ? ham
-            : ham.filter((g) => String(g?.studentId ?? g?.ogrenciId) === String(ogrenciId));
-    }
-    if (ogrenciId != null) {
-        const v = ham?.[String(ogrenciId)];
-        return Array.isArray(v) ? v : [];
-    }
-    return Object.values(ham || {}).flat().filter(Boolean);
-};
+/* 04.09 (canlı eşleme): görevler öğrenci-başına tanım+ilerleme ayrımına
+   taşındı (gorevDeposu) — koç ve öğrenci farklı anahtarlara yazar, senkron
+   yarışında öğrencinin "tamamladım" işareti artık ezilmez. Eski tek-blob
+   `student_tasks` geri düşüş olarak okunmaya devam eder. */
+export const gorevleriGetir = (ogrenciId = null) => (
+    ogrenciId != null
+        ? gorevDeposu.birlesikOku(String(ogrenciId))
+        : gorevDeposu.tumSidler().flatMap((sid) => gorevDeposu.birlesikOku(sid))
+);
 
 /**
  * Görev deposunu HER ZAMAN {öğrenciId: [görevler]} nesnesi olarak döndürür.
  * Koç panelindeki toplu okuyucular (sıralama, risk, kıyas, analitik)
- * `nesneOku` kullanıyordu; depo dizi biçimindeyse nesneOku {} döndürür ve
- * o ekranlar görevleri HİÇ görmezdi. Dizi biçimi studentId alanından
- * gruplanarak normalize edilir.
+ * bu biçimi bekler; birleşik okuma ilerleme yamalarını da içerir.
  */
-export const gorevHaritasi = () => {
-    const ham = oku(A.gorevler, NORMAL.nesne);
-    if (!Array.isArray(ham)) return ham || {};
-    const harita = {};
-    for (const g of ham) {
-        const k = String(g?.studentId ?? g?.ogrenciId ?? '');
-        if (!k) continue;
-        (harita[k] = harita[k] || []).push(g);
-    }
-    return harita;
-};
+export const gorevHaritasi = () => gorevDeposu.gorevHaritasiBirlesik();
 
 export const gorevleriKaydet = (ogrenciId, gorevler) => {
-    const ham = oku(A.gorevler, NORMAL.nesne);
-    if (Array.isArray(ham)) {
-        const digerleri = ham.filter(
-            (g) => String(g?.studentId ?? g?.ogrenciId) !== String(ogrenciId)
-        );
-        return yaz(A.gorevler, [...digerleri, ...gorevler]);
-    }
-    return yaz(A.gorevler, { ...(ham || {}), [String(ogrenciId)]: gorevler });
+    gorevDeposu.tanimYaz(ogrenciId, gorevler);
+    return true;
 };
 
 // ── Mesajlar ─────────────────────────────────────────────────

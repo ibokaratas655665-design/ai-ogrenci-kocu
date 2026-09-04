@@ -183,6 +183,15 @@ const DYNAMIC_KEY_PATTERNS = [
     /^calendar_events_/,
     /^ai_plan_(config|schedule)_/,
     /^appt_slots_/,
+    /* 04.09 (canlı eşleme): yön-ayrımlı mesaj kanalları ve öğrenci-başına
+       görev tanım/ilerleme anahtarları — kapsam dışı kalsalar iki cihaz
+       arasında mesaj/görev hiç akmazdı. */
+    /^msg_c2s_/,
+    /^msg_s2c_/,
+    /^msg_seen_s_/,
+    /^msg_seen_c_/,
+    /^student_tasks_/,
+    /^student_task_progress_/,
 ];
 
 const getDynamicKeys = () => {
