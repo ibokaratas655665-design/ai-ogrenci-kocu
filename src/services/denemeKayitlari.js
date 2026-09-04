@@ -45,7 +45,7 @@ export const ogrencininKayitlari = (studentId) =>
  * Yeni deneme analizi kaydeder.
  * Çift kayıt koruması: aynı öğrenci + aynı ad + aynı tarih reddedilir.
  */
-export const kaydet = ({ studentId, studentName, ad, tur, tarih, sureDk, dersler, konuHatalari, degerlendirme }) => {
+export const kaydet = ({ studentId, studentName, ad, tur, alan = null, tarih, sureDk, dersler, konuHatalari, degerlendirme }) => {
     const temizAd = String(ad || '').trim();
     if (!studentId) return { basarili: false, hata: 'Öğrenci kimliği yok.' };
     if (!temizAd) return { basarili: false, hata: 'Deneme adı zorunludur.' };
@@ -72,6 +72,7 @@ export const kaydet = ({ studentId, studentName, ad, tur, tarih, sureDk, dersler
         studentId, studentName: String(studentName || '').trim(),
         ad: temizAd,
         tur: tur || 'TYT',
+        alan: alan || null, // AYT için alan bilgisi (SAY/EA/SOZ); TYT'de null
         tarih: tarih || new Date().toISOString().slice(0, 10),
         sureDk: Number(sureDk) || null,
         dersler: dersOzet,
