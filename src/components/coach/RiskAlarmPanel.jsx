@@ -6,22 +6,17 @@ import {
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { yaz, listeOku, nesneOku, gorevHaritasi } from '../../services/veriDeposu';
+import { matchResultsForStudent } from '../../services/birlesikDeneme';
 
 // ─── Risk Hesaplayıcı ───────────────────────────────────────
 const calcStudentRisk = (student) => {
     const results = listeOku('v2_results_data');
     const tasks = gorevHaritasi();
 
-    // Öğrencinin denemeleri
-    const normTR = (s) => String(s || '').toLowerCase()
-        .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ş/g, 's').replace(/Ş/g, 's')
-        .replace(/ğ/g, 'g').replace(/Ğ/g, 'g').replace(/ü/g, 'u').replace(/ç/g, 'c').trim();
-
-    const sName = normTR(student.name);
-    const myExams = results.filter(r => {
-        const rName = normTR(r.student);
-        return rName === sName || rName.includes(sName) || sName.includes(rName);
-    }).sort((a, b) => new Date(a.uploadedAt) - new Date(b.uploadedAt));
+    /* 04.09: alt-dize eşleşmesi merkezî eşleştirmeyle değiştirildi
+       (id → okul no → normalize TAM AD) — "Ali"/"Alican" karışması biter. */
+    const myExams = matchResultsForStudent(student, results)
+        .sort((a, b) => new Date(a.uploadedAt) - new Date(b.uploadedAt));
 
     // Son 3 deneme trendi
     const last3 = myExams.slice(-3);

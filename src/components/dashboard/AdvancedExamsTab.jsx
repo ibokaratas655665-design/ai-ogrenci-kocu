@@ -22,6 +22,7 @@ import firebaseSync from '../../services/firebaseSync';
 import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResources, removeExamResource } from '../../data/curriculum';
 import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
 import KonuAnaliziPaneli from './KonuAnaliziPaneli';
+import birlesikDeneme from '../../services/birlesikDeneme';
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
 import Modal from '../ui/Modal';
@@ -2107,6 +2108,27 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
         try { return listeOku('v2_results_data'); } catch { return []; }
     });
 
+    /* ── BİRLEŞİK DENEME HATTI (04.09) ──
+       Analiz OKUMA yolları koç verisi + uygulama içi deneme motorunun
+       sonuçlarını tek listede görür (services/birlesikDeneme). YAZMA
+       yolları (silme, Excel yükleme) yalnız v2 depolarına dokunmaya
+       devam eder — motor kayıtlarının sahibi deneme_analizleri'dir. */
+    const [motorTetik, setMotorTetik] = useState(0);
+    useEffect(() => {
+        const dinle = (e) => { if (!e?.key || e.key === 'deneme_analizleri') setMotorTetik((t) => t + 1); };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, []);
+    const motorVerisi = useMemo(() => birlesikDeneme.motorKayitlari(), [motorTetik]);
+    const birlesikResults = useMemo(
+        () => birlesikDeneme.birlesikSonuclar(results, motorVerisi),
+        [results, motorVerisi],
+    );
+    const birlesikTrials = useMemo(
+        () => birlesikDeneme.birlesikDenemeler(trials, birlesikResults, motorVerisi),
+        [trials, birlesikResults, motorVerisi],
+    );
+
     // Prevent immediate overwrite of existing DB data on first mount
     const isFirstMountTrials = useRef(true);
     const isFirstMountResults = useRef(true);
@@ -2423,11 +2445,11 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
     const [expandedTrialId, setExpandedTrialId] = useState(null);
     const [trialSearchQuery, setTrialSearchQuery] = useState('');
 
-    // Deneme tipine göre numaralandır (1.TYT, 2.TYT...)
+    // Deneme tipine göre numaralandır (1.TYT, 2.TYT...) — BİRLEŞİK liste
     const numberedTrials = useMemo(() => {
         const counters = {};
-        if (!Array.isArray(trials)) return [];
-        return [...trials].filter(t => t && typeof t === 'object' && t.id).reverse().map(t => {
+        if (!Array.isArray(birlesikTrials)) return [];
+        return [...birlesikTrials].filter(t => t && typeof t === 'object' && t.id).reverse().map(t => {
             const key = t.examType || 'TYT';
             counters[key] = (counters[key] || 0) + 1;
             return { ...t, number: counters[key] };
@@ -2456,16 +2478,16 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
         return base;
     }, [numberedTrials, examCategory, trialSearchQuery]);
 
-    // ── Filtrelenmiş Sonuçlar ──
+    // ── Filtrelenmiş Sonuçlar — BİRLEŞİK liste (koç + motor) ──
     const filteredResults = useMemo(() => {
-        if (!Array.isArray(filteredTrials) || !Array.isArray(results)) return [];
+        if (!Array.isArray(filteredTrials) || !Array.isArray(birlesikResults)) return [];
         const trialIds = new Set(filteredTrials.map(t => t && String(t.id)).filter(Boolean));
-        let base = results.filter(r => r && trialIds.has(String(r.trialId)));
+        let base = birlesikResults.filter(r => r && trialIds.has(String(r.trialId)));
         if (examCategory === 'kazanim') {
             base = base.filter(r => r && String(r.gradeLevel) === String(kazanimGrade));
         }
         return base;
-    }, [results, filteredTrials, examCategory, kazanimGrade]);
+    }, [birlesikResults, filteredTrials, examCategory, kazanimGrade]);
 
     // ── calculationContext: Pass once to avoid localStorage lookup in loops ──
     const calculationContext = useMemo(() => {

@@ -9,22 +9,18 @@ import {
     Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import { listeOku, nesneOku, gorevHaritasi } from '../../services/veriDeposu';
+import { matchResultsForStudent } from '../../services/birlesikDeneme';
 
 // ─── Yardımcı: v2 sonuçlarından öğrenci statsları hesapla ────
 const buildStudentStats = (students) => {
     const results = listeOku('v2_results_data');
     const tasks = gorevHaritasi();
 
-    const normTR = (s) => String(s || '').toLowerCase()
-        .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ş/g, 's').replace(/Ş/g, 's')
-        .replace(/ğ/g, 'g').replace(/Ğ/g, 'g').replace(/ü/g, 'u').replace(/ç/g, 'c').trim();
-
     return students.map(s => {
-        const sName = normTR(s.name);
-        const myExams = results.filter(r => {
-            const rn = normTR(r.student);
-            return rn === sName || rn.includes(sName) || sName.includes(rn);
-        }).sort((a, b) => new Date(a.uploadedAt) - new Date(b.uploadedAt));
+        /* 04.09: alt-dize eşleşmesi merkezî eşleştirmeyle değiştirildi
+           (id → okul no → normalize TAM AD). */
+        const myExams = matchResultsForStudent(s, results)
+            .sort((a, b) => new Date(a.uploadedAt) - new Date(b.uploadedAt));
 
         const nets = myExams.map(e => parseFloat(e.totalNet) || 0);
         const avgNet = nets.length ? nets.reduce((a, b) => a + b, 0) / nets.length : 0;

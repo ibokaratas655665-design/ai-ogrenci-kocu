@@ -13,6 +13,7 @@ import {
     RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
     CartesianGrid, BarChart, Bar, Cell, Legend
 } from 'recharts';
+import { matchResultsForStudent } from '../../services/birlesikDeneme';
 
 // ─── Renk Paleti ──────────────────────────────────────────────────────
 const STUDENT_COLORS = [
@@ -73,9 +74,10 @@ const StudentProgressComparison = ({ students = [], trials = [], results = [] })
         return students
             .filter(s => selectedStudents.includes(s.id))
             .map((student, idx) => {
-                const studentResults = results
-                    .filter(r => (r.studentId === student.id || r.studentName === student.name)
-                        && r.examType === examTypeFilter)
+                /* 04.09: sadece id/isim eşitliği motor kayıtlarını (r.student
+                   alanı) kaçırıyordu; merkezî eşleştirmeye geçildi. */
+                const studentResults = matchResultsForStudent(student, results)
+                    .filter(r => r.examType === examTypeFilter)
                     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
                 const nets = studentResults.map(r => getTotalNet(r));

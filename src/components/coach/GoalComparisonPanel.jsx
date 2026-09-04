@@ -5,11 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { Target, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Search, Trophy, AlertTriangle } from 'lucide-react';
 import { listeOku, nesneOku } from '../../services/veriDeposu';
-
-const normTR = (str) => String(str || '').toLowerCase()
-    .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
-    .replace(/ü/g, 'u').replace(/Ü/g, 'u').replace(/ş/g, 's').replace(/Ş/g, 's')
-    .replace(/ğ/g, 'g').replace(/Ğ/g, 'g').replace(/ç/g, 'c').replace(/Ç/g, 'c').trim();
+import { matchResultsForStudent } from '../../services/birlesikDeneme';
 
 const TYT_SUBJECTS = [
     { key: 'turkce', label: 'Türkçe', max: 40 },
@@ -41,12 +37,10 @@ const GoalComparisonPanel = ({ students = [] }) => {
             const goalTotal = Object.values(goalTYT).reduce((a, b) => a + (parseFloat(b) || 0), 0);
             const hasGoal = goalTotal > 0;
 
-            // Son gerçek TYT netini bul
-            const sName = normTR(student.name);
-            const studentResults = v2Results.filter(r => {
-                const rName = normTR(r.student);
-                return rName.includes(sName.split(' ')[0]) || sName.includes(rName.split(' ')[0]);
-            }).sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+            /* 04.09: ilk-ad alt-dize eşleşmesi yanlış öğrenciyi yakalıyordu;
+               merkezî eşleştirmeye geçildi (id → okul no → TAM AD). */
+            const studentResults = matchResultsForStudent(student, v2Results)
+                .sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
 
             const lastResult = studentResults[0] || null;
             const actualNet = lastResult ? parseFloat(lastResult.totalNet || 0) : null;

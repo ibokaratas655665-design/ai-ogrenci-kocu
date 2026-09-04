@@ -5,11 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import { Trophy, TrendingUp, TrendingDown, Minus, Medal, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { listeOku } from '../../services/veriDeposu';
-
-const normTR = (str) => String(str || '').toLowerCase()
-    .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
-    .replace(/ü/g, 'u').replace(/Ü/g, 'u').replace(/ş/g, 's').replace(/Ş/g, 's')
-    .replace(/ğ/g, 'g').replace(/Ğ/g, 'g').replace(/ç/g, 'c').replace(/Ç/g, 'c').trim();
+import { matchResultsForStudent } from '../../services/birlesikDeneme';
 
 const MEDAL_COLORS = {
     1: { bg: 'bg-warn-soft', text: 'text-warn', border: 'border-warn', icon: '🥇' },
@@ -29,11 +25,11 @@ const ClassRanking = ({ students = [] }) => {
 
     const rankData = useMemo(() => {
         return students.map(student => {
-            const sName = normTR(student.name);
-            const matched = v2Results.filter(r => {
-                const rName = normTR(r.student || '');
-                return rName.includes(sName.split(' ')[0]) || sName.includes(rName.split(' ')[0]);
-            }).filter(r => examType === 'all' || (r.examType || 'TYT') === examType);
+            /* 04.09: ilk-ad alt-dize eşleşmesi ("Ali" → "Alican") yanlış
+               öğrenciye sonuç yazdırıyordu; merkezî eşleştirmeye geçildi
+               (id → okul no → normalize TAM AD). */
+            const matched = matchResultsForStudent(student, v2Results)
+                .filter(r => examType === 'all' || (r.examType || 'TYT') === examType);
 
             if (matched.length === 0) return { student, lastNet: null, avgNet: null, bestNet: null, trend: 'stable', examCount: 0 };
 
