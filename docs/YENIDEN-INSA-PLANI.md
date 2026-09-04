@@ -172,7 +172,9 @@ farkı (aynı metin farklı literal bölünmüş) — davranışsal eksik tespit
 edilmedi. Kalan düşük öncelikli işler:
 - [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
 - [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
-- [ ] Mesaj/görev EKRANLARININ yeni servisleri uçtan uca testi
+- [x] Mesaj/görev ekranları uçtan uca test edildi (05.09): koç→öğrenci ve
+      öğrenci→koç mesaj + zil bildirimi + okundu işaretleri + görev
+      ilerleme yaması birleşik okumada doğrulandı
 - [ ] DEPLOY PROVASI: dist önizleme + canlıyla göz karşılaştırması →
       kullanıcı onayıyla `firebase deploy` (canlı bundan sonra REPO'dan
       geride kalacağı için deploy artık GÜVENLİ; onay bekleniyor)
