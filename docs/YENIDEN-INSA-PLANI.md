@@ -22,11 +22,19 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       "Sonraki bölüm"), aktif bölüme kayan hap listesi, nokta göstergesi; iki merkezde aktif
 - [x] StudentDetailPage: hedef artık kalıcı kaydediliyor + "Öğrenci kaydı bulunamadı" hata yolu
 
-## Faz 2 — Kompakt Program Kurucu paneli
-- [ ] Ders seçici (— Ders — açılır listesi) + "Dersin Tümünü Ekle (N)" düğmesi
-- [ ] Program Listesi paneli: toplam etüt rozeti, konu kartları,
-      boş durum: 'Henüz konu eklenmedi. "Konular" veya "Dersin Tümü" ile ekleyin.'
-- [ ] Kompakt "Geçen dönemin N eksik konusunu ekle" düğmesi (carryOver)
+## Faz 2 — Program Kurucu masaüstü araç çubuğu ✅ (04.09.2026)
+- [x] İki sekmeli araç çubuğu: "Kur" ve "Ölçü & Kriter" (eski üst filtre çubuğu +
+      384px kalıcı kenar sütunu yerine; ızgara masaüstünde tam genişlik)
+- [x] "Konu Seç" popover: sınav+ders seçici, "Dersin Tümünü Ekle (N)", Önerilen
+      Konular çipleri, konu arama, çoklu seçim + tek konu "+" ekleme
+- [x] "Bloklar" popover: seçim modu, hazır bloklar, silgi, özel ders/konu
+- [x] "Liste" popover: Dağıtım Listesi + etüt rozeti + kompakt "Geçen dönemin N eksik
+      konusunu ekle" + boş durum ('Henüz konu eklenmedi. "Konular" veya "Dersin Tümü"
+      ile ekleyin.') + konu kartları + Program Hafızası paneli + AKILLI DAĞIT
+- [x] "Ölçü" popover (mod / süre / günlük etüt) + "Kriterler & Etüt Saatleri" kısayolu
+- [x] Aktif araç çipi ("Aracı bırak" ile) araç çubuğunda
+- [x] Kenar sütunu telefonda aynen; masaüstünde sıfır genişlik (AYARLAR kayan paneli
+      çalışmaya devam eder)
 
 ## Faz 3 — Konu bazlı analiz sekmeleri (ComparativeAnalysis)
 - [ ] Sekmeler: "Gelişim / Genel Bakış" · "Konularım / Konu Takibi" · "Konu Bazında Analiz"
