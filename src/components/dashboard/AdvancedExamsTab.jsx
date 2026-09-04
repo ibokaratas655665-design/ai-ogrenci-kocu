@@ -21,6 +21,7 @@ import ReportCard from '../reports/ReportCard';
 import firebaseSync from '../../services/firebaseSync';
 import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResources, removeExamResource } from '../../data/curriculum';
 import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
+import KonuAnaliziPaneli from './KonuAnaliziPaneli';
 import { bildir } from '../../services/uiGeriBildirim';
 import { hataAnlat } from '../../services/hataMesaji';
 import Modal from '../ui/Modal';
@@ -422,9 +423,14 @@ const getAYTScoreLabel = (result) => {
 };
 
 // ─── Sınav & Sınıf Grafik Paneli ────────────────────────────────────────────
-const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
+const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
     const [activeExamType, setActiveExamType] = React.useState(activeCategory || 'TYT');
-    const [activeMetric, setActiveMetric] = React.useState('trend'); // 'trend' | 'class' | 'subject'
+    /* 04.09: analiz ikiye ayrıldı — toplu değerlendirme (sınıf) ile tek
+       öğrenci incelemesi aynı sekmelerde karışıyordu. Mod başına sekme:
+       sınıf → trend/karşılaştırma/ders/konu · bireysel → konu (öğrenci
+       matrisi + dönüt). */
+    const [analizMod, setAnalizMod] = React.useState('sinif'); // 'sinif' | 'bireysel'
+    const [activeMetric, setActiveMetric] = React.useState('trend'); // 'trend' | 'class' | 'subject' | 'konu'
     const [pdfLoading, setPdfLoading] = React.useState(false);
 
     // Sync internal state with prop
@@ -644,13 +650,28 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                 </div>
             </div>
 
-            {/* Sekme seçici */}
-            <div className="flex gap-2 border-b border-line pb-3">
-                {[
+            {/* Mod seçici: sınıf geneli ↔ bireysel */}
+            <div className="flex gap-2 p-1 rounded-xl bg-surface-2 border border-line w-fit">
+                <button onClick={() => { setAnalizMod('sinif'); setActiveMetric('trend'); }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${analizMod === 'sinif' ? 'bg-brand text-white shadow' : 'text-ink-2 hover:text-ink'}`}>
+                    📊 Sınıf Analizi
+                </button>
+                <button onClick={() => { setAnalizMod('bireysel'); setActiveMetric('konu'); }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${analizMod === 'bireysel' ? 'bg-brand text-white shadow' : 'text-ink-2 hover:text-ink'}`}>
+                    👤 Bireysel Analiz
+                </button>
+            </div>
+
+            {/* Sekme seçici — moda göre */}
+            <div className="flex gap-2 border-b border-line pb-3 flex-wrap">
+                {(analizMod === 'sinif' ? [
                     { id: 'trend', label: '📈 Deneme Trendi' },
-                    { id: 'class', label: '🏫 Sınıf Karşılaştırması' },
+                    { id: 'class', label: '👥 Öğrenci Karşılaştırması' },
                     { id: 'subject', label: (activeExamType === 'AYT' || activeExamType === 'TYT+AYT') ? '📊 Puan Türleri' : '📚 Ders Gelişimi' },
-                ].map(m => (
+                    { id: 'konu', label: '🎯 Konu Dağılımı' },
+                ] : [
+                    { id: 'konu', label: '🎯 Konu Dağılımı' },
+                ]).map(m => (
                     <button key={m.id} onClick={() => setActiveMetric(m.id)}
                         className={`text-xs px-3 py-1 rounded-full font-semibold transition ${activeMetric === m.id ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4' : 'text-ink-3 hover:text-ink-2'}`}>
                         {m.label}
@@ -658,10 +679,39 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory }) => {
                 ))}
             </div>
 
+            {/* ── Konu Dağılımı (her iki modda; bireyselde matris+dönüt açılır) ── */}
+            {activeMetric === 'konu' && (
+                <KonuAnaliziPaneli students={students} />
+            )}
+
             {/* ── Deneme Trendi ── */}
             {activeMetric === 'trend' && (
                 trendData.length > 0 ? (
                     <div>
+                        {/* 04.09: dört özet kutu — grafiğe bakmadan durum bir bakışta */}
+                        {(() => {
+                            const ilkOrt = trendData[0]?.['Ort. Net'] ?? 0;
+                            const sonOrt = trendData[trendData.length - 1]?.['Ort. Net'] ?? 0;
+                            const degisim = +(sonOrt - ilkOrt).toFixed(1);
+                            const kutular = [
+                                { et: 'Son Ortalama', d: sonOrt, birim: 'net', renk: 'var(--c4)' },
+                                { et: 'Değişim', d: degisim >= 0 ? `+${degisim}` : `${degisim}`, birim: 'net', renk: degisim >= 0 ? 'var(--ok)' : 'var(--danger)' },
+                                { et: 'En Yüksek Deneme', d: Math.max(...trendData.map((r) => r['Ort. Net'] || 0)), birim: 'net', renk: 'var(--brand)' },
+                                { et: 'Toplam Sonuç', d: trendData.reduce((t, r) => t + (r.katilimci || 0), 0), birim: 'kayıt', renk: 'var(--info)' },
+                            ];
+                            return (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                                    {kutular.map((k) => (
+                                        <div key={k.et} className="rounded-xl p-2.5 kutu-3b border border-line">
+                                            <p className="text-[9px] font-black uppercase tracking-wider text-ink-3">{k.et}</p>
+                                            <p className="text-lg font-black tabular-nums leading-none mt-0.5" style={{ color: k.renk }}>
+                                                {k.d}<span className="text-[10px] font-bold text-ink-3 ml-1">{k.birim}</span>
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                         <p className="text-xs text-ink-3 mb-2">{activeExamType} denemeleri − sınıf geneli ortalama net (tüm dersler)</p>
                         <div className="h-56">
                             <ResponsiveContainer width="100%" height="100%">
@@ -2806,6 +2856,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                         trials={filteredTrials}
                         results={filteredResults}
                         activeCategory={examCategory}
+                        setToast={setToast}
                     />
                 </div>
             )}
