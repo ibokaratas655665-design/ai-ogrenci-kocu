@@ -28,6 +28,7 @@ import AnalysisCenter from '../components/coach/AnalysisCenter';
 import WhatsAppTab from '../components/whatsapp/WhatsAppTab';
 import WhatsAppComposer from '../components/whatsapp/WhatsAppComposer';
 import AdvancedExamsTab from '../components/dashboard/AdvancedExamsTab';
+import SinavOlusturTab from '../components/dashboard/SinavOlusturTab';
 import UniversityScoresTab from '../components/dashboard/UniversityScoresTab';
 import { useAuth } from '../context/AuthContext';
 import firebaseSync from '../services/firebaseSync';
@@ -152,6 +153,10 @@ const NAV_BY_SECTION = {
                 { id: 'bugun', icon: MODULE_ICONS.analysis, label: 'Genel Bakış' },
                 { id: 'analysis', icon: MODULE_ICONS.analysis, label: 'Analiz', perm: 'analysis' },
                 { id: 'exams', icon: MODULE_ICONS.exams, label: 'Denemeler', perm: 'exams' },
+                /* 04.09: uygulama içi deneme motoru — koç PDF kitapçık +
+                   cevap anahtarı ile deneme tanımlar, öğrenciye atar;
+                   öğrenci uygulama içinde çözer, sonuç otomatik puanlanır. */
+                { id: 'sinav-olustur', icon: MODULE_ICONS.exams, label: 'Sınav Oluştur', perm: 'exams' },
                 /* Bu ikisi (ve aşağıdaki leaderboard/task-templates/
                    presentations/remote) 18.08.2026'ya kadar YALNIZCA render
                    bloğu olarak vardı — hiçbir menüde girişleri yoktu, koç
@@ -3467,6 +3472,10 @@ const CoachDashboard = () => {
                             <div className="space-y-8">
                                 <AdvancedExamsTab students={students} setToast={setToast} onOpenProgramBuilder={() => setIsProgramBuilderOpen(true)} />
                             </div>
+                        )}
+                        {/* 🧾 Uygulama içi deneme motoru (04.09 yeniden inşa) */}
+                        {activeTab === 'sinav-olustur' && (
+                            <SinavOlusturTab user={user} students={students} setToast={setToast} />
                         )}
                         {/* PDR/Rehberlik render blokları arşive taşındı
                             (archive/pdr_module) — rehberlik ekranları artık
