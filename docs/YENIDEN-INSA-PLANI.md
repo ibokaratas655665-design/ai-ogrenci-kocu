@@ -152,18 +152,30 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       daha bekliyor"); "Önerilen Odaklar" ayrı kartı kaldırıldı (canlıda yok)
 - [x] bugunOnerileri canlı seçim mantığı (programBugunVar/bos/≤2 öğe)
 - [x] setCellStatus konu bilgisi + pb damgası; getStudiedTopics
-### 7d — Kalan parçalar (sırada)
-- [ ] KocGenelBakis canlı yeniden tasarımı: öğrenci triyaj listesi
-      ("Dikkat · Tamamlandı ama N hata", "Tekrar · N", "N görevin süresi
-      geçmiş" rozetleri), takvim (gunBilgisi/sinavTarihi tüketicisi),
-      "Haftalık Soru Çözümü ve Yanlış Değişimi" grafiği — canlı CoachDashboard
-- [ ] ProgramBuilder "Seçilen konular (dağıtım listesi) — ağırlıkları ayarla"
-      başlığı + kalan küçük metin farkları (eksik-dizgiler.txt listesinden)
+### 7d — Genel Bakış + senkron güvenilirliği ✅ (05.09.2026)
+- [x] KocGenelBakis canlı yeniden tasarımı (9d01db5): üçlü durum şeridi
+      (tıkla-detay), "Bugün Dikkat Gerekenler" triyajı (Dikkat/Tekrar/
+      geciken görev rozetleri), Öğrencilerim renkli kartlar + öne çıkan
+      konu, Net Değişimi tıkla→ders barları, AkademikTakvim (tatil
+      renkleri + gün detayı + öğretim takvimi + ayın randevuları), kokpit
+- [x] Senkron güvenilirliği (672e795): firebaseSync retry kuyruğu (üstel
+      geri çekilme) + senkron-durum yayını; SenkronDurumu topbar rozeti
+      (Kaydediliyor/Kaydedildi/Bekliyor(N)/Bağlantı sorunu)
+- [x] Mikro metin eşitlemeleri (95c135e): SelfAssessment kısa etiketler,
+      pdfYukle Storage guard'ı, ProgramBuilder liste title'ı
+- [x] TESPİT: KocDegerlendirme (Günlük Takip Merkezi) + "Haftalık Soru
+      Çözümü ve Yanlış Değişimi" 25.08 kaynağında ZATEN VARDI
+
+## PARİTE DURUMU (05.09.2026)
+Canlı ile dizgi farkı 604 → ~48'e indi; kalanların tamamı derleme biçim
+farkı (aynı metin farklı literal bölünmüş) — davranışsal eksik tespit
+edilmedi. Kalan düşük öncelikli işler:
 - [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
 - [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
-- [ ] Mesaj/görev EKRANLARININ yeni servisleri kullandığının uçtan uca testi
-- [ ] Deploy provası: dist önizleme + canlı karşılaştırma; parite onayı
-      sonrası `firebase deploy` (kullanıcı isteğiyle)
+- [ ] Mesaj/görev EKRANLARININ yeni servisleri uçtan uca testi
+- [ ] DEPLOY PROVASI: dist önizleme + canlıyla göz karşılaştırması →
+      kullanıcı onayıyla `firebase deploy` (canlı bundan sonra REPO'dan
+      geride kalacağı için deploy artık GÜVENLİ; onay bekleniyor)
 
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"
