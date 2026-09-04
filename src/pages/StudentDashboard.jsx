@@ -1065,8 +1065,11 @@ const StudentDashboard = () => {
         .map((id) => TABS.find((t) => t.id === id))
         .filter(Boolean);
 
+    /* 04.09 kokpit: masaüstünde (xl) sayfa kilitli, içerik main içinde
+       kayar; telefonda doğal sayfa kaydırması (kilit mobilde içerik
+       kırpıyordu — bkz. styles/surface.css §14). */
     return (
-        <div className="min-h-screen bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden flex flex-col">
+        <div className="min-h-[100dvh] xl:h-[100dvh] bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden xl:overflow-hidden flex flex-col">
             {/* Zemin filigranı: içerik kartları üstünü örter, boş zeminde
                 marka görünür — her tabda (bkz. ui/MarkaFiligran) */}
             <MarkaFiligran />
@@ -1240,7 +1243,7 @@ const StudentDashboard = () => {
                 Genişlik ve iç boşluk koç paneliyle AYNI ölçüde: iki panel
                 aynı ürünün parçası gibi dursun. Boşluk kırılma noktasıyla
                 birlikte büyür (16 → 24 → 32 piksel). */}
-            <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8 icerik-gecis pb-24">
+            <main className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde flex flex-col max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8 icerik-gecis pb-24">
                 {/* Sekme çökerse yalnızca içerik alanı düşer; başlık ve
                     alt gezinme çalışmaya devam eder. key={activeTab}: sekme
                     değişince sınır sıfırlanır, hatalı sekmede takılı kalmaz. */}

@@ -848,3 +848,37 @@ table thead th {
 
 table tbody tr { transition: background-color var(--sure-hizli) ease; }
 table tbody tr:hover { background: var(--surface-3); }
+
+/* ══════════════════════════════════════════════════════════════════════
+   14. TEK EKRAN (KOKPİT) GÖVDESİ — 04.09 yeniden inşa
+
+   Masaüstünde panel "kokpit" gibi çalışır: sayfa kaydırılmaz, yalnız
+   içerik gövdesi kendi içinde kayar. ⚠️ Bu kilit YALNIZ ≥1280px'te
+   uygulanır — mobilde de aktifken içerik kırpılıp kaydırılamıyordu
+   (hem öğrenci hem koç panelinde ölçüldü). Telefon doğal sayfa
+   kaydırmasıyla çalışır.
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1280px) {
+    .tek-ekran-govde {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+}
+
+/* İnce, zarif kaydırma çubuğu — kokpit gövdesi ve isteyen her kap için */
+.tek-ekran-govde, .ince-cubuk {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+}
+.tek-ekran-govde::-webkit-scrollbar, .ince-cubuk::-webkit-scrollbar { width: 10px; height: 10px; }
+.tek-ekran-govde::-webkit-scrollbar-track, .ince-cubuk::-webkit-scrollbar-track { background: transparent; }
+.tek-ekran-govde::-webkit-scrollbar-thumb, .ince-cubuk::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}

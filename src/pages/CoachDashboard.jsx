@@ -3184,8 +3184,12 @@ const CoachDashboard = () => {
         }
     };
 
+    /* 04.09 kokpit: masaüstünde (xl) sayfa kilitli, içerik kendi
+       gövdesinde kayar; telefonda doğal kaydırma (kilit mobilde içerik
+       kırpıyordu — bkz. styles/surface.css §14). Alt boşluk main'e
+       taşındı (mobil alt çubuk payı). */
     return (
-        <div className="min-h-screen bg-page text-ink selection:bg-brand/30 selection:text-ink pb-24">
+        <div className="min-h-[100dvh] xl:h-[100dvh] xl:overflow-hidden flex flex-col bg-page text-ink selection:bg-brand/30 selection:text-ink">
             {/* Global Toast */}
             {toast && <Toast message={toast} onClose={handleCloseToast} />}
 
@@ -3402,7 +3406,7 @@ const CoachDashboard = () => {
                 atlayamıyor, sayfanın hangi bölüm olduğunu duyamıyordu.
                 Başlık görsel olarak gizli — arayüzde marka görseli ve sekme
                 adı zaten yazılı, ikinci kez yazmak görsel kirlilik olurdu. */}
-            <main id="ana-icerik" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-all duration-yavas">
+            <main id="ana-icerik" className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 lg:pb-6 xl:flex-1 xl:min-h-0 flex flex-col xl:overflow-hidden transition-all duration-yavas">
                 <h1 className="sr-only">
                     {(BOLUMLER[bolum]?.ad || 'Koçluk Paneli')}
                     {' — '}
@@ -3413,7 +3417,7 @@ const CoachDashboard = () => {
                     (BEP plan motoru gibi) o bağlama hapsolup arkadaki içeriğin
                     altında kalıyor, kapatma butonuna tıklanamıyordu. */}
                 {!isProgramBuilderOpen && (
-                    <div>
+                    <div className="icerik-gecis xl:flex-1 xl:min-h-0 flex flex-col xl:overflow-y-auto tek-ekran-govde">
                         {/* Bir sekme çökerse yalnızca o bölüm düşer; üst şerit,
                             gezinme ve diğer sekmeler ayakta kalır. Eskiden tek
                             bileşen hatası tüm uygulamayı beyaz ekrana düşürüyordu. */}
