@@ -36,6 +36,25 @@ export const vadesiGelenHatalar = (studentId, simdi = Date.now()) => (
 );
 
 /**
+ * Toplu vade sayacı — koç panosunun "Tekrar · N" rozetleri için.
+ * Defter TEK geçişte taranır; öğrenci başına ayrı okuma yapılmaz.
+ * @returns {Map<string, {count:number}>}
+ */
+export const vadesiGelenSayilari = (studentIds = [], simdi = Date.now()) => {
+    const harita = new Map();
+    const kimlikler = new Set((studentIds || []).map(String));
+    defterOku().forEach((e) => {
+        const sid = String(e.studentId);
+        if (kimlikler.size && !kimlikler.has(sid)) return;
+        if (e.mastered || (e.nextReviewAt ?? 0) > simdi) return;
+        const m = harita.get(sid) || { count: 0 };
+        m.count += 1;
+        harita.set(sid, m);
+    });
+    return harita;
+};
+
+/**
  * 04.09 (canlı eşleme): öneri seçimi programın durumuna göre daralır —
  * bugün planlı etüt VARSA öğrencinin önüne EN FAZLA bir ek iş konur
  * (tekrar vadesi > konu önerisi); program boşsa tekrar → öneri → "bugün
