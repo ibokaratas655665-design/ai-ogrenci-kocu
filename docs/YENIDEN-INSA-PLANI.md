@@ -134,17 +134,25 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [x] TESPİT: "Deneme Analizi" ekranı + sihirbaz + utils/denemeAnalizi +
       hataNedenleri 25.08 kaynağında ZATEN VARDI (kayıp sanılmıştı);
       yalnız katalog katmanı yeniydi
-### 7b — Kalan görsel/parça eşleme (sırada)
-- [ ] Canlı `srf` stat-kartı ailesi (StatKarti/MiniSeri/SegmentliBar…) ile
-      mevcut charts/Analitik-Dagilim ailesinin diff'i — kozmetik, düşük öncelik
-- [ ] Demo okula uygulama-içi deneme tohum verisi ("Uygulama İçi TYT
-      Deneme" / "Uygulama İçi AYT Sayısal" — canlı index chunk)
+### 7b — Altyapı eşleme ✅ kısmen (04.09.2026)
+- [x] Demo tohum verisi canlı eşleme (29c5998): v2 TYT+AYT sonuçları,
+      deneme analizleri, study_log/hata defteri/öz değerlendirme/pomodoro,
+      haftalık program+ilerleme, motor kaynak/atama + Elif'in çözülmüş
+      istatistikli 3 denemesi
+- [x] Yön-ayrımlı mesaj kanalı + görev tanım/ilerleme ayrımı (ef309e5):
+      mesajKanali + gorevDeposu servisleri, veriDeposu/api bağlama,
+      "Koçunuzdan yeni mesaj" bildirimi, sahte AI oto-yanıt kaldırıldı,
+      firebaseSync dinamik kapsam genişletildi
+### 7c — Kalan parçalar (sırada)
 - [ ] Telefon mini-paneli ("N etüt · dokun & başla" — canlı StudentDashboard)
 - [ ] "N hatanın tekrar zamanı geldi" rozetleri (Coach + Student)
-- [ ] "Koçunuzdan yeni mesaj" bildirimi (index chunk)
 - [ ] ProgramBuilder "Seçilen konular (dağıtım listesi) — ağırlıkları ayarla"
       başlığı + kalan küçük metin farkları (eksik-dizgiler.txt listesinden)
+- [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
 - [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
+- [ ] Mesaj/görev EKRANLARININ yeni servisleri kullandığının uçtan uca testi
+      (öğrenci Mesajlar sekmesi hâlâ 'messages' blobuna da bakıyor — canlıyla
+      karşılaştır)
 
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"

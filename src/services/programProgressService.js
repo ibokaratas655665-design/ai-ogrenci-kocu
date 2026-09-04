@@ -150,11 +150,32 @@ export const isaretlenebilirMi = (studentId, cellKey, haftaPerAy = 4) => {
     return { izin: true, tarih };
 };
 
+/* Konu bilgisi taşıyan etüt tipleri — mola/analiz gibi tipler konu
+   çalışması sayılmaz, konu takibine köprülenmez. */
+const KONULU_TIPLER = new Set(['konu', 'soru', 'tekrar']);
+
+/** İşaret kaydına gömülecek konu bilgisi — yalnız konulu tiplerde. */
+const konuBilgisiHazirla = (hucre) => {
+    if (!hucre || !hucre.topic) return null;
+    if (hucre.type && !KONULU_TIPLER.has(hucre.type)) return null;
+    return {
+        ...(hucre.topicId ? { topicId: hucre.topicId } : {}),
+        topic: hucre.topic,
+        subject: hucre.subject || '',
+        ...(hucre.type ? { type: hucre.type } : {}),
+    };
+};
+
 /**
  * Bir etüdün durumunu yazar.
  * @param {string} status - 'done' | 'missed' | null (temizler)
+ * @param {string} note   - isteğe bağlı not
+ * @param {object} hucre  - 04.09 (canlı eşleme): etüt hücresi
+ *   ({topicId?, topic, subject, type}) — 'done' işaretine konu bilgisi
+ *   gömülür ki "programda hangi konular çalışıldı" sorusu ilerleme
+ *   kaydından cevaplanabilsin (getStudiedTopics).
  */
-export const setCellStatus = (studentId, cellKey, status, note) => {
+export const setCellStatus = (studentId, cellKey, status, note, hucre) => {
     if (!studentId || !cellKey) return {};
     /* Gelecek tarihli etüt işaretlenemez — arayüz atlansa bile burada
        reddedilir (§3: "yalnızca UI tarafında yapılmayacak"). Temizleme
@@ -173,9 +194,12 @@ export const setCellStatus = (studentId, cellKey, status, note) => {
     if (!status) {
         delete mine[cellKey];
     } else {
+        const konu = konuBilgisiHazirla(hucre);
         mine[cellKey] = {
             status,
             at: new Date().toISOString(),
+            pb: programBaslangici(sid)?.getTime?.() || null,
+            ...(konu ? { konu } : {}),
             ...(note ? { note } : {}),
         };
     }
@@ -183,6 +207,28 @@ export const setCellStatus = (studentId, cellKey, status, note) => {
     all[sid] = mine;
     persist(all);
     return mine;
+};
+
+/**
+ * "Programda çalışılmış konular" — done işaretlerine gömülü konu
+ * bilgisinden türetilir: {topicId?, topic, subject, kez, sonAt}.
+ */
+export const getStudiedTopics = (studentId) => {
+    const ilerleme = getProgress(studentId);
+    const harita = new Map();
+    for (const kayit of Object.values(ilerleme || {})) {
+        if (!kayit || kayit.status !== 'done' || !kayit.konu) continue;
+        const { topicId, topic, subject } = kayit.konu;
+        if (!topic) continue;
+        const anahtar = topicId || `${subject}||${topic}`;
+        if (!harita.has(anahtar)) {
+            harita.set(anahtar, { topicId, topic, subject, kez: 0, sonAt: null });
+        }
+        const k = harita.get(anahtar);
+        k.kez += 1;
+        if (kayit.at && (!k.sonAt || kayit.at > k.sonAt)) k.sonAt = kayit.at;
+    }
+    return [...harita.values()];
 };
 
 /**

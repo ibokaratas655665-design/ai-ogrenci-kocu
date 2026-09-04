@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
     Play, ArrowRight, MessageSquare, Flame, CalendarCheck, Sparkles, Target, ChevronRight, PencilLine, BookX, BarChart3, Clock, Timer, BookOpen, AlertTriangle,
+    AlignLeft, Calculator, RotateCcw, GraduationCap, CheckCircle2, BookMarked,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import Card from '../ui/Card';
@@ -108,6 +109,7 @@ export default function BugunEkrani({
                 sira: Number(k.split('-').pop()) || 0,
                 ders: v.subject || '',
                 konu: v.topic || v.subject || '',
+                topicId: v.topicId,
                 tur: v.type || 'konu',
                 // Program ızgarasıyla AYNI renk kaynağı (§11): Bugün'de
                 // gördüğü mor "Matematik" şeridi programda da mordur.
@@ -164,6 +166,7 @@ export default function BugunEkrani({
     const oneriler = useMemo(() => {
         try {
             return bugunOnerileri(kullanici, {
+                programBugunVar: bugunEtutleri.some((e) => e.durum !== 'done'),
                 programKonular: new Set(
                     bugunEtutleri.map((e) => anahtar(e.konu)).filter(Boolean)
                 ),
@@ -173,13 +176,6 @@ export default function BugunEkrani({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kullanici?.id, bugunEtutleri]);
-
-    /** Öneri türü → görsel dil ve dokununca gidilecek ekran. */
-    const ONERI_GORUNUM = {
-        'dikkat': { ikon: AlertTriangle, ton: 'var(--warn)', zemin: 'var(--warn-soft)', etiket: 'Dikkat', hedef: 'deneme-analizi', eylem: 'İncele' },
-        'review-due': { ikon: BookX, ton: 'var(--danger)', zemin: 'var(--danger-soft)', etiket: 'Tekrar Zamanı', hedef: 'error-notebook', eylem: 'Tekrar Et' },
-        'oncelik-onerisi': { ikon: Sparkles, ton: 'var(--brand-metin)', zemin: 'var(--brand-soft)', etiket: 'Önerilen Konu', hedef: 'topics', eylem: 'Çalış' },
-    };
 
     /** Bugün ve geçmiş vadeli açık görevler. */
     const bugunSonu = useMemo(() => { const d = new Date(); d.setHours(23, 59, 59, 999); return d; }, []);
@@ -291,6 +287,16 @@ export default function BugunEkrani({
         return { saat: Math.floor(dk / 60), dakika: dk % 60 };
     }, [simdi]);
 
+    /* YKS'ye kalan gün — mobil panelin kırmızı balonu. Sınav günü olarak
+       haziranın 20'si esas alınır; geçtiyse gelecek yıl sayılır. */
+    const yksKalanGun = useMemo(() => {
+        const bugunTarih = new Date();
+        let sinav = new Date(bugunTarih.getFullYear(), 5, 20);
+        if (sinav < bugunTarih) sinav = new Date(bugunTarih.getFullYear() + 1, 5, 20);
+        return Math.max(0, Math.ceil((sinav - bugunTarih) / 86400000));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [simdi]);
+
     /**
      * NOT — SAAT SÜTUNU YOK.
      *
@@ -349,8 +355,32 @@ export default function BugunEkrani({
             liste.push({ id: 'gorev', simge: Target, baslik: `${acikGorevler.length} açık görev`,
                 alt: acikGorevler[0]?.title || acikGorevler[0]?.baslik || '', git: 'tasks' });
         }
+        /* 04.09 (canlı eşleme): plan-dışı öneriler ayrı kart değil, bu
+           listenin devamıdır — "öneri" rozetiyle işaretlenir. */
+        const oneriHedef = { 'tekrar-et': 'error-notebook', calis: 'topics', 'hata-analizi': 'deneme-analizi' };
+        const oneriSimge = { 'review-due': BookX, 'oncelik-onerisi': Target, dikkat: BarChart3 };
+        oneriler.items.forEach((o, i) => {
+            if (o.type === 'bos') return;
+            const baslik = o.topic ? `${o.subject ? `${o.subject} · ` : ''}${o.topic}` : o.reason;
+            liste.push({
+                id: `oneri-${o.type}-${i}`,
+                simge: oneriSimge[o.type] || Sparkles,
+                baslik,
+                alt: o.reason,
+                git: oneriHedef[o.action] || 'program',
+                oneri: true,
+            });
+        });
+        if (oneriler.reviewFazla > 0) {
+            liste.push({
+                id: 'oneri-review-fazla', simge: BookX,
+                baslik: `${oneriler.reviewFazla} tekrar daha bekliyor`,
+                alt: 'Hata defterinde zamanı gelen tekrarlar',
+                git: 'error-notebook', oneri: true,
+            });
+        }
         return liste;
-    }, [bugunEtutleri, acikGorevler]);
+    }, [bugunEtutleri, acikGorevler, oneriler]);
 
     /** Gelişim mesajı — son iki denemenin net farkından, yapıcı dille. */
     const gelisim = useMemo(() => {
@@ -380,7 +410,11 @@ export default function BugunEkrani({
 
     const etutIsaretle = (etut) => {
         const yeniDurum = etut.durum === 'done' ? null : 'done';
-        setIlerleme(setCellStatus(kullanici?.id, etut.key, yeniDurum));
+        /* 04.09: işarete konu bilgisi gömülür — "programda hangi konular
+           çalışıldı" kaydı (getStudiedTopics) buradan beslenir. */
+        setIlerleme(setCellStatus(kullanici?.id, etut.key, yeniDurum, undefined, {
+            topicId: etut.topicId, topic: etut.konu, subject: etut.ders, type: etut.tur,
+        }));
         if (yeniDurum === 'done') {
             setSonIsaretlenen(etut.key);
             setTimeout(() => setSonIsaretlenen(null), 900);
@@ -393,8 +427,176 @@ export default function BugunEkrani({
         }
     };
 
+    /* 04.09 (canlı eşleme): telefonun hızlı eylem paleti — 7 renkli kare. */
+    const hizliEylemler = [
+        { et: 'Paragraf', I: AlignLeft, bg: '#7DD3FC', bg2: '#BAE6FD', fg: '#0369A1', git: 'daily-log' },
+        { et: 'Problem', I: Calculator, bg: '#FDBA74', bg2: '#FED7AA', fg: '#9A3412', git: 'daily-log' },
+        { et: 'Konu', I: BookOpen, bg: '#60A5FA', bg2: '#93C5FD', fg: '#0B2E6B', git: 'topics' },
+        { et: 'Soru', I: PencilLine, bg: '#F87171', bg2: '#FCA5A5', fg: '#5E0D0D', git: 'daily-log' },
+        { et: 'Deneme', I: BarChart3, bg: '#FCA5A5', bg2: '#FECACA', fg: '#7F1D1D', git: 'deneme-analizi' },
+        { et: 'Kitap', I: BookMarked, bg: '#6EE7B7', bg2: '#A7F3D0', fg: '#064E3B', git: 'daily-log' },
+        { et: 'Tekrar', I: RotateCcw, bg: '#F9A8D4', bg2: '#FBCFE8', fg: '#831843', git: 'error-notebook' },
+    ];
+
     return (
-        <div className="space-y-4 lg:space-y-5">
+        <>
+            {/* ══════════════════════════════════════════════════════════
+                TELEFON MİNİ PANELİ (lg altı) — tek bakışta gün:
+                selamlama + seri, 4 yuvarlak gösterge, 7 hızlı eylem,
+                "dokun & başla" kompakt etüt listesi. Masaüstü düzeni
+                telefonda ezilerek değil, bu ayrı yüzeyle karşılanır.
+                ══════════════════════════════════════════════════════════ */}
+            <div className="lg:hidden space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                        <p className="text-[15px] font-black text-ink leading-tight m-0">
+                            Merhaba, {kullanici?.name?.split(' ')[0] || 'Öğrenci'}
+                        </p>
+                        <p className="text-[10px] font-semibold m-0" style={{ color: '#D85A30' }}>{gunlukMotivasyon}</p>
+                    </div>
+                    <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-full"
+                        style={{ background: '#FAECE7', color: '#993C1D' }}>
+                        <Flame size={12} />
+                        {tempo?.istikrar?.guncelZincir ?? seri ?? 0}
+                    </span>
+                </div>
+
+                <div className="flex items-start justify-between pt-3">
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="relative w-14 h-14 rounded-full grid place-items-center"
+                            style={{
+                                background: 'radial-gradient(circle at 34% 28%, #ECFDF5, #86EFAC 78%)',
+                                boxShadow: 'inset 0 2px 3px rgba(255,255,255,.7), 0 5px 10px -3px rgba(0,0,0,.32)',
+                            }}>
+                            <svg className="absolute inset-0" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+                                <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,.55)" strokeWidth="5" />
+                                <circle cx="28" cy="28" r="22" fill="none" stroke="#15803D" strokeWidth="5" strokeLinecap="round"
+                                    strokeDasharray="138" strokeDashoffset={138 * (1 - (toplam ? biten / toplam : 0))}
+                                    transform="rotate(-90 28 28)" />
+                            </svg>
+                            <span className="relative text-[13px] font-black leading-none" style={{ color: '#14532D' }}>
+                                {biten}/{toplam || 0}
+                            </span>
+                        </div>
+                        <span className="text-[8.5px] font-bold inline-flex items-center gap-1" style={{ color: '#166534' }}>
+                            Günlük hedef <CheckCircle2 size={11} />
+                        </span>
+                    </div>
+
+                    <div className="w-[52px] h-[52px] rounded-full flex flex-col items-center justify-center"
+                        style={{
+                            background: 'radial-gradient(circle at 34% 28%, #F0F7FF, #85B7EB 80%)',
+                            boxShadow: 'inset 0 2px 3px rgba(255,255,255,.7), 0 5px 10px -3px rgba(0,0,0,.32)',
+                        }}>
+                        <span className="text-[13px] font-black leading-none" style={{ color: '#0C447C' }}>{hafta?.questions ?? 0}</span>
+                        <span className="text-[7px] mt-0.5" style={{ color: '#0C447C' }}>soru·hafta</span>
+                    </div>
+
+                    <div className="w-[52px] h-[52px] rounded-full flex flex-col items-center justify-center"
+                        style={{
+                            background: 'radial-gradient(circle at 34% 28%, #F0F7FF, #85B7EB 80%)',
+                            boxShadow: 'inset 0 2px 3px rgba(255,255,255,.7), 0 5px 10px -3px rgba(0,0,0,.32)',
+                        }}>
+                        <span className="text-[12px] font-black leading-none" style={{ color: '#0C447C' }}>
+                            {haftalikDurum?.toplam ?? toplam}/{haftalikDurum?.tamamlanan ?? biten}
+                        </span>
+                        <span className="text-[7px] mt-0.5" style={{ color: '#0C447C' }}>etüt·hafta</span>
+                    </div>
+
+                    <div className="relative w-[52px] h-[52px] shrink-0">
+                        <GraduationCap size={26} className="absolute z-10"
+                            style={{ top: -12, left: '50%', transform: 'translateX(-50%) rotate(15deg)', color: '#1E293B' }}
+                            aria-hidden="true" />
+                        <div className="w-[52px] h-[52px] rounded-full flex flex-col items-center justify-center"
+                            style={{
+                                background: 'radial-gradient(circle at 34% 30%, #FCA5A5, #DC2626 80%)',
+                                boxShadow: 'inset 0 2px 3px rgba(255,255,255,.5), 0 6px 12px -3px rgba(220,38,38,.5)',
+                            }}>
+                            <span className="text-[14px] font-black leading-none text-white">{yksKalanGun}</span>
+                            <span className="text-[7px] font-bold mt-0.5" style={{ color: '#FEE2E2' }}>gün·YKS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex gap-1 pt-2">
+                    {hizliEylemler.map((h) => (
+                        <button key={h.et} type="button" onClick={() => onGit?.(h.git)}
+                            className="flex-1 min-w-0 flex flex-col items-center gap-1">
+                            <span className="w-[33px] h-[33px] rounded-[10px] grid place-items-center"
+                                style={{
+                                    background: `radial-gradient(circle at 38% 25%, ${h.bg2}, ${h.bg} 85%)`,
+                                    color: h.fg,
+                                    boxShadow: 'inset 0 2px 2px rgba(255,255,255,.7), 0 4px 8px -3px rgba(0,0,0,.32)',
+                                }}>
+                                <h.I size={16} />
+                            </span>
+                            <span className="text-[7.5px] font-bold text-ink-3">{h.et}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="pt-1">
+                    <p className="text-[8.5px] font-black text-ink-3 uppercase tracking-wider mb-1.5 m-0">
+                        bugünün programı · {toplam} etüt · dokun & başla
+                    </p>
+                    {toplam === 0 ? (
+                        <div className="rounded-xl border border-line bg-surface p-3 text-[11px] text-ink-3">
+                            Bugün için planlı etüt yok.{' '}
+                            <button type="button" onClick={() => onGit?.('daily-log')} className="font-bold"
+                                style={{ color: 'var(--brand-metin)' }}>
+                                Çalışmanı kaydet
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {bugunEtutleri.map((e) => {
+                                const bitti = e.durum === 'done';
+                                const sirada = !bitti && sonraki?.key === e.key;
+                                const renk = e.renk || {};
+                                return (
+                                    <button key={e.key} type="button" onClick={() => etutIsaretle(e)}
+                                        className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition"
+                                        style={{
+                                            background: `color-mix(in srgb, ${renk.accent || 'var(--ink-3)'} 12%, var(--surface))`,
+                                            borderLeft: `3px solid ${renk.accent || 'var(--line-2)'}`,
+                                        }}>
+                                        <span className="w-[18px] h-[18px] rounded-[5px] grid place-items-center shrink-0"
+                                            style={{
+                                                background: `color-mix(in srgb, ${renk.accent || 'var(--ink-3)'} 22%, transparent)`,
+                                                color: renk.accent || 'var(--ink-3)',
+                                            }}>
+                                            <BookMarked size={11} />
+                                        </span>
+                                        <span className="flex-1 min-w-0 text-[10px] font-bold truncate"
+                                            style={{
+                                                color: renk.text || 'var(--ink)',
+                                                textDecoration: bitti ? 'line-through' : 'none',
+                                                opacity: bitti ? 0.7 : 1,
+                                            }}>
+                                            {e.konu}
+                                        </span>
+                                        {bitti ? (
+                                            <CheckCircle2 size={15} style={{ color: '#16A34A' }} aria-hidden="true" />
+                                        ) : sirada ? (
+                                            <span className="shrink-0 text-[9px] font-black px-2 py-1 rounded-full text-white inline-flex items-center gap-1"
+                                                style={{ background: 'var(--brand)' }}>
+                                                <Play size={9} />başla
+                                            </span>
+                                        ) : (
+                                            <span className="shrink-0 text-[8px] text-ink-3">bekliyor</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ══════════════════════════════════════════════════════════
+                MASAÜSTÜ (lg ve üstü) — kokpit düzeni
+                ══════════════════════════════════════════════════════════ */}
+            <div className="hidden lg:block space-y-4 lg:space-y-5 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
 
             {/* ══ 1. SELAMLAMA ═══════════════════════════════════════ */}
             <div>
@@ -406,6 +608,46 @@ export default function BugunEkrani({
                 </h2>
                 <p className="tip-small text-ink-2 mt-1.5">{gunlukMotivasyon}</p>
             </div>
+
+            {/* ══ 1b. SIRADAKİ ADIMIN — günün tek birincil eylemi ═════ */}
+            {sonraki ? (
+                <Card dolgu="yok" className="overflow-hidden">
+                    <div className="flex items-center gap-3 p-4 sm:p-5"
+                        style={{ background: `color-mix(in srgb, ${sonraki.renk?.accent || 'var(--brand)'} 8%, transparent)` }}>
+                        <span aria-hidden="true" className="shrink-0 w-12 h-12 rounded-2xl grid place-items-center"
+                            style={{
+                                background: `color-mix(in srgb, ${sonraki.renk?.accent || 'var(--brand)'} 18%, transparent)`,
+                                color: sonraki.renk?.accent || 'var(--brand)',
+                            }}>
+                            <BookMarked size={22} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="tip-mini font-black uppercase tracking-wider m-0" style={{ color: 'var(--brand-metin)' }}>
+                                Sıradaki adımın
+                            </p>
+                            <p className="tip-small font-black text-ink truncate m-0 mt-0.5">{sonraki.konu}</p>
+                            <p className="tip-mini text-ink-3 truncate m-0 mt-0.5">
+                                {sonraki.ders} · {ACTIVITY_ETIKET[sonraki.tur] || 'Çalışma'}
+                            </p>
+                        </div>
+                        <button type="button" onClick={() => etutIsaretle(sonraki)}
+                            className="shrink-0 rounded-full px-5 py-2.5 text-sm font-black text-white transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                            style={{ background: 'var(--brand)' }}>
+                            Başla
+                        </button>
+                    </div>
+                </Card>
+            ) : toplam > 0 ? (
+                <Card dolgu="md" className="flex items-center gap-3">
+                    <span aria-hidden="true" className="shrink-0 w-11 h-11 rounded-2xl grid place-items-center bg-ok-soft text-ok">
+                        <CheckCircle2 size={22} />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="tip-small font-black text-ink m-0">Bugünün programını bitirdin 🎉</p>
+                        <p className="tip-mini text-ink-3 m-0 mt-0.5">Dilersen ek çalışma kaydı girebilirsin.</p>
+                    </div>
+                </Card>
+            ) : null}
 
             {/* ══ 2. DÖRT ÖLÇÜM ══════════════════════════════════════
                 Referanstaki KPI şeridi. Dördü de BUGÜNE ait ve
@@ -472,11 +714,11 @@ export default function BugunEkrani({
                 </Card>
             </div>
 
-            {/* ══ 3. ANA IZGARA ══════════════════════════════════════ */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
+            {/* ══ 3. ANA IZGARA — masaüstünde iki sütun kendi içinde kayar ══ */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start xl:items-stretch xl:flex-1 xl:min-h-0 xl:overflow-hidden xl:[grid-template-rows:minmax(0,1fr)]">
 
                 {/* ─── SOL: BUGÜNKÜ ÇALIŞMA PLANIN ─── */}
-                <div className="xl:col-span-8 min-w-0 space-y-4">
+                <div className="xl:col-span-8 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
                     <Card dolgu="yok">
                         <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
                             <h3 className="text-[13px] sm:text-sm font-black text-ink uppercase tracking-[0.06em] m-0">
@@ -576,58 +818,6 @@ export default function BugunEkrani({
                         )}
                     </Card>
 
-                    {/* ─── ÖNERİLEN ODAKLAR ───
-                        Plan listesi "bugün ne yapacağım"ı, bu kart "plan
-                        dışında neye bakmalıyım"ı söyler. Veri yoksa kart
-                        hiç çıkmaz — boş öneri kutusu güven vermez. */}
-                    {oneriler.items.length > 0 && (
-                        <Card dolgu="yok">
-                            <div className="px-5 pt-5 pb-3 sm:px-6 flex items-center justify-between gap-3">
-                                <h3 className="text-[13px] sm:text-sm font-black text-ink uppercase tracking-[0.06em] m-0">
-                                    Önerilen Odaklar
-                                </h3>
-                                {oneriler.reviewFazla > 0 && (
-                                    <span className="tip-mini text-ink-3 shrink-0">
-                                        +{oneriler.reviewFazla} hata daha tekrar bekliyor
-                                    </span>
-                                )}
-                            </div>
-                            <ul className="divide-y divide-line border-t border-line">
-                                {oneriler.items.map((o) => {
-                                    const g = ONERI_GORUNUM[o.type] || ONERI_GORUNUM['oncelik-onerisi'];
-                                    const Ikon = g.ikon;
-                                    return (
-                                        <li key={`${o.type}-${o.topic || o.reason}`}
-                                            className="px-5 sm:px-6 py-3 flex items-center gap-3">
-                                            <span aria-hidden="true"
-                                                className="shrink-0 w-11 h-11 rounded-dmd grid place-items-center"
-                                                style={{ background: g.zemin, color: g.ton }}>
-                                                <Ikon size={18} />
-                                            </span>
-                                            <span className="min-w-0 flex-1">
-                                                <span className="tip-mini font-black uppercase tracking-wider block"
-                                                    style={{ color: g.ton }}>
-                                                    {g.etiket}{o.subject ? ` · ${o.subject}` : ''}
-                                                </span>
-                                                {o.topic && (
-                                                    <span className="tip-small font-bold text-ink block truncate">{o.topic}</span>
-                                                )}
-                                                <span className="tip-mini text-ink-3 block">{o.reason}</span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => onGit?.(g.hedef)}
-                                                className="shrink-0 rounded-full px-4 py-2 text-[12px] font-black border text-ink-2 hover:bg-surface-2 transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                                                style={{ borderColor: 'var(--line)' }}
-                                            >
-                                                {g.eylem}
-                                            </button>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </Card>
-                    )}
 
                     {/* ─── ALT ÜÇLÜ: koç notu · bekleyenler · hızlı işlemler ─── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -668,7 +858,15 @@ export default function BugunEkrani({
                                                     <b.simge size={15} />
                                                 </span>
                                                 <span className="min-w-0 flex-1">
-                                                    <span className="tip-small font-bold text-ink block truncate">{b.baslik}</span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <span className="tip-small font-bold text-ink truncate">{b.baslik}</span>
+                                                        {b.oneri && (
+                                                            <span className="shrink-0 tip-mini font-semibold px-1.5 py-[1px] rounded-full"
+                                                                style={{ background: 'var(--brand-soft)', color: 'var(--brand-metin)' }}>
+                                                                öneri
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                     {b.alt && <span className="tip-mini text-ink-3 block truncate">{b.alt}</span>}
                                                 </span>
                                                 <ChevronRight size={15} className="text-ink-3 shrink-0" aria-hidden="true" />
@@ -709,7 +907,7 @@ export default function BugunEkrani({
                 </div>
 
                 {/* ─── SAĞ SÜTUN ─── */}
-                <aside className="xl:col-span-4 min-w-0 space-y-4">
+                <aside className="xl:col-span-4 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
                     {/* BU HAFTAKİ PROGRAMIN — üç kova, örtüşmez:
                         tamamlanan + günü geçmiş + günü gelmemiş = hafta. */}
                     {haftalikDurum && (
@@ -848,6 +1046,7 @@ export default function BugunEkrani({
                 </div>
                 <Sparkles size={30} className="shrink-0" style={{ color: 'var(--brand)' }} aria-hidden="true" />
             </div>
-        </div>
+            </div>
+        </>
     );
 }
