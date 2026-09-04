@@ -80,6 +80,15 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       şeridi — hangi görünüme ait olduğu belirsiz, davranış kaybı yok)
 - [ ] demoService'e deneme motoru örnek verisi (demo okulda hazır çözülmüş
       uygulama içi deneme + atama görünsün)
+- [ ] RealtimeNotificationBell: Firestore SDK iç hatası (b815/ca9, multi-tab
+      persistence) ara sıra hata ekranına düşürüyor — SDK sorunu, hata sınırı
+      bileşene özel yapılabilir ya da watch akışı yeniden bağlanabilir
+
+## Kayıp sohbetlerden çıkan bekleyen fikirler (04.09 öncesi konuşulmuş, yapılmamış)
+- [ ] KAYITLI denemenin cevap anahtarını sonradan düzenleme (şu an düzeltme yalnız
+      oluşturma sırasında; kayıtlıyı düzeltmek için sil-yeniden oluştur gerekiyor)
+- [ ] "Her sorunun görselini optik formun yanında göster" modu (PDF'i soru soru
+      kesme gerektirir — büyük iş, bilinçli ertelendi)
 
 ## Çalışma yöntemi
 - Referans: canlı yedekteki minified paketler — davranış ve metinler birebir oradan alınır.
