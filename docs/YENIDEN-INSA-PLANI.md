@@ -64,12 +64,22 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       sonuç ekranı (net, ders kırılımı, çözüm istatistiği, "Cevap Anahtarını Gör",
       "Tekrar Çöz")
 
-## Faz 5 — İçerik ve altyapı
-- [ ] AGS ve KPSS sınav türleri + içerik setleri (`AGS|EB|rehberlik|…`, `KPSS|EB|…`
-      biçiminde konu verileri; mevzuat başlıkları dahil)
-- [ ] RealtimeNotifications modülü (yeni lazy chunk)
-- [ ] subscriptionService hata yolları: "Paket talebi bulunamadı", "Koç Firebase kimliği
-      çözülemedi (kocDizin kaydı yok)", "Sunucu abonelik yazımı başarısız"
+## Faz 5 — Altyapı ✅ (04.09.2026)
+- [x] subscriptionService.paketOnayla SUNUCU-ÖNCE yapıldı: koç uid'i kocDizin'den
+      çözülür, `abonelikler/{uid}` belgesi yazılır, sunucu yazımı başarısızsa yerel
+      kayıt da aktifleşmez. Hata yolları: "Paket talebi bulunamadı" / "Koç Firebase
+      kimliği çözülemedi (kocDizin kaydı yok)" / "Sunucu abonelik yazımı başarısız"
+- [x] ~~AGS/KPSS içerik setleri~~ — YANLIŞ ALARM: examTopics.js'te zaten tam
+      (2026 kılavuz kaynaklı; canlıdaki `AGS|EB|…` dizgileri çalışma anında üretilen
+      konu kimlikleridir)
+- [x] ~~RealtimeNotifications~~ — YANLIŞ ALARM: kaynakta mevcut
+      (canlıdaki yeni chunk yalnız kod bölme farkı)
+
+## Kalan küçük işler (düşük öncelik)
+- [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"
+      şeridi — hangi görünüme ait olduğu belirsiz, davranış kaybı yok)
+- [ ] demoService'e deneme motoru örnek verisi (demo okulda hazır çözülmüş
+      uygulama içi deneme + atama görünsün)
 
 ## Çalışma yöntemi
 - Referans: canlı yedekteki minified paketler — davranış ve metinler birebir oradan alınır.

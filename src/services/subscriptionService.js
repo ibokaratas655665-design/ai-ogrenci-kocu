@@ -17,6 +17,7 @@ import { planBul, sezonBilgisi, DENEME_GUN } from '../data/pricingPlans';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../firebaseConfig';
 import { nesneOku, yaz as depoYaz } from './veriDeposu';
+import { kocUidCoz } from './kimlikKopru';
 
 const KEY = 'coach_subscriptions';
 
@@ -257,21 +258,43 @@ export const paketTalepEt = (kocId, { planId, kuponKodu = null, indirim = 0, ode
     return depo[anahtar];
 };
 
-/** Ana koç ödemeyi doğrulayıp paketi aktifleştirir. */
-export const paketOnayla = (kocId, onaylayan = null) => {
+/**
+ * Ana koç ödemeyi doğrulayıp paketi aktifleştirir — SUNUCU ÖNCE.
+ *
+ * 04.09: eskiden yalnız yerel kayıt aktifleşiyordu; sunucudaki
+ * `abonelikler/{kocUid}` belgesi güncellenmediği için kontenjan kararı
+ * (ogrenciEklenebilirGuvenli) onaylı paketi GÖRMÜYORDU. Artık önce koçun
+ * Firebase kimliği çözülür, sunucu belgesi yazılır; sunucu yazımı
+ * başarısızsa yerel kayıt da aktifleşmez — iki kaynak asla ayrışmaz.
+ *
+ * @returns {Promise<{basarili:boolean, hata?:string, sunucu?:object}>}
+ */
+export const paketOnayla = async (kocId, onaylayan = null) => {
     const depo = oku();
     const anahtar = String(kocId);
-    if (!depo[anahtar]) return false;
+    if (!depo[anahtar]) return { basarili: false, hata: 'Paket talebi bulunamadı.' };
 
-    depo[anahtar] = {
+    const yeni = {
         ...depo[anahtar],
         durum: 'aktif',
         odenen: depo[anahtar].tutar ?? 0,
         onaylayan: onaylayan?.name || onaylayan?.id || null,
         onayTarihi: new Date().toISOString(),
     };
+
+    const kocUid = await kocUidCoz(kocId);
+    if (!kocUid) return { basarili: false, hata: 'Koç Firebase kimliği çözülemedi (kocDizin kaydı yok).' };
+
+    const sunucu = await sunucuAboneligiYaz(kocUid, {
+        planId: yeni.planId, durum: 'aktif', baslangic: yeni.baslangic, bitis: yeni.bitis,
+    });
+    if (!sunucu.basarili) {
+        return { basarili: false, hata: sunucu.hata || 'Sunucu abonelik yazımı başarısız.', sunucu };
+    }
+
+    depo[anahtar] = yeni;
     yaz(depo);
-    return true;
+    return { basarili: true, sunucu };
 };
 
 export const paketIptal = (kocId) => {
