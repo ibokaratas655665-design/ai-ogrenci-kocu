@@ -36,10 +36,15 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [x] Kenar sütunu telefonda aynen; masaüstünde sıfır genişlik (AYARLAR kayan paneli
       çalışmaya devam eder)
 
-## Faz 3 — Konu bazlı analiz sekmeleri (ComparativeAnalysis)
-- [ ] Sekmeler: "Gelişim / Genel Bakış" · "Konularım / Konu Takibi" · "Konu Bazında Analiz"
-- [ ] "Konu bazında gerçek takip" + "Ders bazında analiz" bölümleri
-- [ ] "Konu bazında başarı verisi henüz yok" boş durumu
+## Faz 3 — Deneme analizinde dürüst veri ✅ (04.09.2026)
+- [x] SubjectAnalysis (rastgele üretilmiş SAHTE konu başarısı ekranı) ve topicLists
+      verisi kaldırıldı; her kullanım yerinde (StudentDetailPage, TrialsPage) yerine
+      dürüst "Konu Bazında Analiz" bilgi kartı: "Konu bazında başarı verisi henüz yok"
+      + gerçek kaynaklara yönlendirme (Konularım / Konu Takibi · Gelişim / Genel Bakış ·
+      Hata Defteri)
+- [x] ComparativeAnalysis: sahte "sınıf ortalaması" radar katmanı ve rastgele sınıf
+      ortalaması çizgisi kaldırıldı; radar "Ders Net Profili" oldu (ders bazlı gerçek
+      netler, sıfırlar süzülür), puan grafiği yalnız gerçek seriyi çizer
 
 ## Faz 4 — AI deneme okuma akışı (en büyük parça)
 - [ ] Koç tarafı: "Soru Kitapçığı (PDF)" + "Cevap Anahtarı PDF Yükle" (boyut göstergesi)

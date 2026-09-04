@@ -13,10 +13,9 @@ import {
 import { api } from '../services/api';
 import GoalTracking from './GoalTracking';
 import ProgramBuilderModal from '../components/ProgramBuilderModal';
-import SubjectAnalysis from '../components/charts/SubjectAnalysis';
 import StudentReportCard from '../components/coach/StudentReportCard';
 import OgrenciAnalizPanosu from '../components/coach/OgrenciAnalizPanosu';
-import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
+import ComparativeAnalysis, { KonuBazindaAnaliz } from '../components/charts/ComparativeAnalysis';
 import { onayla, bildir } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
 import { useAuth } from '../context/AuthContext';
@@ -833,7 +832,9 @@ const StudentDetailPage = () => {
                             {examResults.length > 0 ? (
                                 <>
                                     <ComparativeAnalysis studentResults={examResults} />
-                                    <SubjectAnalysis results={examResults} />
+                                    {/* 04.09: SubjectAnalysis (rastgele üretilmiş sahte
+                                        konu başarısı) yerine dürüst bilgi kartı */}
+                                    <KonuBazindaAnaliz />
                                 </>
                             ) : (
                                 <div className="bg-surface-2 border-2 border-dashed border-line rounded-3xl p-12 text-center">

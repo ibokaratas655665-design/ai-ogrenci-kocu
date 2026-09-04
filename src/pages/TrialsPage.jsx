@@ -3,8 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Target, CheckCircle, BarChart2, Download, X, Calendar } from 'lucide-react';
 import guidanceService from '../services/guidanceService';
-import SubjectAnalysis from '../components/charts/SubjectAnalysis';
-import ComparativeAnalysis from '../components/charts/ComparativeAnalysis';
+import ComparativeAnalysis, { KonuBazindaAnaliz } from '../components/charts/ComparativeAnalysis';
 import ReportCard from '../components/reports/ReportCard';
 import html2pdf from 'html2pdf.js';
 import { bildir } from '../services/uiGeriBildirim';
@@ -235,7 +234,8 @@ const TrialsPage = () => {
                     {activeTab === 'analysis' && (
                         <div className="space-y-8">
                             <ComparativeAnalysis studentResults={results} />
-                            <SubjectAnalysis results={results} />
+                            {/* 04.09: SubjectAnalysis (sahte konu başarısı) yerine dürüst kart */}
+                            <KonuBazindaAnaliz />
                         </div>
                     )}
 

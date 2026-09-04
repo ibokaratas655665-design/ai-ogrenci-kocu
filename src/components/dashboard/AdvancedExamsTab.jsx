@@ -18,7 +18,6 @@ import { downloadTemplate } from '../../utils/templateGenerator';
 import { generateBulkExamReport, generateStudentReport } from '../../utils/pdfGenerator';
 import { calculateEstimatedScore, getAYTAreaNets, getAYTMaxScoreArea, getOBPScore, normalizeSchoolNumber, clearScoreCache } from '../../utils/scoreCalculator';
 import ReportCard from '../reports/ReportCard';
-import SubjectAnalysis from '../charts/SubjectAnalysis';
 import firebaseSync from '../../services/firebaseSync';
 import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResources, removeExamResource } from '../../data/curriculum';
 import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
