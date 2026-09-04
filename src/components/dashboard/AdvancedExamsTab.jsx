@@ -503,6 +503,9 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
     const [pdfLoading, setPdfLoading] = React.useState(false);
     const [cozumSecim, setCozumSecim] = React.useState('toplu'); // 'toplu' | sonuç id
     const [acikDers, setAcikDers] = React.useState(null);
+    /* Konu sekmesindeki güncel seçim (kapsam/matris/dönüt) — PDF raporunun
+       kişiye özel bölümleri buradan okur. Render tetiklemesin diye ref. */
+    const konuDurumu = React.useRef(null);
 
     React.useEffect(() => {
         if (activeCategory && EXAM_TYPES.includes(activeCategory)) setActiveExamType(activeCategory);
@@ -846,6 +849,36 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
                 });
             }
 
+            /* Kişiye özel bölüm — Konu Dağılımı sekmesinde bir öğrenci
+               seçiliyken: KONU × DENEME isabet matrisi + koç dönütü. */
+            const konu = konuDurumu.current;
+            if (konu && konu.kapsam !== 'sinif' && konu.matris?.varMi) {
+                let yKisi = doc.lastAutoTable.finalY + 10;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(a(`Konu Gelisimi - ${konu.ogrenciAdi || 'Ogrenci'}`), 14, yKisi);
+                doc.autoTable({
+                    head: [['Konu', ...konu.matris.denemeler.map((d, i) => `D${i + 1}`), 'Trend']],
+                    body: konu.matris.satirlar.map((s) => [
+                        a(`${s.ders} - ${s.konu}`),
+                        ...s.seri.map((v) => (v != null ? `%${v}` : '-')),
+                        s.trend == null ? '-' : `${s.trend > 0 ? '+' : ''}${s.trend}`,
+                    ]),
+                    startY: yKisi + 5,
+                    styles: { fontSize: 8, cellPadding: 1.5 },
+                    headStyles: { fillColor: [59, 130, 246] },
+                });
+                if (konu.donutMetin?.trim()) {
+                    yKisi = doc.lastAutoTable.finalY + 8;
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Koc Donutu', 14, yKisi);
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(doc.splitTextToSize(a(konu.donutMetin.trim()), 265), 14, yKisi + 6);
+                }
+            }
+
             doc.save(`${activeExamType}_analiz_raporu_${new Date().toISOString().slice(0, 10)}.pdf`);
         } catch (e) {
             if (setToast) setToast('PDF oluşturulamadı: ' + e.message); else bildir('PDF oluşturulamadı: ' + e.message);
@@ -923,7 +956,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
 
             {/* ── Konu Dağılımı (her iki modda; bireyselde matris+dönüt açılır) ── */}
             {activeMetric === 'konu' && (
-                <KonuAnaliziPaneli students={students} />
+                <KonuAnaliziPaneli students={students} onDurum={(d) => { konuDurumu.current = d; }} />
             )}
 
             {/* ── Deneme Trendi ── */}

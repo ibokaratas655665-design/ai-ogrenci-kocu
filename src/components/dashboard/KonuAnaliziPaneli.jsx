@@ -27,7 +27,7 @@ const isabetRengi = (v) => (v == null ? 'var(--ink-3)' : v >= 75 ? 'var(--ok)' :
 /** Kaydın toplam neti (ders netlerinin toplamı). */
 const kayitNeti = (k) => Object.values(k?.dersler || {}).reduce((t, d) => t + (Number(d?.net) || 0), 0);
 
-const KonuAnaliziPaneli = ({ students = [] }) => {
+const KonuAnaliziPaneli = ({ students = [], onDurum }) => {
     const [tetik, setTetik] = useState(0);
     const [denemeSecim, setDenemeSecim] = useState('hepsi'); // 'hepsi' | deneme anahtarı
     const [kapsam, setKapsam] = useState('sinif');           // 'sinif' | studentId
@@ -186,6 +186,17 @@ const KonuAnaliziPaneli = ({ students = [] }) => {
             },
         };
     }, [kayitlar, kapsam]);
+
+    /* 04.09: PDF raporu "kişi seçiliyken konu gelişimi + koç dönütü"
+       bölümünü basabilsin diye güncel seçim üst bileşene bildirilir.
+       Panel davranışı değişmez; onDurum verilmemişse hiçbir şey olmaz. */
+    useEffect(() => {
+        if (!onDurum) return;
+        const ogrenciAdi = kapsam === 'sinif'
+            ? null
+            : (ogrenciler.find((o) => String(o.id) === String(kapsam))?.ad || 'Ogrenci');
+        onDurum({ kapsam, ogrenciAdi, matris, donutMetin });
+    }, [onDurum, kapsam, ogrenciler, matris, donutMetin]);
 
     const donutGonder = () => {
         let kocAd = 'Koç';

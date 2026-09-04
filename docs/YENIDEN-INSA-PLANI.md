@@ -109,8 +109,9 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [x] ASCII sanitize, üst özet blok (deneme/öğrenci/sonuç sayısı + sınıf ort/en
       yüksek/en düşük), tüm ders sütunları, "Ogrenci Ozeti", "Sinif Karsilastirma",
       "Konu Dagilimi (Sinif Geneli)"
-- [ ] PDF'e kişi seçiliyken "Konu Gelisimi - <öğrenci>" + "Koc Donutu" bölümü
-      (kapsam/dönüt durumu KonuAnaliziPaneli içinde — durum yukarı taşınmalı, küçük iş)
+- [x] PDF kişiye özel bölüm (05.09): KonuAnaliziPaneli onDurum ile seçimi
+      yukarı bildirir; kişi seçiliyken rapora KONU × DENEME matrisi +
+      Koc Donutu eklenir
 ### 6e — Ayarlar taşıma + akademik takvim ✅ (04.09.2026, 86c9352)
 - [x] services/akademikTakvim: ulusal bayramlar, dinî/öğretim varsayılanları
       (tahmini bayraklı), gunBilgisi, merkezî sınav tarihleri (sinavTarihi —
@@ -171,7 +172,7 @@ Canlı ile dizgi farkı 604 → ~48'e indi; kalanların tamamı derleme biçim
 farkı (aynı metin farklı literal bölünmüş) — davranışsal eksik tespit
 edilmedi. Kalan düşük öncelikli işler:
 - [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
-- [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
+- [x] PDF kişiye özel bölüm tamamlandı (6d kapandı)
 - [x] Mesaj/görev ekranları uçtan uca test edildi (05.09): koç→öğrenci ve
       öğrenci→koç mesaj + zil bildirimi + okundu işaretleri + görev
       ilerleme yaması birleşik okumada doğrulandı
