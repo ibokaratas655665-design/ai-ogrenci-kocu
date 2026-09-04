@@ -5,11 +5,12 @@ import {
     BarChart2, TrendingUp, Activity, Upload, FileText, Plus, X,
     ChevronDown, Trash2, Download, School, Users, BookOpen,
     CheckCircle, AlertCircle, ChevronRight, Layers, Filter, Edit2,
-    FlaskConical, GraduationCap, ListChecks
+    FlaskConical, GraduationCap, ListChecks, Clock, Timer, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
-    CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Cell, Legend
+    CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Cell, Legend,
+    AreaChart, Area
 } from 'recharts';
 import { parseExcelExamData, normalizeName } from '../../utils/excelParser';
 import { parseTYTExcel } from '../../utils/tytExcelParser';
@@ -367,7 +368,41 @@ const GRADE_LEVELS = [
     { id: '12', label: '12. Sınıf', color: 'rose', bg: 'bg-danger-soft', text: 'text-danger', border: 'border-danger', badge: 'bg-danger-soft text-danger' },
 ];
 
-const EXAM_TYPES = ['TYT', 'AYT', 'YDT', 'YDS', 'LGS', 'KPSS', 'AGS', 'TYT+YDT', 'TYT+AYT', 'OBP'];
+/* 04.09 (canlı eşleme): tür sırası canlıdaki gibi; YDS/OBP tür listesinden
+   çıktı (OBP & Müfredat yönetimi Ayarlar'a taşınıyor). */
+const EXAM_TYPES = ['TYT', 'AYT', 'YDT', 'TYT+AYT', 'TYT+YDT', 'LGS', 'KPSS', 'AGS'];
+const YKS_TURLERI = new Set(['TYT', 'AYT', 'YDT', 'TYT+AYT', 'TYT+YDT']);
+const TUR_RENKLERI = {
+    TYT: 'var(--c1)', AYT: 'var(--c4)', YDT: 'var(--c5)', 'TYT+AYT': 'var(--info)',
+    'TYT+YDT': 'var(--ok)', LGS: 'var(--warn)', KPSS: 'var(--brand)', AGS: 'var(--c2)',
+};
+
+/* 3B görünümlü sınav türü çipi — sayaçlı */
+const ExamTypeChip = ({ type, count = 0, secili, onClick }) => {
+    const renk = TUR_RENKLERI[type] || 'var(--brand)';
+    return (
+        <button type="button" onClick={onClick} aria-pressed={secili}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-black whitespace-nowrap transition-all hover:-translate-y-px active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            style={secili ? {
+                color: '#fff',
+                background: `linear-gradient(180deg, color-mix(in srgb, ${renk} 88%, white 12%), ${renk})`,
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,.35), 0 2px 6px -1px color-mix(in srgb, ${renk} 55%, transparent), 0 8px 16px -8px color-mix(in srgb, ${renk} 60%, transparent)`,
+            } : {
+                color: 'var(--ink-2)',
+                background: `linear-gradient(180deg, color-mix(in srgb, ${renk} 12%, var(--surface)), var(--surface))`,
+                border: `1px solid color-mix(in srgb, ${renk} 32%, var(--line))`,
+                boxShadow: 'inset 0 1px 0 var(--lit), 0 1px 2px -1px rgba(var(--cast), .2), 0 4px 10px -7px rgba(var(--cast), .4)',
+            }}>
+            {type}
+            {count > 0 && (
+                <span className="text-[10px] px-1.5 rounded-full font-black"
+                    style={secili ? { background: 'rgba(255,255,255,.25)', color: '#fff' } : { background: `color-mix(in srgb, ${renk} 16%, var(--surface))`, color: renk }}>
+                    {count}
+                </span>
+            )}
+        </button>
+    );
+};
 
 // Net puanını güvenli şekilde hesapla
 const getNet = (val) => {
@@ -424,64 +459,91 @@ const getAYTScoreLabel = (result) => {
 };
 
 // ─── Sınav & Sınıf Grafik Paneli ────────────────────────────────────────────
-const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
-    const [activeExamType, setActiveExamType] = React.useState(activeCategory || 'TYT');
-    /* 04.09: analiz ikiye ayrıldı — toplu değerlendirme (sınıf) ile tek
-       öğrenci incelemesi aynı sekmelerde karışıyordu. Mod başına sekme:
-       sınıf → trend/karşılaştırma/ders/konu · bireysel → konu (öğrenci
-       matrisi + dönüt). */
-    const [analizMod, setAnalizMod] = React.useState('sinif'); // 'sinif' | 'bireysel'
-    const [activeMetric, setActiveMetric] = React.useState('trend'); // 'trend' | 'class' | 'subject' | 'konu'
-    const [pdfLoading, setPdfLoading] = React.useState(false);
+/* 04.09 (canlı eşleme): panel canlıdaki son haline getirildi — ders
+   setleri sınav türüne göre gerçek ders listeleri; "Öğrenci
+   Karşılaştırması" öğrenci bazlı; yeni "Öğrenci Bazında" görünümü
+   (sol renkli listeler + net gelişimi + ders kırılımı + çözüm
+   davranışı); PDF raporu Türkçe-sanitize + özet/öğrenci/konu
+   tablolarıyla yeniden yazıldı. */
+const PANEL_RENK = ['var(--c1)', 'var(--ok)', 'var(--warn)', 'var(--c5)', 'var(--info)', 'var(--c4)'];
+const LISTE_RENK = ['var(--c1)', 'var(--ok)', 'var(--warn)', 'var(--c4)', 'var(--c5)', 'var(--info)', 'var(--c2)', 'var(--brand)', 'var(--danger)'];
+const DERS_AD = {
+    turkce: 'Türkçe', mat: 'Matematik', fizik: 'Fizik', kimya: 'Kimya', biyoloji: 'Biyoloji',
+    tarih: 'Tarih', cografya: 'Coğrafya', felsefe: 'Felsefe', din: 'Din K.', edebiyat: 'Edebiyat', ydil: 'Yabancı Dil',
+};
+const DERS_SETLERI = {
+    TYT: [['Türkçe', 'turkce'], ['Matematik', 'mat'], ['Fizik', 'fizik'], ['Kimya', 'kimya'], ['Biyoloji', 'biyoloji'], ['Tarih', 'tarih'], ['Coğrafya', 'cografya'], ['Felsefe', 'felsefe'], ['Din K.', 'din']],
+    AYT: [['Matematik', 'mat'], ['Fizik', 'fizik'], ['Kimya', 'kimya'], ['Biyoloji', 'biyoloji'], ['Edebiyat', 'edebiyat'], ['Tarih', 'tarih'], ['Coğrafya', 'cografya'], ['Felsefe', 'felsefe']],
+    YDT: [['Yabancı Dil', 'ydil']],
+    LGS: [['Türkçe', 'turkce'], ['Matematik', 'mat'], ['Fen', 'fen'], ['İnkılap', 'inkilap'], ['Din K.', 'din'], ['İngilizce', 'ing']],
+    KPSS: [['Genel Yetenek', 'gy'], ['Genel Kültür', 'gk']],
+    AGS: [['Genel Yetenek', 'gy'], ['Genel Kültür', 'gk'], ['Eğitim Bil.', 'egitim']],
+};
+const dersSeti = (tur) => DERS_SETLERI[tur]
+    ? DERS_SETLERI[tur]
+    : tur === 'TYT+AYT' ? [...DERS_SETLERI.TYT, ...DERS_SETLERI.AYT.map(([l, k]) => [`AYT ${l}`, `ayt_${k}`])]
+        : tur === 'TYT+YDT' ? [...DERS_SETLERI.TYT, ...DERS_SETLERI.YDT]
+            : [['Genel Net', 'totalNet']];
+/* jsPDF gömülü fontları Türkçe karakter taşımıyor — rapor ASCII'ye indirgenir. */
+const pdfAscii = (v) => String(v ?? '')
+    .replace(/ı/g, 'i').replace(/İ/g, 'I').replace(/ş/g, 's').replace(/Ş/g, 'S')
+    .replace(/ğ/g, 'g').replace(/Ğ/g, 'G').replace(/ü/g, 'u').replace(/Ü/g, 'U')
+    .replace(/ö/g, 'o').replace(/Ö/g, 'O').replace(/ç/g, 'c').replace(/Ç/g, 'C');
 
-    // Sync internal state with prop
+const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, setExpandedTrialId, setToast }) => {
+    const [activeExamType, setActiveExamType] = React.useState(activeCategory || 'TYT');
+    const [activeMetric, setActiveMetric] = React.useState('trend'); // trend | class | subject | konu | student
+    const [analizMod, setAnalizMod] = React.useState('sinif'); // 'sinif' | 'bireysel'
+    const modDegistir = (mod) => {
+        setAnalizMod(mod);
+        setActiveMetric(mod === 'sinif' ? 'trend' : 'student');
+    };
+    const [seciliOgrenciId, setSeciliOgrenciId] = React.useState(null);
+    const [pdfLoading, setPdfLoading] = React.useState(false);
+    const [cozumSecim, setCozumSecim] = React.useState('toplu'); // 'toplu' | sonuç id
+    const [acikDers, setAcikDers] = React.useState(null);
+
     React.useEffect(() => {
-        if (activeCategory && EXAM_TYPES.includes(activeCategory)) {
-            setActiveExamType(activeCategory);
-        }
+        if (activeCategory && EXAM_TYPES.includes(activeCategory)) setActiveExamType(activeCategory);
     }, [activeCategory]);
 
-    // Bu sınav tipinin denemeleri
     const filteredTrials = [...trials.filter(t => t.examType === activeExamType)]
         .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // Instead of filtering results by r.examType (which might be missing in old data),
-    // we use the results prop which the parent already filtered to match these trials.
+    // Sonuçlar üst bileşende deneme üyeliğine göre süzülmüş geliyor (birleşik hat dahil).
     const filteredResults = results;
 
-    // ── Sınav bazlı trend ──────────────────────────────────────────
+    const O = dersSeti(activeExamType);
+    const V = [...LISTE_RENK, 'var(--c3)'];
+    const subjectColors = Object.fromEntries(O.map(([label], i) => [label, V[i % V.length]]));
+    const subjectLabels = O.map(([label]) => label);
+
+    const subjAvg = (tRes, key) => {
+        const vals = tRes
+            .map(r => parseFloat(r[key] ?? r.subjects?.[key]?.net ?? r.subjects?.[key] ?? 0) || 0)
+            .filter(v => v > 0);
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    };
+
+    // ── Deneme trendi (tüm dersler sütun olarak) ──────────────────
     const trendData = filteredTrials.map(trial => {
         const tRes = filteredResults.filter(r => String(r.trialId) === String(trial.id));
-        const avg = tRes.length > 0
-            ? (tRes.reduce((a, r) => a + getTotalNet(r), 0) / tRes.length)
-            : 0;
-        const getSubjAvg = (key) => {
-            const vals = tRes.map(r => parseFloat(r[key] ?? r.subjects?.[key]?.net ?? r.subjects?.[key] ?? 0) || 0);
-            return vals.filter(v => v > 0).length > 0
-                ? vals.filter(v => v > 0).reduce((a, b) => a + b, 0) / vals.filter(v => v > 0).length
-                : 0;
-        };
-        return {
+        const avg = tRes.length > 0 ? tRes.reduce((a, r) => a + getTotalNet(r), 0) / tRes.length : 0;
+        const row = {
             name: trial.name.length > 14 ? trial.name.slice(0, 14) + '…' : trial.name,
             tarih: trial.date ? new Date(trial.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
             'Ort. Net': parseFloat(avg.toFixed(1)),
-            'Türkçe': parseFloat(getSubjAvg('turkce').toFixed(1)),
-            'Matematik': parseFloat(getSubjAvg('mat').toFixed(1)),
-            'Fen': parseFloat(getSubjAvg('fen').toFixed(1)),
-            'Sosyal': parseFloat(getSubjAvg('sosyal').toFixed(1)),
             katilimci: tRes.length,
         };
+        O.forEach(([label, key]) => { row[label] = parseFloat(subjAvg(tRes, key).toFixed(1)); });
+        return row;
     });
 
-    // ── Sınıf Karşılaştırma (gerçek sınıf/şube verisi) ─────────────
-    // Öğrenci kaydından sınıf bilgisini al
+    // ── Sınıf/şube eşleme (yalnız PDF "Sinif Karsilastirma" bölümünde) ──
     const students = listeOku('coach_students');
     const normName = (s) => String(s || '').toLowerCase()
         .replace(/ı/g, 'i').replace(/İ/g, 'i').replace(/ö/g, 'o').replace(/Ö/g, 'o')
         .replace(/ü/g, 'u').replace(/Ü/g, 'u').replace(/ş/g, 's').replace(/Ş/g, 's')
         .replace(/ğ/g, 'g').replace(/Ğ/g, 'g').replace(/ç/g, 'c').replace(/Ç/g, 'c').trim();
-
-    // Her result için sınıf bul
     const getStudentClass = (studentName) => {
         const nName = normName(studentName);
         const found = students.find(s => {
@@ -491,20 +553,15 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
         if (!found) return null;
         const grade = found.grade || '';
         const section = found.section || '';
-        // "12/A" gibi formatla
         if (grade && section) return `${grade}/${section}`;
-        if (grade) return grade;
-        return null;
+        return grade || null;
     };
-
-    // Sınıf bazlı grupla
     const classMap = {};
     filteredResults.forEach(r => {
         const cls = getStudentClass(r.student) || r.gradeLevel || 'Bilinmiyor';
         if (!classMap[cls]) classMap[cls] = [];
         classMap[cls].push(getTotalNet(r));
     });
-
     const classColors = ['var(--info)', 'var(--ok)', 'var(--c4)', 'var(--c5)', 'var(--warn)', 'var(--info)', 'var(--c2)'];
     const classData = Object.entries(classMap).map(([cls, nets], i) => ({
         name: cls,
@@ -514,110 +571,283 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
         renk: classColors[i % classColors.length],
     })).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
-    // ── Ders bazlı GELİŞİM (tüm denemeler × dersler) ───────────────
-    const LINE_COLORS = {
-        'Türkçe': 'var(--c1)', 'Matematik': 'var(--ok)', 'Fen': 'var(--warn)', 'Sosyal': 'var(--c5)',
-        'SAY': 'var(--c4)', 'EA': 'var(--info)', 'SÖZ': 'var(--ok)', 'DİL': 'var(--c5)',
-        'Genel Yetenek': 'var(--info)', 'Genel Kültür': 'var(--c5)', 'Yabancı Dil': 'var(--c5)',
-        'TYT Puanı': 'var(--c1)', 'Sıralama': 'var(--ok)', 'Genel Net': 'var(--c4)'
-    };
-    const tytSubjects = ['Türkçe', 'Matematik', 'Fen', 'Sosyal'];
-    const aytSubjects = ['SAY', 'EA', 'SÖZ', 'DİL'];
-    const kpssSubjects = ['Genel Yetenek', 'Genel Kültür'];
-    const lgsSubjects = ['Türkçe', 'Matematik', 'Fen', 'Sosyal']; // Simplified for graph
-    const ydtSubjects = ['Yabancı Dil'];
-
-    let displaySubjects = [];
-    if (activeExamType === 'TYT') displaySubjects = tytSubjects;
-    else if (activeExamType === 'AYT' || activeExamType === 'TYT+AYT') displaySubjects = aytSubjects;
-    else if (activeExamType.includes('KPSS')) displaySubjects = kpssSubjects;
-    else if (activeExamType.includes('LGS')) displaySubjects = lgsSubjects;
-    else if (activeExamType.includes('YDT') || activeExamType.includes('YDS')) displaySubjects = ydtSubjects;
-    else displaySubjects = ['Genel Net'];
-
-    const subjectKeys = { 'Türkçe': 'turkce', 'Matematik': 'mat', 'Fen': 'fen', 'Sosyal': 'sosyal' };
-    const kpssKeys = { 'Genel Yetenek': 'gy', 'Genel Kültür': 'gk' };
-    const aytKeys = { 'SAY': 'sayNet', 'EA': 'eaNet', 'SÖZ': 'sozNet', 'DİL': 'dilNet' };
-
-    const subjectTrendData = filteredTrials.map(trial => {
-        const tRes = filteredResults.filter(r => String(r.trialId) === String(trial.id));
-        const row = {
-            name: trial.name.length > 14 ? trial.name.slice(0, 14) + '…' : trial.name,
-            tarih: trial.date ? new Date(trial.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '',
+    // ── Öğrenci bazlı istatistik (Karşılaştırma + Öğrenci Bazında) ──
+    const ogrenciMap = new Map();
+    filteredResults.forEach(r => {
+        const key = String(r.studentId ?? r.student ?? '');
+        if (!key) return;
+        if (!ogrenciMap.has(key)) ogrenciMap.set(key, { id: key, name: r.student || 'Öğrenci', sonuclar: [] });
+        ogrenciMap.get(key).sonuclar.push(r);
+    });
+    const ogrenciListesi = [...ogrenciMap.values()].map(o => {
+        const sonuclar = [...o.sonuclar].sort((a, b) => new Date(a.date || a.examDate || 0) - new Date(b.date || b.examDate || 0));
+        const nets = sonuclar.map(getTotalNet);
+        const avg = nets.length ? nets.reduce((a, b) => a + b, 0) / nets.length : 0;
+        return {
+            ...o, sonuclar,
+            avg: +avg.toFixed(1),
+            last: nets.length ? +nets[nets.length - 1].toFixed(1) : 0,
+            best: nets.length ? +Math.max(...nets).toFixed(1) : 0,
+            examCount: nets.length,
         };
-        if (activeExamType === 'TYT') {
-            displaySubjects.forEach(subj => {
-                const key = subjectKeys[subj];
-                const vals = tRes.map(r => parseFloat(r[key] ?? r.subjects?.[key]?.net ?? r.subjects?.[key] ?? 0) || 0).filter(v => v > 0);
-                row[subj] = vals.length > 0 ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
-            });
-        } else if (activeExamType === 'AYT' || activeExamType === 'TYT+AYT') {
-            Object.entries(aytKeys).forEach(([subj, key]) => {
-                const vals = tRes.map(r => parseFloat(r[key] ?? 0) || 0).filter(v => v > 0);
-                row[subj] = vals.length > 0 ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
-            });
-        } else if (activeExamType === 'KPSS') {
-            displaySubjects.forEach(subj => {
-                const vals = tRes.map(r => parseFloat(r.subjects?.[kpssKeys[subj]]?.net ?? 0) || 0).filter(v => v > 0);
-                row[subj] = vals.length > 0 ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
-            });
-        } else {
-            displaySubjects.forEach(subj => {
-                const vals = tRes.map(r => parseFloat(r.totalNet ?? 0) || 0).filter(v => v > 0);
-                row[subj] = vals.length > 0 ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
-            });
-        }
-        return row;
+    }).sort((a, b) => b.avg - a.avg);
+
+    const kiyasRenk = ['var(--c1)', 'var(--ok)', 'var(--warn)', 'var(--c5)', 'var(--info)', 'var(--brand)', 'var(--c4)'];
+    const ogrenciKiyas = ogrenciListesi.map((o, i) => {
+        const parcalar = o.name.split(' ');
+        return {
+            ad: parcalar[0] + (parcalar[1] ? ' ' + parcalar[1][0] + '.' : ''),
+            ortalama: o.avg, max: o.best,
+            renk: kiyasRenk[i % kiyasRenk.length],
+        };
     });
 
-    // ── PDF export ────────────────────────────────────────────────────
+    // ── Ders son durumu (ilk deneme → son deneme değişimi) ─────────
+    const dersSonDurum = (() => {
+        const ilk = filteredTrials[0];
+        const son = filteredTrials[filteredTrials.length - 1];
+        const ortOku = (trial, key) => {
+            if (!trial) return null;
+            const vals = filteredResults
+                .filter(r => String(r.trialId) === String(trial.id))
+                .map(r => Number(r.subjects?.[key]?.net ?? r.subjects?.[key] ?? 0))
+                .filter(v => v > 0);
+            return vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+        };
+        return O.map(([label, key], i) => {
+            const ilkOrt = ortOku(ilk, key);
+            const sonOrt = ortOku(son, key);
+            return {
+                ders: label,
+                son: sonOrt ?? 0,
+                delta: ilkOrt != null && sonOrt != null ? +(sonOrt - ilkOrt).toFixed(1) : null,
+                renk: PANEL_RENK[i % PANEL_RENK.length],
+            };
+        }).filter(d => d.son > 0).sort((a, b) => b.son - a.son);
+    })();
+
+    // ── Öğrenci Bazında görünümü ───────────────────────────────────
+    const seciliId = seciliOgrenciId != null && ogrenciListesi.some(o => o.id === seciliOgrenciId)
+        ? seciliOgrenciId
+        : ogrenciListesi[0]?.id ?? null;
+    const seciliOgrenci = ogrenciListesi.find(o => o.id === seciliId) || null;
+
+    const netGelisimi = filteredTrials.map(trial => {
+        const kendi = seciliOgrenci?.sonuclar.find(r => String(r.trialId) === String(trial.id));
+        const tRes = filteredResults.filter(r => String(r.trialId) === String(trial.id));
+        const sinifOrt = tRes.length ? tRes.reduce((a, r) => a + getTotalNet(r), 0) / tRes.length : null;
+        return {
+            id: trial.id,
+            aktif: expandedTrialId != null && String(expandedTrialId) === String(trial.id),
+            name: trial.name.length > 12 ? trial.name.slice(0, 12) + '…' : trial.name,
+            'Öğrenci': kendi ? +getTotalNet(kendi).toFixed(1) : null,
+            'Sınıf Ort.': sinifOrt != null ? +sinifOrt.toFixed(1) : null,
+        };
+    });
+
+    const seciliDeneme = expandedTrialId
+        ? seciliOgrenci?.sonuclar.find(r => String(r.trialId) === String(expandedTrialId))
+        : null;
+    const kirilimSonuc = seciliDeneme || seciliOgrenci?.sonuclar[seciliOgrenci.sonuclar.length - 1];
+    const kirilimBaslik = seciliDeneme
+        ? `${seciliDeneme.examName || 'Seçili deneme'} — Ders Kırılımı`
+        : 'Son Denemede Güçlü / Zayıf Dersler';
+    const dersNetleri = (() => {
+        if (!kirilimSonuc?.subjects) return [];
+        const subs = kirilimSonuc.subjects;
+        const oku = (...keys) => {
+            for (const k of keys) {
+                const v = subs[k]?.net ?? subs[k];
+                if (v != null) return +Number(v).toFixed(1);
+            }
+            return 0;
+        };
+        return O.map(([label, key], i) => ({ ders: label, net: oku(key), renk: PANEL_RENK[i % PANEL_RENK.length] }))
+            .filter(d => d.net > 0).sort((a, b) => b.net - a.net);
+    })();
+
+    // ── Çözüm davranışı (uygulama-içi motor istatistiği) ──────────
+    const cozumDetay = (sonuc) => {
+        const ist = sonuc.istatistik || {};
+        const dersSureBar = Object.entries(ist.dersSureMs || {})
+            .map(([ders, ms], i) => ({ ders: DERS_AD[ders] || ders, dk: +((Number(ms) || 0) / 60000).toFixed(1), renk: PANEL_RENK[i % PANEL_RENK.length] }))
+            .filter(d => d.dk > 0).sort((a, b) => b.dk - a.dk);
+        const hataSayaci = {};
+        (Array.isArray(ist.yanlisSorular) ? ist.yanlisSorular : []).forEach(s => {
+            const d = s.ders || 'diğer';
+            hataSayaci[d] = (hataSayaci[d] || 0) + 1;
+        });
+        const hataDersDagilim = Object.entries(hataSayaci)
+            .map(([ders, adet]) => ({ ders: DERS_AD[ders] || ders, adet }))
+            .sort((a, b) => b.adet - a.adet);
+        const konuGrup = {};
+        (Array.isArray(ist.konular) ? ist.konular : []).forEach(k => {
+            (konuGrup[k.ders] = konuGrup[k.ders] || []).push({
+                konu: k.konu || '—', dogru: k.dogru ?? 0, yanlis: k.yanlis ?? 0, bos: k.bos ?? 0,
+                net: k.net ?? 0, dk: +((Number(k.sureMs) || 0) / 60000).toFixed(1),
+            });
+        });
+        const sureler = ist.dersSureMs || {};
+        const dersDetay = Object.entries(sonuc.subjects || {}).map(([key, v]) => {
+            const dogru = Number(v?.d) || 0, yanlis = Number(v?.y) || 0, bos = Number(v?.b) || 0;
+            const net = Number(v?.net) || 0;
+            const dk = +((Number(sureler[key]) || 0) / 60000).toFixed(1);
+            return { dersKey: key, ders: DERS_AD[key] || key, dogru, yanlis, bos, net, dk, konular: konuGrup[key] || [] };
+        }).filter(d => d.dogru + d.yanlis + d.bos > 0 || d.net !== 0 || d.dk > 0)
+            .sort((a, b) => b.net - a.net)
+            .map((d, i) => ({ ...d, renk: PANEL_RENK[i % PANEL_RENK.length] }));
+        return {
+            id: sonuc.id,
+            ad: sonuc.examName || 'Deneme',
+            tarih: sonuc.date || null,
+            net: +getTotalNet(sonuc).toFixed(1),
+            ilkDers: ist.ilkDers || '—',
+            sureDk: ist.toplamSureDk ?? 0,
+            ortSaniye: ist.ortSoruSaniye ?? 0,
+            degisim: ist.toplamDegisim ?? 0,
+            enUzunSoru: ist.enUzunSoru || null,
+            hataAdet: (ist.yanlisSorular || []).length,
+            dersSureBar, hataDersDagilim, dersDetay,
+        };
+    };
+    const motorGecmis = (seciliOgrenci?.sonuclar || []).filter(r => r?.istatistik)
+        .slice().sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))
+        .map((r, i) => ({ ...cozumDetay(r), sira: i + 1 }));
+    const cozumVar = motorGecmis.length > 0;
+    const seciliCozum = cozumSecim !== 'toplu' && motorGecmis.find(m => m.id === cozumSecim)
+        ? motorGecmis.find(m => m.id === cozumSecim)
+        : motorGecmis[motorGecmis.length - 1];
+    const topluKiyas = motorGecmis.map(m => ({
+        name: m.ad.length > 12 ? m.ad.slice(0, 12) + '…' : m.ad,
+        Net: m.net, 'Süre (dk)': m.sureDk, 'Ort. Soru (sn)': m.ortSaniye, 'Değişim': m.degisim, Hata: m.hataAdet,
+    }));
+    const denemeListesi = filteredTrials.map((trial, i) => {
+        const tRes = filteredResults.filter(r => String(r.trialId) === String(trial.id));
+        const ort = tRes.length ? tRes.reduce((a, r) => a + getTotalNet(r), 0) / tRes.length : 0;
+        return {
+            id: trial.id, no: i + 1, ad: trial.name, tur: trial.examType,
+            ort: +ort.toFixed(1), katilimci: tRes.length,
+            renk: LISTE_RENK[i % LISTE_RENK.length],
+        };
+    });
+
+    // ── PDF raporu ─────────────────────────────────────────────────
     const handlePDFExport = async () => {
         setPdfLoading(true);
         try {
             const { jsPDF } = await import('jspdf');
             await import('jspdf-autotable');
             const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const a = pdfAscii;
+            const bugun = a(new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }));
 
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text(`${activeExamType} - Deneme Analiz Raporu`, 14, 18);
+            doc.text(a(`${activeExamType} - Deneme Analiz Raporu`), 14, 18);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(120);
-            doc.text(`Rapor tarihi: ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}`, 14, 25);
+            doc.text(`Rapor tarihi: ${bugun}`, 14, 25);
             doc.setTextColor(0);
 
-            // Trend tablosu
+            const nets = filteredResults.map(r => getTotalNet(r)).filter(n => Number.isFinite(n));
+            const ortNet = nets.length ? nets.reduce((x, y) => x + y, 0) / nets.length : 0;
+            const ogrSayi = new Set(filteredResults.map(r => String(r.studentId ?? r.student ?? ''))).size;
+            const ozet = [
+                ['Deneme sayisi', String(filteredTrials.length)],
+                ['Ogrenci sayisi', String(ogrSayi)],
+                ['Toplam sonuc', String(filteredResults.length)],
+                ['Sinif ort. net', ortNet.toFixed(1)],
+                ['En yuksek net', (nets.length ? Math.max(...nets) : 0).toFixed(1)],
+                ['En dusuk net', (nets.length ? Math.min(...nets) : 0).toFixed(1)],
+            ];
+            doc.autoTable({
+                body: ozet, startY: 30, theme: 'plain',
+                styles: { fontSize: 9, cellPadding: 1.5 },
+                columnStyles: { 0: { fontStyle: 'bold', textColor: [90, 90, 90] }, 1: { fontStyle: 'bold' } },
+                margin: { left: 14 }, tableWidth: 90,
+            });
+
+            let y = doc.lastAutoTable.finalY + 8;
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
-            doc.text('Deneme Bazli Gelisim Ozeti', 14, 35);
-            const headers = activeExamType === 'TYT'
-                ? [['Deneme', 'Tarih', 'Ort. Net', 'Turkce', 'Matematik', 'Fen', 'Sosyal', 'Katilimci']]
-                : [['Deneme', 'Tarih', 'Ort. Net', 'Katilimci']];
-            const rows = trendData.map(d => activeExamType === 'TYT'
-                ? [d.name, d.tarih, d['Ort. Net'], d['Türkçe'], d['Matematik'], d['Fen'], d['Sosyal'], d.katilimci]
-                : [d.name, d.tarih, d['Ort. Net'], d.katilimci]
-            );
-            doc.autoTable({ head: headers, body: rows, startY: 40, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [99, 102, 241] } });
+            doc.text('Deneme Bazli Gelisim Ozeti', 14, y);
+            doc.autoTable({
+                head: [['Deneme', 'Tarih', 'Ort. Net', ...subjectLabels.map(a), 'Katilimci']],
+                body: trendData.map(row => [a(row.name), a(row.tarih), row['Ort. Net'], ...subjectLabels.map(s => row[s] ?? 0), row.katilimci]),
+                startY: y + 4, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [99, 102, 241] },
+            });
 
-            // Sınıf karşılaştırma tablosu
-            if (classData.length > 0) {
-                const y = doc.lastAutoTable.finalY + 10;
+            if (ogrenciListesi.length > 0) {
+                const y2 = doc.lastAutoTable.finalY + 10;
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Sinif Karsilastirma', 14, y);
+                doc.text('Ogrenci Ozeti', 14, y2);
+                const satirlar = [...ogrenciListesi].sort((x, z) => (z.last ?? z.avg ?? 0) - (x.last ?? x.avg ?? 0)).map(o => {
+                    const netler = (o.sonuclar || []).map(getTotalNet).filter(n => Number.isFinite(n));
+                    const ilk = netler[0];
+                    const son = netler[netler.length - 1];
+                    const fark = ilk != null && son != null ? son - ilk : null;
+                    const ort = netler.length ? netler.reduce((x, z) => x + z, 0) / netler.length : 0;
+                    return [a(o.name), String(netler.length), ort.toFixed(1), (son ?? 0).toFixed(1), fark == null ? '-' : `${fark > 0 ? '+' : ''}${fark.toFixed(1)}`];
+                });
+                doc.autoTable({
+                    head: [['Ogrenci', 'Deneme', 'Ort. Net', 'Son Net', 'Degisim']],
+                    body: satirlar, startY: y2 + 5,
+                    styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [217, 119, 6] },
+                });
+            }
+
+            if (classData.length > 0) {
+                const y3 = doc.lastAutoTable.finalY + 10;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Sinif Karsilastirma', 14, y3);
                 doc.autoTable({
                     head: [['Sinif', 'Ort. Net', 'En Yuksek', 'Ogrenci Sayisi']],
-                    body: classData.map(d => [d.name, d.ortalama, d.max, d.sayi]),
-                    startY: y + 5,
-                    styles: { fontSize: 9, cellPadding: 2 },
-                    headStyles: { fillColor: [16, 185, 129] }
+                    body: classData.map(d => [a(d.name), d.ortalama, d.max, d.sayi]),
+                    startY: y3 + 5, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [16, 185, 129] },
+                });
+            }
+
+            // Konu dağılımı (sınıf geneli) — motor istatistiği taşıyan sonuçlardan
+            const konuToplam = new Map();
+            filteredResults.forEach(r => {
+                const konular = r?.istatistik?.konular;
+                if (!Array.isArray(konular)) return;
+                konular.forEach(k => {
+                    const ders = DERS_AD[k.ders] || k.ders || 'Diğer';
+                    const konu = (k.konu && String(k.konu).trim()) || '—';
+                    if (konu === '—') return;
+                    const anahtar = `${ders}||${konu}`;
+                    const kayit = konuToplam.get(anahtar) || { ders, konu, dogru: 0, yanlis: 0, bos: 0 };
+                    kayit.dogru += Number(k.dogru) || 0;
+                    kayit.yanlis += Number(k.yanlis) || 0;
+                    kayit.bos += Number(k.bos) || 0;
+                    konuToplam.set(anahtar, kayit);
+                });
+            });
+            if (konuToplam.size > 0) {
+                const y4 = doc.lastAutoTable.finalY + 10;
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Konu Dagilimi (Sinif Geneli)', 14, y4);
+                const konuSatir = [...konuToplam.values()]
+                    .sort((x, z) => z.yanlis - x.yanlis)
+                    .map(k => {
+                        const cevapli = k.dogru + k.yanlis;
+                        return [a(k.ders), a(k.konu), k.dogru, k.yanlis, k.bos, cevapli > 0 ? `%${Math.round(k.dogru / cevapli * 100)}` : '-'];
+                    });
+                doc.autoTable({
+                    head: [['Ders', 'Konu', 'D', 'Y', 'B', 'Isabet']],
+                    body: konuSatir, startY: y4 + 5,
+                    styles: { fontSize: 8, cellPadding: 1.5 }, headStyles: { fillColor: [168, 85, 247] },
                 });
             }
 
             doc.save(`${activeExamType}_analiz_raporu_${new Date().toISOString().slice(0, 10)}.pdf`);
         } catch (e) {
-            bildir('PDF oluşturulamadı: ' + e.message);
+            if (setToast) setToast('PDF oluşturulamadı: ' + e.message); else bildir('PDF oluşturulamadı: ' + e.message);
         } finally {
             setPdfLoading(false);
         }
@@ -625,10 +855,19 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
 
     if (trials.length === 0) return null;
 
-    if (trials.length === 0) return null;
+    const seciliStil = (renk) => ({
+        color: '#fff',
+        background: `linear-gradient(180deg, color-mix(in srgb, ${renk} 88%, white 12%), ${renk})`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,.35), 0 9px 20px -9px color-mix(in srgb, ${renk} 60%, transparent)`,
+    });
+    const pasifStil = {
+        background: 'linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 3%), var(--surface))',
+        border: '1px solid var(--line)',
+        boxShadow: 'inset 0 1px 0 var(--lit-soft), 0 4px 10px -7px rgba(var(--cast), .4)',
+    };
 
     return (
-        <div className="bg-surface rounded-2xl border border-line shadow-sm p-5 space-y-4">
+        <div className="rounded-2xl border border-line p-5 space-y-4 kutu-3b">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-base font-bold text-ink flex items-center gap-2">
                     <Activity size={18} className="text-brand" />
@@ -653,11 +892,11 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
 
             {/* Mod seçici: sınıf geneli ↔ bireysel */}
             <div className="flex gap-2 p-1 rounded-xl bg-surface-2 border border-line w-fit">
-                <button onClick={() => { setAnalizMod('sinif'); setActiveMetric('trend'); }}
+                <button onClick={() => modDegistir('sinif')}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${analizMod === 'sinif' ? 'bg-brand text-white shadow' : 'text-ink-2 hover:text-ink'}`}>
                     📊 Sınıf Analizi
                 </button>
-                <button onClick={() => { setAnalizMod('bireysel'); setActiveMetric('konu'); }}
+                <button onClick={() => modDegistir('bireysel')}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${analizMod === 'bireysel' ? 'bg-brand text-white shadow' : 'text-ink-2 hover:text-ink'}`}>
                     👤 Bireysel Analiz
                 </button>
@@ -671,6 +910,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
                     { id: 'subject', label: (activeExamType === 'AYT' || activeExamType === 'TYT+AYT') ? '📊 Puan Türleri' : '📚 Ders Gelişimi' },
                     { id: 'konu', label: '🎯 Konu Dağılımı' },
                 ] : [
+                    { id: 'student', label: '👤 Öğrenci Bazında' },
                     { id: 'konu', label: '🎯 Konu Dağılımı' },
                 ]).map(m => (
                     <button key={m.id} onClick={() => setActiveMetric(m.id)}
@@ -689,7 +929,6 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
             {activeMetric === 'trend' && (
                 trendData.length > 0 ? (
                     <div>
-                        {/* 04.09: dört özet kutu — grafiğe bakmadan durum bir bakışta */}
                         {(() => {
                             const ilkOrt = trendData[0]?.['Ort. Net'] ?? 0;
                             const sonOrt = trendData[trendData.length - 1]?.['Ort. Net'] ?? 0;
@@ -713,23 +952,33 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
                                 </div>
                             );
                         })()}
-                        <p className="text-xs text-ink-3 mb-2">{activeExamType} denemeleri − sınıf geneli ortalama net (tüm dersler)</p>
-                        <div className="h-56">
+                        <p className="text-xs text-ink-3 mb-2">{activeExamType} − sınıf net ortalamasının denemeler boyunca seyri (ders kırılımı için "Ders Gelişimi" sekmesi).</p>
+                        <div className="h-56 rounded-2xl p-3 kutu-3b">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={trendData} margin={{ left: -10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: 10, fontSize: 11 }}
-                                        formatter={(v, name) => [`${v} net`, name]} />
-                                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                                    <Line type="monotone" dataKey="Ort. Net" stroke="var(--c4)" strokeWidth={3}
-                                        dot={{ r: 5, fill: 'var(--c4)', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 7 }}  animationDuration={300} />
-                                    {activeExamType === 'TYT' && ['Türkçe', 'Matematik', 'Fen', 'Sosyal'].map(s => (
-                                        <Line key={s} type="monotone" dataKey={s} stroke={LINE_COLORS[s]} strokeWidth={1.5}
-                                            strokeDasharray="4 3" dot={{ r: 3 }} activeDot={{ r: 5 }}  animationDuration={300} />
-                                    ))}
-                                </LineChart>
+                                <AreaChart data={trendData} margin={{ top: 10, right: 12, bottom: 0, left: -10 }}>
+                                    <defs>
+                                        <linearGradient id="trendAlan" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="var(--c4)" stopOpacity={0.45} />
+                                            <stop offset="100%" stopColor="var(--c4)" stopOpacity={0} />
+                                        </linearGradient>
+                                        <filter id="trendCizgiGolge" x="-10%" y="-20%" width="120%" height="150%">
+                                            <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity="0.22" />
+                                        </filter>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--line)" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} width={34} />
+                                    <RechartsTooltip
+                                        contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
+                                        labelStyle={{ color: 'var(--ink-2)', fontWeight: 800 }}
+                                        formatter={(v) => [`${v} net`, 'Sınıf ort.']}
+                                        labelFormatter={(l, payload) => `${l} · ${payload?.[0]?.payload?.katilimci ?? 0} kayıt`}
+                                    />
+                                    <Area type="monotone" dataKey="Ort. Net" stroke="var(--c4)" strokeWidth={3}
+                                        filter="url(#trendCizgiGolge)" fill="url(#trendAlan)"
+                                        dot={{ r: 4, fill: 'var(--surface)', stroke: 'var(--c4)', strokeWidth: 2 }}
+                                        activeDot={{ r: 6, strokeWidth: 0 }} animationDuration={350} />
+                                </AreaChart>
                             </ResponsiveContainer>
                         </div>
                         {/* Tablo */}
@@ -739,26 +988,20 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
                                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
                                     <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
                                     <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c4">Ort. Net</th>
-                                    {activeExamType === 'TYT' && <>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-brand">Türkçe</th>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ok">Matematik</th>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-warn">Fen</th>
-                                        <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c5">Sosyal</th>
-                                    </>}
+                                    {subjectLabels.map(s => (
+                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: subjectColors[s] || 'var(--ink-3)' }}>{s}</th>
+                                    ))}
                                     <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Katılımcı</th>
                                 </tr></thead>
-                                <tbody className="divide-y divide-line">
+                                <tbody className="divide-y divide-line-subtle">
                                     {trendData.map((row, i) => (
                                         <tr key={i} className="hover:bg-surface-2">
                                             <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
                                             <td className="px-3 py-2 text-center text-ink-3">{row.tarih}</td>
                                             <td className="px-3 py-2 text-center font-black text-c4">{row['Ort. Net']}</td>
-                                            {activeExamType === 'TYT' && <>
-                                                <td className="px-3 py-2 text-center text-brand">{row['Türkçe']}</td>
-                                                <td className="px-3 py-2 text-center text-ok">{row['Matematik']}</td>
-                                                <td className="px-3 py-2 text-center text-warn">{row['Fen']}</td>
-                                                <td className="px-3 py-2 text-center text-c5">{row['Sosyal']}</td>
-                                            </>}
+                                            {subjectLabels.map(s => (
+                                                <td key={s} className="px-3 py-2 text-center font-semibold" style={{ color: subjectColors[s] || 'var(--ink-3)' }}>{row[s]}</td>
+                                            ))}
                                             <td className="px-3 py-2 text-center text-ink-3">{row.katilimci} kişi</td>
                                         </tr>
                                     ))}
@@ -771,100 +1014,102 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
                 )
             )}
 
-            {/* ── Sınıf Karşılaştırması ── */}
+            {/* ── Öğrenci Karşılaştırması ── */}
             {activeMetric === 'class' && (
-                classData.length > 0 ? (
+                ogrenciKiyas.length > 0 ? (
                     <div>
-                        <p className="text-xs text-ink-3 mb-3">{activeExamType} − gerçek sınıf/şube bazında net ortalamaları</p>
-                        <div className="h-52">
+                        <p className="text-xs text-ink-3 mb-3">{activeExamType} − öğrenci bazında net ortalaması (dolu) ve en yüksek net (kesikli çerçeve)</p>
+                        <div className="h-64 rounded-2xl p-3 kutu-3b">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={classData} barSize={Math.max(28, Math.min(56, 240 / Math.max(classData.length, 1)))}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: 10, fontSize: 11 }}
-                                        formatter={(v, name) => name === 'ortalama' ? [`${v} net`, 'Ort. Net'] : [`${v} net`, 'En Yüksek']}
+                                <BarChart data={ogrenciKiyas} margin={{ top: 12, right: 8, bottom: 0, left: -12 }}
+                                    barSize={Math.max(18, Math.min(46, 360 / Math.max(ogrenciKiyas.length, 1)))}>
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--line)" />
+                                    <XAxis dataKey="ad" axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={52}
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--ink-2)' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} width={34} />
+                                    <RechartsTooltip
+                                        cursor={{ fill: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}
+                                        contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
+                                        formatter={(v, name) => [`${v} net`, name === 'ortalama' ? 'Ortalama' : 'En Yüksek']}
                                     />
                                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                                    <Bar dataKey="ortalama" name="Ort. Net" radius={[8, 8, 0, 0]}>
-                                        {classData.map((entry, index) => (
+                                    <Bar dataKey="ortalama" name="Ortalama" radius={[8, 8, 0, 0]} animationDuration={350}>
+                                        {ogrenciKiyas.map((entry, index) => (
                                             <Cell key={index} fill={entry.renk} />
                                         ))}
                                     </Bar>
                                     <Bar dataKey="max" name="En Yüksek" radius={[4, 4, 0, 0]} fill="transparent"
-                                        stroke="var(--ink-3)" strokeWidth={1.5} fillOpacity={0} strokeDasharray="3 2"  animationDuration={300} />
+                                        stroke="var(--ink-3)" strokeWidth={1.5} strokeDasharray="3 2" animationDuration={350} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
-                        {/* Sınıf istatistikleri kartları */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-3">
-                            {classData.map((d, i) => (
-                                <div key={d.name} className="rounded-xl p-3 border border-line bg-surface-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
+                            {ogrenciKiyas.map(d => (
+                                <div key={d.ad} className="rounded-xl p-3 kutu-3b border border-line">
                                     <div className="flex items-center gap-2 mb-1">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.renk }} />
-                                        <span className="text-xs font-black text-ink-2">{d.name}</span>
+                                        <span className="text-xs font-black text-ink-2 truncate">{d.ad}</span>
                                     </div>
-                                    <div className="text-lg font-black" style={{ color: d.renk }}>{d.ortalama}</div>
-                                    <div className="text-xs text-ink-3">ort. • max: {d.max}</div>
-                                    <div className="text-xs text-ink-3">{d.sayi} öğrenci</div>
+                                    <div className="text-lg font-black tabular-nums" style={{ color: d.renk }}>{d.ortalama}</div>
+                                    <div className="text-[11px] text-ink-3">ort. • en iyi: {d.max}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <GraduationCap size={32} className="mx-auto text-ink-3 mb-3" />
-                        <p className="text-sm text-ink-3 mb-1">Sınıf verisi bulunamadı.</p>
-                        <p className="text-xs text-ink-3">Öğrenci profillerine sınıf/şube ekleyin (örn: 12 / A)</p>
-                    </div>
+                    <p className="text-sm text-ink-3 text-center py-6">Bu sınav türünde öğrenci sonucu yok.</p>
                 )
             )}
 
             {/* ── Ders Gelişimi ── */}
             {activeMetric === 'subject' && (
-                subjectTrendData.length > 0 ? (
+                dersSonDurum.length > 0 ? (
                     <div>
                         <p className="text-xs text-ink-3 mb-3">
-                            {activeExamType === 'TYT' ? 'TYT − her deneme için ders bazlı sınıf ortalaması gelişimi' : 'AYT − puan türleri gelişimi'}
+                            {activeExamType} − her dersin sınıf ortalaması (en güçlü → en zayıf) ve ilk denemeye göre değişim. <span className="text-danger font-bold">Kırmızı</span> = gerileyen ders.
                         </p>
-                        <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={subjectTrendData} margin={{ left: -10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: 10, fontSize: 11 }}
-                                        formatter={(v, name) => [`${v} net`, name]} />
-                                    {displaySubjects.map(subj => (
-                                        <Line key={subj} type="monotone" dataKey={subj}
-                                            stroke={LINE_COLORS[subj] || 'var(--c4)'} strokeWidth={2.5}
-                                            dot={{ r: 4, fill: LINE_COLORS[subj] || 'var(--c4)', stroke: '#fff', strokeWidth: 1.5 }}
-                                            activeDot={{ r: 6 }}  animationDuration={300} />
-                                    ))}
-                                </LineChart>
-                            </ResponsiveContainer>
+                        <div className="space-y-2">
+                            {dersSonDurum.map(d => {
+                                const enYuksek = Math.max(...dersSonDurum.map(x => x.son), 1);
+                                const oran = Math.max(6, Math.round(d.son / enYuksek * 100));
+                                return (
+                                    <div key={d.ders} className="flex items-center gap-3 rounded-xl p-2.5 kutu-3b border border-line">
+                                        <span className="w-16 sm:w-20 shrink-0 text-xs font-black text-ink truncate">{d.ders}</span>
+                                        <div className="flex-1 h-3.5 rounded-full overflow-hidden"
+                                            style={{ background: 'var(--surface-3)', boxShadow: 'inset 0 1px 2px rgba(var(--cast), .22)' }}>
+                                            <div className="h-full rounded-full transition-all"
+                                                style={{ width: `${oran}%`, background: `linear-gradient(90deg, color-mix(in srgb, ${d.renk} 65%, transparent), ${d.renk})`, boxShadow: `0 0 8px -1px ${d.renk}` }} />
+                                        </div>
+                                        <span className="w-11 shrink-0 text-right text-sm font-black tabular-nums" style={{ color: d.renk }}>{d.son}</span>
+                                        <span className="w-14 shrink-0 text-right text-[11px] font-black"
+                                            style={{ color: d.delta > 0 ? 'var(--ok)' : d.delta < 0 ? 'var(--danger)' : 'var(--ink-3)' }}>
+                                            {d.delta == null ? '—' : d.delta > 0 ? `▲+${d.delta}` : d.delta < 0 ? `▼${d.delta}` : '—'}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                         </div>
-                        {/* Tablo */}
+                        {/* Tablo — deneme × ders, önceki denemeye göre değişimle */}
                         <div className="mt-3 overflow-x-auto">
                             <table className="min-w-full text-xs">
                                 <thead><tr className="bg-surface-2 border-b border-line">
                                     <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
                                     <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
-                                    {displaySubjects.map(s => (
-                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: LINE_COLORS[s] || '#6b7280' }}>{s}</th>
+                                    {subjectLabels.map(s => (
+                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: subjectColors[s] || '#6b7280' }}>{s}</th>
                                     ))}
                                 </tr></thead>
-                                <tbody className="divide-y divide-line">
-                                    {subjectTrendData.map((row, i, arr) => (
+                                <tbody className="divide-y divide-line-subtle">
+                                    {trendData.map((row, i, arr) => (
                                         <tr key={i} className="hover:bg-surface-2">
                                             <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
                                             <td className="px-3 py-2 text-center text-ink-3">{row.tarih}</td>
-                                            {displaySubjects.map(s => {
+                                            {subjectLabels.map(s => {
                                                 const prev = i > 0 ? arr[i - 1][s] : null;
-                                                const delta = prev !== null ? (row[s] - prev) : null;
+                                                const delta = prev !== null ? row[s] - prev : null;
                                                 return (
                                                     <td key={s} className="px-3 py-2 text-center">
-                                                        <span className="font-black" style={{ color: LINE_COLORS[s] || '#6b7280' }}>{row[s]}</span>
+                                                        <span className="font-black" style={{ color: subjectColors[s] || '#6b7280' }}>{row[s]}</span>
                                                         {delta !== null && delta !== 0 && (
                                                             <span className={`ml-1 text-[10px] font-bold ${delta > 0 ? 'text-ok' : 'text-danger'}`}>
                                                                 {delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)}
@@ -883,9 +1128,349 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, setToast }) => {
                     <p className="text-sm text-ink-3 text-center py-6">Ders verisi bulunamadı.</p>
                 )
             )}
+
+            {/* ── Öğrenci Bazında ── */}
+            {activeMetric === 'student' && (
+                ogrenciListesi.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* Sol: deneme + öğrenci listeleri */}
+                        <div className="lg:col-span-1 space-y-1.5 lg:max-h-[560px] lg:overflow-y-auto pr-1 tek-ekran-govde">
+                            <p className="text-[11px] font-black uppercase tracking-wider text-ink-3 px-1 mb-1">Denemeler · sınıf ort.</p>
+                            {denemeListesi.map(d => {
+                                const aktif = expandedTrialId === d.id;
+                                return (
+                                    <button key={d.id} type="button" onClick={() => setExpandedTrialId?.(aktif ? null : d.id)} aria-pressed={aktif}
+                                        className="w-full text-left rounded-xl pl-2.5 pr-3 py-2.5 flex items-center gap-2.5 transition-all hover:-translate-y-px kutu-3b-hover"
+                                        style={aktif ? seciliStil(d.renk) : pasifStil}>
+                                        <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: aktif ? 'rgba(255,255,255,.55)' : d.renk }} />
+                                        <span className="grid place-items-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
+                                            style={aktif ? { background: 'rgba(255,255,255,.22)', color: '#fff' } : { background: `color-mix(in srgb, ${d.renk} 15%, var(--surface))`, color: d.renk }}>
+                                            {d.no}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-sm font-bold truncate" style={{ color: aktif ? '#fff' : 'var(--ink)' }}>{d.ad}</span>
+                                            <span className="block text-[10px]" style={{ color: aktif ? 'rgba(255,255,255,.82)' : 'var(--ink-3)' }}>{d.tur} · {d.katilimci} öğrenci</span>
+                                        </span>
+                                        <span className="text-lg font-black tabular-nums shrink-0" style={{ color: aktif ? '#fff' : d.renk }}>{d.ort}</span>
+                                    </button>
+                                );
+                            })}
+                            <p className="text-[11px] font-black uppercase tracking-wider text-ink-3 px-1 mb-1 mt-3">Öğrenciler · net ort.</p>
+                            {ogrenciListesi.map((o, i) => {
+                                const aktif = o.id === seciliId;
+                                const renk = LISTE_RENK[i % LISTE_RENK.length];
+                                return (
+                                    <button key={o.id} type="button" onClick={() => setSeciliOgrenciId(o.id)} aria-pressed={aktif}
+                                        className="w-full text-left rounded-xl pl-2.5 pr-3 py-2.5 flex items-center gap-2.5 transition-all hover:-translate-y-px kutu-3b-hover"
+                                        style={aktif ? seciliStil(renk) : pasifStil}>
+                                        <span className="w-1.5 self-stretch rounded-full shrink-0" style={{ background: aktif ? 'rgba(255,255,255,.55)' : renk }} />
+                                        <span className="grid place-items-center w-7 h-7 rounded-lg text-xs font-black shrink-0"
+                                            style={aktif ? { background: 'rgba(255,255,255,.22)', color: '#fff' } : { background: `color-mix(in srgb, ${renk} 15%, var(--surface))`, color: renk }}>
+                                            {i + 1}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-sm font-bold truncate" style={{ color: aktif ? '#fff' : 'var(--ink)' }}>{o.name}</span>
+                                            <span className="block text-[10px]" style={{ color: aktif ? 'rgba(255,255,255,.82)' : 'var(--ink-3)' }}>{o.examCount} deneme · son {o.last}</span>
+                                        </span>
+                                        <span className="text-lg font-black tabular-nums shrink-0" style={{ color: aktif ? '#fff' : renk }}>{o.avg}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Sağ: grafikler + çözüm davranışı */}
+                        <div className="lg:col-span-2 space-y-4">
+                            {/* Net Gelişimi */}
+                            <div className="rounded-2xl p-4 kutu-3b">
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <h4 className="text-sm font-black text-ink truncate">{seciliOgrenci?.name} — Net Gelişimi</h4>
+                                    <span className="text-[11px] text-ink-3 shrink-0">{activeExamType} · {seciliOgrenci?.examCount} deneme</span>
+                                </div>
+                                <p className="text-[11px] text-ink-3 mb-2 leading-snug">Mor çizgi öğrenci, kesikli çizgi sınıf ortalaması — öğrenci sınıfın üstünde mi altında mı bir bakışta görünür.</p>
+                                <div className="h-56">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={netGelisimi} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                                            <defs>
+                                                <filter id="ogrGolge" x="-10%" y="-20%" width="120%" height="150%">
+                                                    <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#000" floodOpacity="0.25" />
+                                                </filter>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--line)" />
+                                            <XAxis dataKey="name" axisLine={{ stroke: 'var(--line)' }} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} width={38} />
+                                            <RechartsTooltip
+                                                contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
+                                                labelStyle={{ color: 'var(--ink-2)', fontWeight: 800 }}
+                                                formatter={(v, name) => [`${v} net`, name]}
+                                            />
+                                            <Legend iconType="circle" iconSize={9} wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
+                                            <Line type="monotone" dataKey="Öğrenci" stroke="var(--brand)" strokeWidth={3}
+                                                filter="url(#ogrGolge)" connectNulls
+                                                dot={(props) => {
+                                                    const { cx, cy, payload } = props;
+                                                    if (cx == null || cy == null) return null;
+                                                    const aktif = payload?.aktif;
+                                                    return <circle key={payload?.id || cx} cx={cx} cy={cy} r={aktif ? 7 : 4}
+                                                        fill={aktif ? 'var(--brand)' : 'var(--surface)'} stroke="var(--brand)" strokeWidth={aktif ? 3 : 2} />;
+                                                }}
+                                                activeDot={{ r: 6, strokeWidth: 0 }} animationDuration={350} />
+                                            <Line type="monotone" dataKey="Sınıf Ort." stroke="var(--ink-3)" strokeWidth={2}
+                                                strokeDasharray="5 4" connectNulls dot={false} animationDuration={350} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Ders kırılımı — son/seçili deneme */}
+                            <div className="rounded-2xl p-4 kutu-3b">
+                                <h4 className="text-sm font-black text-ink mb-0.5">{kirilimBaslik}</h4>
+                                <p className="text-[11px] text-ink-3 mb-2 leading-snug">
+                                    {seciliDeneme ? 'Seçili denemedeki' : 'Son denemedeki'} net'ler en yüksekten en düşüğe — en alttaki dersler öncelikli çalışma hedefi.
+                                </p>
+                                {dersNetleri.length > 0 ? (
+                                    <div style={{ height: Math.max(160, 28 * dersNetleri.length + 16) }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={dersNetleri} layout="vertical" margin={{ top: 4, right: 40, bottom: 4, left: 4 }} barCategoryGap="24%">
+                                                <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="var(--line)" />
+                                                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} />
+                                                <YAxis type="category" dataKey="ders" width={80} axisLine={false} tickLine={false}
+                                                    tick={{ fontSize: 10.5, fontWeight: 700, fill: 'var(--ink-2)' }} />
+                                                <RechartsTooltip
+                                                    cursor={{ fill: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}
+                                                    contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
+                                                    formatter={(v) => [`${v} net`, 'Net']}
+                                                />
+                                                <Bar dataKey="net" radius={[0, 8, 8, 0]} maxBarSize={22} animationDuration={350}
+                                                    label={{ position: 'right', fontSize: 10.5, fontWeight: 800, fill: 'var(--ink-2)' }}>
+                                                    {dersNetleri.map((entry, index) => (
+                                                        <Cell key={index} fill={entry.renk} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-ink-3 text-center py-8">Bu öğrencinin son denemesinde ders kırılımı verisi yok.</p>
+                                )}
+                            </div>
+
+                            {/* Çözüm Davranışı — uygulama-içi motor istatistiği */}
+                            {cozumVar && (() => {
+                                const cipSecili = {
+                                    color: '#fff',
+                                    background: 'linear-gradient(180deg, color-mix(in srgb, var(--c4) 88%, white 12%), var(--c4))',
+                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,.3), 0 7px 16px -8px color-mix(in srgb, var(--c4) 60%, transparent)',
+                                };
+                                const cipPasif = {
+                                    background: 'linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 3%), var(--surface))',
+                                    border: '1px solid var(--line)', color: 'var(--ink-2)',
+                                    boxShadow: 'inset 0 1px 0 var(--lit-soft), 0 3px 8px -6px rgba(var(--cast), .4)',
+                                };
+                                const topluMu = cozumSecim === 'toplu';
+                                return (
+                                    <div className="rounded-2xl p-4 kutu-3b">
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <h4 className="text-sm font-black text-ink flex items-center gap-1.5">
+                                                <Activity size={15} className="text-c4" /> Çözüm Davranışı
+                                            </h4>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                                style={{ background: 'color-mix(in srgb, var(--c4) 16%, var(--surface))', color: 'var(--c4)' }}>
+                                                Uygulama-içi · {motorGecmis.length} deneme
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                            <button type="button" onClick={() => setCozumSecim('toplu')} aria-pressed={topluMu}
+                                                className="text-[11px] font-black px-2.5 py-1.5 rounded-lg transition-all hover:-translate-y-px"
+                                                style={topluMu ? cipSecili : cipPasif}>
+                                                📊 Toplu Kıyas
+                                            </button>
+                                            {motorGecmis.map(m => {
+                                                const aktif = !topluMu && seciliCozum?.id === m.id;
+                                                return (
+                                                    <button key={m.id} type="button" onClick={() => setCozumSecim(m.id)} aria-pressed={aktif}
+                                                        className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all hover:-translate-y-px"
+                                                        style={aktif ? cipSecili : cipPasif}>
+                                                        {m.sira}. {m.ad.length > 16 ? m.ad.slice(0, 16) + '…' : m.ad}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {topluMu ? (motorGecmis.length > 1 ? (
+                                            <div className="space-y-3">
+                                                <p className="text-[11px] text-ink-3 leading-snug">Öğrencinin uygulama-içi tüm denemelerinin çözüm davranışı yan yana — net ve tempo (soru başına süre) denemeden denemeye nasıl değişmiş.</p>
+                                                <div className="h-52">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={topluKiyas} margin={{ top: 8, right: 6, bottom: 0, left: -14 }}>
+                                                            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--line)" />
+                                                            <XAxis dataKey="name" axisLine={{ stroke: 'var(--line)' }} tickLine={false} tick={{ fontSize: 9.5, fill: 'var(--ink-3)' }} />
+                                                            <YAxis yAxisId="net" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--brand)' }} width={34} />
+                                                            <YAxis yAxisId="sn" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--warn)' }} width={34} />
+                                                            <RechartsTooltip
+                                                                contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
+                                                                labelStyle={{ color: 'var(--ink-2)', fontWeight: 800 }}
+                                                            />
+                                                            <Legend iconType="circle" iconSize={9} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                                                            <Line yAxisId="net" type="monotone" dataKey="Net" stroke="var(--brand)" strokeWidth={3}
+                                                                dot={{ r: 4, fill: 'var(--surface)', stroke: 'var(--brand)', strokeWidth: 2 }} activeDot={{ r: 6 }} animationDuration={350} />
+                                                            <Line yAxisId="sn" type="monotone" dataKey="Ort. Soru (sn)" stroke="var(--warn)" strokeWidth={2.5}
+                                                                strokeDasharray="5 4" dot={{ r: 3, fill: 'var(--warn)' }} animationDuration={350} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <table className="min-w-full text-xs liste-3b">
+                                                        <thead><tr className="text-[10px] uppercase tracking-wider text-ink-3">
+                                                            <th className="px-2 py-1.5 text-left">Deneme</th>
+                                                            <th className="px-2 py-1.5 text-center text-brand">Net</th>
+                                                            <th className="px-2 py-1.5 text-center text-info">Süre dk</th>
+                                                            <th className="px-2 py-1.5 text-center text-warn">Ort.Soru sn</th>
+                                                            <th className="px-2 py-1.5 text-center text-c5">Değişim</th>
+                                                            <th className="px-2 py-1.5 text-center text-danger">Hata</th>
+                                                        </tr></thead>
+                                                        <tbody>
+                                                            {motorGecmis.map((m, i) => {
+                                                                const onceki = motorGecmis[i - 1];
+                                                                const fark = onceki ? +(m.net - onceki.net).toFixed(1) : null;
+                                                                return (
+                                                                    <tr key={m.id}>
+                                                                        <td className="px-2 py-1.5 font-bold text-ink-2 max-w-[130px] truncate">{m.sira}. {m.ad}</td>
+                                                                        <td className="px-2 py-1.5 text-center font-black text-brand">
+                                                                            {m.net}
+                                                                            {fark != null && fark !== 0 && (
+                                                                                <span className={fark > 0 ? 'text-ok' : 'text-danger'}> {fark > 0 ? '▲' : '▼'}{Math.abs(fark)}</span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="px-2 py-1.5 text-center text-ink-2">{m.sureDk}</td>
+                                                                        <td className="px-2 py-1.5 text-center text-ink-2">{m.ortSaniye}</td>
+                                                                        <td className="px-2 py-1.5 text-center text-ink-2">{m.degisim}</td>
+                                                                        <td className="px-2 py-1.5 text-center font-bold text-danger">{m.hataAdet}</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-ink-3 text-center py-6">Kıyas için en az 2 uygulama-içi deneme gerekli. Tek denemeyi görmek için üstteki çipe tıkla.</p>
+                                        )) : seciliCozum && (
+                                            <div>
+                                                <p className="text-[11px] text-ink-3 mb-2.5 leading-snug">
+                                                    <b className="text-ink-2">{seciliCozum.ad}</b> · {seciliCozum.tarih ? new Date(seciliCozum.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : ''} — sistem çözerken otomatik topladı.
+                                                </p>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                                                    {[
+                                                        { I: BookOpen, et: 'İlk Ders', d: seciliCozum.ilkDers, c: 'var(--c1)' },
+                                                        { I: Clock, et: 'Toplam Süre', d: `${seciliCozum.sureDk} dk`, c: 'var(--info)' },
+                                                        { I: Timer, et: 'Ort. Soru', d: `${seciliCozum.ortSaniye} sn`, c: 'var(--ok)' },
+                                                        { I: RefreshCw, et: 'Cevap Değişimi', d: `${seciliCozum.degisim}`, c: 'var(--warn)' },
+                                                    ].map(({ I, et, d, c }) => (
+                                                        <div key={et} className="rounded-xl px-2.5 py-2 text-center kutu-3b"
+                                                            style={{ background: `color-mix(in srgb, ${c} 10%, var(--surface))` }}>
+                                                            <I size={14} className="mx-auto mb-1" style={{ color: c }} />
+                                                            <div className="text-[9px] font-black uppercase tracking-wide text-ink-3">{et}</div>
+                                                            <div className="text-sm font-black truncate" style={{ color: c }}>{d}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {seciliCozum.enUzunSoru && (
+                                                    <div className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2 text-xs kutu-3b"
+                                                        style={{ background: 'color-mix(in srgb, var(--danger) 9%, var(--surface))' }}>
+                                                        <AlertTriangle size={14} className="text-danger shrink-0" />
+                                                        <span className="text-ink-2">
+                                                            En uzun süre: <b className="text-danger">{seciliCozum.enUzunSoru.no}. soru</b> ({seciliCozum.enUzunSoru.ders}) · {(seciliCozum.enUzunSoru.ms / 1000).toFixed(0)} sn
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {seciliCozum.hataDersDagilim.length > 0 && (
+                                                    <div>
+                                                        <p className="text-[11px] font-black uppercase tracking-wider text-ink-3 mb-1.5">Hata Dağılımı (ders · adet)</p>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {seciliCozum.hataDersDagilim.map(h => (
+                                                                <span key={h.ders} className="text-[11px] font-bold px-2 py-1 rounded-lg kutu-3b"
+                                                                    style={{ background: 'color-mix(in srgb, var(--danger) 10%, var(--surface))', color: 'var(--danger)' }}>
+                                                                    {h.ders} <b>{h.adet}</b>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {seciliCozum.dersDetay.length > 0 && (
+                                                    <div className="mt-3">
+                                                        <p className="text-[11px] font-black uppercase tracking-wider text-ink-3 mb-1.5">Ders Bazında (tıkla → konular)</p>
+                                                        <div className="space-y-1">
+                                                            {seciliCozum.dersDetay.map(d => {
+                                                                const acik = acikDers === d.dersKey;
+                                                                const konuluMu = d.konular.length > 0;
+                                                                return (
+                                                                    <div key={d.dersKey} className="rounded-xl overflow-hidden kutu-3b">
+                                                                        <button type="button" disabled={!konuluMu}
+                                                                            onClick={() => setAcikDers(acik ? null : d.dersKey)}
+                                                                            className={`w-full flex items-center gap-2 px-3 py-2 text-left transition ${konuluMu ? 'hover:bg-surface-2 cursor-pointer' : 'cursor-default'}`}>
+                                                                            <span className="w-4 shrink-0 grid place-items-center text-ink-3">
+                                                                                {konuluMu ? (acik ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : null}
+                                                                            </span>
+                                                                            <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: d.renk }} />
+                                                                            <span className="flex-1 min-w-0 text-xs font-black text-ink truncate">
+                                                                                {d.ders}
+                                                                                {konuluMu && <span className="ml-1.5 text-[10px] font-bold text-ink-3">· {d.konular.length} konu</span>}
+                                                                            </span>
+                                                                            <span className="text-[11px] tabular-nums shrink-0 flex items-center gap-2">
+                                                                                <span className="text-ok font-bold">{d.dogru}D</span>
+                                                                                <span className="text-danger font-bold">{d.yanlis}Y</span>
+                                                                                <span className="text-ink-3">{d.bos}B</span>
+                                                                                <span className="text-brand font-black w-10 text-right">{d.net} net</span>
+                                                                                <span className="text-warn w-12 text-right">{d.dk} dk</span>
+                                                                            </span>
+                                                                        </button>
+                                                                        {acik && konuluMu && (
+                                                                            <div className="bg-surface-2/60 border-t border-line px-2 py-1.5">
+                                                                                <table className="min-w-full text-xs">
+                                                                                    <thead><tr className="text-[9px] uppercase tracking-wider text-ink-3">
+                                                                                        <th className="px-2 py-1 text-left">Konu (denemede çıkan)</th>
+                                                                                        <th className="px-2 py-1 text-center text-ok">D</th>
+                                                                                        <th className="px-2 py-1 text-center text-danger">Y</th>
+                                                                                        <th className="px-2 py-1 text-center text-ink-3">B</th>
+                                                                                        <th className="px-2 py-1 text-center text-brand">Net</th>
+                                                                                        <th className="px-2 py-1 text-center text-warn">dk</th>
+                                                                                    </tr></thead>
+                                                                                    <tbody>
+                                                                                        {d.konular.map((k, ki) => (
+                                                                                            <tr key={`${k.konu}-${ki}`} className="border-t border-line-subtle">
+                                                                                                <td className="px-2 py-1 font-bold text-ink-2 max-w-[160px] truncate">{k.konu}</td>
+                                                                                                <td className="px-2 py-1 text-center text-ok">{k.dogru}</td>
+                                                                                                <td className="px-2 py-1 text-center text-danger">{k.yanlis}</td>
+                                                                                                <td className="px-2 py-1 text-center text-ink-3">{k.bos}</td>
+                                                                                                <td className="px-2 py-1 text-center font-black text-brand">{k.net}</td>
+                                                                                                <td className="px-2 py-1 text-center text-ink-2">{k.dk}</td>
+                                                                                            </tr>
+                                                                                        ))}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <p className="tip-mini text-ink-3 mt-1.5">Konusu etiketli derslerde satıra tıklayınca o denemede çıkan konular açılır.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-sm text-ink-3 text-center py-6">Bu sınav türünde öğrenci sonucu yok.</p>
+                )
+            )}
         </div>
     );
 };
+
 
 
 
@@ -2453,8 +3038,8 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
             const key = t.examType || 'TYT';
             counters[key] = (counters[key] || 0) + 1;
             return { ...t, number: counters[key] };
-        }).reverse(); 
-    }, [trials]);
+        }).reverse();
+    }, [birlesikTrials]);
 
     // Kategoriye ve Arama Sorgusuna göre filtrele
     const filteredTrials = useMemo(() => {
@@ -2499,18 +3084,18 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
         return { students: Array.isArray(students) ? students : [], obpData };
     }, [students, results, obpUpdateToggle]);
 
-    // ── Pre-group results by Trial ID for O(1) lookup ──
+    // ── Pre-group results by Trial ID for O(1) lookup — BİRLEŞİK liste ──
     const resultsByTrial = useMemo(() => {
         const map = {};
-        if (!Array.isArray(results)) return map;
-        results.forEach(r => {
+        if (!Array.isArray(birlesikResults)) return map;
+        birlesikResults.forEach(r => {
             if (!r || !r.trialId) return;
             const tid = String(r.trialId);
             if (!map[tid]) map[tid] = [];
             map[tid].push(r);
         });
         return map;
-    }, [results]);
+    }, [birlesikResults]);
 
 
     // ── Genel İstatistikler (Filtrelenmiş) ──
@@ -2552,11 +3137,14 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
     const aytCount = numberedTrials.filter(t => t.examType === 'AYT').length;
     const lgsCount = numberedTrials.filter(t => t.examType === 'LGS').length;
 
+    /* 04.09 (canlı eşleme): kokpit düzeni — başlık/çipler sabit, içerik
+       kendi içinde kayar; YKS türlerinde kart-grid + arama kaldırıldı
+       (gezinme, analiz panelindeki "Denemeler" listesinden). */
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
+        <div className="space-y-6 animate-fade-in pb-20 xl:pb-0 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
 
             {/* ── Üst Bar ── */}
-            <div className="flex justify-between items-start flex-wrap gap-3">
+            <div className="xl:shrink-0 flex justify-between items-start flex-wrap gap-3">
                 <div>
                     <h2 className="text-xl font-bold text-ink flex items-center gap-2">
                         <BarChart2 className="text-c4" size={24} />
@@ -2586,55 +3174,22 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                 </div>
             </div>
 
-            {/* ── Kategori Sekmeleri — underline tarzı (25.08.2026) ── */}
-            <div className="flex gap-5 flex-wrap border-b border-line">
-                {EXAM_TYPES.map(type => {
-                    const count = numberedTrials.filter(t => t.examType === type).length;
-                    const secili = examCategory === type;
-                    return (
-                        <button
-                            key={type}
-                            onClick={() => { setExamCategory(type); setExpandedTrialId(null); }}
-                            className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${secili
-                                ? 'border-c4 text-c4 font-semibold'
-                                : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
-                                }`}
-                        >
-                            <GraduationCap size={16} />
-                            {type}
-                            {count > 0 && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-black ${secili ? 'bg-[color-mix(in_srgb,var(--c4)_16%,var(--surface))] text-c4' : 'bg-surface-3 text-ink-3'
-                                    }`}>{count}</span>
-                            )}
-                        </button>
-                    );
-                })}
-
-                {/* Kazanım Testi */}
-                <button
-                    onClick={() => { setExamCategory('kazanim'); setExpandedTrialId(null); }}
-                    className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${examCategory === 'kazanim'
-                        ? 'border-ok text-ok font-semibold'
-                        : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
-                        }`}
-                >
-                    <ListChecks size={16} />
-                    Kazanım Testi
-                </button>
-
-                {/* Müfredat / PDF Merkez */}
-                <button
-                    onClick={() => { setExamCategory('curriculum'); setExpandedTrialId(null); }}
-                    className={`-mb-px flex items-center gap-2 px-0.5 py-2.5 border-b-2 text-sm transition-all ${examCategory === 'curriculum'
-                        ? 'border-c5 text-c5 font-semibold'
-                        : 'border-transparent text-ink-3 hover:text-ink-2 font-medium'
-                        }`}
-                >
-                    <Layers size={16} />
-                    Müfredat & Kaynaklar
-                </button>
-
-                {/* Şablon indirme */}
+            {/* ── Tür çipleri: YKS grubu + diğerleri + şablonlar ── */}
+            <div className="xl:shrink-0 flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl"
+                    style={{ background: 'color-mix(in srgb, var(--c1) 6%, var(--surface))', border: '1px solid var(--line)', boxShadow: 'inset 0 1px 0 var(--lit-soft)' }}>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-ink-3 px-1 hidden sm:inline">YKS</span>
+                    {EXAM_TYPES.filter(t => YKS_TURLERI.has(t)).map(t => (
+                        <ExamTypeChip key={t} type={t} secili={examCategory === t}
+                            count={numberedTrials.filter(x => x.examType === t).length}
+                            onClick={() => { setExamCategory(t); setExpandedTrialId(null); }} />
+                    ))}
+                </div>
+                {EXAM_TYPES.filter(t => !YKS_TURLERI.has(t)).map(t => (
+                    <ExamTypeChip key={t} type={t} secili={examCategory === t}
+                        count={numberedTrials.filter(x => x.examType === t).length}
+                        onClick={() => { setExamCategory(t); setExpandedTrialId(null); }} />
+                ))}
                 <div className="ml-auto flex items-center gap-2 text-xs text-ink-3">
                     <span>Şablon:</span>
                     {['TYT', 'AYT', 'LGS'].map(t => (
@@ -2647,7 +3202,7 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
 
             {/* ── Kazanım Testi: Sınıf Alt Filtresi ── */}
             {examCategory === 'kazanim' && (
-                <div className="flex items-center gap-2">
+                <div className="xl:shrink-0 flex items-center gap-2">
                     <span className="text-xs font-bold text-ink-2 uppercase tracking-wide">Sınıf Filtresi:</span>
                     {['9', '10', '11'].map(grade => (
                         <button
@@ -2667,221 +3222,133 @@ const AdvancedExamsTab = ({ students, setToast, onOpenProgramBuilder }) => {
                 </div>
             )}
 
-            {/* ── Deneme Kutucukları (Sayısallaştırılmış) ── */}
-            {examCategory === 'curriculum' ? (
-                <CurriculumManager />
-            ) : examCategory === 'OBP' ? (
-                <OBPManager />
-            ) : filteredTrials.length === 0 ? (
-                <div className="text-center py-16 bg-surface rounded-2xl border-2 border-dashed border-line">
-                    <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <BarChart2 size={32} className="text-c4" />
+            {/* ── İçerik — masaüstünde kendi içinde kayar ── */}
+            <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde space-y-6 xl:pr-1.5">
+                {examCategory === 'curriculum' ? (
+                    <CurriculumManager />
+                ) : examCategory === 'OBP' ? (
+                    <OBPManager />
+                ) : filteredTrials.length === 0 ? (
+                    <div className="text-center py-16 bg-surface rounded-2xl border-2 border-dashed border-line">
+                        <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <BarChart2 size={32} className="text-c4" />
+                        </div>
+                        <h3 className="text-lg font-bold text-ink-2 mb-2">
+                            {examCategory === 'kazanim' ? `${kazanimGrade}. Sınıf kazanım testi yok` : `${examCategory} denemesi yok`}
+                        </h3>
+                        <p className="text-ink-3 text-sm mb-5">Yeni deneme oluşturarak başla.</p>
+                        <button
+                            onClick={() => setShowNewTrial(true)}
+                            className="inline-flex items-center gap-2 bg-c4 text-white px-6 py-3 rounded-xl font-semibold hover:bg-c4 transition"
+                        >
+                            <Plus size={18} /> Deneme Oluştur
+                        </button>
                     </div>
-                    <h3 className="text-lg font-bold text-ink-2 mb-2">
-                        {examCategory === 'kazanim' ? `${kazanimGrade}. Sınıf kazanım testi yok` : `${examCategory} denemesi yok`}
-                    </h3>
-                    <p className="text-ink-3 text-sm mb-5">Yeni deneme oluşturarak başla.</p>
-                    <button
-                        onClick={() => setShowNewTrial(true)}
-                        className="inline-flex items-center gap-2 bg-c4 text-white px-6 py-3 rounded-xl font-semibold hover:bg-c4 transition"
-                    >
-                        <Plus size={18} /> Deneme Oluştur
-                    </button>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {EXAM_TYPES.includes(examCategory) ? (
-                        <div className="space-y-6">
-                            <div>
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-surface-2/50 p-4 rounded-2xl border border-line">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-10 h-10 bg-brand/10 text-brand rounded-xl flex items-center justify-center font-black">
-                                                <BarChart2 size={20} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-black text-ink text-base leading-tight">{examCategory} DENEMELERİ</h3>
-                                                <p className="text-[10px] text-ink-3 font-bold uppercase tracking-widest">{filteredTrials.length} KAYIT BULUNDU</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-3 flex-1 max-w-md">
-                                        <div className="relative flex-1">
-                                            <input 
-                                                type="text"
-                                                placeholder="Deneme ismi ile ara..."
-                                                value={trialSearchQuery}
-                                                onChange={(e) => setTrialSearchQuery(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-surface border border-line rounded-2xl text-xs font-bold focus:ring-2 focus:ring-brand outline-none transition-all shadow-sm"
-                                            />
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                                            </div>
-                                            {trialSearchQuery && (
-                                                <button onClick={() => setTrialSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2">
-                                                    <X size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                        
-                                        <button
-                                            onClick={() => setShowNewTrial(true)}
-                                            className="flex items-center gap-2 bg-brand text-white px-4 py-2.5 rounded-2xl text-xs font-black hover:bg-brand-hover transition shadow-lg shadow-indigo-200 whitespace-nowrap"
-                                        >
-                                            <Plus size={16} /> YENİ EKLE
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-3">
-                                    {filteredTrials.map(trial => {
-                                        const trialResults = resultsByTrial[String(trial.id)] || [];
-                                        const avgNet = trial.avgScore || (trialResults.length > 0 
-                                            ? (trialResults.reduce((a, r) => a + calculateEstimatedScore(r, calculationContext), 0) / trialResults.length).toFixed(1)
-                                            : null);
-                                        const isExpanded = expandedTrialId === trial.id;
+                ) : EXAM_TYPES.includes(examCategory) ? null : (
+                    // Kazanım — düz kart grid (YKS türlerinde gezinme analiz panelinde)
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-3">
+                            {filteredTrials.map(trial => {
+                                const trialFullResults = resultsByTrial[String(trial.id)] || [];
+                                const trialResults = examCategory === 'kazanim'
+                                    ? trialFullResults.filter(r => String(r.gradeLevel) === String(kazanimGrade))
+                                    : trialFullResults;
 
-                                        return (
-                                            <button
-                                                key={trial.id}
-                                                onClick={() => setExpandedTrialId(isExpanded ? null : trial.id)}
-                                                className={`relative rounded-2xl p-4 text-left border-2 transition-all hover:shadow-md ${isExpanded
-                                                    ? 'bg-brand border-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                                    : 'bg-surface border-line hover:border-brand-line'
-                                                    }`}
-                                            >
-                                                <div className={`text-xs font-black uppercase mb-2 ${isExpanded ? 'text-brand' : 'text-brand'
-                                                    }`}>{trial.number}. {trial.examType}</div>
-                                                <div className={`text-sm font-bold truncate mb-1 ${isExpanded ? 'text-ink' : 'text-ink'
-                                                    }`}>{trial.name}</div>
-                                                <div className={`text-xs ${isExpanded ? 'text-brand' : 'text-ink-3'
-                                                    }`}>
-                                                    {trialResults.length > 0 ? `${trialResults.length} öğrenci` : 'Veri yok'}
-                                                </div>
-                                                {avgNet && (
-                                                    <div className={`mt-2 text-lg font-black ${isExpanded ? 'text-ink' : 'text-brand'
-                                                        }`}>
-                                                        {avgNet} <span className="text-xs font-normal">ort.</span>
-                                                    </div>
-                                                )}
-                                                {isExpanded && (
-                                                    <div className="absolute top-2 right-2 w-5 h-5 bg-surface/20 rounded-full flex items-center justify-center">
-                                                        <ChevronDown size={12} className="text-ink" />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        // Kazanım / LGS — düz grid
-                         <div>
-                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-3">
-                                 {filteredTrials.map(trial => {
-                                     const trialFullResults = resultsByTrial[String(trial.id)] || [];
-                                     const trialResults = examCategory === 'kazanim' 
-                                        ? trialFullResults.filter(r => String(r.gradeLevel) === String(kazanimGrade))
-                                        : trialFullResults;
+                                const avgNet = trialResults.length > 0
+                                    ? (trialResults.reduce((a, r) => a + (parseFloat(getTotalNet(r)) || 0), 0) / trialResults.length).toFixed(1)
+                                    : null;
+                                const isExpanded = expandedTrialId === trial.id;
+                                const accentColor = examCategory === 'lgs' ? 'amber' : 'emerald';
 
-                                     const avgNet = trialResults.length > 0
-                                         ? (trialResults.reduce((a, r) => a + (parseFloat(getTotalNet(r)) || 0), 0) / trialResults.length).toFixed(1)
-                                         : null;
-                                     const isExpanded = expandedTrialId === trial.id;
-                                     const accentColor = examCategory === 'lgs' ? 'amber' : 'emerald';
-
-                                    return (
-                                        <button
-                                            key={trial.id}
-                                            onClick={() => setExpandedTrialId(isExpanded ? null : trial.id)}
-                                            className={`relative rounded-2xl p-4 text-left border-2 transition-all hover:shadow-md ${isExpanded
-                                                ? `bg-${accentColor}-600 border-${accentColor}-600 text-ink shadow-lg`
-                                                : `bg-surface border-line hover:border-${accentColor}-300`
-                                                }`}
-                                        >
-                                            <div className={`text-xs font-black uppercase mb-2 ${isExpanded ? `text-${accentColor}-200` : `text-${accentColor}-600`
-                                                }`}>{trial.number}. {trial.examType}</div>
-                                             <div className={`text-sm font-bold truncate mb-1 ${isExpanded ? 'text-ink' : 'text-ink'
-                                                 }`}>{trial.name}</div>
-                                             <div className={`text-xs ${isExpanded ? `text-${accentColor}-200` : 'text-ink-3'
-                                                 }`}>
-                                                 {trialFullResults.length > 0 ? `${trialFullResults.length} öğrenci` : 'Veri yok'}
-                                             </div>
-
-                                            {avgNet && (
-                                                <div className={`mt-2 text-lg font-black ${isExpanded ? 'text-ink' : `text-${accentColor}-600`
-                                                    }`}>
-                                                    {avgNet} <span className="text-xs font-normal">ort.</span>
-                                                </div>
-                                            )}
-                                            {isExpanded && (
-                                                <div className="absolute top-2 right-2 w-5 h-5 bg-surface/20 rounded-full flex items-center justify-center">
-                                                    <ChevronDown size={12} className="text-ink" />
-                                                </div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Seçili Deneme Açılır Detayı ── */}
-                    {expandedTrialId && (() => {
-                        const trial = trials.find(t => t.id === expandedTrialId);
-                        if (!trial) return null;
-                        return (
-                            <div className="animate-fade-in border-2 border-brand-line rounded-2xl overflow-hidden shadow-lg">
-                                <div className="on-color bg-gradient-to-r from-brand to-purple-600 px-5 py-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <BarChart2 size={18} className="text-ink-2" />
-                                        <h3 className="text-ink font-bold">{trial.name}</h3>
-                                        <span className="bg-surface/20 text-ink text-xs font-bold px-2 py-0.5 rounded-full">{trial.examType}</span>
-                                    </div>
+                                return (
                                     <button
-                                        onClick={() => setExpandedTrialId(null)}
-                                        className="p-1.5 bg-surface/10 hover:bg-surface/30 rounded-full transition"
+                                        key={trial.id}
+                                        onClick={() => setExpandedTrialId(isExpanded ? null : trial.id)}
+                                        className={`relative rounded-2xl p-4 text-left border-2 transition-all hover:shadow-md ${isExpanded
+                                            ? `bg-${accentColor}-600 border-${accentColor}-600 text-ink shadow-lg`
+                                            : `bg-surface border-line hover:border-${accentColor}-300`
+                                            }`}
                                     >
-                                        <X size={16} className="text-ink" />
+                                        <div className={`text-xs font-black uppercase mb-2 ${isExpanded ? `text-${accentColor}-200` : `text-${accentColor}-600`
+                                            }`}>{trial.number}. {trial.examType}</div>
+                                        <div className={`text-sm font-bold truncate mb-1 ${isExpanded ? 'text-ink' : 'text-ink'
+                                            }`}>{trial.name}</div>
+                                        <div className={`text-xs ${isExpanded ? `text-${accentColor}-200` : 'text-ink-3'
+                                            }`}>
+                                            {trialFullResults.length > 0 ? `${trialFullResults.length} öğrenci` : 'Veri yok'}
+                                        </div>
+
+                                        {avgNet && (
+                                            <div className={`mt-2 text-lg font-black ${isExpanded ? 'text-ink' : `text-${accentColor}-600`
+                                                }`}>
+                                                {avgNet} <span className="text-xs font-normal">ort.</span>
+                                            </div>
+                                        )}
+                                        {isExpanded && (
+                                            <div className="absolute top-2 right-2 w-5 h-5 bg-surface/20 rounded-full flex items-center justify-center">
+                                                <ChevronDown size={12} className="text-ink" />
+                                            </div>
+                                        )}
                                     </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {filteredTrials.length > 0 && examCategory !== 'curriculum' && examCategory !== 'OBP' && (
+                    <div className="space-y-6">
+                        <ExamAnalyticsPanel
+                            trials={filteredTrials}
+                            results={filteredResults}
+                            activeCategory={examCategory}
+                            expandedTrialId={expandedTrialId}
+                            setExpandedTrialId={setExpandedTrialId}
+                            setToast={setToast}
+                        />
+
+                        {/* ── Seçili Deneme Açılır Detayı ── */}
+                        {expandedTrialId && (() => {
+                            const trial = trials.find(t => t.id === expandedTrialId);
+                            if (!trial) return null;
+                            return (
+                                <div className="animate-fade-in border-2 border-brand-line rounded-2xl overflow-hidden shadow-lg">
+                                    <div className="on-color bg-gradient-to-r from-brand to-purple-600 px-5 py-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <BarChart2 size={18} className="text-ink-2" />
+                                            <h3 className="text-ink font-bold">{trial.name}</h3>
+                                            <span className="bg-surface/20 text-ink text-xs font-bold px-2 py-0.5 rounded-full">{trial.examType}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setExpandedTrialId(null)}
+                                            className="p-1.5 bg-surface/10 hover:bg-surface/30 rounded-full transition"
+                                        >
+                                            <X size={16} className="text-ink" />
+                                        </button>
+                                    </div>
+                                    <div className="bg-surface">
+                                        <TrialCard
+                                            trial={trial}
+                                            allResults={resultsByTrial[String(trial.id)] || []}
+                                            students={students}
+                                            calculationContext={calculationContext}
+                                            onDelete={(id) => { handleDeleteTrial(id); setExpandedTrialId(null); }}
+                                            onUploadGrade={handleUploadGrade}
+                                            onDeleteGrade={handleDeleteGrade}
+                                            onDeleteResult={handleDeleteResult}
+                                            onEditResult={handleEditResult}
+                                            onViewStudent={(s) => { }}
+                                            loadingGrade={loadingGrade}
+                                            setToast={setToast}
+                                            defaultExpanded={true}
+                                        />
+                                    </div>
                                 </div>
-                                 <div className="bg-surface">
-                                     <TrialCard
-                                         trial={trial}
-                                         allResults={resultsByTrial[String(trial.id)] || []}
-                                         students={students}
-                                         calculationContext={calculationContext}
-                                         onDelete={(id) => { handleDeleteTrial(id); setExpandedTrialId(null); }}
-                                         onUploadGrade={handleUploadGrade}
-                                         onDeleteGrade={handleDeleteGrade}
-                                         onDeleteResult={handleDeleteResult}
-                                         onEditResult={handleEditResult}
-                                         onViewStudent={(s) => { }}
-                                         loadingGrade={loadingGrade}
-                                         setToast={setToast}
-                                         defaultExpanded={true}
-                                     />
-                                 </div>
-
-
-                            </div>
-                        );
-                    })()}
-                </div>
-            )}
-
-            {/* ── Tüm Deneme Trend Grafiği (kategori bazlı) ── */}
-            {filteredTrials.length > 0 && (
-                <div className="space-y-6 mt-10">
-                    <ExamAnalyticsPanel
-                        trials={filteredTrials}
-                        results={filteredResults}
-                        activeCategory={examCategory}
-                        setToast={setToast}
-                    />
-                </div>
-            )}
+                            );
+                        })()}
+                    </div>
+                )}
+            </div>
 
             {/* ── Modals ── */}
             {showNewTrial && (
