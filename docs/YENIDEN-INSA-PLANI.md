@@ -143,16 +143,27 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
       mesajKanali + gorevDeposu servisleri, veriDeposu/api bağlama,
       "Koçunuzdan yeni mesaj" bildirimi, sahte AI oto-yanıt kaldırıldı,
       firebaseSync dinamik kapsam genişletildi
-### 7c — Kalan parçalar (sırada)
-- [ ] Telefon mini-paneli ("N etüt · dokun & başla" — canlı StudentDashboard)
-- [ ] "N hatanın tekrar zamanı geldi" rozetleri (Coach + Student)
+### 7c — Bugün ekranı ✅ (05.09.2026, ee35769)
+- [x] Telefon mini-paneli: selamlama+seri, 4 yuvarlak gösterge (günlük hedef
+      halkası / soru·hafta / etüt·hafta / gün·YKS), 7 renkli hızlı eylem,
+      "bugünün programı · N etüt · dokun & başla" kompakt listesi
+- [x] Masaüstü "Sıradaki adımın" hero + kokpit içi sütun kaydırma
+- [x] Öneriler "Bugün Seni Bekleyenler"e entegre (öneri rozeti + "N tekrar
+      daha bekliyor"); "Önerilen Odaklar" ayrı kartı kaldırıldı (canlıda yok)
+- [x] bugunOnerileri canlı seçim mantığı (programBugunVar/bos/≤2 öğe)
+- [x] setCellStatus konu bilgisi + pb damgası; getStudiedTopics
+### 7d — Kalan parçalar (sırada)
+- [ ] KocGenelBakis canlı yeniden tasarımı: öğrenci triyaj listesi
+      ("Dikkat · Tamamlandı ama N hata", "Tekrar · N", "N görevin süresi
+      geçmiş" rozetleri), takvim (gunBilgisi/sinavTarihi tüketicisi),
+      "Haftalık Soru Çözümü ve Yanlış Değişimi" grafiği — canlı CoachDashboard
 - [ ] ProgramBuilder "Seçilen konular (dağıtım listesi) — ağırlıkları ayarla"
       başlığı + kalan küçük metin farkları (eksik-dizgiler.txt listesinden)
 - [ ] Canlı `srf` stat-kartı ailesi ile charts/Analitik-Dagilim diff'i (kozmetik)
 - [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
 - [ ] Mesaj/görev EKRANLARININ yeni servisleri kullandığının uçtan uca testi
-      (öğrenci Mesajlar sekmesi hâlâ 'messages' blobuna da bakıyor — canlıyla
-      karşılaştır)
+- [ ] Deploy provası: dist önizleme + canlı karşılaştırma; parite onayı
+      sonrası `firebase deploy` (kullanıcı isteğiyle)
 
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"
