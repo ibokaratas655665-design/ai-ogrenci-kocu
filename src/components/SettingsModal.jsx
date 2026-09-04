@@ -3,6 +3,10 @@ import { X, Save, Settings, Shield, Users, Lock, Unlock, BookOpen, FileText, Cal
 import AppearancePanel from './settings/AppearancePanel';
 import Modal from './ui/Modal';
 import { oku } from '../services/veriDeposu';
+import { OBPManager, CurriculumManager } from './dashboard/AdvancedExamsTab';
+import {
+    DINI_VARSAYILAN, OGRETIM_VARSAYILAN, YENI_YIL_SABLONU, YENI_DONEM_SABLONU,
+} from '../services/akademikTakvim';
 
 /** Varsayılanlar — styles/theme.css ile aynı değerler. */
 const DEFAULT_BRAND = '#1E3A8A';
@@ -53,7 +57,12 @@ const SettingsModal = ({ onClose }) => {
             themeAccentColor: DEFAULT_ACCENT,
             maxStudentsPerCoach: 50,
             sessionTimeout: 60 // dakika
-        }
+        },
+
+        /* 04.09: merkezî sınav tarihleri + akademik takvim düzenlemesi
+           (countdown / Öğrenci 360 / Genel Bakış takvimi buradan okur). */
+        sinav: {},
+        takvim: {}
     });
 
     /**
@@ -77,6 +86,8 @@ const SettingsModal = ({ onClose }) => {
             general: { ...varsayilan.general, ...(kayit.general || {}) },
             studentPermissions: { ...varsayilan.studentPermissions, ...(kayit.studentPermissions || {}) },
             coachPermissions: { ...varsayilan.coachPermissions, ...(kayit.coachPermissions || {}) },
+            sinav: kayit.sinav && typeof kayit.sinav === 'object' ? kayit.sinav : {},
+            takvim: kayit.takvim && typeof kayit.takvim === 'object' ? kayit.takvim : {},
         }));
     }, []);
 
@@ -346,6 +357,56 @@ const SettingsModal = ({ onClose }) => {
                     </div>
                 </div>
 
+                {/* SINAV TAKVİMİ */}
+                <div className="glass-card p-6 border-l-4 border-brand">
+                    <h3 className="text-lg font-bold text-ink mb-2 flex items-center">
+                        <Calendar className="mr-2 text-brand" size={22} />
+                        Sınav Takvimi
+                    </h3>
+                    <p className="text-sm text-ink-2 mb-4">
+                        Her sınav ve yıl için gerçek sınav tarihini girin. Countdown, Öğrenci 360 ve
+                        kalan-süre hesapları bu merkezi tarihten okur. Tarih girilmeyen yıl için sistem
+                        <strong> yanlış tarih üretmez</strong>, "tanımlanmadı" gösterir.
+                    </p>
+                    <SinavTakvimiPaneli
+                        sinav={settings.sinav || {}}
+                        degistir={(s) => setSettings((o) => ({ ...o, sinav: s }))}
+                    />
+                </div>
+
+                {/* AKADEMİK TAKVİM */}
+                <div className="glass-card p-6 border-l-4 border-brand">
+                    <h3 className="text-lg font-bold text-ink mb-2 flex items-center">
+                        <Calendar className="mr-2 text-brand" size={22} />
+                        Takvim (Tatiller &amp; Eğitim-Öğretim)
+                    </h3>
+                    <p className="text-sm text-ink-2 mb-4">
+                        Genel Bakış takviminde görünen dinî bayram ve eğitim-öğretim tarihleri her yıl
+                        değişir; resmî tarihler açıklandığında <strong>buradan güncelleyin</strong>.
+                        Ulusal bayramlar (23 Nisan, 30 Ağustos, 29 Ekim…) sabittir, düzenlenmez.
+                    </p>
+                    <TakvimPaneli
+                        takvim={settings.takvim || {}}
+                        degistir={(t) => setSettings((o) => ({ ...o, takvim: t }))}
+                    />
+                </div>
+
+                {/* DENEME KAYNAKLARI (OBP & MÜFREDAT) */}
+                <div className="glass-card p-6 border-l-4 border-brand">
+                    <h3 className="text-lg font-bold text-ink mb-2 flex items-center">
+                        <BookOpen className="mr-2 text-brand" size={22} />
+                        Deneme Kaynakları (OBP &amp; Müfredat)
+                    </h3>
+                    <p className="text-sm text-ink-2 mb-4">
+                        Diploma notu → OBP dönüşümleri ve müfredat/kaynak (PDF) merkezi. Bunlar her yıl
+                        ana koç tarafından güncellenir; artık Denemeler sekmesinde değil <strong>burada</strong> yönetilir.
+                    </p>
+                    <div className="space-y-6">
+                        <OBPManager />
+                        <CurriculumManager />
+                    </div>
+                </div>
+
                 {/* Kurum bilgileri paneli PDR belgeleriyle birlikte arşivlendi. */}
             </div>
 
@@ -366,6 +427,199 @@ const SettingsModal = ({ onClose }) => {
                 </div>
             </div>
         </Modal>
+    );
+};
+
+/* Küçük tarih/metin girdisi — takvim panelleri ortak stili. */
+const girdiSinifi = 'px-2.5 py-1.5 border-2 border-line rounded-lg bg-surface text-sm focus:ring-2 focus:ring-brand focus:border-transparent';
+
+/* ── Sınav Takvimi paneli: sınav + yıl → gerçek tarih ─────────────── */
+const SINAVLAR = ['YKS', 'LGS', 'KPSS', 'AGS'];
+
+const SinavTakvimiPaneli = ({ sinav, degistir }) => {
+    const buYil = new Date().getFullYear();
+    const [seciliSinav, setSeciliSinav] = useState('YKS');
+    const [yil, setYil] = useState(String(buYil + 1));
+    const [tarih, setTarih] = useState('');
+
+    const kayitlar = SINAVLAR.flatMap(s =>
+        Object.keys(sinav[s] || {})
+            .sort((a, b) => Number(a) - Number(b))
+            .map(y => ({ sinavAdi: s, yil: y, tarih: sinav[s][y] }))
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1">Sınav</label>
+                    <select value={seciliSinav} onChange={(e) => setSeciliSinav(e.target.value)}
+                        className="w-full px-3 py-2 border-2 border-line rounded-lg bg-surface focus:ring-2 focus:ring-brand">
+                        {SINAVLAR.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1">Yıl</label>
+                    <input type="number" value={yil} onChange={(e) => setYil(e.target.value)}
+                        className="w-full px-3 py-2 border-2 border-line rounded-lg focus:ring-2 focus:ring-brand" />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1">Sınav Tarihi</label>
+                    <input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)}
+                        className="w-full px-3 py-2 border-2 border-line rounded-lg focus:ring-2 focus:ring-brand" />
+                </div>
+                <button
+                    onClick={() => {
+                        const y = parseInt(yil, 10);
+                        if (!Number.isFinite(y) || !tarih) return;
+                        degistir({ ...sinav, [seciliSinav]: { ...(sinav[seciliSinav] || {}), [y]: tarih } });
+                        setTarih('');
+                    }}
+                    className="b b-fill b-brand h-[42px]"
+                >
+                    Ekle / Güncelle
+                </button>
+            </div>
+            {kayitlar.length === 0 ? (
+                <p className="text-xs text-ink-3">Henüz sınav tarihi tanımlanmadı.</p>
+            ) : (
+                <div className="divide-y divide-line-subtle border border-line rounded-lg">
+                    {kayitlar.map(({ sinavAdi, yil: y, tarih: t }) => (
+                        <div key={`${sinavAdi}-${y}`} className="flex items-center justify-between px-3 py-2">
+                            <span className="text-sm text-ink">
+                                <span className="badge badge-info mr-2">{sinavAdi}</span>
+                                <span className="font-bold">{y}</span>
+                                <span className="text-ink-2 ml-2">
+                                    {new Date(t).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
+                            </span>
+                            <button
+                                onClick={() => {
+                                    const kalan = { ...(sinav[sinavAdi] || {}) };
+                                    delete kalan[y];
+                                    degistir({ ...sinav, [sinavAdi]: kalan });
+                                }}
+                                className="text-danger text-xs font-bold hover:underline"
+                            >
+                                Sil
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ── Takvim paneli: dinî bayramlar + eğitim-öğretim tarihleri ─────── */
+const TakvimPaneli = ({ takvim, degistir }) => {
+    const yillar = [...new Set([...Object.keys(DINI_VARSAYILAN), ...Object.keys(takvim?.dini || {})])].sort();
+    const donemler = [...new Set([...Object.keys(OGRETIM_VARSAYILAN), ...Object.keys(takvim?.ogretim || {})])].sort();
+    const [yil, setYil] = useState(yillar[yillar.length - 1] || '2027');
+    const [donem, setDonem] = useState(donemler[donemler.length - 1] || '2026-2027');
+    const [yeniYil, setYeniYil] = useState('');
+    const [yeniDonem, setYeniDonem] = useState('');
+
+    const diniListe = takvim?.dini?.[yil] ?? DINI_VARSAYILAN[yil] ?? YENI_YIL_SABLONU;
+    const ogretimListe = takvim?.ogretim?.[donem] ?? OGRETIM_VARSAYILAN[donem] ?? YENI_DONEM_SABLONU;
+
+    const diniGuncelle = (idx, alan, deger) => {
+        const yeni = diniListe.map((k, i) => (i === idx ? { ...k, [alan]: deger, tahmini: false } : k));
+        degistir({ ...takvim, dini: { ...(takvim?.dini || {}), [yil]: yeni } });
+    };
+    const ogretimGuncelle = (idx, alan, deger) => {
+        const yeni = ogretimListe.map((k, i) => (i === idx ? { ...k, [alan]: deger, tahmini: false } : k));
+        degistir({ ...takvim, ogretim: { ...(takvim?.ogretim || {}), [donem]: yeni } });
+    };
+
+    const Satir = ({ kayit, idx, guncelle }) => (
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 items-center">
+            <span className="text-sm text-ink-2 truncate">{kayit.ad}{kayit.tahmini ? ' · tahmini' : ''}</span>
+            <input type="date" value={kayit.bas || ''} onChange={(e) => guncelle(idx, 'bas', e.target.value)}
+                className={girdiSinifi} aria-label={`${kayit.ad} başlangıç`} />
+            <input type="date" value={kayit.son || ''} onChange={(e) => guncelle(idx, 'son', e.target.value)}
+                className={girdiSinifi} aria-label={`${kayit.ad} bitiş`} />
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-ink">Dinî Bayramlar</h4>
+                        <select value={yil} onChange={(e) => setYil(e.target.value)} className={girdiSinifi} aria-label="Yıl seç">
+                            {yillar.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                    <button type="button"
+                        onClick={() => {
+                            const dini = { ...(takvim?.dini || {}) };
+                            delete dini[yil];
+                            degistir({ ...takvim, dini });
+                        }}
+                        className="text-xs text-ink-2 hover:text-ink hover:underline">
+                        Varsayılana dön
+                    </button>
+                </div>
+                <div className="space-y-2">
+                    {diniListe.map((k, i) => <Satir key={k.ad} kayit={k} idx={i} guncelle={diniGuncelle} />)}
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                    <input type="number" placeholder="Yeni yıl (örn. 2028)" value={yeniYil}
+                        onChange={(e) => setYeniYil(e.target.value)} className={`${girdiSinifi} w-44`} />
+                    <button type="button"
+                        onClick={() => {
+                            const y = String(yeniYil).trim();
+                            if (!/^\d{4}$/.test(y)) return;
+                            degistir({ ...takvim, dini: { ...(takvim?.dini || {}), [y]: YENI_YIL_SABLONU.map(k => ({ ...k })) } });
+                            setYil(y);
+                            setYeniYil('');
+                        }}
+                        className="b b-line text-xs px-3 py-1.5">
+                        + Yıl ekle
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-ink">Eğitim-Öğretim Takvimi</h4>
+                        <select value={donem} onChange={(e) => setDonem(e.target.value)} className={girdiSinifi} aria-label="Dönem seç">
+                            {donemler.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
+                    <button type="button"
+                        onClick={() => {
+                            const ogretim = { ...(takvim?.ogretim || {}) };
+                            delete ogretim[donem];
+                            degistir({ ...takvim, ogretim });
+                        }}
+                        className="text-xs text-ink-2 hover:text-ink hover:underline">
+                        Varsayılana dön
+                    </button>
+                </div>
+                <div className="space-y-2">
+                    {ogretimListe.map((k, i) => <Satir key={k.ad} kayit={k} idx={i} guncelle={ogretimGuncelle} />)}
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                    <input type="text" placeholder="Yeni dönem (örn. 2027-2028)" value={yeniDonem}
+                        onChange={(e) => setYeniDonem(e.target.value)} className={`${girdiSinifi} w-52`} />
+                    <button type="button"
+                        onClick={() => {
+                            const d = String(yeniDonem).trim();
+                            if (!/^\d{4}-\d{4}$/.test(d)) return;
+                            degistir({ ...takvim, ogretim: { ...(takvim?.ogretim || {}), [d]: YENI_DONEM_SABLONU.map(k => ({ ...k })) } });
+                            setDonem(d);
+                            setYeniDonem('');
+                        }}
+                        className="b b-line text-xs px-3 py-1.5">
+                        + Dönem ekle
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 

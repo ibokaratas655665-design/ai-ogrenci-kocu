@@ -75,6 +75,51 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [x] ~~RealtimeNotifications~~ — YANLIŞ ALARM: kaynakta mevcut
       (canlıdaki yeni chunk yalnız kod bölme farkı)
 
+## Faz 6 — Kokpit + koç analitiği (canlı eşleme)
+### 6a — Tek-ekran kokpit ✅ (04.09.2026, 6275bbb)
+- [x] `.tek-ekran-govde` + `.ince-cubuk` (surface.css §14); Öğrenci + Koç panelleri
+      masaüstünde (xl) tek ekran: başlık sabit, içerik kendi içinde kayar; telefonda
+      doğal akış değişmedi
+### 6b — Konu analizi paneli + analiz modları ✅ (04.09.2026, 7e34baf + 4217218)
+- [x] KonuAnaliziPaneli (koç): deneme/kapsam çipleri, ders→konu isabet listesi,
+      bireysel konu-gelişim matrisi (D1..Dn, trend ▲▼), simülasyon (net potansiyeli),
+      Koç Dönütü kutusu (zayıf konuları ekle + öğrenciye gönder)
+- [x] Analiz paneli mod ayrımı: 📊 Sınıf Analizi / 👤 Bireysel Analiz; trend sekmesine
+      4'lü özet kutu başlığı
+### 6c — Birleşik veri hattı + Denemeler sekmesi ✅ (04.09.2026, f0c8d4f + 431d6e3)
+- [x] services/birlesikDeneme: motor kayıtları (deneme_analizleri) v2 biçimine, koç
+      kaydı esas + istatistik aşılama, motor-only sonuç ekleme, sanal denemeler;
+      merkezî `matchResultsForStudent` (id → okul no → normalize TAM AD; alt-dize yasak)
+- [x] Merkezî eşleştirmeye geçen bileşenler: ClassRanking, RiskAlarmPanel,
+      StudentComparisonTable, GoalComparisonPanel, StudentProgressComparison
+      (TrialsPage + StudentDetailPage'deki eski eşleşme canlıda da aynı — bilerek dokunulmadı)
+- [x] AdvancedExamsTab birleşik hatta: numberedTrials/filteredResults/resultsByTrial;
+      'deneme_analizleri' storage dinleyicisiyle canlı tazeleme
+- [x] Denemeler sekmesi canlı düzeni: tür çipleri (YKS kutusu + LGS/KPSS/AGS, 3B),
+      YKS'de kart-grid/arama kaldırıldı, panel + seçili deneme detayı tek akışta,
+      kokpit iç kaydırma
+- [x] "Öğrenci Bazında" görünümü: sol 3B listeler (Denemeler·sınıf ort. /
+      Öğrenciler·net ort.), Net Gelişimi (öğrenci vs sınıf ort., aktif deneme noktası),
+      ders kırılımı (son/seçili deneme), Çözüm Davranışı (toplu kıyas grafiği+tablo,
+      tekil detay: ilk ders/süre/ort. soru/değişim, en uzun soru, hata dağılımı,
+      ders→konu açılır tablo)
+- [x] Panel ders setleri türe göre gerçek listeler; "Öğrenci Karşılaştırması" öğrenci
+      bazlı; "Ders Gelişimi" çubuk+değişim+tablo
+### 6d — PDF rapor ✅ çekirdek (431d6e3 içinde)
+- [x] ASCII sanitize, üst özet blok (deneme/öğrenci/sonuç sayısı + sınıf ort/en
+      yüksek/en düşük), tüm ders sütunları, "Ogrenci Ozeti", "Sinif Karsilastirma",
+      "Konu Dagilimi (Sinif Geneli)"
+- [ ] PDF'e kişi seçiliyken "Konu Gelisimi - <öğrenci>" + "Koc Donutu" bölümü
+      (kapsam/dönüt durumu KonuAnaliziPaneli içinde — durum yukarı taşınmalı, küçük iş)
+### 6e — Ayarlar taşıma + akademik takvim (SIRADA)
+- [ ] OBP Yönetimi (OBPManager) + Müfredat & Kaynaklar (CurriculumManager)
+      Denemeler'den Ayarlar'a ("Deneme Kaynakları (OBP & Müfredat)" glass-card,
+      "artık Denemeler sekmesinde değil burada yönetilir" metniyle) — canlı ~252k
+- [ ] "Sınav Takvimi" kartı: her sınav+yıl için gerçek tarih girişi (countdown /
+      Öğrenci 360 / kalan süre bu merkezden okur; girilmeyen yıl "tanımlanmadı")
+- [ ] "Takvim (Tatiller & Eğitim-Öğretim)" kartı: dinî bayram + öğretim yılı
+      tarihleri düzenleyici (app_settings.takvim; ulusal bayramlar sabit)
+
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"
       şeridi — hangi görünüme ait olduğu belirsiz, davranış kaybı yok)

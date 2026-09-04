@@ -29,7 +29,8 @@ import { hataAnlat } from '../../services/hataMesaji';
 import Modal from '../ui/Modal';
 import { nesneOku, listeOku } from '../../services/veriDeposu';
 
-const CurriculumManager = () => {
+/* 04.09: Ayarlar'daki "Deneme Kaynakları" kartı da kullanır — export edildi. */
+export const CurriculumManager = () => {
     const [selectedExam, setSelectedExam] = useState('TYT');
     const [resources, setResources] = useState({});
     const [curriculum, setCurriculum] = useState({});
@@ -135,7 +136,7 @@ const CurriculumManager = () => {
 };
 
 // ─── OBP Yönetimi ─────────────────────────────────────────────────────────────
-const OBPManager = () => {
+export const OBPManager = () => {
     const [obpData, setObpData] = useState(() => {
         try { return nesneOku('v2_obp_data'); } catch { return {}; }
     });
