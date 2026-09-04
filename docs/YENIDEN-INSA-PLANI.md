@@ -123,6 +123,29 @@ sanılmasının sebebi ayrıştırıcı yanılgısıydı. Aşağıdaki liste do�
 - [ ] gunBilgisi/sinavTarihi TÜKETİCİLERİ (Genel Bakış takvimi, countdown,
       Öğrenci 360 kalan-süre) sonraki Genel Bakış diliminde bağlanacak
 
+## Faz 7 — Kanonik konu kimliği (canlı eşleme)
+### 7a — Katalog + köprüler ✅ (04.09.2026, 496c5b2)
+- [x] data/konuKimlikleri (653 kalıcı topicId) + services/konuKatalogu
+      (alias + elle kararlar + konuEsle/kayitKimlikCoz — TAHMİN YOK,
+      eskiKimliktenTopicId köprüsü)
+- [x] denemeKayitlari.kaydet: konu hatasına kayıt anında topicId
+- [x] topicProgressService: deneme hatası lookup'u köprüden geçirildi
+- [x] kutu-3b / liste-3b / kutu-3b-hover CSS tanımları (eksikti)
+- [x] TESPİT: "Deneme Analizi" ekranı + sihirbaz + utils/denemeAnalizi +
+      hataNedenleri 25.08 kaynağında ZATEN VARDI (kayıp sanılmıştı);
+      yalnız katalog katmanı yeniydi
+### 7b — Kalan görsel/parça eşleme (sırada)
+- [ ] Canlı `srf` stat-kartı ailesi (StatKarti/MiniSeri/SegmentliBar…) ile
+      mevcut charts/Analitik-Dagilim ailesinin diff'i — kozmetik, düşük öncelik
+- [ ] Demo okula uygulama-içi deneme tohum verisi ("Uygulama İçi TYT
+      Deneme" / "Uygulama İçi AYT Sayısal" — canlı index chunk)
+- [ ] Telefon mini-paneli ("N etüt · dokun & başla" — canlı StudentDashboard)
+- [ ] "N hatanın tekrar zamanı geldi" rozetleri (Coach + Student)
+- [ ] "Koçunuzdan yeni mesaj" bildirimi (index chunk)
+- [ ] ProgramBuilder "Seçilen konular (dağıtım listesi) — ağırlıkları ayarla"
+      başlığı + kalan küçük metin farkları (eksik-dizgiler.txt listesinden)
+- [ ] PDF'e kişi seçiliyken "Konu Gelisimi" + "Koc Donutu" bölümü (6d kalanı)
+
 ## Kalan küçük işler (düşük öncelik)
 - [ ] Telefon mini-paneli kozmetiği ("bugünün programı · N etüt · dokun & başla"
       şeridi — hangi görünüme ait olduğu belirsiz, davranış kaybı yok)
