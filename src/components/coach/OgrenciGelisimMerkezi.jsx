@@ -72,7 +72,11 @@ export default function OgrenciGelisimMerkezi({ students = [], onOgrenciAc }) {
         { id: 'genel', icon: LayoutGrid, label: 'Genel Bakış', title: 'Sınıf Geneli', description: 'Tüm öğrencilerin haftalık kesiti: aktiflik, ortalama net, risk ve yükselenler' },
         { id: 'gunluk', icon: PencilLine, label: 'Günlük Kayıt', title: 'Günlük Kayıt Değerlendirmesi', description: 'Öğrencinin soru çözüm düzeni ve ders dağılımı' },
         { id: 'hata', icon: BookX, label: 'Hata Defteri', title: 'Hata Defteri Değerlendirmesi', description: 'Hata trendi, tekrar eden konular ve öğrencinin açıklamaları' },
-        { id: 'deneme', icon: BarChart2, label: 'Deneme Analizi', title: 'Deneme Analizi Değerlendirmesi', description: 'Net gelişimi, güçlü/zayıf dersler ve hata nedenleri' },
+        /* 'deneme' alt bölümü kaldırıldı (06.09): aynı öğrencinin net
+           gelişimi/ders kırılımı/çözüm davranışı Denemeler sekmesindeki
+           Bireysel Analiz'de daha zengin haliyle var. Bu merkez, öğrencinin
+           KENDİ girdiği kayıtlara (günlük, hata, öz değerlendirme,
+           pomodoro) odaklanır. */
         { id: 'oz', icon: ClipboardCheck, label: 'Öz Değerlendirme', title: 'Haftalık Öz Değerlendirmeler', description: 'Öğrencilerin kendi haftalarına verdiği notlar ve yorumları' },
         { id: 'odak', icon: Timer, label: 'Pomodoro', title: 'Odaklanma Takibi', description: 'Öğrencilerin ders bazlı pomodoro seansları (son 7 gün)' },
     ];
@@ -83,16 +87,9 @@ export default function OgrenciGelisimMerkezi({ students = [], onOgrenciAc }) {
                 <>
                     {active === 'genel' && sinif && (
                         <div className="space-y-5">
-                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                <StatKart etiket="Öğrenci" deger={sinif.studentCount} />
-                                <StatKart etiket="Bu hafta aktif" deger={sinif.activeCount}
-                                    altyazi={`${sinif.studentCount - sinif.activeCount} sessiz`} />
-                                <StatKart etiket="Ort. son net" deger={sinif.avgNet ?? '—'} />
-                                <StatKart etiket="Görev tamamlama" deger={sinif.avgCompletionPct != null ? `%${sinif.avgCompletionPct}` : '—'} />
-                                <StatKart etiket="Riskli öğrenci" deger={sinif.atRisk.length}
-                                    vurgu={sinif.atRisk.length ? 'var(--danger)' : 'var(--ok)'} />
-                            </div>
-
+                            {/* 06.09 SADELEŞTİRME: 5'li StatKart şeridi kaldırıldı —
+                                beşi de Analiz > Genel Bakış KPI kartlarının kopyasıydı.
+                                Bu bölümün özgün değeri alttaki üç liste. */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 <ListeKarti
                                     baslik="⚠️ Bu hafta hiç kayıt girmeyenler"
@@ -131,7 +128,6 @@ export default function OgrenciGelisimMerkezi({ students = [], onOgrenciAc }) {
 
                     {active === 'gunluk' && <KocDegerlendirme students={students} tur="gunluk" />}
                     {active === 'hata' && <KocDegerlendirme students={students} tur="hata" />}
-                    {active === 'deneme' && <KocDegerlendirme students={students} tur="deneme" />}
                     {active === 'oz' && <CoachSelfAssessmentView students={students} />}
                     {active === 'odak' && <CoachPomodoroView students={students} />}
                 </>

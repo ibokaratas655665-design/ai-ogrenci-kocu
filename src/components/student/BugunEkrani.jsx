@@ -382,19 +382,7 @@ export default function BugunEkrani({
         return liste;
     }, [bugunEtutleri, acikGorevler, oneriler]);
 
-    /** Gelişim mesajı — son iki denemenin net farkından, yapıcı dille. */
-    const gelisim = useMemo(() => {
-        const sirali = [...examData]
-            .filter((e) => Number.isFinite(parseFloat(e.totalNet)))
-            .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt));
-        if (sirali.length < 2) return null;
-        const son = parseFloat(sirali[sirali.length - 1].totalNet);
-        const onceki = parseFloat(sirali[sirali.length - 2].totalNet);
-        const fark = Math.round((son - onceki) * 100) / 100;
-        if (fark > 0) return { fark, mesaj: `Son denemende ${fark} net artış var — bu tempo seni taşır! 🚀` };
-        if (fark === 0) return { fark, mesaj: 'Son iki denemen başa baş — küçük bir hamle seni öne geçirir.' };
-        return { fark, mesaj: `Son denemende ${Math.abs(fark)} net düşüş var — birlikte toparlanacak yeriniz belli.` };
-    }, [examData]);
+    /* gelisim memosu kaldirildi (06.09): tuketen "Bu Hafta" karti silindi. */
 
     /** Günün hedefi: etüt + görev. Tek sayı, tek cümle. */
     const hedefToplam = toplam + acikGorevler.length;
@@ -661,12 +649,11 @@ export default function BugunEkrani({
                 </Card>
             ) : null}
 
-            {/* ══ 2. DÖRT ÖLÇÜM ══════════════════════════════════════
-                Referanstaki KPI şeridi. Dördü de BUGÜNE ait ve
-                birbirinden farklı soruyu yanıtlıyor: ne kadar iş var,
-                ne kadarı programa uygun gitti, ne kadar zaman kaldı,
-                ne kadar çalıştım. */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            {/* ══ 2. ÖLÇÜM ŞERİDİ ═══════════════════════════════════
+                06.09 SADELEŞTİRME: "Günün Uyumu" kartı kaldırıldı —
+                soldaki "Günlük Hedef" kartıyla birebir aynı iki sayıyı
+                (biten/toplam) yalnızca yüzde olarak tekrarlıyordu. */}
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
                 <Card dolgu="md" className="flex items-center gap-3">
                     <span className="shrink-0 w-11 h-11 rounded-2xl grid place-items-center"
                         style={{ background: 'var(--brand-soft)', color: 'var(--brand-metin)' }}>
@@ -679,22 +666,6 @@ export default function BugunEkrani({
                         </p>
                         <p className="tip-mini text-ink-3 m-0 mt-0.5">{biten} / {toplam} tamamlandı</p>
                         <Progress deger={biten} enFazla={Math.max(1, toplam)} ton="marka" kalinlik="sm" className="mt-1.5" />
-                    </div>
-                </Card>
-
-                <Card dolgu="md" className="flex items-center gap-3">
-                    <UyumHalkasi
-                        oran={toplam ? Math.round((biten / toplam) * 100) : 0}
-                        tamamlanan={biten} planlanan={toplam}
-                        altMetin="" ton="marka" boyut={44}
-                        className="shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                        <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Günün Uyumu</p>
-                        <p className="text-xl font-black text-ink rakam leading-none mt-0.5 m-0">
-                            %{toplam ? Math.round((biten / toplam) * 100) : 0}
-                        </p>
-                        <p className="tip-mini text-ink-3 m-0 mt-0.5">Programına göre</p>
                     </div>
                 </Card>
 
@@ -920,34 +891,17 @@ export default function BugunEkrani({
 
                 {/* ─── SAĞ SÜTUN ─── */}
                 <aside className="xl:col-span-4 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
-                    {/* BU HAFTAKİ PROGRAMIN — üç kova, örtüşmez:
-                        tamamlanan + günü geçmiş + günü gelmemiş = hafta. */}
+                    {/* 06.09 SADELEŞTİRME: "Bu Haftaki Programın" halka+kova
+                        bloğu kaldırıldı — aynı programUyumu(7) verisi Program
+                        sekmesindeki ProgramKarnem'de ders kırılımıyla birlikte
+                        zaten var. Buradan tek tıkla oraya gidilir. */}
                     {haftalikDurum && (
                         <Card>
-                            <p className="tip-label text-ink-3 m-0 mb-3">Bu Haftaki Programın</p>
-                            <div className="flex items-center gap-4">
-                                <UyumHalkasi
-                                    oran={haftalikDurum.oran}
-                                    tamamlanan={haftalikDurum.tamamlanan}
-                                    planlanan={haftalikDurum.tamamlanan + haftalikDurum.devamEden}
-                                    altMetin="" ton="marka" boyut={84}
-                                    className="shrink-0"
-                                />
-                                <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-                                    {[
-                                        { ad: 'Tamamlanan', sayi: haftalikDurum.tamamlanan, renk: 'var(--ok)' },
-                                        { ad: 'Yetişmedi', sayi: haftalikDurum.devamEden, renk: 'var(--warn)' },
-                                        { ad: 'Sırada', sayi: haftalikDurum.kalan, renk: 'var(--brand)' },
-                                    ].map((x) => (
-                                        <div key={x.ad} className="flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: x.renk }} />
-                                            <span className="tip-small text-ink-2 flex-1 min-w-0 truncate">{x.ad}</span>
-                                            <span className="tip-small font-black text-ink tabular-nums shrink-0">{x.sayi}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <Button varyant="outline" simge={ArrowRight} simgeSagda className="mt-3 w-full"
+                            <p className="tip-label text-ink-3 m-0">Bu Haftaki Programın</p>
+                            <p className="tip-caption mt-1 m-0">
+                                {haftalikDurum.tamamlanan} etüt tamamlandı · %{haftalikDurum.oran} uyum
+                            </p>
+                            <Button varyant="outline" simge={ArrowRight} simgeSagda className="mt-2.5 w-full"
                                 onClick={() => onGit?.('program')}>
                                 Programımı Gör
                             </Button>
@@ -1014,36 +968,7 @@ export default function BugunEkrani({
                         </span>
                     </Card>
 
-                    {/* Bu hafta özeti — günlük kayıtlardan */}
-                    {hafta && hafta.entries > 0 && (
-                        <Card>
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                                <p className="tip-label text-ink-3 m-0">Bu Hafta</p>
-                                <button type="button" onClick={() => onGit?.('daily-log')}
-                                    className="tip-caption font-bold hover:underline"
-                                    style={{ color: 'var(--brand-metin)' }}>Kayıt gir</button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2.5">
-                                {[
-                                    { etiket: 'Soru', deger: hafta.questions },
-                                    { etiket: 'Süre', deger: hafta.minutes >= 60 ? `${Math.floor(hafta.minutes / 60)}s ${hafta.minutes % 60}d` : `${hafta.minutes}d` },
-                                    { etiket: 'İsabet', deger: hafta.accuracy != null ? `%${hafta.accuracy}` : '—' },
-                                    { etiket: 'Aktif Gün', deger: `${hafta.activeDays}/7` },
-                                ].map((x) => (
-                                    <div key={x.etiket} className="rounded-dmd bg-surface-2 border border-line px-3 py-2.5">
-                                        <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">{x.etiket}</p>
-                                        <p className="tip-h4 text-ink rakam mt-0.5 m-0">{x.deger}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            {gelisim && (
-                                <p className={cn('mt-3 rounded-dsm px-3 py-2 tip-small font-semibold',
-                                    gelisim.fark > 0 ? 'text-ok bg-ok-soft/50' : gelisim.fark < 0 ? 'text-warn bg-warn-soft/40' : 'text-ink-2 bg-surface-2')}>
-                                    {gelisim.mesaj}
-                                </p>
-                            )}
-                        </Card>
-                    )}
+                    {/* 06.09 SADELEŞTİRME: "Bu Hafta" ozet karti kaldirildi — dort sayi da Calismalarim > Gunluk Kayit istatistiklerinde ayni kaynaktan (getSummary) goruluyor. */}
                 </aside>
             </div>
 

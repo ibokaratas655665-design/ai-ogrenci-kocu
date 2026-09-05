@@ -22,7 +22,6 @@ import {
 import { PencilLine, BookX, ChevronDown } from 'lucide-react';
 import { listeOku } from '../../services/veriDeposu';
 import { gunlukSeri, gunlukDersDagilimi, hataTrendi, konuHatalari } from '../../utils/denemeAnalizi';
-import DenemeAnalizi from '../student/DenemeAnalizi';
 import { hataTuruAdi } from '../../data/hataTurleri';
 
 /* Hata türü adları data/hataTurleri'nden — bkz. o dosyadaki not. */
@@ -127,10 +126,8 @@ export default function KocDegerlendirme({ students = [], tur }) {
 
             {!secili && <BosDurumMesaji metin="Değerlendirmek için yukarıdan bir öğrenci seçin." />}
 
-            {/* ── DENEME: öğrenci detayındaki koç analizi burada da ── */}
-            {secili && tur === 'deneme' && (
-                <DenemeAnalizi ogrenci={secili} studentId={secili.id} bakis="koc" />
-            )}
+            {/* 06.09: 'deneme' türü kaldırıldı — aynı analiz Denemeler
+                sekmesindeki Bireysel Analiz'de (M6 birleştirmesi). */}
 
             {/* ── GÜNLÜK KAYIT ─────────────────────────────────── */}
             {secili && tur === 'gunluk' && (

@@ -377,23 +377,8 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
     //  ekranda iki farklı riskli sayısı görünüyordu.)
     const riskCount = statusCounts.risk;
 
-    // Son 8 denemenin sınıf ortalaması — KPI kartındaki mini trend çizgisi
-    const netSparkline = React.useMemo(() => {
-        const byDate = new Map();
-        v2Results.forEach(r => {
-            const net = parseFloat(r.totalNet);
-            const raw = r.examDate || r.uploadedAt || r.date;
-            if (!Number.isFinite(net) || !raw) return;
-            const d = new Date(raw);
-            if (Number.isNaN(d.getTime())) return;
-            const k = d.toISOString().slice(0, 10);
-            const a = byDate.get(k) || { sum: 0, n: 0 };
-            a.sum += net; a.n += 1;
-            byDate.set(k, a);
-        });
-        return [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-            .slice(-8).map(([, v]) => Math.round((v.sum / v.n) * 10) / 10);
-    }, [v2Results]);
+    /* netSparkline kaldırıldı (06.09): KPI kartındaki mini çizgi, hemen
+       altındaki "Sınıf Net Trendi" grafiğinin küçültülmüş kopyasıydı. */
 
     const KPI_CARDS = [
         {
@@ -406,7 +391,7 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
         },
         {
             label: 'Sınıf Net Ortalaması', value: avgNet, icon: Activity,
-            color: 'var(--highlight)', sub: `${v2Results.length} deneme sonucu`, trend: netSparkline, onClick: null,
+            color: 'var(--highlight)', sub: `${v2Results.length} deneme sonucu`, onClick: null,
         },
         {
             label: 'Görev Tamamlama', value: taskRate, icon: CheckCircle,

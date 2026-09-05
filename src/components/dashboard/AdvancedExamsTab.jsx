@@ -21,7 +21,6 @@ import { calculateEstimatedScore, getAYTAreaNets, getAYTMaxScoreArea, getOBPScor
 import ReportCard from '../reports/ReportCard';
 import firebaseSync from '../../services/firebaseSync';
 import { getCustomCurriculum, saveCustomTopics, getExamResources, saveExamResources, removeExamResource } from '../../data/curriculum';
-import ClassInstantAnalysis from '../coach/ClassInstantAnalysis';
 import KonuAnaliziPaneli from './KonuAnaliziPaneli';
 import birlesikDeneme from '../../services/birlesikDeneme';
 import { bildir } from '../../services/uiGeriBildirim';
@@ -596,15 +595,8 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
         };
     }).sort((a, b) => b.avg - a.avg);
 
-    const kiyasRenk = ['var(--c1)', 'var(--ok)', 'var(--warn)', 'var(--c5)', 'var(--info)', 'var(--brand)', 'var(--c4)'];
-    const ogrenciKiyas = ogrenciListesi.map((o, i) => {
-        const parcalar = o.name.split(' ');
-        return {
-            ad: parcalar[0] + (parcalar[1] ? ' ' + parcalar[1][0] + '.' : ''),
-            ortalama: o.avg, max: o.best,
-            renk: kiyasRenk[i % kiyasRenk.length],
-        };
-    });
+    /* ogrenciKiyas hesabı kaldırıldı (06.09): tüketen "Öğrenci
+       Karşılaştırması" grafiği 05.09'da silinmişti, hesap ölü kalmıştı. */
 
     // ── Ders son durumu (ilk deneme → son deneme değişimi) ─────────
     const dersSonDurum = (() => {
@@ -2077,12 +2069,11 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
     const [studentSearch, setStudentSearch] = useState('');
 
     // 🚀 Performance Optimization: Memoize all heavy calculations
-    const { 
-        totalStudents, 
-        avgNet, 
-        gradeCompareData, 
+    const {
+        totalStudents,
+        avgNet,
         uploadedGrades,
-        resultsByGrade 
+        resultsByGrade
     } = useMemo(() => {
         const total = allResults.length;
         
@@ -2099,23 +2090,11 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
 
         const avg = total > 0 ? (totalNetSum / total).toFixed(1) : '-';
 
-        const compareData = GRADE_LEVELS.map(g => {
-            const gRes = byGrade[g.id] || [];
-            if (gRes.length === 0) return null;
-            const gSum = gRes.reduce((a, r) => a + calculateEstimatedScore(r, calculationContext), 0);
-            return {
-                name: g.label.replace('. Sınıf', '.'),
-                ortalama: (gSum / gRes.length).toFixed(1),
-            };
-        }).filter(Boolean);
-
-
         const uploaded = GRADE_LEVELS.filter(g => !!byGrade[g.id]);
 
-        return { 
-            totalStudents: total, 
-            avgNet: avg, 
-            gradeCompareData: compareData, 
+        return {
+            totalStudents: total,
+            avgNet: avg,
             uploadedGrades: uploaded,
             resultsByGrade: byGrade
         };
@@ -2214,37 +2193,11 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                         </div>
                     </div>
 
-                    {/* Sınıf Karşılaştırma Grafik */}
-                    {gradeCompareData.length > 0 && (
-                        <div className="px-5 pb-4">
-                            <div className="bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl p-4">
-                                <h5 className="text-sm font-bold text-ink-2 mb-3 flex items-center gap-2">
-                                    <BarChart2 size={15} className="text-brand" />
-                                    Sınıf Karşılaştırması
-                                </h5>
-                                <div className="h-32">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={gradeCompareData} barSize={40}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                                            <RechartsTooltip
-                                                contentStyle={{ borderRadius: '10px', border: 'none', fontSize: 12 }}
-                                                formatter={(v) => [`${v} net`, 'Ortalama']}
-                                            />
-                                            <Bar dataKey="ortalama" fill="url(#gradientBar)" radius={[6, 6, 0, 0]}  animationDuration={300} />
-                                            <defs>
-                                                <linearGradient id="gradientBar" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="var(--c4)" />
-                                                    <stop offset="100%" stopColor="var(--c1)" />
-                                                </linearGradient>
-                                            </defs>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* 06.09 SADELEŞTİRME: "Sınıf Karşılaştırması" çubuğu
+                        kaldırıldı — aynı sınıf-düzeyi ortalaması Analiz >
+                        Genel Bakış grafiklerinde var; buradaki başlık
+                        rozetleri ve sınıf sekmeleri aynı ayrımı zaten
+                        sayısal veriyor. */}
 
                     {/* Tablo – Sınıf filtreli */}
                     {totalStudents > 0 && (
@@ -2530,14 +2483,11 @@ const TrialCard = ({ trial, allResults, students, calculationContext, onDelete, 
                             </div>
                         </div>
                     )}
-                    {/* Anlık Sınıf Analizi - İçeride (Kullanıcı Talebi) */}
-                    <div className="p-5 border-t border-line bg-surface-2/20">
-                        <ClassInstantAnalysis
-                            students={students}
-                            trials={[trial]}
-                            results={allResults}
-                        />
-                    </div>
+                    {/* 06.09 SADELEŞTİRME: "Anlık Sınıf Analizi" bloğu kaldırıldı.
+                        Deneme açıldığında aynı ekranda üçüncü kez sınıf ortalaması,
+                        ikinci kez sıralama listesi ve üçüncü PDF butonu üretiyordu —
+                        katılımcı/ortalama zaten başlık rozetlerinde, sıralama üstteki
+                        sonuç tablosunda, trend Sınıf Analizi panelinde var. */}
                 </div>
             )}
 

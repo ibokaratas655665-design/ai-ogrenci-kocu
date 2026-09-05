@@ -151,7 +151,6 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const FocusTimer = lazy(() => import('./pages/FocusTimer'));
 const AICoachWidget = lazy(() => import('./pages/AICoachWidget'));
 const RemoteSession = lazy(() => import('./pages/RemoteSession'));
-const TrialsPage = lazy(() => import('./pages/TrialsPage'));
 const DownloadPage = lazy(() => import('./pages/DownloadPage'));
 const PublicOBPEntry = lazy(() => import('./pages/PublicOBPEntry'));
 const ParentPortal = lazy(() => import('./pages/ParentPortal'));
@@ -231,14 +230,18 @@ function App() {
                         <StudyPlanner />
                       </RouteGuard>
                     } />
+                    {/* 06.09 SADELEŞTİRME: TrialsPage silindi — tests+results
+                        bölümü panelin Envanter sekmesinin (StudentTestsTab),
+                        analiz bölümü Gelişimim'in kopyasıydı. Eski yer imleri
+                        panele düşer. */}
                     <Route path="/student/analytics" element={
                       <RouteGuard allowedRoles={['student']}>
-                        <Navigate to="/student/trials" replace />
+                        <Navigate to="/student/dashboard?sekme=gelisimim" replace />
                       </RouteGuard>
                     } />
                     <Route path="/student/trials" element={
                       <RouteGuard allowedRoles={['student']}>
-                        <TrialsPage />
+                        <Navigate to="/student/dashboard?sekme=gelisimim" replace />
                       </RouteGuard>
                     } />
                     <Route path="/student/remote-session" element={

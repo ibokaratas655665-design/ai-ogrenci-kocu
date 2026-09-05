@@ -21,9 +21,7 @@ import SettingsModal from '../components/SettingsModal';
 import TaskAssignModal from '../components/TaskAssignModal';
 import GroupsTab from '../components/GroupsTab';
 import ProjectsTab from '../components/ProjectsTab';
-import LeaderboardTab from '../components/LeaderboardTab';
 import PresentationsTab from '../components/PresentationsTab';
-import AnalyticsTab from '../components/AnalyticsTab';
 import RemoteCoachingTab from '../components/RemoteCoachingTab';
 import AnalysisCenter from '../components/coach/AnalysisCenter';
 import WhatsAppTab from '../components/whatsapp/WhatsAppTab';
@@ -36,7 +34,6 @@ import firebaseSync from '../services/firebaseSync';
 // 🌟 Yeni Bileşenler
 import RiskAlarmPanel from '../components/coach/RiskAlarmPanel';
 import StudentComparisonTable from '../components/coach/StudentComparisonTable';
-import StudentProgressComparison from '../components/coach/StudentProgressComparison';
 import { AICoachButton } from '../components/AICoachChat';
 import BulkMessageModal from '../components/coach/BulkMessageModal';
 import CoachInbox from '../components/coach/CoachInbox';
@@ -47,7 +44,6 @@ import { BolumHataSiniri } from '../components/ui';
 // 🆕 Yeni Koç Özellikleri
 import GoalComparisonPanel from '../components/coach/GoalComparisonPanel';
 import TaskTemplates from '../components/coach/TaskTemplates';
-import ClassRanking from '../components/coach/ClassRanking';
 // 🚀 12 Madde Geliştirme
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
 import SenkronDurumu from '../components/ui/SenkronDurumu';
@@ -68,7 +64,6 @@ import useTabBadges from '../hooks/useTabBadges';
 /* CoachSelfAssessmentView ve CoachPomodoroView importları kaldırıldı:
    OgrenciGelisimMerkezi kendi içinde import ediyor (24.08.2026). */
 import { CoachAppointmentManager } from '../components/coach/AppointmentSystem';
-import StudentGoalsPanel from '../components/coach/StudentGoalsPanel';
 import { OfflineBanner } from '../services/offlineSync';
 import { getOBPScore, clearScoreCache } from '../utils/scoreCalculator';
 import { AMBLEM_BASE64 } from '../data/amblemBase64';
@@ -188,7 +183,9 @@ const NAV_BY_SECTION = {
                 { id: 'university-scores', icon: MODULE_ICONS['university-scores'], label: 'Taban Puan', perm: 'university-scores' },
                 /* PDR bölümü arşivlendiğinde "Akademik Takip" grubundan
                    buraya taşındılar — yoksa menüden tamamen düşerlerdi. */
-                { id: 'leaderboard', icon: MODULE_ICONS.overview, label: 'Sıralama' },
+                /* 'leaderboard' sekmesi kaldırıldı (06.09): eski `exams_data`
+                   anahtarını okuduğu için çoğu kurulumda boş görünüyordu ve
+                   sıralama zaten Analiz > Sıralama & Kıyas'ta var. */
                 { id: 'projects', icon: MODULE_ICONS.projects, label: 'Projeler', perm: 'projects' },
                 { id: 'presentations', icon: MODULE_ICONS.material, label: 'Sunumlar' },
             ],
@@ -3448,11 +3445,7 @@ const CoachDashboard = () => {
                                 )}
                                 RiskAlarmPanel={RiskAlarmPanel}
                                 StudentComparisonTable={StudentComparisonTable}
-                                StudentProgressComparison={StudentProgressComparison}
-                                ClassRanking={ClassRanking}
                                 GoalComparisonPanel={GoalComparisonPanel}
-                                StudentGoalsPanel={StudentGoalsPanel}
-                                AnalyticsTab={AnalyticsTab}
                                 AICoachButton={AICoachButton}
                             />
                         )}
@@ -3514,7 +3507,6 @@ const CoachDashboard = () => {
                         )}
                         {activeTab === 'groups' && <GroupsTab students={students} setToast={setToast} bolum={bolum} />}
                         {activeTab === 'projects' && <ProjectsTab students={students} setToast={setToast} />}
-                        {activeTab === 'leaderboard' && <LeaderboardTab students={students} />}
                         {activeTab === 'presentations' && <PresentationsTab students={students} setToast={setToast} />}
                         {activeTab === 'whatsapp' && <WhatsAppTab students={students} coachName={user?.name || ''} />}
                         {activeTab === 'remote' && <RemoteCoachingTab students={students} setToast={setToast} />}

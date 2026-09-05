@@ -43,6 +43,13 @@ const StudentDetailPage = () => {
      */
     const [kocNotu, setKocNotu] = useState('');
     const [notKaydedildi, setNotKaydedildi] = useState(false);
+    /* Veliyle paylaşım: `coach_notes_<id>` anahtarını veli portalı ve
+       veliBaglanti.ozetYayinla OKUYOR ama hiçbir ekran YAZMIYORDU —
+       "veliye açık koç notu" ölü özellikti. İki depo tek akışta
+       birleştirildi: not hep gizli `koc_notu_<id>`ye yazılır; koç
+       kutucuğu işaretlerse AYNI not veli biçiminde (visibleToParent)
+       coach_notes_'a da düşer. Varsayılan: paylaşma (gizli). */
+    const [veliylePaylas, setVeliylePaylas] = useState(false);
     const [girisAcModal, setGirisAcModal] = useState(false);
     const [veliBaglantiModal, setVeliBaglantiModal] = useState(false);
 
@@ -50,6 +57,10 @@ const StudentDetailPage = () => {
         if (!id) return;
         try { setKocNotu(localStorage.getItem(`koc_notu_${id}`) || ''); }
         catch { setKocNotu(''); }
+        try {
+            const veliNotlari = JSON.parse(localStorage.getItem(`coach_notes_${id}`) || '[]');
+            setVeliylePaylas(Array.isArray(veliNotlari) && veliNotlari.some((n) => n?.visibleToParent));
+        } catch { setVeliylePaylas(false); }
     }, [id]);
 
     /**
@@ -93,8 +104,15 @@ const StudentDetailPage = () => {
         try {
             localStorage.setItem(`koc_notu_${id}`, metin);
             window.firebaseSync?.syncKey?.(`koc_notu_${id}`);
+            /* Veli kopyası: yalnız koç açıkça isterse. Kapalıysa eski
+               paylaşımlar da geri çekilir — gizli not veliye sızmaz. */
+            const veliListesi = veliylePaylas
+                ? [{ text: metin, visibleToParent: true, createdAt: new Date().toISOString() }]
+                : [];
+            localStorage.setItem(`coach_notes_${id}`, JSON.stringify(veliListesi));
+            window.firebaseSync?.syncKey?.(`coach_notes_${id}`);
             setNotKaydedildi(true);
-            bildir('Not kaydedildi.', 'basari');
+            bildir(veliylePaylas ? 'Not kaydedildi ve veliyle paylaşıldı.' : 'Not kaydedildi (yalnız sen görürsün).', 'basari');
         } catch (e) {
             bildir(hataAnlat(e, 'kaydet'), 'hata');
         }
@@ -639,6 +657,15 @@ const StudentDetailPage = () => {
                             className="w-full h-32 p-3 bg-surface-2 border border-line rounded-xl focus:ring-2 focus:ring-brand focus:outline-none text-sm resize-none"
                             placeholder="Öğrenci ile ilgili özel notlarınızı buraya alın..."
                         ></textarea>
+                        <label className="mt-2 flex items-center gap-2 text-xs text-ink-2 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={veliylePaylas}
+                                onChange={(e) => { setVeliylePaylas(e.target.checked); setNotKaydedildi(false); }}
+                                className="rounded border-line text-brand focus:ring-brand"
+                            />
+                            Bu notu veli portalında da göster
+                        </label>
                         <button
                             type="button"
                             onClick={notuKaydet}

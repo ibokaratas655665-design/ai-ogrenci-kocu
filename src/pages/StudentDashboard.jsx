@@ -6,18 +6,15 @@ import { useTheme } from '../context/ThemeContext';
 import { StudentBottomNav } from '../components/shared/MobileBottomNav';
 import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import BugunEkrani from '../components/student/BugunEkrani';
-import GelisimPanosu from '../components/student/GelisimPanosu';
 import { cn } from '../lib/cn';
 import { useDokunmaGecisi } from '../lib/dokunmaGecisi';
 import { Sayac } from '../components/ui/Badge';
 import { BolumHataSiniri } from '../components/ui';
 import { bildir } from '../services/uiGeriBildirim';
-import SmartNotificationBell from '../components/shared/SmartNotifications';
 import PWAInstallBanner from '../components/shared/PWAInstallBanner';
 import { StudentDashboardSkeleton } from '../components/shared/SkeletonLoaders';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
 import DenemeAnalizi from '../components/student/DenemeAnalizi';
-import DailyGoalCard from '../components/student/DailyGoalCard';
 import {
     MessageSquare, LogOut, Settings, Key, Video,
     Home, ClipboardList, BarChart2, BookOpen, Calendar,
@@ -27,32 +24,25 @@ import {
     Download, FileText, Eye, Moon, Sun, BookX, PencilLine, User,
     MoreHorizontal, Timer, NotebookPen, Medal
 , CalendarCheck } from 'lucide-react';
-import { generateStudentReport } from '../utils/pdfGenerator';
 // 23.08 tasarım: merkez (hub) ekranlarının yapı taşları ve verisi
-import { GelisimKarti, IstatistikCipi, SegmentliSecim, BolumSeridi } from '../components/ui/Gelisim';
+import { SegmentliSecim, BolumSeridi } from '../components/ui/Gelisim';
 import { OlcumKarti, DersCubuklari, UyumHalkasi } from '../components/charts/Analitik';
 import Card from '../components/ui/Card';
 import KartBasligi from '../components/ui/KartBasligi';
 import { getCellColor } from '../data/programColors';
-import { CokluHalka } from '../components/charts/Dagilim';
 import { dersRengi } from '../components/charts/grafikTemasi';
 import { getSummary } from '../services/studyLogService';
 import { istikrar } from '../services/gelisimAnalitik';
 import denemeKayitlari from '../services/denemeKayitlari';
 import programProgress from '../services/programProgressService';
 import {
-    ResponsiveContainer, LineChart, Line, AreaChart, Area, ComposedChart, Legend,
+    ResponsiveContainer, AreaChart, Area,
     XAxis, YAxis, CartesianGrid, Tooltip as GrafikTooltip,
 } from 'recharts';
-import { calculateEstimatedScore, normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
+import { normalizeTRName, normalizeSchoolNumber } from '../utils/scoreCalculator';
 import { api } from '../services/api';
 import MARKA from '../data/marka';
 import guidanceService from '../services/guidanceService';
-import AnalyticsCharts from '../components/AnalyticsCharts';
-import PomodoroTimer from '../components/PomodoroTimer';
-import SubjectTracker from '../components/SubjectTracker';
-import DailyOverview from '../components/dashboard/DailyOverview';
-import ActivityFeed from '../components/social/ActivityFeed';
 import { getStudentPermissions } from '../utils/permissions';
 import firebaseSync from '../services/firebaseSync';
 import StudentProgramTab from '../components/StudentProgramTab';
@@ -63,8 +53,6 @@ import BadgeCollection, { XPBar, StreakCard } from '../components/gamification/B
 import { useGamification } from '../context/GamificationContext';
 import { AICoachButton } from '../components/AICoachChat';
 // 🎯 Yeni 3 Özellik
-import PerformanceRadar from '../components/charts/PerformanceRadar';
-import PredictiveAnalytics from '../components/charts/PredictiveAnalytics';
 import XPLeaderboard from '../components/student/XPLeaderboard';
 import GoalSettingModule from '../components/student/GoalSettingModule';
 /* AdvancedAnalytics / YKSCountdownWidget / SubjectWeaknessAnalyzer /
@@ -76,8 +64,6 @@ import DenemeCoz from '../components/student/DenemeCoz';
 import denemeMotoru from '../services/denemeMotoru';
 import DailyStudyLog from '../components/student/DailyStudyLog';
 // 🆕 13 Madde İmplementasyonu
-import MotivationNotifications from '../components/student/MotivationNotifications';
-import ClassComparisonWidget from '../components/student/ClassComparisonWidget';
 import ParentQRModal from '../components/student/ParentQRModal';
 // 🚀 12 Madde Geliştirme
 import SelfAssessmentForm from '../components/student/SelfAssessment';
@@ -87,11 +73,9 @@ import TopicTracker from '../components/student/TopicTracker';
 import useTabBadges from '../hooks/useTabBadges';
 import SubjectPomodoro from '../components/student/SubjectPomodoro';
 import StudentPortfolio from '../components/student/StudentPortfolio';
-import ExamComparisonMatrix from '../components/student/ExamComparisonMatrix';
 import { OfflineBanner, useOfflineStatus } from '../services/offlineSync';
 import RealtimeNotificationBell from '../components/shared/RealtimeNotifications';
 import SenkronDurumu from '../components/ui/SenkronDurumu';
-import VividKpi from '../components/shared/VividKpi';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
@@ -205,7 +189,7 @@ const StudentDashboard = () => {
         'matrix': ['gelisimim', 'netlerim'],
         'topics': ['gelisimim', 'konularim'],
         'badges': ['gelisimim', 'rozetlerim'],
-        'stats': ['gelisimim', 'genel'],
+        'stats': ['gelisimim', 'netlerim'],
     };
     const GECERLI_SEKMELER = [
         'home', 'program', 'calismalarim', 'gelisimim', 'daha-fazla',
@@ -226,8 +210,11 @@ const StudentDashboard = () => {
        oradaki karşılığıyla açılır. */
     const [calisSegment, setCalisSegment] = useState(() =>
         (HUB_ESLEME[urlSekme]?.[0] === 'calismalarim' ? HUB_ESLEME[urlSekme][1] : 'gunluk'));
-    const [gelisimSegment, setGelisimSegment] = useState(() =>
-        (HUB_ESLEME[urlSekme]?.[0] === 'gelisimim' ? HUB_ESLEME[urlSekme][1] : 'genel'));
+    const [gelisimSegment, setGelisimSegment] = useState(() => {
+        const seg = HUB_ESLEME[urlSekme]?.[0] === 'gelisimim' ? HUB_ESLEME[urlSekme][1] : 'netlerim';
+        // 'genel' segmenti kaldırıldı (06.09) — eski bağlantılar Netlerim'e düşer
+        return seg === 'genel' ? 'netlerim' : seg;
+    });
 
     /* 👆 Telefonda içerik üzerinde sola/sağa kaydırma, açık merkezin
        segmentleri arasında gezdirir (canlı 04.09). Eleman state'te
@@ -238,9 +225,9 @@ const StudentDashboard = () => {
         { id: 'deneme', baslik: 'Deneme Analizi' },
     ];
     const GELISIM_BOLUMLERI = [
-        { id: 'genel', baslik: 'Genel' },
         { id: 'netlerim', baslik: 'Netlerim' },
         { id: 'konularim', baslik: 'Konularım' },
+        { id: 'hedeflerim', baslik: 'Hedeflerim' },
         { id: 'rozetlerim', baslik: 'Rozetlerim' },
     ];
     const [kaydirmaEl, setKaydirmaEl] = useState(null);
@@ -352,7 +339,7 @@ const StudentDashboard = () => {
     }, [user?.id, programConfig?.programDurationMonths, schedule]);
     const [loading, setLoading] = useState(true);
 
-    const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+    /* isMessageModalOpen kaldırıldı (06.09): modalı açan hiçbir yer yoktu. */
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     /* Mesajlar ekranı üç sütun: solda kanal listesi (Koçum / Duyurular),
@@ -838,32 +825,7 @@ const StudentDashboard = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
     }, [examData, user?.id, kayitSurumu]);
 
-    /**
-     * Performans radarı GERÇEK veriden beslenir: mevcut = son 3
-     * denemenin ders ortalaması, hedef = öğrencinin kendi en iyi
-     * denemesi. Deneme yoksa radar hiç çizilmez — örnek veri yok.
-     */
-    const radarVerisi = useMemo(() => {
-        if (!denemelerSirali.length) return [];
-        const DERSLER = [
-            { anahtar: 'turkce', ad: 'Türkçe', tavan: 40 },
-            { anahtar: 'mat', ad: 'Matematik', tavan: 40 },
-            { anahtar: 'fen', ad: 'Fen', tavan: 20 },
-            { anahtar: 'sosyal', ad: 'Sosyal', tavan: 20 },
-        ];
-        const son3 = denemelerSirali.slice(-3);
-        return DERSLER.map(({ anahtar, ad, tavan }) => {
-            const degerler = son3.map((e) => parseFloat(e[anahtar])).filter((v) => !Number.isNaN(v));
-            if (!degerler.length) return null;
-            const ort = degerler.reduce((s, v) => s + v, 0) / degerler.length;
-            const enIyi = Math.max(...denemelerSirali.map((e) => parseFloat(e[anahtar]) || 0));
-            return {
-                subject: ad,
-                current: Math.round(Math.max(0, (ort / tavan) * 100)),
-                target: Math.round(Math.max(0, (enIyi / tavan) * 100)),
-            };
-        }).filter(Boolean);
-    }, [denemelerSirali]);
+    /* radarVerisi kaldirildi (06.09): hesaplaniyor ama hicbir yerde render edilmiyordu. */
 
     const merkezOzet = useMemo(() => {
         let o14 = null, o30 = null;
@@ -1473,80 +1435,14 @@ const StudentDashboard = () => {
                             />
                         </div>
 
-                        {/* BU HAFTA — dört ölçüm kartı.
-                            Önce dört sayaç çipiydi: yalnız sayı, bağlam yok.
-                            "143 soru" iyi mi kötü mü, artıyor mu azalıyor mu
-                            görünmüyordu; artış/azalış bilgisi ise ayrı bir
-                            "Gelişimim (Son 7 Gün)" kartında, sayılardan
-                            kopuk duruyordu. Referanstaki kalıpta üçü bir
-                            arada: sayı, önceki döneme göre değişim ve serinin
-                            şekli. Şekil önemli — istikrarlı yükseliş ile son
-                            gün fırlamış sıçrama aynı yüzdeyi verir. */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                            <OlcumKarti
-                                etiket="Soru Çözümü" simge={ClipboardList} ton="marka"
-                                deger={merkezOzet.soru7}
-                                degisim={merkezOzet.soruFark != null && merkezOzet.soru7 - merkezOzet.soruFark > 0
-                                    ? Math.round((merkezOzet.soruFark / (merkezOzet.soru7 - merkezOzet.soruFark)) * 100)
-                                    : undefined}
-                                alt="Son 7 gün"
-                                seri={merkezOzet.gunSerisi.map((g) => g.soru)}
-                                seriTuru="dolgu"
-                                seriAlt="7 gün"
-                            />
-                            <OlcumKarti
-                                etiket="Çalışma Süresi" simge={Timer} ton="uyari"
-                                deger={merkezOzet.dakika7 >= 60 ? Math.floor(merkezOzet.dakika7 / 60) : merkezOzet.dakika7}
-                                birim={merkezOzet.dakika7 >= 60 ? ' sa' : ' dk'}
-                                alt={merkezOzet.dakika7 >= 60 ? `${merkezOzet.dakika7 % 60} dk daha` : 'Son 7 gün'}
-                            />
-                            <OlcumKarti
-                                etiket="Hata Kaydı" simge={BookX} ton="kotu"
-                                deger={merkezOzet.hatalar7}
-                                alt="Bu hafta eklenen"
-                            />
-                            <OlcumKarti
-                                etiket="Son Net" simge={BarChart2} ton="iyi"
-                                deger={merkezOzet.sonNet != null ? merkezOzet.sonNet : '—'}
-                                degisim={merkezOzet.netFark != null && merkezOzet.sonNet - merkezOzet.netFark > 0
-                                    ? Math.round((merkezOzet.netFark / (merkezOzet.sonNet - merkezOzet.netFark)) * 100)
-                                    : undefined}
-                                alt={merkezOzet.deneme7 > 0 ? `Bu hafta ${merkezOzet.deneme7} deneme` : 'Son denemen'}
-                                seri={merkezOzet.netSerisi.map((x) => x.net)}
-                                seriTuru="cubuk"
-                                seriAlt={merkezOzet.netSerisi.length > 1 ? `${merkezOzet.netSerisi.length} deneme` : null}
-                            />
-                        </div>
-
-                        {/* "Gelişimim (Son 7 Gün)" delta kartı kaldırıldı:
-                            net değişimi ve soru artışı artık ait oldukları
-                            ölçüm kartlarının içinde, sayının hemen yanında.
-                            Ayrı kartta iken hangi sayıya ait oldukları
-                            okuyucunun çıkarımına bırakılmıştı. */}
-
-                        {/* Güçlü alan / çalışılacak alan */}
-                        {(merkezOzet.guclu || merkezOzet.gelisecek) && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {merkezOzet.guclu && (
-                                    <div className="card p-4 flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="tip-label text-ink-3">En Çok Geliştiğim Alan</p>
-                                            <p className="text-base font-black text-ink mt-0.5">{merkezOzet.guclu.subject}</p>
-                                        </div>
-                                        <span className="badge badge-ok">%{merkezOzet.guclu.accuracy} isabet</span>
-                                    </div>
-                                )}
-                                {merkezOzet.gelisecek && merkezOzet.gelisecek !== merkezOzet.guclu && (
-                                    <div className="card p-4 flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="tip-label text-ink-3">Üzerine Çalışmam Gereken</p>
-                                            <p className="text-base font-black text-ink mt-0.5">{merkezOzet.gelisecek.subject}</p>
-                                        </div>
-                                        <span className="badge badge-warn">%{merkezOzet.gelisecek.accuracy} isabet</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {/* 06.09 SADELEŞTİRME: buradaki 4'lü ölçüm şeridi ve
+                            güçlü/gelişecek kart çifti kaldırıldı. Dördü de
+                            alttaki segment bileşenlerinde zaten vardı (soru →
+                            Günlük Kayıt istatistikleri, hata → Hata Defteri
+                            sayaçları, son net → Deneme Analizi KPI'ları),
+                            güçlü/zayıf çifti ise Gelişimim > Netlerim'deki
+                            "Odak Alanlarım" ile birebir aynıydı. Öğrenci tek
+                            kaydırmada 15 görsel öğe görüyordu. */}
                     </div>
                 )}
 
@@ -1565,7 +1461,6 @@ const StudentDashboard = () => {
                                     deger={gelisimSegment}
                                     onSec={setGelisimSegment}
                                     ogeler={[
-                                        { id: 'genel', etiket: 'Genel' },
                                         { id: 'netlerim', etiket: 'Netlerim' },
                                         { id: 'konularim', etiket: 'Konularım' },
                                         { id: 'hedeflerim', etiket: 'Hedeflerim' },
@@ -1577,7 +1472,6 @@ const StudentDashboard = () => {
                                 aktif={gelisimSegment}
                                 onSec={setGelisimSegment}
                                 bolumler={[
-                                    { id: 'genel', baslik: 'Genel' },
                                     { id: 'netlerim', baslik: 'Netlerim' },
                                     { id: 'konularim', baslik: 'Konularım' },
                                     { id: 'hedeflerim', baslik: 'Hedeflerim' },
@@ -1586,178 +1480,11 @@ const StudentDashboard = () => {
                             />
                         </div>
 
-                        {gelisimSegment === 'genel' && (
-                            /* İKİ SÜTUN — referansın yerleşimi.
-                               Solda GELİŞİMİN KENDİSİ (ölçümler, aktivite eğrisi, deneme
-                               listesi), sağda DURUM ÖZETİ (çoklu halka, çalışma düzeni).
-                               Telefonda alt alta iner. */
-                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start xl:items-stretch xl:flex-1 xl:min-h-0 xl:overflow-hidden xl:[grid-template-rows:minmax(0,1fr)]">
-                                <div className="xl:col-span-8 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
-                {/* ÖLÇÜM ŞERİDİ.
-                                    Dört degrade renkli kart vardı: her biri farklı
-                                    bir renge boyanmıştı (mor, turuncu, yeşil, mavi)
-                                    ama renkler hiçbir şey anlatmıyordu — "Netim"in
-                                    mor, "İsabetim"in yeşil olmasının bir sebebi
-                                    yoktu. Dolgu renk aynı zamanda içindeki sayıyı
-                                    beyaza zorluyor ve mini grafik çizilemiyordu.
-
-                                    Referanstaki kalıp: beyaz kart, renkli küçük
-                                    ikon, büyük sayı, değişim rozeti, altta serinin
-                                    şekli. Renk artık yalnız ikonda ve anlam taşıyor
-                                    (iyi/uyarı/kötü/marka). */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                    <OlcumKarti
-                                        etiket="Netim" simge={TrendingUp} ton="marka"
-                                        deger={merkezOzet.sonNet != null ? merkezOzet.sonNet : '—'}
-                                        degisim={merkezOzet.netFark != null && merkezOzet.sonNet - merkezOzet.netFark > 0
-                                            ? Math.round((merkezOzet.netFark / (merkezOzet.sonNet - merkezOzet.netFark)) * 100)
-                                            : undefined}
-                                        alt={merkezOzet.sonNet != null ? 'Son deneme' : 'Deneme girildikçe dolar'}
-                                        seri={merkezOzet.netSerisi.map((x) => x.net)}
-                                        seriTuru="dolgu"
-                                        seriAlt={merkezOzet.netSerisi.length > 1 ? `${merkezOzet.netSerisi.length} deneme` : null}
-                                    />
-                                    <OlcumKarti
-                                        etiket="Soru Çözümüm" simge={ClipboardList} ton="uyari"
-                                        deger={merkezOzet.soru30}
-                                        alt="Son 30 gün"
-                                        seri={merkezOzet.gunSerisi.map((g) => g.soru)}
-                                        seriTuru="cubuk"
-                                        seriAlt="son 7 gün"
-                                    />
-                                    <OlcumKarti
-                                        etiket="İsabetim" simge={Target} ton="iyi"
-                                        deger={merkezOzet.isabet7 != null ? merkezOzet.isabet7 : '—'}
-                                        birim={merkezOzet.isabet7 != null ? '%' : ''}
-                                        alt="Son 7 gün doğruluk"
-                                    />
-                                    <OlcumKarti
-                                        etiket="Çalışma Sürem" simge={Clock} ton="bilgi"
-                                        deger={merkezOzet.dakika7 >= 60 ? Math.floor(merkezOzet.dakika7 / 60) : merkezOzet.dakika7}
-                                        birim={merkezOzet.dakika7 >= 60 ? ' sa' : ' dk'}
-                                        alt={merkezOzet.dakika7 >= 60 ? `${merkezOzet.dakika7 % 60} dk daha · son 7 gün` : 'Son 7 gün'}
-                                    />
-                                </div>
-
-                                    {/* ÇALIŞMA VE NET BİRLİKTE — referanstaki "Learning
-                                        Activity" çok serili eğrisi. Net grafiği tek başına
-                                        "yükseliyor mu" der ama NEDENİNİ söylemez. Soru
-                                        sayısıyla birlikte çizilince ikisi arasındaki bağ
-                                        görünür: çalışma arttığında net de artıyor mu?
-                                        İki ölçü farklı birimde olduğu için ayrı eksenler. */}
-                                    {merkezOzet.netSerisi.length >= 2 && (
-                                        <div className="card p-4 sm:p-5">
-                                            <p className="tip-label text-ink-3">Gelişim Eğrim</p>
-                                            <p className="tip-caption mt-0.5 mb-3">Son {merkezOzet.netSerisi.length} deneme · net ve çalışma birlikte</p>
-                                            <div className="h-60">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <ComposedChart data={merkezOzet.netSerisi} margin={{ top: 6, right: 8, bottom: 0, left: -20 }}>
-                                                        <defs>
-                                                            <linearGradient id="gelisimNet" x1="0" y1="0" x2="0" y2="1">
-                                                                <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.28} />
-                                                                <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                                                            </linearGradient>
-                                                        </defs>
-                                                        <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
-                                                        <XAxis dataKey="ad" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                                        <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-                                                        <GrafikTooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 12, fontSize: 12 }} />
-                                                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                                                        <Area type="monotone" dataKey="net" name="Toplam net" stroke="var(--brand)" strokeWidth={3}
-                                                            fill="url(#gelisimNet)" dot={{ r: 4, fill: 'var(--brand)' }} activeDot={{ r: 6 }} animationDuration={300} />
-                                                    </ComposedChart>
-                                                </ResponsiveContainer>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* DENEME LİSTESİ — referanstaki "My assignment" tablosu. */}
-                                    {denemelerSirali.length > 0 && (
-                                        <div className="card p-4 sm:p-5">
-                                            <p className="tip-label text-ink-3 mb-3">Denemelerim · {denemelerSirali.length} kayıt</p>
-                                            <div className="overflow-x-auto rounded-dmd border border-line">
-                                                <table className="w-full text-left" style={{ minWidth: 420 }}>
-                                                    <thead>
-                                                        <tr className="bg-surface-2">
-                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Deneme</th>
-                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Tarih</th>
-                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3 text-right">Net</th>
-                                                            <th className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-ink-3">Seyir</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-line">
-                                                        {[...denemelerSirali].reverse().slice(0, 8).map((d, i) => {
-                                                            const net = parseFloat(d.totalNet) || 0;
-                                                            const enB = Math.max(...denemelerSirali.map((x) => parseFloat(x.totalNet) || 0), 1);
-                                                            const tarih = d.date || d.uploadedAt;
-                                                            return (
-                                                                <tr key={d.id || i} className="bg-surface">
-                                                                    <td className="px-3 py-2 text-[11.5px] font-bold text-ink truncate max-w-[170px]">{d.examName || d.name || 'Deneme'}</td>
-                                                                    <td className="px-3 py-2 text-[11px] text-ink-3 whitespace-nowrap">{tarih ? new Date(tarih).toLocaleDateString('tr-TR') : '—'}</td>
-                                                                    <td className="px-3 py-2 text-right text-[12.5px] font-black tabular-nums text-ink">{net}</td>
-                                                                    <td className="px-3 py-2" style={{ width: 110 }}>
-                                                                        <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                                                                            <div className="h-full rounded-full" style={{ width: `${Math.round((net / enB) * 100)}%`, background: 'var(--brand)' }} />
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ═══ SAĞ: DURUM ÖZETİ ═══ */}
-                                <aside className="xl:col-span-4 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
-                                    {/* ÇOKLU HALKA — referanstaki "My Progress".
-                                        Üç oran BAĞIMSIZ; toplamları anlamsızdır, bu yüzden
-                                        dilim değil iç içe halka. Veri yoksa halka çizilmez,
-                                        sıfır gösterilmez. */}
-                                    <div className="card p-4 sm:p-5">
-                                        <p className="tip-label text-ink-3 mb-4">Durumum</p>
-                                        <CokluHalka
-                                            halkalar={[
-                                                merkezOzet.isabet7 != null && { ad: 'İsabet', oran: merkezOzet.isabet7, renk: 'var(--brand)', alt: 'son 7 gün' },
-                                                { ad: 'Çalışma düzeni', oran: Math.round((merkezOzet.gunSerisi.filter((g) => g.soru > 0).length / 7) * 100), renk: 'var(--ok)', alt: `${merkezOzet.gunSerisi.filter((g) => g.soru > 0).length}/7 gün aktif` },
-                                                merkezOzet.sonNet != null && { ad: 'Son net', oran: Math.min(100, merkezOzet.sonNet), metin: String(merkezOzet.sonNet), renk: 'var(--warn)', alt: merkezOzet.netFark != null ? `${merkezOzet.netFark >= 0 ? '+' : ''}${merkezOzet.netFark} net` : 'ilk deneme' },
-                                            ].filter(Boolean)}
-                                            boyut={150}
-                                        />
-                                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-line">
-                                            <span className="tip-small font-bold text-ink">Toplam Çalışma</span>
-                                            <span className="tip-h4 text-ink rakam">
-                                                {merkezOzet.dakika7 >= 60 ? `${Math.floor(merkezOzet.dakika7 / 60)}s ${merkezOzet.dakika7 % 60}dk` : `${merkezOzet.dakika7}dk`}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Güçlü / geliştirilecek alan — referanstaki
-                                        "Today's course" kartlarının karşılığı: sıradaki iş. */}
-                                    {(merkezOzet.guclu || merkezOzet.gelisecek) && (
-                                        <div className="card p-4 sm:p-5 space-y-3">
-                                            <p className="tip-label text-ink-3 m-0">Sıradaki Odağım</p>
-                                            {merkezOzet.gelisecek && (
-                                                <div className="rounded-dmd border border-line bg-surface-2 p-3">
-                                                    <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">Üzerine çalışılacak</p>
-                                                    <p className="tip-small font-black text-ink mt-0.5 m-0">{merkezOzet.gelisecek.subject}</p>
-                                                    <p className="tip-mini text-ink-3 mt-1 m-0">%{merkezOzet.gelisecek.accuracy} isabet · buradaki her doğru en hızlı kazanç</p>
-                                                </div>
-                                            )}
-                                            {merkezOzet.guclu && merkezOzet.guclu !== merkezOzet.gelisecek && (
-                                                <div className="rounded-dmd border border-line bg-surface-2 p-3">
-                                                    <p className="tip-mini text-ink-3 uppercase tracking-wider m-0">En güçlü alanın</p>
-                                                    <p className="tip-small font-black text-ink mt-0.5 m-0">{merkezOzet.guclu.subject}</p>
-                                                    <p className="tip-mini text-ink-3 mt-1 m-0">%{merkezOzet.guclu.accuracy} isabet</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </aside>
-                            </div>
-                        )}
+                        {/* 06.09 SADELEŞTİRME: 'Genel' segmenti kaldırıldı. Netlerim ile
+                           aynı veriyi (denemelerSirali) okuyor, aynı 4 KPI + net eğrisi +
+                           deneme tablosu + odak bloğunu ikinci kez üretiyordu; CokluHalka
+                           da KPI'lardaki isabet/aktif-gün sayılarının halka hâliydi.
+                           Gelişimim'in tek özet ekranı artık Netlerim. */}
 
                         {gelisimSegment === 'netlerim' && (
                             /* NETLERİM — referans düzeni (Scholaro panosu).
@@ -2468,85 +2195,12 @@ const StudentDashboard = () => {
 
 
 
-            {/* ── Pomodoro Dialog (Premium) ── */}
-            <dialog id="pomodoro-modal" className="modal bg-transparent p-0 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] open:animate-scale-in">
-                <div className="premium-card border-brand/20 bg-surface p-1 relative overflow-hidden">
-                    <button
-                        onClick={() => document.getElementById('pomodoro-modal').close()}
-                        className="absolute top-4 right-4 text-ink-3 hover:text-brand z-50 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
-                    <div className="p-4 sm:p-8">
-                        <PomodoroTimer onSessionComplete={handlePomodoroComplete} />
-                    </div>
-                </div>
-            </dialog>
-            {/* ── Mesaj Modalı (Premium) ── */}
-            {isMessageModalOpen && (
-                <Modal
-                    acik
-                    onClose={() => setIsMessageModalOpen(false)}
-                    baslikGizle
-                    genislik="md"
-                    govdeClassName="p-0 flex flex-col overflow-hidden"
-                >
-                    <div className="shrink-0 p-6 bg-surface border-b border-line flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-                                <MessageSquare size={20} className="text-brand" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-ink syne uppercase">KOÇUNLA KONUŞ</h3>
-                                <p className="text-[10px] text-accent font-bold tracking-widest uppercase">ÇEVRİMİÇİ</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setIsMessageModalOpen(false)} className="text-ink-3 hover:text-ink transition-colors">
-                            <X size={24} />
-                        </button>
-                    </div>
-
-                    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-black/20">
-                        {messages.length === 0 ? (
-                            <div className="text-center mt-20 opacity-20">
-                                <MessageSquare size={60} className="mx-auto mb-4" />
-                                <p className="text-ink text-xs font-bold uppercase tracking-widest">HENÜZ MESAJ YOK</p>
-                            </div>
-                        ) : messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] group`}>
-                                    <div className={`p-4 rounded-2xl text-[13px] leading-relaxed shadow-lg ${
-                                        msg.sender === 'student' 
-                                        ? 'bg-gradient-to-br from-accent to-[#145d52] text-white rounded-tr-none' 
-                                        : 'bg-surface/5 border border-line text-ink-2 rounded-tl-none'
-                                    }`}>
-                                        <p>{msg.text}</p>
-                                    </div>
-                                    <span className={`text-[9px] font-black text-ink-3 uppercase mt-2 block ${msg.sender === 'student' ? 'text-right' : 'text-left'}`}>
-                                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <form onSubmit={handleSendMessage} className="p-6 bg-surface/5 border-t border-line flex gap-4">
-                        <input 
-                            value={newMessage} 
-                            onChange={e => setNewMessage(e.target.value)} 
-                            placeholder="Mesajınızı buraya yazın..." 
-                            className="flex-1 bg-surface/5 border border-line rounded-xl px-6 py-4 text-sm text-ink outline-none focus:border-brand/50 transition-all" 
-                        />
-                        <button 
-                            type="submit" 
-                            className="on-color w-14 h-14 bg-gradient-to-br from-brand to-brand-hover text-white rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl disabled:opacity-50"
-                            disabled={!newMessage.trim()}
-                        >
-                            <Send size={20} />
-                        </button>
-                    </form>
-                </Modal>
-            )}
+            {/* 06.09 SADELEŞTİRME: buradaki ölü Pomodoro <dialog>'u
+                (showModal'ı hiç çağrılmıyordu; canlısı SubjectPomodoro)
+                kaldırıldı. Aşağıdaki mesaj modalı da ölüydü —
+                isMessageModalOpen hiçbir yerde true yapılmıyor, canlı
+                sohbet 'messages' sekmesinin kendi penceresi. */}
+            
 
             {/* ═══════════ GELİŞİMİM → Rozetlerim segmenti ═══════════ */}
             {activeTab === 'gelisimim' && gelisimSegment === 'rozetlerim' && (
@@ -2569,7 +2223,10 @@ const StudentDashboard = () => {
                         {/* Sol: XP + Seri */}
                         <div className="space-y-6">
                             <XPBar totalXP={gamStats.totalXP} />
-                            <StreakCard currentStreak={gamStats.currentStreak} maxStreak={gamStats.maxStreak} />
+                            {/* Seri artık başlıktaki rozetle AYNI kaynaktan (istikrar/
+                                calismaSerisi) — oyunlaştırma sayacıyla iki farklı
+                                "seri" sayısı gösterme tutarsızlığı bitti. */}
+                            <StreakCard currentStreak={calismaSerisi} maxStreak={Math.max(gamStats.maxStreak || 0, calismaSerisi)} />
 
                             {/* Hızlı İstatistikler */}
                             <div className="premium-card p-8 border-line">

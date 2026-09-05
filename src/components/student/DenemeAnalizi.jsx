@@ -25,13 +25,12 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Target, AlertCircle, BarChart2, PlusCircle, Trash2, Timer, HelpCircle, ClipboardList } from 'lucide-react';
 import { dersRengi } from '../charts/grafikTemasi';
-import { hataTuruAdi } from '../../data/hataTurleri';
 import { CokSegmentliCubuk } from '../charts/Dagilim';
 import { OlcumKarti } from '../charts/Analitik';
 import { listeOku } from '../../services/veriDeposu';
 import {
     dersOzeti, trendSerisi, komboSerisi,
-    gucluZayifAnalizi, konuHatalari, calismaOncelikleri, gunlukSeri,
+    konuHatalari, calismaOncelikleri, gunlukSeri,
     birlesikDenemeler, nedenTrendi, sureSerisi, kocOzeti,
 } from '../../utils/denemeAnalizi';
 import denemeKayitlari from '../../services/denemeKayitlari';
@@ -104,7 +103,6 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
     const seri = useMemo(() => trendSerisi(denemeler), [denemeler]);
     const kombo = useMemo(() => komboSerisi(denemeler), [denemeler]);
     const dersler = useMemo(() => dersOzeti(denemeler), [denemeler]);
-    const guc = useMemo(() => gucluZayifAnalizi(denemeler), [denemeler]);
     const konu = useMemo(() => konuHatalari(hatalar), [hatalar]);
     const oncelik = useMemo(() => calismaOncelikleri(denemeler, hatalar), [denemeler, hatalar]);
     const haftalik = useMemo(() => gunlukSeri(gunlukler), [gunlukler]);
@@ -424,41 +422,13 @@ export default function DenemeAnalizi({ ogrenci, studentId, bakis = 'ogrenci', s
                         </Bolum>
                     )}
 
-                    {/* ── Güçlü / zayıf / gelişen / gerileyen ──────── */}
-                    {(guc.guclu.length > 0 || guc.gelisen.length > 0 || guc.gerileyen.length > 0) && (
-                        <Bolum baslik="Güçlü ve Gelişime Açık Alanlar" ikon={TrendingUp}>
-                            <div className="flex flex-wrap gap-2">
-                                {guc.guclu.map((d) => <Rozet key={`g${d.anahtar}`} renk="var(--ok)">💪 {d.ad} · ort {d.ortalamaNet}</Rozet>)}
-                                {guc.zayif.map((d) => <Rozet key={`z${d.anahtar}`} renk="var(--danger)">🎯 {d.ad} · ort {d.ortalamaNet}</Rozet>)}
-                                {guc.gelisen.map((d) => <Rozet key={`+${d.anahtar}`} renk="var(--info)">📈 {d.ad} +{d.degisim}</Rozet>)}
-                                {guc.gerileyen.map((d) => <Rozet key={`-${d.anahtar}`} renk="var(--warn)">📉 {d.ad} {d.degisim}</Rozet>)}
-                            </div>
-                        </Bolum>
-                    )}
-
-                    {/* ── Konu hataları ────────────────────────────── */}
-                    {konu.konular.length > 0 && (
-                        <Bolum baslik="Hata Defterinden Konu Analizi" ikon={AlertCircle}>
-                            <div className="space-y-1.5">
-                                {konu.konular.slice(0, 8).map((k) => (
-                                    <div key={`${k.ders}|${k.konu}`} className="flex items-center justify-between text-sm">
-                                        <span className="text-ink font-medium truncate">
-                                            {k.ders} · {k.konu}
-                                            {k.sayi >= 2 && <span className="ml-2 text-xs font-bold" style={{ color: 'var(--warn)' }}>tekrar eden</span>}
-                                        </span>
-                                        <span className="text-ink-2 font-bold shrink-0 ml-3">{k.sayi} hata{k.cozulen ? ` · ${k.cozulen} çözüldü` : ''}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            {konu.turDagilimi.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-line">
-                                    {konu.turDagilimi.map((t) => (
-                                        <Rozet key={t.tur} renk="var(--ink-3)">{hataTuruAdi(t.tur)}: {t.adet}</Rozet>
-                                    ))}
-                                </div>
-                            )}
-                        </Bolum>
-                    )}
+                    {/* 06.09 SADELEŞTİRME:
+                        · "Güçlü ve Gelişime Açık Alanlar" rozetleri kaldırıldı —
+                          hemen üstteki D/Y/B çubuğu ve soldaki ders-net eğrisi
+                          aynı "hangi dersim iyi/kötü" cevabını zaten veriyor.
+                        · "Hata Defterinden Konu Analizi" kaldırıldı — aynı
+                          error_notebook verisi bir segment ötede (Hata Defteri)
+                          filtreli/etkileşimli hâliyle duruyor. */}
 
                     {/* ── Hata nedenleri: dağılım + zaman içi değişim ──
                         Kaynak YALNIZCA öğrencinin manuel girdiği nedenler;

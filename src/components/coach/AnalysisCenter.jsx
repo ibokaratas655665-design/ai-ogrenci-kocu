@@ -14,25 +14,26 @@
  */
 import React, { useMemo } from 'react';
 import {
-    LayoutGrid, Bell, ArrowUpDown, Trophy, Target, Activity,
+    LayoutGrid, Bell, Trophy, Target,
 } from 'lucide-react';
 import SectionTabs from '../shared/SectionTabs';
 import { buildRosterStatus } from '../../services/reportService';
-import { listeOku } from '../../services/veriDeposu';
 
 const AnalysisCenter = (props) => {
     const { students, setToast, renderOverview } = props;
 
     // Bölümlerin içine giren bileşenler dışarıdan verilir; böylece
     // CoachDashboard'daki mevcut prop akışı bozulmuyor.
+    /* 06.09 SADELEŞTİRME: ClassRanking, StudentProgressComparison ve
+       AnalyticsTab kaldırıldı. "Sıralama & Kıyas" altında ÜÇ ayrı
+       sıralama tablosu peş peşe duruyordu (üçü de Son/Ort/Maks
+       Net + Trend); en bilgilendiricisi (görev yüzdesi + tablo/grafik
+       anahtarlı StudentComparisonTable) kaldı. "Grafikler" alt sekmesi
+       ise Genel Bakış KPI'larının ve trend grafiğinin kopyasıydı. */
     const {
         RiskAlarmPanel,
         StudentComparisonTable,
-        StudentProgressComparison,
-        ClassRanking,
         GoalComparisonPanel,
-        StudentGoalsPanel,
-        AnalyticsTab,
         AICoachButton,
     } = props;
 
@@ -45,10 +46,6 @@ const AnalysisCenter = (props) => {
         };
     }, [students]);
 
-    const v2 = useMemo(() => {
-        const read = (k) => { try { return listeOku(k); } catch { return []; } };
-        return { results: read('v2_results_data'), trials: read('v2_trials_data') };
-    }, [students]);
 
     const sections = [
         {
@@ -80,13 +77,6 @@ const AnalysisCenter = (props) => {
             title: 'Hedef Takibi',
             description: 'Öğrencilerin hedef netleri ile mevcut durumlarının karşılaştırması',
         },
-        {
-            id: 'charts',
-            icon: Activity,
-            label: 'Grafikler',
-            title: 'Sınıf Grafikleri',
-            description: 'Ders bazlı radar, net trendi ve sınıf geneli dağılımlar',
-        },
     ];
 
     return (
@@ -106,24 +96,20 @@ const AnalysisCenter = (props) => {
 
                     {active === 'ranking' && (
                         <div className="space-y-6">
-                            <ClassRanking students={students} />
                             <StudentComparisonTable students={students} />
-                            <StudentProgressComparison
-                                students={students}
-                                trials={v2.trials}
-                                results={v2.results}
-                            />
                         </div>
                     )}
 
                     {active === 'goals' && (
                         <div className="space-y-6">
+                            {/* StudentGoalsPanel kaldırıldı (06.09): hiçbir ekranın
+                                yazmadığı `goals_<id>` (düz liste) anahtarını okuyordu —
+                                her zaman "0 hedef" gösteren ölü paneldi. Gerçek hedef
+                                verisi (goals_<id>_tyt) GoalComparisonPanel'de. */}
                             <GoalComparisonPanel students={students} />
-                            <StudentGoalsPanel students={students} />
                         </div>
                     )}
 
-                    {active === 'charts' && <AnalyticsTab students={students} />}
                 </>
             )}
         </SectionTabs>
