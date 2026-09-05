@@ -77,12 +77,12 @@ const ProgramCell = ({
                             aria-hidden="true"
                             style={{
                                 width: s.badge - 1, height: s.badge - 1, borderRadius: 999,
-                                backgroundColor: c.border, flex: 'none',
+                                backgroundColor: c.vurgu || c.border, flex: 'none',
                             }}
                         />
                         <span
                             className="font-black tracking-tight leading-none truncate"
-                            style={{ fontSize: s.subject, color: c.border }}
+                            style={{ fontSize: s.subject, color: c.vurgu || c.border }}
                         >
                             {getSubjectLabel(toStr(cell.subject))}
                         </span>
@@ -98,9 +98,17 @@ const ProgramCell = ({
                     </div>
 
                     {cell.topic && (
+                        /* En çok 3 satır: uzun konu adı kutuyu büyütüp ızgarayı
+                           dişli dişli yapıyordu — fazlası … ile kırpılır,
+                           tamamı title'da durur (05.09 talimatı). */
                         <span
                             className="font-bold break-words"
-                            style={{ fontSize: s.topic, lineHeight: 1.25, color: c.text }}
+                            title={toStr(cell.topic)}
+                            style={{
+                                fontSize: s.topic, lineHeight: 1.25, color: c.text,
+                                display: '-webkit-box', WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                            }}
                         >
                             {toStr(cell.topic)}
                         </span>

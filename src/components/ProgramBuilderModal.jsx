@@ -178,6 +178,8 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
     // Selection Mode States
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedCells, setSelectedCells] = useState([]);
+    /* PDF menüsü tıklamayla açılır (05.09) — hover menü dokunmatikte açılmıyordu */
+    const [pdfMenuAcik, setPdfMenuAcik] = useState(false);
     /* Ders/konu arama — soldaki listeyi süzer (dropdown yerine görünür liste) */
     const [dersKonuAra, setDersKonuAra] = useState('');
 
@@ -487,6 +489,9 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                     `program_closed_slots_${studentId}`,
                     `program_meta_${studentId}`,
                     `student_programs_${studentId}`,
+                    /* 05.09: kriterler listede yoktu — koçun motor ayarları
+                       buluta gitmiyor, başka cihazda varsayılana dönüyordu. */
+                    `program_kriterleri_${studentId}`,
                 ].map((k) => firebaseSync.syncKey(k)));
                 if (sonuclar.some((s) => s === false)) {
                     bildir('Program bu cihaza kaydedildi ama BULUTA GÖNDERİLEMEDİ — öğrenci güncel programı göremez. İnternet/oturumu kontrol edip tekrar "Kaydet"e basın.', 'uyari');
@@ -568,11 +573,21 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                     subject: activeTool.subject,
                     topic: activeTool.topic,
                     type: activeTool.type || 'konu',
-                    color: activeTool.color,
                     exam: activeTool.exam
                 }
             });
+            return;
         }
+
+        /* 05.09: araç seçili değilken tıklama SESSİZCE yutuluyordu —
+           hücre "Etüt Ekle" daveti gösterdiği hâlde hiçbir şey olmuyordu.
+           Koça ne yapacağı söylenir. */
+        bildir(
+            schedule[cellKey]
+                ? 'Bu etüdü değiştirmek için soldan bir konu/blok seç ve üzerine tıkla; silmek için Silgi aracını kullan.'
+                : 'Önce soldan bir konu ya da blok seç, sonra bu etüde tıkla.',
+            'bilgi', 2600,
+        );
     };
 
     const toggleTopicSelection = (topic) => {
@@ -1059,24 +1074,34 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                 <Unlock size={16} className="mr-2" /> Etütleri Aç
             </button>
             {/* PDF: tek hafta modunda tek dosya, ay modunda seçenekli.
-                Açılır menü fareyle üzerine gelmeye bağlı olduğu için
-                dokunmatikte açılmaz; oradaki asıl düğme yine çalışır. */}
-            <div className="relative group/pdf">
+                05.09: menü artık TIKLAMAYLA açılır — hover menüsü
+                dokunmatikte hiç açılamıyordu, iki seçenek erişilmezdi. */}
+            <div className="relative">
                 <button
-                    onClick={() => handleDownloadPDF('week')}
+                    onClick={() => (weeklyMode ? handleDownloadPDF('week') : setPdfMenuAcik((v) => !v))}
+                    aria-expanded={!weeklyMode ? pdfMenuAcik : undefined}
                     className="px-3 py-2 bg-brand hover:bg-indigo-400 text-white rounded-lg text-sm font-bold transition flex items-center shadow-lg hover:shadow-indigo-500/30"
                 >
                     <Download size={16} className="mr-2" />
-                    {weeklyMode ? 'PDF İndir' : `${activeWeek}. Hafta PDF`}
-                    {!weeklyMode && <ChevronDown size={14} className="ml-1.5 opacity-70" />}
+                    {weeklyMode ? 'PDF İndir' : 'PDF İndir'}
+                    {!weeklyMode && <ChevronDown size={14} className={`ml-1.5 opacity-70 transition-transform ${pdfMenuAcik ? 'rotate-180' : ''}`} />}
                 </button>
 
-                {!weeklyMode && (
-                    <div className="absolute right-0 top-full pt-1 hidden group-hover/pdf:block z-50">
+                {!weeklyMode && pdfMenuAcik && (
+                    <div className="absolute right-0 top-full pt-1 z-50">
                         <div className="bg-surface rounded-xl shadow-2xl border border-line overflow-hidden w-60">
                             <button
-                                onClick={() => handleDownloadPDF('each')}
+                                onClick={() => { setPdfMenuAcik(false); handleDownloadPDF('week'); }}
                                 className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition"
+                            >
+                                <span className="block text-xs font-black text-ink">{activeWeek}. Hafta PDF</span>
+                                <span className="block text-[10px] text-ink-3 leading-tight">
+                                    Yalnızca açık olan hafta
+                                </span>
+                            </button>
+                            <button
+                                onClick={() => { setPdfMenuAcik(false); handleDownloadPDF('each'); }}
+                                className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition border-t border-line"
                             >
                                 <span className="block text-xs font-black text-ink">Her Hafta Ayrı PDF</span>
                                 <span className="block text-[10px] text-ink-3 leading-tight">
@@ -1084,7 +1109,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                 </span>
                             </button>
                             <button
-                                onClick={() => handleDownloadPDF('all')}
+                                onClick={() => { setPdfMenuAcik(false); handleDownloadPDF('all'); }}
                                 className="w-full text-left px-3 py-2.5 hover:bg-brand-soft transition border-t border-line"
                             >
                                 <span className="block text-xs font-black text-ink">Tümü Tek PDF</span>
@@ -1536,7 +1561,6 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                         setActiveTool({
                                                             subject: manualSubject,
                                                             topic: manualTopic || '',
-                                                            color: 'bg-brand-soft border-brand-line text-brand',
                                                             exam: manualExam || '',
                                                         });
                                                         setManualSubject('');
@@ -2045,7 +2069,6 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                             setActiveTool({
                                                 subject: manualSubject,
                                                 topic: manualTopic || '', // Boş bırakılabilsin
-                                                color: 'bg-brand-soft border-brand-line text-brand',
                                                 exam: manualExam || ''
                                             });
                                             setManualSubject('');
@@ -2553,8 +2576,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                             subject: activeTool.subject,
                                                             topic: activeTool.topic,
                                                             type: activeTool.type || 'konu',
-                                                            color: activeTool.color,
-                                                            exam: activeTool.exam
+                                                                                                    exam: activeTool.exam
                                                         };
                                                     }
                                                 });
@@ -2585,8 +2607,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                                     subject: activeTool.subject,
                                                                     topic: activeTool.topic,
                                                                     type: activeTool.type || 'konu',
-                                                                    color: activeTool.color,
-                                                                    exam: activeTool.exam
+                                                                                                                    exam: activeTool.exam
                                                                 };
                                                             }
                                                         }
@@ -2715,7 +2736,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                                 {/* Ders adı */}
                                                                 <span
                                                                     className="text-[11px] font-black uppercase tracking-tight leading-none mb-1"
-                                                                    style={{ color: c.border }}
+                                                                    style={{ color: c.vurgu || c.border }}
                                                                 >
                                                                     {getSubjectLabel(toStr(cellData.subject))}
                                                                 </span>
@@ -2758,7 +2779,7 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                                                 </span>
                                                                             )}
                                                                             {!durum?.bitti && durum?.durum !== 'tekrar' && (durum?.soru || 0) > 0 && (
-                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-surface/80 border border-line" style={{ color: c.text }}>
+                                                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-surface/80 border border-line" style={{ color: c.accent }}>
                                                                                     ○ ÇALIŞILIYOR{durum.hedef != null ? ` · ${durum.soru}/${durum.hedef}` : ''}
                                                                                 </span>
                                                                             )}
@@ -2949,10 +2970,10 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                                                 ) : data ? (
                                                                     <div className="flex flex-col w-full" style={{ paddingLeft: '4px' }}>
                                                                         <span className="text-[7px] font-black uppercase tracking-wider leading-none mb-0.5"
-                                                                            style={{ color: c.border }}>
+                                                                            style={{ color: c.vurgu || c.border, opacity: 0.9 }}>
                                                                             {act.icon} {act.short}
                                                                         </span>
-                                                                        <span className="text-[8px] font-black uppercase leading-none" style={{ color: c.border }}>
+                                                                        <span className="text-[8px] font-black uppercase leading-none" style={{ color: c.vurgu || c.border }}>
                                                                             {getSubjectLabel(data.subject)}
                                                                         </span>
                                                                         <span className="text-[9px] font-bold leading-tight break-words" style={{ color: c.text }}>

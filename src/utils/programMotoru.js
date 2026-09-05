@@ -26,7 +26,7 @@
 import {
     OTURUMLAR, bolumOturumu, bolumDersSorulari, OTURUM_KATKISI,
     soruSuresiDk, ANA_DERSLER, bilisselGrup,
-    TEKRAR_ARALIKLARI_GUN, EKSTRA_KONUM, MOTOR_VARSAYILANLARI as M,
+    EKSTRA_KONUM, MOTOR_VARSAYILANLARI as M,
 } from '../data/sinavYapisi';
 
 const GUNLER_VARSAYILAN = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -46,7 +46,14 @@ export const KRITER_VARSAYILANLARI = {
     kitapAcik: true,
     gunTekrariAcik: false,     // günün tekrarı (gün sonu) — kapasite yer
     tekrarAcik: true,
-    tekrarAraliklari: TEKRAR_ARALIKLARI_GUN,
+    /**
+     * Koç talimatı (05.09.2026): her konu için TEK tekrar etüdü —
+     * konu ve soru etütleri bittikten 1 gün sonra, zincirin SON halkası
+     * olarak. Aralıklı 1·7·30 sistemi (TEKRAR_ARALIKLARI_GUN) hâlâ
+     * seçilebilir: koç, Program Kriterleri'nden aralıkları değiştirirse
+     * onun kararı üstündür.
+     */
+    tekrarAraliklari: [1],
     soruEtutleriAcik: true,
     tekrarErtelemeEnCok: 5,    // vadesi dolan tekrar en çok bu kadar gün ertelenir
 };
@@ -382,7 +389,7 @@ export function programUret({
      * ARALIKLI TEKRAR YÜKÜ — kapasite hesabına DAHİL.
      *
      * Her konu, konu etütleri bittikten sonra tekrar kuyruğuna girer ve
-     * `tekrarAraliklari` kadar (varsayılan 1·7·30 gün) tekrar etüdü
+     * `tekrarAraliklari` kadar (varsayılan: tek halka, +1 gün) tekrar etüdü
      * üretir. Bu etütler zincirde durmadığı için `zincirYuku` onları
      * göremez. Hesaba katılmayınca motor kapasiteyi fazla sanıp soru
      * etütlerini şişiriyor, sonra gelen tekrarlar son konuları programın
@@ -492,6 +499,8 @@ export function programUret({
 
     /* ── 5. Gün gün yerleştirme ─────────────────────────────── */
     const tekrarKuyrugu = []; // {vadeGun, ders(d), konu, ertelendi}
+    /* Konu başına TEK tekrar planlanır (05.09) — nesne kimliğiyle izlenir */
+    const tekrarPlanlanan = new Set();
     const haftaAnaDers = new Map(); // haftaIndex → Set(yerleşen ana ders)
 
     const dersSayilir = (tip) => tip === 'konu' || tip === 'soru' || tip === 'tekrar';
@@ -715,22 +724,38 @@ export function programUret({
 
             if (is2.kalan <= 0) {
                 secilen.zincir.shift();
-                if (is2.tip === 'konu') {
+                if (is2.tip === 'konu' && is2.soruE > 0) {
                     // KONU BİTTİ → soru etütleri zincirin BAŞINA [KESİN KURAL]
-                    if (is2.soruE > 0) {
-                        secilen.zincir.unshift({
-                            tip: 'soru', konu: is2.konu,
-                            kalan: is2.soruE, toplam: is2.soruE,
+                    secilen.zincir.unshift({
+                        tip: 'soru', konu: is2.konu,
+                        kalan: is2.soruE, toplam: is2.soruE,
+                    });
+                }
+                /**
+                 * TEKRAR SIRASI (koç talimatı 05.09.2026): bir konunun akışı
+                 * KONU → SORU → TEKRAR'dır ve tekrar zincirin SON halkasıdır.
+                 * Eskiden halkalar KONU biter bitmez kuyruğa giriyordu; kısa
+                 * vadeli halka soru etütlerinin arasına "tekrar" sokuyordu.
+                 * Artık kuyruğa giriş, konunun ASIL işi (konu + soru fazı)
+                 * bittiği anda ve konu başına BİR KEZ yapılır.
+                 *
+                 * Pekiştirme turları BİLEREK hariç: kapasite dengelemesi bu
+                 * turları programın tamamına yayar; onlar da beklenseydi
+                 * tekrar aylar sonraya, çoğu zaman hiç yerleşemeyeceği bir
+                 * noktaya kayardı (ölçüldü: 4 haftalık tek-konu programında
+                 * tekrar tamamen düşüyordu). Sıra: konu → soru → tekrar →
+                 * (varsa) pekiştirme soruları.
+                 */
+                if (kriterler.tekrarAcik
+                    && (is2.tip === 'konu' || is2.tip === 'soru')
+                    && !tekrarPlanlanan.has(is2.konu)
+                    && !secilen.zincir.some((z) => z.konu === is2.konu && !z.pekistirme)) {
+                    tekrarPlanlanan.add(is2.konu);
+                    for (const aralik of kriterler.tekrarAraliklari) {
+                        tekrarKuyrugu.push({
+                            vadeGun: g.gunIndex + aralik, aralik,
+                            ders: secilen, konu: is2.konu,
                         });
-                    }
-                    // Aralıklı tekrar halkaları [3]
-                    if (kriterler.tekrarAcik) {
-                        for (const aralik of kriterler.tekrarAraliklari) {
-                            tekrarKuyrugu.push({
-                                vadeGun: g.gunIndex + aralik, aralik,
-                                ders: secilen, konu: is2.konu,
-                            });
-                        }
                     }
                 }
             }

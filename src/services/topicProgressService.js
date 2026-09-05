@@ -199,6 +199,13 @@ const programToplamlari = (studentId) => {
 
     const ilerleme = (guvenliJson('program_progress', {}) || {})[String(studentId)] || {};
 
+    /* ⚠️ ÇİFT SAYIM (05.09'da ölçüldü): koç kaydı AYNI çizelgeyi hem
+       `program_schedule_<id>` hem `student_programs_<id>` anahtarına
+       yazar. İki kopya da tarandığı için her etüt 2 kez sayılıyor,
+       "programda 4 / yapıldı 2" gibi şişkin rakamlar çıkıyordu. Hücre
+       anahtarı üzerinden tekilleştirilir. */
+    const sayilanHucreler = new Set();
+
     programlar.forEach((p) => {
         if (!p) return;
         // Program ya doğrudan {hücre: {subject, topic}} ya da { schedule: {...} }
@@ -208,6 +215,8 @@ const programToplamlari = (studentId) => {
 
         Object.entries(schedule).forEach(([hucre, deger]) => {
             if (!deger || typeof deger !== 'object') return;
+            if (sayilanHucreler.has(hucre)) return;
+            sayilanHucreler.add(hucre);
             const a = anahtar(deger.topic);
             if (!a) return;
 
@@ -265,6 +274,14 @@ export const konuDurumu = (tanim, { soru, program, elle, olcut = VARSAYILAN_OLCU
         durum = 'tekrar';
     } else if (elle?.tamam) {
         // Öğrenci elle bitirdi dediyse saygı gösterilir ama kaynak belli edilir
+        durum = 'tamamlandi';
+    } else if (p.programda > 0 && p.yapildi >= p.programda) {
+        /* 05.09 talimatı: konunun PROGRAMDAKİ bütün etütleri (konu →
+           soru → tekrar zinciri) "yapıldı" işaretlendiyse konu BİTER —
+           hem öğrenci hem koç panelindeki konu listesinde "biten"
+           kategorisine düşer. Soru hedefi dolmasa bile programın
+           tamamlanması koçun planladığı çalışmanın bittiği anlamına
+           gelir; başarı düşükse üstteki 'tekrar' dalı zaten önce yakalar. */
         durum = 'tamamlandi';
     } else if (s.toplam >= hedef && (basari == null || basari >= olcut.basariEsigi)) {
         durum = 'tamamlandi';
@@ -666,6 +683,10 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
         // Program kayıtları öğrenci başına bir kez
         const prgHarita = new Map();
         const ilerleme = ilerlemeDepo[sid] || {};
+        /* Çift sayım düzeltmesi (05.09): iki anahtar AYNI çizelgenin
+           kopyası — hücre anahtarıyla tekilleştirilir (bkz.
+           programToplamlari'ndaki not). */
+        const sayilanHucreler = new Set();
         [guvenliJson(`student_programs_${sid}`, null), guvenliJson(`program_schedule_${sid}`, null)]
             .forEach((p) => {
                 if (!p) return;
@@ -673,6 +694,8 @@ export const topluOzet = (ogrenciler = [], olcut = VARSAYILAN_OLCUT) => {
                 if (!schedule || typeof schedule !== 'object') return;
                 Object.entries(schedule).forEach(([hucre, deger]) => {
                     if (!deger || typeof deger !== 'object') return;
+                    if (sayilanHucreler.has(hucre)) return;
+                    sayilanHucreler.add(hucre);
                     const a = anahtar(deger.topic);
                     if (!a) return;
                     const m = prgHarita.get(a) || { programda: 0, yapildi: 0 };

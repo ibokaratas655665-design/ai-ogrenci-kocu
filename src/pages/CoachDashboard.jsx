@@ -12,6 +12,7 @@ import MarkaFiligran from '../components/ui/MarkaFiligran';
 import OgrenciGelisimMerkezi from '../components/coach/OgrenciGelisimMerkezi';
 import { SayiCubuklari } from '../components/charts/Analitik';
 import { dersRengi } from '../components/charts/grafikTemasi';
+import { getCellColor, getSubjectLabel } from '../data/programColors';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, LineChart, Line, ReferenceLine } from 'recharts';
 import { parseExcelExamData } from '../utils/excelParser';
 import { parsePdfExamData } from '../utils/pdfParser';
@@ -716,17 +717,33 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                                             const cellKey = `m${activeMonth}-w${activeWeek}-${day}-${slotIndex}`;
                                             const cellData = previewSchedule?.[cellKey] || null;
                                             const ts = (val) => { if (!val) return ''; if (typeof val === 'string') return val; if (typeof val === 'object' && val.name) return val.name; return String(val); };
+                                            /* 05.09: hücre rengi artık merkezi sistemden (programColors) —
+                                               eskiden legacy `cell.color` sınıfı beklendiği için bütün
+                                               hücreler tek renk (lila) görünüyordu. Öğrencinin "yapıldı"
+                                               işareti de burada görünür. */
+                                            const renk = cellData ? getCellColor(cellData) : null;
+                                            const yapildi = cellData
+                                                && (ilerlemeDepo[String(previewStudentId)] || {})[cellKey]?.status === 'done';
                                             return (
-                                                <div key={`${day}-${slotIndex}`} className={`border-l border-line p-1 min-h-[52px] flex flex-col items-center justify-center relative ${cellData ? (cellData.color || 'bg-brand-soft') : 'bg-surface'}`}>
+                                                <div
+                                                    key={`${day}-${slotIndex}`}
+                                                    className="border-l border-line p-1 min-h-[52px] flex flex-col items-center justify-center relative"
+                                                    style={renk ? { backgroundColor: renk.bg } : undefined}
+                                                >
                                                     {cellData && (
-                                                        <div className="flex flex-col justify-center items-center text-center px-1 w-full relative">
+                                                        <div className="flex flex-col justify-center items-center text-center px-1 w-full relative" style={{ color: renk.text }}>
                                                             {cellData.exam && (
                                                                 <span className="absolute -top-1 right-0 bg-surface/90 text-brand text-[7px] font-black px-1 py-0 shadow-sm border rounded-bl-sm z-10">
                                                                     {cellData.exam}
                                                                 </span>
                                                             )}
-                                                            <span className="text-[9px] font-bold opacity-70 uppercase tracking-tighter mb-0.5 mt-1 block w-full truncate px-0.5">{ts(cellData.subject)}</span>
+                                                            <span className="text-[9px] font-bold opacity-80 uppercase tracking-tighter mb-0.5 mt-1 block w-full truncate px-0.5">{getSubjectLabel(ts(cellData.subject))}</span>
                                                             <span className="text-[10px] font-black leading-tight text-center break-words w-full h-full py-1 min-h-[24px] flex items-center justify-center">{ts(cellData.topic)}</span>
+                                                            {yapildi && (
+                                                                <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 bg-ok text-white text-[7px] font-black px-1.5 py-0 rounded-full shadow-sm whitespace-nowrap">
+                                                                    ✓ YAPILDI
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -780,14 +797,18 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                                             {DAYS.map(day => {
                                                 const key = `m${m}-w${w}-${day}-${sIdx}`;
                                                 const data = previewSchedule[key];
-                                                const cellColor = data ? (data.color || 'bg-brand-soft') : 'bg-surface';
+                                                const renk = data ? getCellColor(data) : null;
                                                 return (
-                                                    <div key={day} className={`min-h-[48px] border-b border-r border-line p-1 flex flex-col justify-center items-center text-center ${cellColor}`}>
+                                                    <div
+                                                        key={day}
+                                                        className="min-h-[48px] border-b border-r border-line p-1 flex flex-col justify-center items-center text-center"
+                                                        style={renk ? { backgroundColor: renk.bg, color: renk.text } : undefined}
+                                                    >
                                                         {data ? (
                                                             <div className="flex flex-col gap-0.5 w-full p-0.5">
-                                                                <span className="text-[8px] font-black uppercase opacity-60 leading-none">{data.subject}</span>
+                                                                <span className="text-[8px] font-black uppercase opacity-80 leading-none">{getSubjectLabel(data.subject)}</span>
                                                                 <div className="text-[10px] font-black leading-tight break-words">{data.topic}</div>
-                                                                {data.exam && <span className="text-[7px] font-bold text-brand">{data.exam}</span>}
+                                                                {data.exam && <span className="text-[7px] font-bold opacity-80">{data.exam}</span>}
                                                             </div>
                                                         ) : null}
                                                     </div>

@@ -11,12 +11,12 @@ import Progress from '../ui/Progress';
 import OnayKutusu from '../ui/OnayKutusu';
 import KartBasligi from '../ui/KartBasligi';
 import { getProgress, setCellStatus } from '../../services/programProgressService';
-import { getCellColor } from '../../data/programColors';
+import { getCellColor, ACTIVITY_TYPES } from '../../data/programColors';
 import { hucreTarihi, programBaslangici } from '../../services/programProgressService';
 import { programUyumu, calismaOzeti, istikrar, motivasyon, gunlukSeri } from '../../services/gelisimAnalitik';
 import { MotivasyonSeridi, UyumHalkasi, IsiHaritasi } from '../charts/Analitik';
 import { getSummary, getToday } from '../../services/studyLogService';
-import { bildir } from '../../services/uiGeriBildirim';
+import { bildir, onayla } from '../../services/uiGeriBildirim';
 import { bugunOnerileri } from '../../services/bugunOnerileri';
 import { anahtar } from '../../services/topicProgressService';
 
@@ -408,8 +408,16 @@ export default function BugunEkrani({
     /** Hiç program, görev ve mesaj yok — öğrenci sisteme yeni bağlanmış. */
     const hicVeriYok = toplam === 0 && acikGorevler.length === 0 && !koctanSon;
 
-    const etutIsaretle = (etut) => {
+    const etutIsaretle = async (etut) => {
         const yeniDurum = etut.durum === 'done' ? null : 'done';
+        /* 05.09 talimatı: yapıldı/geri alındı ONAYDAN geçer — yanlış
+           dokunuş işareti sessizce değiştirmesin. */
+        const onaylandi = await onayla({
+            mesaj: yeniDurum === 'done'
+                ? `"${etut.ders} · ${etut.konu}" YAPILDI olarak işaretlenecek. Onaylıyor musun?`
+                : `"${etut.ders} · ${etut.konu}" işaretin geri alınacak. Onaylıyor musun?`,
+        });
+        if (!onaylandi) return;
         /* 04.09: işarete konu bilgisi gömülür — "programda hangi konular
            çalışıldı" kaydı (getStudiedTopics) buradan beslenir. */
         setIlerleme(setCellStatus(kullanici?.id, etut.key, yeniDurum, undefined, {
@@ -427,15 +435,19 @@ export default function BugunEkrani({
         }
     };
 
-    /* 04.09 (canlı eşleme): telefonun hızlı eylem paleti — 7 renkli kare. */
+    /* 05.09: hızlı eylem paleti artık ACTIVITY_TYPES ile aynı kaynaktan —
+       blok türünün rengi programda neyse burada da o (elle yazılmış
+       palet program renkleriyle tutmuyordu). Konu/Soru derse bağlı
+       olduğu için (sabit blok rengi yok) kendi nötr tonlarını korur. */
+    const blokRenk = (tip) => ACTIVITY_TYPES[tip]?.color || {};
     const hizliEylemler = [
-        { et: 'Paragraf', I: AlignLeft, bg: '#7DD3FC', bg2: '#BAE6FD', fg: '#0369A1', git: 'daily-log' },
-        { et: 'Problem', I: Calculator, bg: '#FDBA74', bg2: '#FED7AA', fg: '#9A3412', git: 'daily-log' },
-        { et: 'Konu', I: BookOpen, bg: '#60A5FA', bg2: '#93C5FD', fg: '#0B2E6B', git: 'topics' },
-        { et: 'Soru', I: PencilLine, bg: '#F87171', bg2: '#FCA5A5', fg: '#5E0D0D', git: 'daily-log' },
-        { et: 'Deneme', I: BarChart3, bg: '#FCA5A5', bg2: '#FECACA', fg: '#7F1D1D', git: 'deneme-analizi' },
-        { et: 'Kitap', I: BookMarked, bg: '#6EE7B7', bg2: '#A7F3D0', fg: '#064E3B', git: 'daily-log' },
-        { et: 'Tekrar', I: RotateCcw, bg: '#F9A8D4', bg2: '#FBCFE8', fg: '#831843', git: 'error-notebook' },
+        { et: 'Paragraf', I: AlignLeft, bg: blokRenk('paragraf').accent, bg2: blokRenk('paragraf').bg, fg: '#fff', git: 'daily-log' },
+        { et: 'Problem', I: Calculator, bg: blokRenk('problem').accent, bg2: blokRenk('problem').bg, fg: '#fff', git: 'daily-log' },
+        { et: 'Konu', I: BookOpen, bg: '#2563EB', bg2: '#93C5FD', fg: '#fff', git: 'topics' },
+        { et: 'Soru', I: PencilLine, bg: '#DC2626', bg2: '#FCA5A5', fg: '#fff', git: 'daily-log' },
+        { et: 'Deneme', I: BarChart3, bg: blokRenk('deneme').accent, bg2: blokRenk('deneme').bg, fg: '#fff', git: 'deneme-analizi' },
+        { et: 'Kitap', I: BookMarked, bg: blokRenk('kitap').accent, bg2: blokRenk('kitap').bg, fg: '#fff', git: 'daily-log' },
+        { et: 'Tekrar', I: RotateCcw, bg: blokRenk('tekrar').accent, bg2: blokRenk('tekrar').bg, fg: '#fff', git: 'error-notebook' },
     ];
 
     return (

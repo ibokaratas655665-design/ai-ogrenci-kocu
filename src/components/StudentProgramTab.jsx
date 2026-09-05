@@ -10,7 +10,8 @@ import html2canvas from 'html2canvas';
 import ProgramCell from './program/ProgramCell';
 import { ACTIVITY_TYPES } from '../data/programColors';
 import programProgress from '../services/programProgressService';
-import { bildir } from '../services/uiGeriBildirim';
+import { bildir, onayla } from '../services/uiGeriBildirim';
+import { oku } from '../services/veriDeposu';
 
 // ─── Sabitler ──────────────────────────────────────────────────
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -71,12 +72,14 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
     const safeDurationMonths = Number(programConfig?.programDurationMonths) || 1;
 
     /**
-     * Etüt tamamlama — TEK dokunuş, iki durum (23.08.2026 talimatı):
-     *   boş → "Etüt tamamlandı ✓"  →  boş ("tamamlama geri alındı")
-     * Kayıt `program_progress`'e tarih/saat damgasıyla yazılır ve
-     * senkronla koç paneline gider (program uyumu bundan hesaplanır).
+     * Etüt tamamlama — ONAYLI iki durum (koç talimatı 05.09.2026):
+     *   boş → (onay) → "yapıldı"  →  (onay) → geri alındı
+     * Yanlışlıkla dokunma işareti değiştirmesin diye her iki yönde de
+     * onay kutusu çıkar. Kayıt `program_progress`'e tarih/saat damgası
+     * ve HÜCRE BİLGİSİYLE (konu/ders/tip) yazılır — konu takibi köprüsü
+     * ve koç paneli bu bilgiden beslenir.
      */
-    const toggleCell = (cellKey) => {
+    const toggleCell = async (cellKey, hucre) => {
         const suanki = progress?.[cellKey]?.status;
         const yeni = suanki === 'done' ? null : 'done';
         // Gelecek tarihli etüt tamamlanamaz (§3) — servis de reddeder
@@ -84,13 +87,25 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
             const k = programProgress.isaretlenebilirMi(userId, cellKey);
             if (!k.izin) { bildir(k.sebep, 'uyari', 2600); return; }
         }
-        programProgress.setCellStatus(userId, cellKey, yeni);
+        const etiket = hucre?.topic ? `"${hucre.subject} · ${hucre.topic}"` : 'Bu etüdü';
+        const onaylandi = await onayla({
+            mesaj: yeni === 'done'
+                ? `${etiket} YAPILDI olarak işaretlenecek. Onaylıyor musun?`
+                : `${etiket} işaretin geri alınacak. Onaylıyor musun?`,
+        });
+        if (!onaylandi) return;
+        programProgress.setCellStatus(userId, cellKey, yeni, undefined, hucre);
         setProgress(programProgress.getProgress(userId));
         bildir(yeni === 'done' ? 'Etüt tamamlandı ✓' : 'Etüt tamamlama geri alındı', yeni === 'done' ? 'basari' : 'bilgi', 1800);
     };
 
     /** Bu hafta gösterilen etütlerin takvim tarihleri (kilit için). */
     const baslangic = React.useMemo(() => programProgress.programBaslangici(userId), [userId]);
+
+    /* Koçun kapattığı etütler öğrencide de kilitli/kapalı görünmeli —
+       eskiden bu anahtar öğrenci tarafında hiç okunmuyordu ve kapalı
+       etüt sıradan boş hücre gibi duruyordu. */
+    const kapaliEtutler = React.useMemo(() => oku(`program_closed_slots_${userId}`, {}) || {}, [userId]);
     const gelecekMi = (cellKey) => {
         const t = programProgress.hucreTarihi(cellKey, baslangic);
         if (!t) return false;
@@ -291,13 +306,18 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
                                         const status = progress[cellKey]?.status;
                                         // Gelecek tarihli etüt: yalnızca görüntülenir (§3)
                                         const kilitli = cell && !status && gelecekMi(cellKey);
+                                        const kapali = !cell && (kapaliEtutler[day] || []).includes(si);
                                         return (
-                                            <div key={day} className="p-1 relative">
+                                            /* h-full: satırdaki bütün kutular AYNI yükseklikte —
+                                               eskiden uzun konu adı kendi kutusunu büyütüyor,
+                                               ızgara dişli dişli görünüyordu (05.09 talimatı). */
+                                            <div key={day} className="p-1 relative h-full">
                                                 <ProgramCell
                                                     cell={cell}
+                                                    closed={kapali}
                                                     size="md"
-                                                    onClick={cell && !kilitli ? () => toggleCell(cellKey) : undefined}
-                                                    className={`${status ? 'opacity-70' : ''} ${kilitli ? 'opacity-60 cursor-default' : ''}`}
+                                                    onClick={cell && !kilitli ? () => toggleCell(cellKey, cell) : undefined}
+                                                    className={`h-full ${status ? 'opacity-80' : ''} ${kilitli ? 'opacity-60 cursor-default' : ''}`}
                                                 />
                                                 {kilitli && (
                                                     <span
@@ -309,16 +329,19 @@ const CoachProgramView = ({ schedule, programConfig, userId }) => {
                                                 )}
                                                 {cell && status && (
                                                     <div
-                                                        className="absolute inset-1 flex items-center justify-center rounded-xl pointer-events-none"
+                                                        className="absolute inset-1 flex flex-col items-center justify-center gap-0.5 rounded-xl pointer-events-none"
                                                         style={{
                                                             backgroundColor: status === 'done'
-                                                                ? 'rgba(22,163,74,0.16)'
-                                                                : 'rgba(220,38,38,0.16)',
+                                                                ? 'rgba(20,83,45,0.55)'
+                                                                : 'rgba(127,29,29,0.55)',
                                                         }}
                                                     >
                                                         {status === 'done'
-                                                            ? <CheckCircle size={22} className="text-ok" />
-                                                            : <XCircle size={22} className="text-danger" />}
+                                                            ? <CheckCircle size={20} className="text-white" />
+                                                            : <XCircle size={20} className="text-white" />}
+                                                        <span className="text-[9px] font-black tracking-widest text-white">
+                                                            {status === 'done' ? 'YAPILDI' : 'YAPILMADI'}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>

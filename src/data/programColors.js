@@ -326,6 +326,28 @@ export const getSubjectColor = (subject) => {
  */
 export const isActivityBlock = (cell) => Boolean(ACTIVITY_TYPES[cell?.type]?.color);
 
+/**
+ * 🔆 CANLI HÜCRE DÖNÜŞÜMÜ (koç talimatı 05.09.2026)
+ *
+ * Program kutucukları soluk (pastel zemin + koyu yazı) yerine CANLI
+ * çizilir: zemin dersin doygun vurgu rengi, yazı beyaz, çerçeve daha
+ * koyu ton. Ders/blok kimliği yine tek kaynaktan gelir — yalnızca
+ * sunum doygunlaştı.
+ *
+ *  bg     doygun zemin (eski `accent`)
+ *  border koyu çerçeve (eski `text` — paletin en koyu tonu)
+ *  text   beyaz — doygun zeminde okunur tek seçenek
+ *  vurgu  beyaz — nokta/ders adı gibi vurgu öğeleri için
+ *  accent grafik/lejant için değişmeden kalır
+ */
+const canliHucre = (c) => ({
+    bg: c.accent,
+    border: c.text,
+    text: '#FFFFFF',
+    vurgu: '#FFFFFF',
+    accent: c.accent,
+});
+
 export const getCellColor = (cell) => {
     if (!cell) return null;
 
@@ -345,11 +367,11 @@ export const getCellColor = (cell) => {
      *     farklı renkte olduğunu fark etti (round ile ayrıştırılmadan
      *     hepsi ACTIVITY_TYPES.tekrar'ın sabit rengine düşüyordu).
      */
-    if (type === 'tekrar' && cell.round) return getSubjectColor(cell.subject);
+    if (type === 'tekrar' && cell.round) return canliHucre(getSubjectColor(cell.subject));
 
     const activity = ACTIVITY_TYPES[type];
 
-    if (activity?.color) return activity.color;
+    if (activity?.color) return canliHucre(activity.color);
 
     /* ⚠️ 25.08.2026: 'soru' türü eskiden kendi rengini `mix()` ile
        koyulaştırıyordu — aynı dersin konu/soru/tekrar kutucukları farklı
@@ -357,7 +379,7 @@ export const getCellColor = (cell) => {
        koç ekran görüntüsünde işaretledi). Tip zaten simge + etiketle
        (📘 KONU / ✏️ SORU / 🔁 TEKRAR) ayrışıyor; renk sadece DERSE bağlı
        kalmalı. */
-    return getSubjectColor(cell.subject);
+    return canliHucre(getSubjectColor(cell.subject));
 };
 
 /** Programda kullanılan tüm dersler + aktiviteler için lejant verisi. */
