@@ -193,9 +193,22 @@ export const SelfAssessmentForm = ({ userId, userName, onClose }) => {
 // ─── Koç: Öz-Değerlendirme Sonuçları Görünümü ───────────────────
 export const CoachSelfAssessmentView = ({ students }) => {
     const [expanded, setExpanded] = useState(null);
-    const assessments = (() => {
+    /* 05.09: öğrenci gönderince koçun açık ekranı tazelensin —
+       storage olayı dinlenir, veri yeniden okunur. */
+    const [tazelik, setTazelik] = useState(0);
+    React.useEffect(() => {
+        const dinle = (e) => {
+            if (!e?.key || e.key === 'all_self_assessments' || e.key.startsWith('self_assessment_')) {
+                setTazelik((t) => t + 1);
+            }
+        };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, []);
+    const assessments = React.useMemo(() => {
         try { return listeOku('all_self_assessments'); } catch { return []; }
-    })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tazelik]);
 
     const weekKey = WEEK_KEY();
     /* Kimliksiz kayıtlar (prop hatası döneminden kalan `undefined`

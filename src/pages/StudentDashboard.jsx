@@ -97,6 +97,7 @@ import { MODULE_ICONS } from '../components/icons/ModuleIcons';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
 import { yaz, listeOku, nesneOku, oku , gorevleriGetir } from '../services/veriDeposu';
+import gorevDeposu from '../services/gorevDeposu';
 
 
 // ⚠️ Error Boundary - Firebase/network hataı olduğunda beyaz ekran önler
@@ -414,7 +415,13 @@ const StudentDashboard = () => {
         // 📡 Firebase real-time güncellemeleri dinle
         const handleStorageUpdate = (e) => {
             if (!e.key || e.key.startsWith('_fbtime_')) return;
-            if (e.key === 'student_tasks') {
+            /* 05.09 denetimi: görev/mesaj yön-ayrımlı anahtarlara taşındı
+               (student_tasks_<sid>, msg_c2s_<sid>…) ama burada hâlâ yalnız
+               eski blob adları dinleniyordu — bulut olayı geldiğinde ekran
+               15 sn'lik polling'e kadar eski kalıyordu. */
+            if (e.key === 'student_tasks'
+                || e.key.startsWith('student_tasks_')
+                || e.key.startsWith('student_task_progress_')) {
                 loadTasks();
             } else if (e.key === 'v2_results_data' || e.key === 'v2_trials_data' || e.key === 'exams_data' || e.key === 'v2_obp_data') {
                 loadExams();
@@ -428,7 +435,10 @@ const StudentDashboard = () => {
                    eskiden dinlenmiyordu: koç programı kaydediyor, öğrencinin
                    açık ekranı eski hâlde kalıyordu. */
                 loadProgram();
-            } else if (e.key === 'student_messages') {
+            } else if (e.key === 'student_messages'
+                || e.key.startsWith('msg_c2s_')
+                || e.key.startsWith('msg_s2c_')
+                || e.key.startsWith('msg_seen_')) {
                 loadMessages();
             } else if (e.key === 'coach_students' || e.key === 'users_db') {
                 loadData();
@@ -665,12 +675,18 @@ const StudentDashboard = () => {
         e.preventDefault();
         if (!newMessage.trim()) return;
         try {
-            // Koçun hangi key ile mesajları sakladığını bul
-            const allMessages = nesneOku('student_messages');
-            // Koçun key'ini bul: user.id veya schoolNumber
-            const useKey = allMessages[user.id] ? user.id :
-                (allMessages[user.schoolNumber] ? user.schoolNumber : user.id);
-            await api.messages.sendMessage(useKey, { sender: 'student', text: newMessage, senderName: user.name });
+            /* 05.09 denetimi: gönderim kimliği eski `student_messages`
+               blobundan seçiliyordu; coach_students henüz inmemişse okul
+               numarası seçilip mesaj `msg_s2c_<okulNo>` kanalına düşüyor,
+               koç `msg_s2c_<id>` okuduğu için mesaj HİÇ ulaşmıyordu.
+               Doğrudan user.id geçilir (api zaten kimlik çözümü yapar).
+               3. argüman (koç kimliği) de eksikti — koça zil bildirimi
+               düşmüyordu. */
+            await api.messages.sendMessage(
+                user.id,
+                { sender: 'student', text: newMessage, senderName: user.name },
+                user.coachId ?? user.ownerCoachId ?? null,
+            );
             setNewMessage('');
             loadMessages();
         } catch { /* ignore */ }
@@ -710,54 +726,59 @@ const StudentDashboard = () => {
      * (nesne ya da düz dizi) korunur.
      */
     const handleCompleteTask = (taskId) => {
-        /* ⚠️ nesneOku KULLANILMAZ: o, diziyi {} olarak normalize eder.
-           Aşağıdaki Array.isArray dalı tam da dizi biçimli kayıt için
-           var; nesneOku ile o dal HİÇ çalışmıyordu — dizi biçimli
-           depoda görev tamamlamak yalnızca ekranı güncelliyor, kalıcı
-           olmuyordu. Ham okunur, biçim ayrımını bu işleyici yapar. */
-        let ham;
-        try { ham = oku('student_tasks', {}) || {}; }
-        catch { ham = {}; }
-
         const isaretle = (t) => (
             String(t?.id) === String(taskId)
                 ? { ...t, status: 'Tamamlandı', completed: true, completedAt: new Date().toISOString() }
                 : t
         );
 
-        let bulundu = false;
-        let yeni;
+        /**
+         * 05.09 DENETİM DÜZELTMESİ: koç görevleri artık
+         * `student_tasks_<sid>` anahtarına yazıyor; burası hâlâ ESKİ
+         * `student_tasks` blobunu güncelliyordu. Yeni atanan görev blobda
+         * olmadığı için "Görev kaydedilemedi" hatası çıkıyor, işaret
+         * yalnız ekranda kalıyor ve yenilemede geri geliyordu.
+         *
+         * Doğru yol görev deposunun İLERLEME anahtarı: öğrenci
+         * `student_task_progress_<sid>` yazar, koç tanımla birleşik okur
+         * (gorevDeposu.birlesikOku) — koç/öğrenci yazım çakışması da biter.
+         */
+        const gorev = tasks.find((t) => String(t?.id) === String(taskId));
+        /* İlerleme, tanımın durduğu sid altına yazılmalı ki birleşik
+           okuma eşleştirsin — loadTasks'ın kimlik seçimiyle aynı kural
+           (önce user.id, tanım orada yoksa okul numarası). */
+        const tanimSid = (gorevDeposu.tanimlariOku(user?.id).length === 0 && user?.schoolNumber
+            && gorevDeposu.tanimlariOku(user.schoolNumber).length > 0)
+            ? user.schoolNumber : user?.id;
+        gorevDeposu.progressGuncelle(tanimSid, taskId, {
+            status: 'Tamamlandı', completed: true,
+            completedAt: new Date().toISOString(),
+        });
 
-        if (Array.isArray(ham)) {
-            // Düz dizi biçimi
-            yeni = ham.map((t) => {
-                if (String(t?.id) === String(taskId)) bulundu = true;
-                return isaretle(t);
-            });
-        } else {
-            // Öğrenci kimliğine göre gruplanmış biçim — hangi anahtarda
-            // olursa olsun bulunur
-            yeni = { ...ham };
-            Object.keys(yeni).forEach((anahtar) => {
-                const liste = yeni[anahtar];
-                if (!Array.isArray(liste)) return;
-                if (liste.some((t) => String(t?.id) === String(taskId))) bulundu = true;
-                yeni[anahtar] = liste.map(isaretle);
-            });
-        }
+        /* Eski blobda duran görevler (yeni anahtara hiç taşınmamış eski
+           atamalar) için geriye dönük güncelleme — blobda yoksa sorun
+           değil, ilerleme kaydı birleşik okumada zaten kazanır. */
+        try {
+            const ham = oku('student_tasks', {}) || {};
+            if (Array.isArray(ham)) {
+                if (ham.some((t) => String(t?.id) === String(taskId))) {
+                    localStorage.setItem('student_tasks', JSON.stringify(ham.map(isaretle)));
+                    firebaseSync.syncKey('student_tasks');
+                }
+            } else if (Object.values(ham).some((l) => Array.isArray(l) && l.some((t) => String(t?.id) === String(taskId)))) {
+                const yeni = { ...ham };
+                Object.keys(yeni).forEach((k) => {
+                    if (Array.isArray(yeni[k])) yeni[k] = yeni[k].map(isaretle);
+                });
+                localStorage.setItem('student_tasks', JSON.stringify(yeni));
+                firebaseSync.syncKey('student_tasks');
+            }
+        } catch { /* blob bozuksa ilerleme kaydı yeter */ }
 
-        if (bulundu) {
-            localStorage.setItem('student_tasks', JSON.stringify(yeni));
-            // 🌟 FAZE 5: Gamification + Firebase sync
-            gamCompleteTask();
-            firebaseSync.syncKey('student_tasks');
-            loadTasks();
-        } else {
-            // Kayıtta bulunamadıysa sessiz kalma — kullanıcı ne olduğunu bilsin
-            bildir('Görev kaydedilemedi. Sayfayı yenileyip tekrar dene.', 'hata');
-        }
-
-        // Ekran her hâlükârda güncellenir (bulunduysa kalıcı da olur)
+        // 🌟 FAZE 5: Gamification
+        gamCompleteTask();
+        if (gorev) bildir(`"${gorev.title || 'Görev'}" tamamlandı ✓`, 'basari', 2000);
+        loadTasks();
         setTasks(prev => prev.map(isaretle));
     };
 
@@ -1198,7 +1219,7 @@ const StudentDashboard = () => {
                         {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
                             düşsün, panel ayakta kalsın */}
                         <BolumHataSiniri bolumAdi="Bildirimler">
-                            <RealtimeNotificationBell role="student" userId={user?.id} />
+                            <RealtimeNotificationBell userId={user?.id} onAction={(a) => { if (a?.tab) sekmeyeGit(a.tab); }} />
                         </BolumHataSiniri>
 
                         <KullaniciMenusu
@@ -1547,6 +1568,7 @@ const StudentDashboard = () => {
                                         { id: 'genel', etiket: 'Genel' },
                                         { id: 'netlerim', etiket: 'Netlerim' },
                                         { id: 'konularim', etiket: 'Konularım' },
+                                        { id: 'hedeflerim', etiket: 'Hedeflerim' },
                                         { id: 'rozetlerim', etiket: 'Rozetlerim' },
                                     ]}
                                 />
@@ -1558,6 +1580,7 @@ const StudentDashboard = () => {
                                     { id: 'genel', baslik: 'Genel' },
                                     { id: 'netlerim', baslik: 'Netlerim' },
                                     { id: 'konularim', baslik: 'Konularım' },
+                                    { id: 'hedeflerim', baslik: 'Hedeflerim' },
                                     { id: 'rozetlerim', baslik: 'Rozetlerim' },
                                 ]}
                             />
@@ -1868,6 +1891,17 @@ const StudentDashboard = () => {
                         )}
 
                         {gelisimSegment === 'konularim' && <TopicTracker user={user} />}
+
+                        {/* HEDEFLERİM — GoalSettingModule import edilmiş ama hiçbir
+                            yerde render edilmiyordu; `goals_<id>_*` anahtarlarını
+                            yazan TEK bileşen o olduğu için koç panelindeki
+                            StudentGoalsPanel ve karnedeki hedef bölümü hep boş
+                            kalıyordu. Öğrenci hedeflerini buradan belirler. */}
+                        {gelisimSegment === 'hedeflerim' && (
+                            <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde">
+                                <GoalSettingModule user={user} examData={examData} />
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -2257,7 +2291,11 @@ const StudentDashboard = () => {
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
                             <div className="xl:col-span-8 min-w-0">
                                 <div className="premium-card p-1 sm:p-2 border-line">
-                                    <SubjectPomodoro studentId={user?.id} onComplete={handlePomodoroComplete} />
+                                    {/* 05.09 denetimi: prop adları bileşenle uyuşmuyordu
+                                        (studentId/onComplete ≠ userId/onSessionComplete) —
+                                        seanslar `pomodoro_log_undefined`e yazılıyor, koç
+                                        Pomodoro ekranı ve XP hiç beslenmiyordu. */}
+                                    <SubjectPomodoro userId={user?.id} onSessionComplete={handlePomodoroComplete} />
                                 </div>
                             </div>
 

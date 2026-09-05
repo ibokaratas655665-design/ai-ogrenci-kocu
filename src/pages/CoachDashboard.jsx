@@ -1565,7 +1565,9 @@ const ExamsTab = ({ students, setToast }) => {
                                                 <td className="px-4 py-2 text-ink-2 hidden md:table-cell">{getNet(result.subjects?.fen).toFixed(1)}</td>
                                                 <td className="px-4 py-2 text-ink-2 hidden md:table-cell">{getNet(result.subjects?.sosyal).toFixed(1)}</td>
                                                 <td className="px-4 py-2 text-right">
-                                                    <button className="text-xs bg-brand-soft text-brand px-2 py-1 rounded hover:bg-brand-soft">
+                                                    {/* onClick açıkça verildi — eskiden satırın onClick'ine
+                                                        kabarcıklanmaya dayanıyordu */}
+                                                    <button onClick={() => setSelectedStudent(result)} className="text-xs bg-brand-soft text-brand px-2 py-1 rounded hover:bg-brand-soft">
                                                         Karne
                                                     </button>
                                                 </td>
@@ -3275,7 +3277,7 @@ const CoachDashboard = () => {
                         {/* Canlı Firestore dinleyicisi: hata verirse yalnızca zil
                             düşsün, panel ayakta kalsın */}
                         <BolumHataSiniri bolumAdi="Bildirimler">
-                            <RealtimeNotificationBell role="coach" userId={user?.id} />
+                            <RealtimeNotificationBell userId={user?.id} onAction={(a) => { if (a?.tab) setActiveTab(a.tab); }} />
                         </BolumHataSiniri>
 
                         <KullaniciMenusu
@@ -3481,7 +3483,15 @@ const CoachDashboard = () => {
                             <div className="space-y-6">
                                 {/* Onaylanan öğrenci `coach_students`'a yazılıp storage
                                     olayı tetikliyor; liste kendiliğinden tazeleniyor. */}
-                                <KatilimTalepleri user={user} setToast={setToast} />
+                                {/* onDegisim: talep onaylanınca coach_students aynı sekmede
+                                    değişir; storage olayı kendi sekmemizde tetiklenmediği
+                                    için liste 30sn'lik yoklamaya kalıyordu. Anında tazele. */}
+                                <KatilimTalepleri user={user} setToast={setToast} onDegisim={() => {
+                                    try {
+                                        const parsed = JSON.parse(localStorage.getItem('coach_students') || '[]');
+                                        setStudents(prev => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
+                                    } catch { /* bozuk kayıt — yoklama düzeltir */ }
+                                }} />
                                 <div className="border-t border-line pt-6">
                                     <InviteManager user={user} setToast={setToast} />
                                 </div>

@@ -221,6 +221,10 @@ function App() {
                       <StudentDashboard />
                     </RouteGuard>
                   } />
+                  {/* Aşağıdaki planner/trials/remote-session rotalarına uygulama
+                      içinden hiçbir bağlantı gitmiyor — yalnız doğrudan URL ile
+                      (eski yer imleri, paylaşılan linkler) erişilir. Kırık yer
+                      imi bırakmamak için bilinçli olarak tutuluyorlar. */}
                   <Route element={<DashboardLayout />}>
                     <Route path="/student/planner" element={
                       <RouteGuard allowedRoles={['student']}>

@@ -15,6 +15,7 @@ import {
     Users, Send, Undo2, ClipboardList, KeyRound,
 } from 'lucide-react';
 import denemeMotoru, { SINAV_TURLERI } from '../../services/denemeMotoru';
+import { notifyMany } from '../../services/notificationService';
 import {
     geminiAnahtariVar, cevapAnahtariOku, kitapciktanKonular, kitapcikVeAnahtarEsle,
 } from '../../services/geminiOkuma';
@@ -532,6 +533,14 @@ const SinavOlusturTab = ({ user, students = [], setToast }) => {
                                 });
                                 if (!sonuc.basarili) return void setToast?.(sonuc.hata, 'error');
                                 const hemenAcik = acilisTarihi <= bugunISO();
+                                /* 05.09: atama bildirimsizdi — öğrenci paneli
+                                   açık değilse denemeden haberi olmuyordu. */
+                                notifyMany(seciliOgrenciler, {
+                                    type: 'exam',
+                                    title: `📝 Yeni deneme: ${atamaKaynagi.ad}`,
+                                    body: hemenAcik ? 'Deneme Çöz sekmesinden başlayabilirsin.' : `${acilisTarihi} tarihinde açılacak.`,
+                                    action: { tab: 'deneme-coz' },
+                                });
                                 setToast?.(`✅ ${seciliOgrenciler.length} öğrenciye ${hemenAcik ? 'açıldı' : `${acilisTarihi} tarihinde açılacak`}`);
                                 setAtamaKaynagi(null);
                                 tazele();

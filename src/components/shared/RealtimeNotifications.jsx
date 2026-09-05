@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, X, CheckCheck, Zap, MessageSquare, ClipboardList, BarChart2, AlertTriangle, Trophy, Calendar } from 'lucide-react';
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import { db, auth } from '../../firebaseConfig';
 import yerelBildirim from '../../services/notificationService';
 
 const TYPE_CONFIG = {
@@ -117,15 +117,23 @@ const RealtimeNotificationBell = ({ userId, onAction }) => {
         birlestirVeYaz();
         const yerelAbone = yerelBildirim.subscribe(birlestirVeYaz);
 
-        try {
-            const q = query(collection(db, 'notifications'), where('toUserId', '==', String(userId)));
-            unsub = onSnapshot(
-                q,
-                (snap) => { bulut = snap.docs.map((d) => ({ id: d.id, ...d.data() })); birlestirVeYaz(); },
-                () => { /* bulut erişilemezse yerel kanal yeterli */ }
-            );
-        } catch {
-            /* Firebase yapılandırılmamışsa yalnızca yerel kanal çalışır */
+        /* Bulut dinleyicisi YALNIZ Firebase oturumu varken açılır.
+           Demo/çevrimdışı kullanıcıda sorgu permission-denied döngüsüne
+           giriyor ve Firestore SDK'sının bilinen iç hatası (b815/ca9)
+           watch akışında SENKRON fırlıyordu; hata onSnapshot'ın error
+           callback'ine değil React'e düşüyor, GlobalErrorBoundary tüm
+           uygulamayı "Beklenmedik Bir Hata"ya çeviriyordu. */
+        if (auth?.currentUser) {
+            try {
+                const q = query(collection(db, 'notifications'), where('toUserId', '==', String(userId)));
+                unsub = onSnapshot(
+                    q,
+                    (snap) => { bulut = snap.docs.map((d) => ({ id: d.id, ...d.data() })); birlestirVeYaz(); },
+                    () => { /* bulut erişilemezse yerel kanal yeterli */ }
+                );
+            } catch {
+                /* Firebase yapılandırılmamışsa yalnızca yerel kanal çalışır */
+            }
         }
 
         return () => { unsub?.(); yerelAbone(); };

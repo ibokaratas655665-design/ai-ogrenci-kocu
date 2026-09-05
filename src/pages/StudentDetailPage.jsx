@@ -99,7 +99,7 @@ const StudentDetailPage = () => {
             bildir(hataAnlat(e, 'kaydet'), 'hata');
         }
     };
-    const [guidanceResults, setGuidanceResults] = useState(null);
+    const [guidanceResults, setGuidanceResults] = useState([]);
     const [homeworks, setHomeworks] = useState([]);
     const [showHomeworkModal, setShowHomeworkModal] = useState(false);
     const [showProgramBuilder, setShowProgramBuilder] = useState(false);
@@ -188,26 +188,33 @@ const StudentDetailPage = () => {
                 setNotFound(true);
             }
 
-            // Rehberlik sonuçları
-            const savedGuidance = localStorage.getItem('student_guidance_results');
-            if (savedGuidance) {
-                try { setGuidanceResults(JSON.parse(savedGuidance)); } catch { }
-            }
+            /* Rehberlik sonuçları — depo biçimi { ogrenciId: [sonuç, ...] }
+               (guidanceService.submitTest). Eskiden tüm harita state'e
+               konuyordu; sayfa BAŞKA öğrencilerin sonuçlarını kart sanıp
+               "Invalid Date" ile listeliyordu. Yalnız BU öğrencinin dizisi
+               okunur. */
+            try {
+                const tumSonuclar = nesneOku('student_guidance_results');
+                const benimkiler = tumSonuclar[String(id)] || tumSonuclar[id] || [];
+                setGuidanceResults(Array.isArray(benimkiler) ? benimkiler : []);
+            } catch { setGuidanceResults([]); }
 
             // Görevleri yükle — merkezi okuyucu iki depo biçimini de tanır
             setHomeworks(gorevleriGetir(String(id)));
 
-            // Programı yükle
-            const scheduleKey = `program_schedule_${id}`;
-            const configKey = `program_${id}_config`;
-            const monthlyKey = `program_${id}_monthly_grid`;
-            const schedData = localStorage.getItem(scheduleKey) || localStorage.getItem(monthlyKey);
-            const configData = localStorage.getItem(configKey);
+            /* Programı yükle — ProgramBuilderModal `program_schedule_<id>` +
+               `program_meta_<id>` yazar. Eski `program_<id>_config` /
+               `program_<id>_monthly_grid` anahtarlarına HİÇBİR yer yazmıyor;
+               config hep boş kaldığından koç 10 aylık programda tek ay
+               görüyordu. Ölü anahtarlar kaldırıldı, meta gerçek kaynağa
+               bağlandı. */
+            const schedData = localStorage.getItem(`program_schedule_${id}`);
+            const metaData = localStorage.getItem(`program_meta_${id}`);
             if (schedData) {
                 try {
                     setProgramData({
                         schedule: JSON.parse(schedData),
-                        config: configData ? JSON.parse(configData) : { title: 'Çalışma Programı', dailySlotCount: 6 }
+                        config: metaData ? JSON.parse(metaData) : { title: 'Çalışma Programı', dailySlotCount: 6 }
                     });
                 } catch { }
             }
@@ -304,6 +311,10 @@ const StudentDetailPage = () => {
                 e.key?.startsWith(`program_schedule_${id}`) ||
                 e.key?.startsWith(`student_programs_${id}`) ||
                 e.key?.startsWith(`program_${id}`) ||
+                e.key === `program_meta_${id}` ||
+                e.key === 'student_guidance_results' ||
+                e.key?.startsWith(`student_tasks_${id}`) ||
+                e.key?.startsWith(`student_task_progress_${id}`) ||
                 /* ÖĞRENCİ → KOÇ: etüt tamamlama/geri alma bu anahtarlarda
                    tutulur ve hiçbir koç ekranı bunları dinlemiyordu.
                    Öğrenci "yaptım" dediğinde koçun açık ekranı eski
@@ -560,10 +571,8 @@ const StudentDetailPage = () => {
                                     <MessageSquare size={18} className="mr-2" />
                                     Mesaj
                                 </button>
-                                <button className="flex-1 flex items-center justify-center px-4 py-2 bg-surface-2 text-ink-2 rounded-xl text-sm font-bold hover:bg-surface-3 transition">
-                                    <User size={18} className="mr-2" />
-                                    Profil
-                                </button>
+                                {/* "Profil" butonu kaldırıldı: onClick'i yoktu ve bu kartın
+                                    kendisi zaten profil bilgilerini gösteriyor. */}
                             </div>
                         </div>
 
@@ -928,6 +937,13 @@ const StudentDetailPage = () => {
                                                 onClick={() => {
                                                     const newHomeworks = homeworks.map(h => h.id === hw.id ? { ...h, isEditing: !h.isEditing } : h);
                                                     setHomeworks(newHomeworks);
+                                                    /* "Kaydet"e basıldığında (düzenleme kapanırken)
+                                                       değişiklik depoya işlenir — eskiden yalnız state
+                                                       değişiyor, yenilemede kayboluyordu. isEditing UI
+                                                       bayrağı depoya yazılmaz. */
+                                                    if (hw.isEditing) {
+                                                        gorevleriKaydet(String(id), newHomeworks.map(({ isEditing, ...h }) => h));
+                                                    }
                                                 }}
                                                 className={`p-1.5 rounded-lg transition ${hw.isEditing ? 'bg-ok-soft text-ok hover:bg-green-200' : 'text-brand hover:text-brand hover:bg-brand-soft'} opacity-0 group-hover:opacity-100 focus:opacity-100`}
                                                 title={hw.isEditing ? "Kaydet" : "Düzenle"}
@@ -938,7 +954,10 @@ const StudentDetailPage = () => {
                                             <button
                                                 onClick={ async () => {
                                                     if (await onayla({ mesaj: 'Bu ödevi silmek istediğinize emin misiniz?', tehlikeli: true })) {
-                                                        setHomeworks(homeworks.filter(h => h.id !== hw.id));
+                                                        const kalanlar = homeworks.filter(h => h.id !== hw.id);
+                                                        setHomeworks(kalanlar);
+                                                        /* Silme kalıcı olsun — yenilemede geri gelmesin */
+                                                        gorevleriKaydet(String(id), kalanlar.map(({ isEditing, ...h }) => h));
                                                     }
                                                 }}
                                                 className="text-danger hover:text-danger p-1 opacity-0 group-hover:opacity-100 transition hover:bg-danger-soft rounded-lg"
@@ -956,9 +975,31 @@ const StudentDetailPage = () => {
 
 
                 {/* --- REHBERLİK RAPORLARI SEKMESİ --- */}
-                {activeTab === 'guidance' && (
+                {activeTab === 'guidance' && (() => {
+                    /* guidanceResults: BU öğrencinin sonuç DİZİSİ
+                       (guidanceService.submitTest biçimi: id, testId,
+                       testTitle, date, level, comment, chartData).
+                       Grafikli iki test için en güncel kayıt seçilir. */
+                    const sonucListesi = Array.isArray(guidanceResults) ? guidanceResults : [];
+                    const sonuncusu = (tid) => [...sonucListesi].reverse().find(r => r && r.testId === tid && r.chartData);
+                    const hollandSon = sonuncusu('holland');
+                    const cokluZekaSon = sonuncusu('multiple_intelligence');
+                    const digerSonuclar = sonucListesi.filter(r => r && r !== hollandSon && r !== cokluZekaSon);
+                    const raporSil = async (res) => {
+                        if (!(await onayla({ mesaj: 'Bu raporu silmek istediğinize emin misiniz?', tehlikeli: true }))) return;
+                        const yeniListe = sonucListesi.filter(r => r !== res);
+                        setGuidanceResults(yeniListe);
+                        /* Kalıcılık: eskiden yalnız state güncelleniyordu,
+                           sayfa yenilenince rapor geri geliyordu. */
+                        try {
+                            const tumu = nesneOku('student_guidance_results');
+                            tumu[String(id)] = yeniListe;
+                            yaz('student_guidance_results', tumu);
+                        } catch { }
+                    };
+                    return (
                     <div className="space-y-8 animate-fade-in">
-                        {!guidanceResults ? (
+                        {sonucListesi.length === 0 ? (
                             <div className="glass-card p-12 text-center text-ink-2">
                                 <FileText size={48} className="mx-auto mb-4 opacity-20" />
                                 <p>Henüz çözülmüş bir rehberlik testi bulunmuyor.</p>
@@ -970,14 +1011,14 @@ const StudentDetailPage = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                                     {/* Holland Radar Chart */}
-                                    {guidanceResults.holland && (
+                                    {hollandSon && (
                                         <div className="glass-card p-6">
                                             <h3 className="font-bold text-ink mb-4 flex items-center">
                                                 <Brain className="mr-2 text-brand" size={20} /> Mesleki İlgi Alanları
                                             </h3>
                                             <div className="h-[250px] w-full relative" style={{ minHeight: '250px' }}>
                                                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                                                    <RadarChart outerRadius="80%" data={guidanceResults.holland.chartData}>
+                                                    <RadarChart outerRadius="80%" data={hollandSon.chartData}>
                                                         <PolarGrid />
                                                         <PolarAngleAxis dataKey="name" tick={{ fontSize: 10 }} />
                                                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} />
@@ -986,20 +1027,20 @@ const StudentDetailPage = () => {
                                                 </ResponsiveContainer>
                                             </div>
                                             <p className="text-sm text-ink-2 mt-2 text-center font-medium bg-brand-soft p-2 rounded-lg">
-                                                {guidanceResults.holland.summary}
+                                                {hollandSon.level || hollandSon.summary}
                                             </p>
                                         </div>
                                     )}
 
                                     {/* Çoklu Zeka Bar Chart */}
-                                    {guidanceResults.multiple_intelligence && (
+                                    {cokluZekaSon && (
                                         <div className="glass-card p-6">
                                             <h3 className="font-bold text-ink mb-4 flex items-center">
                                                 <Activity className="mr-2 text-danger" size={20} /> Zeka Türleri
                                             </h3>
                                             <div className="h-[250px] w-full">
                                                 <ResponsiveContainer width="100%" height="100%">
-                                                    <BarChart data={guidanceResults.multiple_intelligence.chartData} layout="vertical" margin={{ left: 40 }}>
+                                                    <BarChart data={cokluZekaSon.chartData} layout="vertical" margin={{ left: 40 }}>
                                                         <CartesianGrid strokeDasharray="3 3" horizontal={false}  vertical={false} />
                                                         <XAxis type="number" hide />
                                                         <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
@@ -1009,7 +1050,7 @@ const StudentDetailPage = () => {
                                                 </ResponsiveContainer>
                                             </div>
                                             <p className="text-sm text-ink-2 mt-2 text-center font-medium bg-danger-soft p-2 rounded-lg">
-                                                {guidanceResults.multiple_intelligence.summary}
+                                                {cokluZekaSon.level || cokluZekaSon.summary}
                                             </p>
                                         </div>
                                     )}
@@ -1017,41 +1058,33 @@ const StudentDetailPage = () => {
 
                                 {/* 2. Diğer Testlerin Sonuç Kartları */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {Object.entries(guidanceResults).map(([key, res]) => {
-                                        if (key === 'holland' || key === 'multiple_intelligence') return null;
-                                        return (
-                                            <div key={key} className="glass-card p-6 border-l-4 border-l-indigo-500 relative group">
-                                                <button
-                                                    onClick={ async () => {
-                                                        if (await onayla({ mesaj: 'Bu raporu silmek istediğinize emin misiniz?', tehlikeli: true })) {
-                                                            const newResults = { ...guidanceResults };
-                                                            delete newResults[key];
-                                                            setGuidanceResults(newResults);
-                                                        }
-                                                    }}
-                                                    className="absolute top-4 right-4 text-danger hover:text-danger opacity-0 group-hover:opacity-100 transition p-1"
-                                                    title="Raporu Sil"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h4 className="font-bold text-ink">{res.testName}</h4>
-                                                    <span className="text-xs text-ink-3">{new Date(res.date).toLocaleDateString()}</span>
-                                                </div>
-                                                <div className="text-2xl font-bold text-brand mb-2">{res.summary}</div>
-                                                <p className="text-sm text-ink-2">{res.detail}</p>
+                                    {digerSonuclar.map((res) => (
+                                        <div key={res.id || `${res.testId}_${res.date}`} className="glass-card p-6 border-l-4 border-l-indigo-500 relative group">
+                                            <button
+                                                onClick={() => raporSil(res)}
+                                                className="absolute top-4 right-4 text-danger hover:text-danger opacity-0 group-hover:opacity-100 transition p-1"
+                                                title="Raporu Sil"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-bold text-ink">{res.testTitle || res.testName || 'Rehberlik Testi'}</h4>
+                                                <span className="text-xs text-ink-3">{res.date ? new Date(res.date).toLocaleDateString('tr-TR') : ''}</span>
                                             </div>
-                                        )
-                                    })}
+                                            <div className="text-2xl font-bold text-brand mb-2">{res.level || res.summary || ''}</div>
+                                            <p className="text-sm text-ink-2">{res.comment || res.detail || ''}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             </>
                         )}
                     </div>
-                )}
+                    );
+                })()}
 
                 {/* --- HEDEFLER SEKMESİ --- */}
                 {activeTab === 'goals' && (
-                    <GoalTracking />
+                    <GoalTracking studentId={id} examResults={examResults} />
                 )}
 
                 {/* --- İSTATİSTİKLER SEKMESİ (Koç görünümü) --- */}
@@ -1183,8 +1216,8 @@ const StudentDetailPage = () => {
                             studentName={student.name}
                             onClose={() => {
                                 setShowProgramBuilder(false);
-                                const s = localStorage.getItem(`program_schedule_${id}`) || localStorage.getItem(`program_${id}_monthly_grid`);
-                                const c = localStorage.getItem(`program_${id}_config`);
+                                const s = localStorage.getItem(`program_schedule_${id}`);
+                                const c = localStorage.getItem(`program_meta_${id}`);
                                 if (s) setProgramData({ schedule: JSON.parse(s), config: c ? JSON.parse(c) : { title: 'Çalışma Programı', dailySlotCount: 6 } });
                             }}
                         />

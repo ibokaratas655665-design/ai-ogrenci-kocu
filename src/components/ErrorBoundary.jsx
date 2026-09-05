@@ -25,8 +25,11 @@ class ErrorBoundary extends React.Component {
                             Sayfa yüklenirken bir sorun oluştu.
                         </p>
                         <div className="space-y-3">
+                            {/* HashRouter kullanıyoruz: '/login' (hash'siz) sunucuya
+                                gidip köke düşüyordu — rota '#/login' olmalı. Hata
+                                sonrası temiz React ağacı için reload da yapılır. */}
                             <button
-                                onClick={() => window.location.href = '/login'}
+                                onClick={() => { window.location.hash = '#/login'; window.location.reload(); }}
                                 className="w-full px-6 py-3 bg-brand text-white rounded-lg font-bold hover:bg-brand-hover transition"
                             >
                                 Giriş Sayfasına Dön

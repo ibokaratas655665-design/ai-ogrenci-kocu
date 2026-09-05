@@ -16,7 +16,13 @@ import { useEffect, useRef } from 'react';
 
 export function useDokunmaGecisi(el, bolumler, aktif, onDegis, etkin = true) {
     const guncel = useRef({ bolumler, aktif, onDegis });
-    guncel.current = { bolumler, aktif, onDegis };
+
+    /* Ref'e render sırasında değil effect'te yazılır (react-hooks kuralı;
+       StrictMode/Concurrent'ta render tekrarlanabilir). Dinleyici zaten
+       guncel.current'ı OLAY ANINDA okuduğu için gecikme sorun olmaz. */
+    useEffect(() => {
+        guncel.current = { bolumler, aktif, onDegis };
+    });
 
     useEffect(() => {
         if (!el || !etkin) return undefined;

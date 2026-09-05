@@ -5,8 +5,10 @@ import {
     Bell, MessageSquare, Target, Zap, X, Send
 } from 'lucide-react';
 import Modal from '../ui/Modal';
-import { yaz, listeOku, nesneOku, gorevHaritasi } from '../../services/veriDeposu';
+import { listeOku, gorevHaritasi } from '../../services/veriDeposu';
 import { matchResultsForStudent } from '../../services/birlesikDeneme';
+import mesajKanali from '../../services/mesajKanali';
+import { bildir } from '../../services/uiGeriBildirim';
 
 // ─── Risk Hesaplayıcı ───────────────────────────────────────
 const calcStudentRisk = (student) => {
@@ -235,18 +237,16 @@ const RiskAlarmPanel = ({ students = [], setToast }) => {
     const handleSendMessage = (student, msg) => {
         if (!msg.trim()) return;
         try {
-            const allMsgs = nesneOku('student_messages');
-            const key = String(student.id);
-            if (!allMsgs[key]) allMsgs[key] = [];
-            allMsgs[key].push({
-                sender: 'coach',
-                text: msg,
-                senderName: 'Koçunuz',
-                timestamp: new Date().toISOString(),
-            });
-            yaz('student_messages', allMsgs);
+            /* Eskiden yalnız eski `student_messages` blobuna yazıyordu —
+               öğrencinin gelen kutusu artık mesajKanali (msg_c2s_<sid>)
+               okuyor, mesaj oradan görünür. */
+            mesajKanali.kocMesajEkle(student.id, { text: msg, senderName: 'Koçunuz' });
             setToast?.(`✅ ${student.name}'e mesaj gönderildi`);
-        } catch { setToast?.('Mesaj gönderilemedi', 'error'); }
+        } catch {
+            /* setToast tek argümanlıydı; 'error' tipi hiç işlenmiyordu —
+               hata görünmez oluyordu. Merkezi bildir() kullanılır. */
+            bildir('Mesaj gönderilemedi', 'hata');
+        }
     };
 
     return (

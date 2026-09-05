@@ -24,6 +24,12 @@
  */
 
 import { listeOku } from './veriDeposu';
+/* 05.09 denetimi: rozetler ölü anahtarlardan besleniyordu —
+   whatsapp_messages (üretimde hiç yazılmıyor), eski student_tasks blobu,
+   soneksiz assigned_tests, demo-dışı boş exam_results. Rozet kaynakları
+   gerçek depolara bağlandı. */
+import mesajKanali from './mesajKanali';
+import gorevDeposu from './gorevDeposu';
 
 const SEEN_KEY = (rol, userId) => `tab_seen_${rol}_${userId || 'anon'}`;
 
@@ -109,20 +115,19 @@ const kocBekleyenler = (user, bolum = 'kocluk') => {
         ...bekleyen('parent_accounts', 'veli:'),
     ];
 
-    // WhatsApp — öğrenci/veliden gelen okunmamış mesajlar
-    harita.whatsapp = dizi('whatsapp_messages')
-        .filter((m) => m.from !== 'coach' && !m.read)
-        .map((m) => kimlik(m, 'msj:'));
+    // Mesajlar — öğrencilerden gelen okunmamışlar (yön-ayrımlı kanal)
+    harita.whatsapp = mesajKanali.kocOkunmamisIdler();
+    harita.inbox = harita.whatsapp;
 
     // Randevular — alınan randevular
     harita.appointments = dizi('appointments').map((a) => kimlik(a, 'rnd:'));
 
-    // Denemeler — yüklenen deneme sonuçları
-    harita.exams = dizi('exam_results').map((e) => kimlik(e, 'dnm:'));
+    // Denemeler — yüklenen deneme sonuçları (exam_results ölü anahtardı)
+    harita.exams = dizi('v2_results_data').map((e) => kimlik(e, 'dnm:'));
 
-    // Davetle katılan öğrenciler
-    harita.invites = dizi('student_invites')
-        .flatMap((d) => (d.katilanlar || []).map((x) => kimlik(x, 'dvt:')));
+    /* Davet rozeti kaldırıldı: davetler artık sunucuda yaşıyor
+       (InviteManager) — `student_invites` yereline hiçbir yer yazmıyor,
+       satır hep boş dönüyordu. */
 
     // PDR bölümü arşivlendi — pdr-* sekme rozetleri artık üretilmez.
 
@@ -133,18 +138,26 @@ const ogrenciBekleyenler = (user) => {
     const uid = String(user?.id ?? '');
     const harita = {};
 
-    const gorevDepo = guvenliJson('student_tasks', {}) || {};
-    const kendi = Array.isArray(gorevDepo[uid]) ? gorevDepo[uid] : [];
-    harita.tasks = kendi.filter((g) => !g.completed).map((g) => kimlik(g, 'gorev:'));
+    /* Görevler — birleşik depo (tanım + ilerleme); okul numarası altında
+       duran eski tanımlar da sayılır. */
+    const gorevler = [
+        ...gorevDeposu.birlesikOku(uid),
+        ...(user?.schoolNumber ? gorevDeposu.birlesikOku(user.schoolNumber) : []),
+    ];
+    harita.tasks = gorevler
+        .filter((g) => !g.completed && g.status !== 'Tamamlandı')
+        .map((g) => kimlik(g, 'gorev:'));
 
-    harita.messages = dizi('whatsapp_messages')
-        .filter((m) => String(m.studentId) === uid && m.from === 'coach' && !m.read)
-        .map((m) => kimlik(m, 'msj:'));
+    // Mesajlar — koçtan gelen okunmamışlar (yön-ayrımlı kanal)
+    harita.messages = mesajKanali.ogrenciOkunmamisIdler(uid);
 
-    harita.program = dizi(`student_programs_${uid}`).map((p) => kimlik(p, 'prg:'));
+    /* Program — çizelge dizi değil NESNE; listeOku hep [] veriyordu.
+       Programın "yeni" sayılması için meta güncelleme damgası kullanılır. */
+    const programMeta = guvenliJson(`program_meta_${uid}`, null);
+    harita.program = programMeta?.updatedAt ? [`prg:${programMeta.updatedAt}`] : [];
 
-    harita.tests = dizi('assigned_tests')
-        .filter((t) => String(t.studentId) === uid && t.status === 'pending')
+    harita.tests = dizi(`assigned_tests_${uid}`)
+        .filter((t) => t.status === 'pending' || !t.status)
         .map((t) => kimlik(t, 'tst:'));
 
     harita.appointments = dizi('appointments')
@@ -162,21 +175,19 @@ const veliBekleyenler = (user) => {
     const cocukId = String(user?.studentId ?? user?.childId ?? '');
     const harita = {};
 
-    harita.messages = dizi('whatsapp_messages')
-        .filter((m) => String(m.studentId) === cocukId && m.from === 'coach' && !m.read)
-        .map((m) => kimlik(m, 'msj:'));
+    // Koçtan çocuğa giden mesajlar (yön-ayrımlı kanal)
+    harita.messages = mesajKanali.ogrenciOkunmamisIdler(cocukId);
 
-    harita.exams = dizi('exam_results')
+    harita.exams = dizi('v2_results_data')
         .filter((e) => String(e.studentId) === cocukId)
         .map((e) => kimlik(e, 'dnm:'));
 
-    harita.meetings = dizi('guidance_sessions')
-        .filter((g) => String(g.studentId) === cocukId)
-        .map((g) => kimlik(g, 'gor:'));
+    /* Görüşme rozeti kaldırıldı: `guidance_sessions` PDR arşiviyle
+       birlikte ölü anahtar — hiçbir aktif ekran yazmıyor. */
 
-    const gorevDepo = guvenliJson('student_tasks', {}) || {};
-    const cocukGorevleri = Array.isArray(gorevDepo[cocukId]) ? gorevDepo[cocukId] : [];
-    harita.tasks = cocukGorevleri.filter((g) => !g.completed).map((g) => kimlik(g, 'gorev:'));
+    harita.tasks = gorevDeposu.birlesikOku(cocukId)
+        .filter((g) => !g.completed && g.status !== 'Tamamlandı')
+        .map((g) => kimlik(g, 'gorev:'));
 
     return harita;
 };

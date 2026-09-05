@@ -37,7 +37,72 @@ const bugunISO = () => {
 
 const kaynaklar = () => listeOku(KAYNAK);
 const atamalar = () => listeOku(ATAMA);
-const oturumlar = () => listeOku(OTURUM);
+
+/**
+ * ⚠️ OTURUMLAR ÖĞRENCİ BAŞINA AYRILDI (05.09 denetimi).
+ *
+ * Eskiden bütün öğrencilerin oturumları TEK `deneme_oturumlari`
+ * dizisindeydi ve her şık işaretlemesi diziyi komple yazıyordu. Havuz
+ * koç bazlı olduğu için aynı koçun iki öğrencisi AYNI ANDA deneme
+ * çözerken son yazan diğerinin oturumunu (cevaplarını) siliyordu.
+ *
+ * Yeni düzen `student_tasks_<sid>` ayrımının aynısı:
+ *   · yazım her zaman `deneme_oturumlari_<sid>` anahtarına
+ *   · okuma BİRLEŞİK: eski ortak dizi (geri düşüş) + tüm öğrenci
+ *     anahtarları, oturum kimliğiyle tekilleştirilmiş
+ *   · eski dizide yakalanan oturum, ilk güncellemede kendi
+ *     anahtarına taşınır (kademeli göç)
+ */
+const oturumAnahtari = (sid) => `${OTURUM}_${sid}`;
+const ogrenciOturumlari = (sid) => listeOku(oturumAnahtari(String(sid)));
+const ogrenciOturumYaz = (sid, liste) => yaz(oturumAnahtari(String(sid)), liste, { zorla: true });
+
+const oturumlar = () => {
+    const hepsi = [...listeOku(OTURUM)];
+    const gorulen = new Set(hepsi.map((o) => o?.id));
+    try {
+        for (let i = 0; i < localStorage.length; i += 1) {
+            const k = localStorage.key(i);
+            if (!k || !k.startsWith(`${OTURUM}_`)) continue;
+            listeOku(k).forEach((o) => {
+                if (o?.id && !gorulen.has(o.id)) { gorulen.add(o.id); hepsi.push(o); }
+                else if (o?.id) {
+                    // Aynı kimlik iki yerde: öğrenci anahtarı günceldir, eskiyi ez
+                    const j = hepsi.findIndex((x) => x?.id === o.id);
+                    if (j >= 0) hepsi[j] = o;
+                }
+            });
+        }
+    } catch { /* localStorage erişilemezse ortak dizi yeter */ }
+    return hepsi;
+};
+
+/** Oturumu bulur; eski ortak dizideyse kendi anahtarına taşır. */
+const oturumuBulVeSahiplen = (oturumId) => {
+    // 1) Öğrenci anahtarlarında ara
+    try {
+        for (let i = 0; i < localStorage.length; i += 1) {
+            const k = localStorage.key(i);
+            if (!k || !k.startsWith(`${OTURUM}_`)) continue;
+            const liste = listeOku(k);
+            const idx = liste.findIndex((o) => o?.id === oturumId);
+            if (idx >= 0) {
+                const sid = k.slice(`${OTURUM}_`.length);
+                return { sid, liste, idx };
+            }
+        }
+    } catch { /* aşağıdaki geri düşüşe geç */ }
+    // 2) Eski ortak dizi — bulunursa kendi anahtarına taşı
+    const eski = listeOku(OTURUM);
+    const idx = eski.findIndex((o) => o?.id === oturumId);
+    if (idx < 0) return null;
+    const oturum = eski[idx];
+    const sid = String(oturum.studentId);
+    const yeniListe = [...ogrenciOturumlari(sid), oturum];
+    ogrenciOturumYaz(sid, yeniListe);
+    yaz(OTURUM, eski.filter((o) => o?.id !== oturumId), { zorla: true });
+    return { sid, liste: yeniListe, idx: yeniListe.length - 1 };
+};
 
 /**
  * Tek satırlık ders anahtarlarından soru listesi üretir.
@@ -223,17 +288,19 @@ export const oturumBaslat = (kaynakId, studentId) => {
         bitis: null,
         durum: 'devam',
     };
-    yaz(OTURUM, [...oturumlar(), oturum]);
+    // Yalnız BU öğrencinin anahtarına yazılır — ortak dizi büyümez
+    ogrenciOturumYaz(sid, [...ogrenciOturumlari(sid), oturum]);
     return { basarili: true, oturum, yeni: true };
 };
 
 export const cevapKaydet = (oturumId, soruId, cevap) => {
-    const liste = oturumlar();
-    const i = liste.findIndex((o) => o.id === oturumId);
-    if (i < 0) return { basarili: false, hata: 'Oturum bulunamadı.' };
-    if (liste[i].durum === 'bitti') return { basarili: false, hata: 'Oturum kapandı.' };
-    liste[i] = { ...liste[i], cevaplar: { ...liste[i].cevaplar, [soruId]: cevap } };
-    yaz(OTURUM, liste);
+    const bulunan = oturumuBulVeSahiplen(oturumId);
+    if (!bulunan) return { basarili: false, hata: 'Oturum bulunamadı.' };
+    const { sid, liste, idx } = bulunan;
+    if (liste[idx].durum === 'bitti') return { basarili: false, hata: 'Oturum kapandı.' };
+    const yeni = [...liste];
+    yeni[idx] = { ...yeni[idx], cevaplar: { ...yeni[idx].cevaplar, [soruId]: cevap } };
+    ogrenciOturumYaz(sid, yeni);
     return { basarili: true };
 };
 
@@ -245,9 +312,9 @@ export const cevapKaydet = (oturumId, soruId, cevap) => {
  * @param {string|null} cizim  öğrencinin karalama tuvali (data-URI, isteğe bağlı)
  */
 export const oturumBitir = (oturumId, { studentName, davranis = {}, cizim = null } = {}) => {
-    const liste = oturumlar();
-    const i = liste.findIndex((o) => o.id === oturumId);
-    if (i < 0) return { basarili: false, hata: 'Oturum bulunamadı.' };
+    const bulunan = oturumuBulVeSahiplen(oturumId);
+    if (!bulunan) return { basarili: false, hata: 'Oturum bulunamadı.' };
+    const { sid: oturumSid, liste, idx: i } = bulunan;
 
     const oturum = liste[i];
     const kaynak = kaynaklar().find((k) => k.id === oturum.kaynakId);
@@ -324,7 +391,8 @@ export const oturumBitir = (oturumId, { studentName, davranis = {}, cizim = null
         konular,
     };
 
-    liste[i] = {
+    const kapali = [...liste];
+    kapali[i] = {
         ...oturum,
         bitis: new Date().toISOString(),
         durum: 'bitti',
@@ -335,7 +403,7 @@ export const oturumBitir = (oturumId, { studentName, davranis = {}, cizim = null
         istatistik,
         cizim: cizim || null,
     };
-    yaz(OTURUM, liste);
+    ogrenciOturumYaz(oturumSid, kapali);
 
     // Merkeze yaz: konu hataları buradan Hata Defteri'ni ve konu motorunu besler
     let merkeze = null;

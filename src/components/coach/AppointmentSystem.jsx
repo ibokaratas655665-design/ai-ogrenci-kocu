@@ -80,7 +80,11 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
 
     const saveSlots = (updated) => {
         setSlots(updated);
-        yaz(SLOT_ANAHTAR(coachId), updated);
+        /* 05.09 denetimi — `zorla` ŞART: son müsait saat silindiğinde
+           `updated === {}` olur; veriDeposu boş değeri buluta göndermeyi
+           atlar ve öğrencinin cihazındaki eski saatler ASLA silinmezdi
+           (öğrenci kapalı saate randevu alıyordu). */
+        yaz(SLOT_ANAHTAR(coachId), updated, { zorla: true });
     };
 
     const addSlot = () => {

@@ -30,6 +30,10 @@ const guvenliOku = (anahtar, varsayilan) => {
 const yazVeYay = (anahtar, deger) => {
     try {
         localStorage.setItem(anahtar, JSON.stringify(deger));
+        /* Damga (bkz. veriDeposu.damgala — döngüsel import olmasın diye
+           satır burada tekrarlanır): damgasız kayıt, bulut yazımı o an
+           düşerse sonraki açılışta buluttaki ESKİ kopyayla ezilir. */
+        localStorage.setItem(`_fbtime_${anahtar}`, String(Date.now()));
         window.dispatchEvent(new StorageEvent('storage', { key: anahtar, newValue: JSON.stringify(deger) }));
         window.firebaseSync?.syncKey?.(anahtar);
     } catch { /* sessiz */ }

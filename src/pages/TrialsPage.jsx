@@ -11,6 +11,32 @@ import { hataAnlat } from '../services/hataMesaji';
 import Modal from '../components/ui/Modal';
 import { listeOku } from '../services/veriDeposu';
 
+/* Seçenek normalizasyonu (StudentTestsTab ile aynı sözleşme):
+   MEB envanterlerinde soru bazlı options olmayabilir ya da nesne
+   biçiminde gelebilir — `q.options.map(opt => {opt})` bu testlerde
+   çöküyordu. Sıra: soruya özgü → test geneli → Evet/Hayır. */
+function normalizeOptions(test, question) {
+    if (test?.inputType === 'class_list' || test?.inputType === 'text') return [];
+    if (Array.isArray(question?.options) && question.options.length > 0) {
+        return question.options.map((o, i) =>
+            typeof o === 'string' ? { label: o, value: i } :
+                typeof o === 'object' && o !== null && (o.label || o.text) ? { label: o.label || o.text, value: i } :
+                    { label: String(o), value: i }
+        );
+    }
+    if (Array.isArray(test?.options) && test.options.length > 0) {
+        return test.options.map((o, i) =>
+            typeof o === 'string' ? { label: o, value: i } :
+                typeof o === 'object' && o !== null && (o.label || o.text) ? { label: o.label || o.text, value: i } :
+                    { label: String(o), value: i }
+        );
+    }
+    return [
+        { label: 'Evet', value: 1 },
+        { label: 'Hayır', value: 0 },
+    ];
+}
+
 const TrialsPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -248,7 +274,9 @@ const TrialsPage = () => {
                                             <Target size={24} />
                                         </div>
                                         <h3 className="text-xl font-bold text-ink group-hover:text-brand transition mb-2">{test.title}</h3>
-                                        <p className="text-ink-2 text-sm leading-relaxed">{test.description}</p>
+                                        {/* Alan adı `desc` (tests.js) — `description` yoktu, açıklamalar hep boş kalıyordu.
+    Yönerge kısmı test ekranında gösterilir; kartta yalnız ilk satır yeter. */}
+<p className="text-ink-2 text-sm leading-relaxed">{(test.desc || test.description || '').split('\n')[0]}</p>
                                     </div>
                                     <button
                                         onClick={() => startTest(test)}
@@ -325,18 +353,18 @@ const TrialsPage = () => {
                                         <p className="font-bold text-ink text-lg leading-relaxed">{q.text}</p>
                                     </div>
                                     <div className="space-y-3 pl-11">
-                                        {q.options.map((opt, optIdx) => (
+                                        {normalizeOptions(activeTest, q).map((opt) => (
                                             <button
-                                                key={optIdx}
-                                                onClick={() => handleAnswer(q.id, optIdx)}
-                                                className={`w-full text-left p-4 rounded-xl text-base font-medium transition flex items-center border ${answers[q.id] === optIdx
+                                                key={opt.value}
+                                                onClick={() => handleAnswer(q.id, opt.value)}
+                                                className={`w-full text-left p-4 rounded-xl text-base font-medium transition flex items-center border ${answers[q.id] === opt.value
                                                     ? 'bg-brand text-white border-indigo-600 shadow-md shadow-indigo-200'
                                                     : 'bg-surface-2 hover:bg-surface text-ink-2 border-transparent hover:border-line hover:shadow-sm'}`}
                                             >
-                                                <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${answers[q.id] === optIdx ? 'border-white' : 'border-line-2'}`}>
-                                                    {answers[q.id] === optIdx && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
+                                                <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${answers[q.id] === opt.value ? 'border-white' : 'border-line-2'}`}>
+                                                    {answers[q.id] === opt.value && <div className="w-2.5 h-2.5 bg-surface rounded-full" />}
                                                 </div>
-                                                {opt}
+                                                {opt.label}
                                             </button>
                                         ))}
                                     </div>

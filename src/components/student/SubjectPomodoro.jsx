@@ -21,8 +21,26 @@ const MODES = {
 
 const LOG_KEY = (userId) => `pomodoro_log_${userId}`;
 
+/**
+ * 05.09 GÖÇ: prop adı uyuşmazlığı yüzünden (bkz. StudentDashboard)
+ * seanslar bir süre `pomodoro_log_undefined` anahtarına yazıldı.
+ * Kullanıcının kimliği belli olduğunda o çöp anahtar bir kez kendi
+ * kaydına aktarılır — geçmiş seanslar koç ekranına geri gelir.
+ */
+const copKaydiTasi = (userId) => {
+    if (!userId) return;
+    try {
+        const cop = listeOku(LOG_KEY('undefined'));
+        if (!cop.length) return;
+        const mevcut = listeOku(LOG_KEY(userId));
+        yaz(LOG_KEY(userId), [...mevcut, ...cop]);
+        localStorage.removeItem(LOG_KEY('undefined'));
+    } catch { /* göç başarısızsa mevcut düzen sürer */ }
+};
+
 const savePomodoroLog = (userId, session) => {
     try {
+        copKaydiTasi(userId);
         const logs = listeOku(LOG_KEY(userId));
         logs.push(session);
         yaz(LOG_KEY(userId), logs);
@@ -329,11 +347,22 @@ const SubjectPomodoro = ({ userId, onSessionComplete }) => {
 // ─── Koç: Öğrencinin Pomodoro Loglarını Görüntüleme ──────────────
 export const CoachPomodoroView = ({ students }) => {
     const [selected, setSelected] = useState(null);
+    /* 05.09: öğrenci seans bitirince koçun açık ekranı tazelensin. */
+    const [tazelik, setTazelik] = useState(0);
+    useEffect(() => {
+        const dinle = (e) => {
+            if (!e?.key || e.key.startsWith('pomodoro_')) setTazelik((t) => t + 1);
+        };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, []);
 
     const getLogs = (s) => {
         try { return listeOku(LOG_KEY(s.id)); } catch { return []; }
     };
 
+    // eslint-disable-next-line no-unused-vars
+    const _t = tazelik; // yeniden hesap tetikleyici
     const studentStats = students.map(s => {
         const logs = getLogs(s);
         const last7 = logs.filter(l => (Date.now() - new Date(l.startedAt).getTime()) < 7 * 24 * 3600 * 1000);

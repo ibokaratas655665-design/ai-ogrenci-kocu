@@ -72,7 +72,13 @@ export const GamificationProvider = ({ children, userId }) => {
        (^gamification_) olduğu için 2 dakikalık toplu senkron turunda
        buluta gider — XP için yeterli tazelik. */
     useEffect(() => {
-        try { localStorage.setItem(key, JSON.stringify(stats)); } catch { /* ignore */ }
+        try {
+            localStorage.setItem(key, JSON.stringify(stats));
+            /* Damga ŞART (05.09): damgasız XP kaydı, 2 dakikalık tur
+               yetişmeden yapılan yenilemede isNewDevice kuralına takılıp
+               buluttaki ESKİ kopyayla ezilir — öğrenci XP kaybederdi. */
+            localStorage.setItem(`_fbtime_${key}`, String(Date.now()));
+        } catch { /* ignore */ }
     }, [stats, key]);
 
     // ── Rozet Kontrolü ────────────────────────────────────────────

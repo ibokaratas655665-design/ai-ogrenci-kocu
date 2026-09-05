@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { MessageSquare, Lightbulb } from 'lucide-react';
 import denemeKayitlari from '../../services/denemeKayitlari';
 import denemeMotoru from '../../services/denemeMotoru';
+import { notify } from '../../services/notificationService';
 
 const RENKLER = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--brand)'];
 
@@ -202,6 +203,16 @@ const KonuAnaliziPaneli = ({ students = [], onDurum }) => {
         let kocAd = 'Koç';
         try { kocAd = JSON.parse(localStorage.getItem('user_session'))?.name || 'Koç'; } catch { /* oturum yoksa varsayılan */ }
         denemeMotoru.donutYaz({ studentId: kapsam, metin: donutMetin, kocAd });
+        /* 05.09: dönüt bildirimsizdi — öğrenci paneli açık değilse koç
+           dönütünden haberi olmuyordu. */
+        try {
+            notify({
+                toUserId: kapsam, type: 'feedback',
+                title: '🍩 Koçundan dönüt var',
+                body: 'Deneme Çöz sekmesinde seni bekliyor.',
+                action: { tab: 'deneme-coz' },
+            });
+        } catch { /* bildirim düşmezse dönüt yine kayıtlı */ }
         setDonutDurum('kaydedildi');
         setTimeout(() => setDonutDurum(''), 2500);
     };

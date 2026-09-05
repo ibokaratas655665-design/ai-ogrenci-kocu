@@ -80,11 +80,26 @@ const SYNC_KEYS = [
      */
     'student_study_plan', 'student_exam_type', 'student_closed_slots',
     'pdr_events', 'public_test_submissions', 'all_self_assessments',
-    'tp_name', 'tp_teachers', 'tp_students', 'tp_pairings', 'tp_schedule', 'tp_blocked', 'tp_avail'
+    'tp_name', 'tp_teachers', 'tp_students', 'tp_pairings', 'tp_schedule', 'tp_blocked', 'tp_avail',
+    /**
+     * ⚠️ 05.09 DENETİMİ — aynı hata sınıfının ÜÇÜNCÜ turu. Bu anahtarlar
+     * açık syncKey ile buluta gidiyordu ama liste dışında oldukları için:
+     * (1) 2 dakikalık emniyet turu onları hiç taramıyor — tek yazım
+     * denemesi 5 retry'da tükenirse kayıt kalıcı olarak cihaza hapsolur;
+     * (2) çıkış temizliği (oturumOnbelleginiTemizle) onları silmiyor —
+     * ortak bilgisayarda sonraki kullanıcı önceki koçun deneme
+     * kitapçıklarını (gömülü PDF dahil), öğrencinin cevaplarını ve konu
+     * işaretlerini görüyordu; (3) tani() envanterinde görünmüyorlardı.
+     */
+    'deneme_kaynaklari', 'deneme_atamalari', 'deneme_oturumlari', 'koc_donutleri',
+    'topic_progress', 'coach_tasks', 'coach_coupons',
 ];
 
 const NEVER_SYNC = ['user_session', 'current_user', 'USER'];
-const PROTECTED_KEYS = ['coach_students', 'users_db', 'student_tasks', 'v2_trials_data', 'v2_results_data', 'v2_obp_data', 'exams_data', 'student_programs', 'pdr_cases'];
+/* all_self_assessments (05.09): tüm öğrencilerin ortak dizisi — indirmede
+   küçülme koruması olmadan bir öğrencinin eski kopyası diğerlerinin
+   kayıtlarını silebiliyordu. */
+const PROTECTED_KEYS = ['coach_students', 'users_db', 'student_tasks', 'v2_trials_data', 'v2_results_data', 'v2_obp_data', 'exams_data', 'student_programs', 'pdr_cases', 'all_self_assessments', 'deneme_kaynaklari', 'deneme_atamalari'];
 
 /**
  * 🪣 VERİ HAVUZU KİMLİĞİ
@@ -192,6 +207,9 @@ const DYNAMIC_KEY_PATTERNS = [
     /^msg_seen_c_/,
     /^student_tasks_/,
     /^student_task_progress_/,
+    /* 05.09: deneme oturumları öğrenci başına ayrıldı (ortak dizide iki
+       öğrenci aynı anda çözerken birbirinin cevaplarını eziyordu). */
+    /^deneme_oturumlari_/,
 ];
 
 const getDynamicKeys = () => {
@@ -545,8 +563,21 @@ class FirebaseSync {
         /**
          * Sahiplik damgası olmadan yazım YAPILMAZ. Damgasız belge, kural
          * sıkılaştırıldıktan sonra kimsenin okuyamayacağı ölü bir kayıt olur.
+         *
+         * 05.09 denetimi: eskiden burada sessizce `false` dönülüyordu —
+         * kimlik çözülmemiş öğrenci günlerce veri giriyor, hiçbiri buluta
+         * gitmiyor ve rozet 'bosta' kaldığı için TEK BİR UYARI görmüyordu.
+         * Artık anahtar yeniden deneme kuyruğuna girer: init kimliği
+         * sonradan çözerse kuyruk boşalır, çözemezse rozet 'Bağlantı
+         * sorunu' gösterir.
          */
-        if (!this.sahipUid) return false;
+        if (!this.sahipUid) {
+            /* Gerçek Firebase oturumu VARKEN kimlik çözülememişse bu bir
+               hatadır → kuyruğa al, rozet uyarsın. Oturum hiç yoksa
+               (demo/çevrimdışı mod) kasıtlı sessiz kalınır. */
+            if (auth?.currentUser) this._retryEkle(key);
+            return false;
+        }
         if (NEVER_SYNC.some(ns => key === ns || key.startsWith(ns))) return null;
 
         const value = localStorage.getItem(key);

@@ -7,6 +7,7 @@
  * Buradaki fonksiyonlar saf: localStorage'dan okur, hesaplar, döner.
  * Hiçbir UI bağımlılığı yok.
  */
+import gorevDeposu from './gorevDeposu';
 
 // ════════════════════════════════════════════════════════════
 //  Yardımcılar
@@ -182,6 +183,18 @@ export const matchResultsForStudent = (student, allResults) => {
 /** Öğrencinin görevlerini döner. student_tasks hem dizi hem map olabiliyor. */
 export const getStudentTasks = (student, allTasks) => {
     if (!student) return [];
+
+    /* 05.09 denetimi: görevler artık `student_tasks_<sid>` (tanım) +
+       `student_task_progress_<sid>` (ilerleme) anahtarlarında — burası
+       yalnız eski blobu okuduğu için "Görev tamamlama %" KPI'ı yeni
+       atamaları ve öğrencinin işaretlerini hiç görmüyordu. `allTasks`
+       verilmediyse birleşik depo kullanılır. */
+    if (allTasks == null) {
+        const birlesik = gorevDeposu.birlesikOku(student.id);
+        if (birlesik.length) return birlesik;
+        // yeni anahtarda yoksa eski bloba düş (aşağıdaki yollar)
+    }
+
     const raw = allTasks ?? safeParse('student_tasks');
 
     if (Array.isArray(raw)) {
@@ -618,8 +631,15 @@ export const buildStudentReport = (student, options = {}) => {
     });
 
     // ── Hedef ───────────────────────────────────────────────
-    const goals = safeParse(`student_goals_${student?.id}`, {});
-    const targetNet = Number(goals.targetNet) || Number(student?.targetNet) || null;
+    /* 05.09 denetimi: `student_goals_<id>` HİÇBİR yerde yazılmıyordu —
+       karnenin hedef bölümü hep boştu. Gerçek hedefler GoalSettingModule'ün
+       yazdığı `goals_<id>_tyt` (ders → hedef net) kaydında; toplam hedef
+       net bu haritanın toplamıdır. */
+    const dersHedefleri = safeParse(`goals_${student?.id}_tyt`, {});
+    const hedefToplam = Object.values(dersHedefleri || {})
+        .reduce((t, v) => t + (Number(v) || 0), 0);
+    const targetNet = hedefToplam > 0 ? +hedefToplam.toFixed(1)
+        : (Number(student?.targetNet) || null);
     const goalProgress =
         targetNet && lastNet != null ? Math.min(100, Math.round((lastNet / targetNet) * 100)) : null;
 
@@ -738,7 +758,9 @@ export const buildRosterStatus = (students = []) => {
     const allResults = safeParse('v2_results_data');
     const allProgress = safeParse('program_progress', {});
     const allLogs = safeParse('study_log', []);
-    const allTasks = safeParse('student_tasks');
+    /* 05.09: eski blob yerine birleşik görev haritası (tanım + ilerleme) —
+       aksi hâlde yeni atanan görevler ve tamamlama işaretleri sayılmıyordu. */
+    const allTasks = gorevDeposu.gorevHaritasiBirlesik();
     const weekAgo = daysAgo(7);
 
     // Günlük kayıtları öğrenciye göre grupla (tek geçiş)

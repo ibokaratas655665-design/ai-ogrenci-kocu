@@ -241,28 +241,31 @@ export const AuthProvider = ({ children }) => {
         api.auth.logout();
         setUser(null);
 
-        /* Firebase oturumu da kapatılmalı; yoksa çıkış yapan kullanıcının
-           kimliğiyle Firestore erişimi açık kalır. */
-        try {
-            import('../services/firebaseOturum').then(({ oturumKapat }) => oturumKapat());
-        } catch { /* modül yoksa yapacak bir şey yok */ }
-
         /**
-         * Senkronu durdur ve CİHAZDAKİ VERİYİ TEMİZLE.
+         * SIRA KRİTİK (05.09 denetim bulgusu): ESKİDEN Firebase oturumu
+         * hemen kapatılıyor, boşaltma 100 ms sonra başlıyordu. signOut
+         * yerel ve anlık olduğu için boşaltma turu `permission-denied`e
+         * çarpıyor (kurallar profil ister), ardından destroy() retry
+         * kuyruğunu silip temizlik yerel anahtarları boşaltıyordu —
+         * ÖĞRENCİNİN HENÜZ BULUTA GİTMEMİŞ KAYITLARI (study_log,
+         * mesaj, program işareti…) koça ulaşmadan siliniyordu.
          *
-         * Temizlik olmadan, ardından giren kullanıcı önceki kullanıcının
-         * öğrenci listesini, denemelerini ve rehberlik kayıtlarını
-         * görüyordu. Temizlikten önce bekleyen yazımlar buluta gönderilir,
-         * böylece veri kaybı olmaz.
+         * Doğru sıra: (1) oturum AÇIKKEN bekleyenleri buluta boşalt,
+         * (2) senkronu durdur, (3) EN SON Firebase oturumunu kapat.
          */
-        setTimeout(() => {
+        (async () => {
             try {
-                import('../services/firebaseSync').then(async ({ default: firebaseSync }) => {
-                    try { await firebaseSync.oturumOnbelleginiTemizle(); } catch { /* ignore */ }
-                    firebaseSync.destroy();
-                }).catch(() => { });
-            } catch (e) { /* ignore */ }
-        }, 100);
+                const { default: firebaseSync } = await import('../services/firebaseSync');
+                try { await firebaseSync.oturumOnbelleginiTemizle(); } catch { /* ignore */ }
+                firebaseSync.destroy();
+            } catch { /* senkron modülü yoksa geç */ }
+            /* Firebase oturumu da kapatılmalı; yoksa çıkış yapan kullanıcının
+               kimliğiyle Firestore erişimi açık kalır. */
+            try {
+                const { oturumKapat } = await import('../services/firebaseOturum');
+                await oturumKapat();
+            } catch { /* modül yoksa yapacak bir şey yok */ }
+        })();
 
         // Otomatik çıkış ise URL'e bilgi ver
         if (reason === 'timeout') {

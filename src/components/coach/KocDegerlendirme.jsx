@@ -70,13 +70,29 @@ export default function KocDegerlendirme({ students = [], tur }) {
     const [secili, setSecili] = useState(students.length === 1 ? students[0] : null);
     const kimlik = String(secili?.id ?? '');
 
+    /* 05.09 denetimi: öğrenci kayıt girdiğinde koçun açık ekranı
+       tazelenmiyordu — buluttan/aynı cihazdan gelen storage olayı
+       dinlenip veriler yeniden okunur. */
+    const [tazelik, setTazelik] = useState(0);
+    React.useEffect(() => {
+        const dinle = (e) => {
+            if (!e?.key || ['study_log', 'error_notebook', 'deneme_analizleri'].includes(e.key)) {
+                setTazelik((t) => t + 1);
+            }
+        };
+        window.addEventListener('storage', dinle);
+        return () => window.removeEventListener('storage', dinle);
+    }, []);
+
     const gunlukler = useMemo(
         () => (kimlik ? listeOku('study_log').filter((g) => String(g.studentId) === kimlik) : []),
-        [kimlik]
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [kimlik, tazelik]
     );
     const hatalar = useMemo(
         () => (kimlik ? listeOku('error_notebook').filter((h) => String(h.studentId) === kimlik) : []),
-        [kimlik]
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [kimlik, tazelik]
     );
 
     const haftalik = useMemo(() => gunlukSeri(gunlukler), [gunlukler]);

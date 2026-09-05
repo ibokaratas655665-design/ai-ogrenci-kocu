@@ -47,6 +47,10 @@ const scheduleSync = () => {
 
 const persist = (entries) => {
     localStorage.setItem(KEY, JSON.stringify(entries));
+    /* Damga (05.09 denetimi — bkz. veriDeposu.damgala): damgasız kayıt,
+       bulut yazımı yetişmeden yapılan yenilemede buluttaki ESKİ kopyayla
+       ezilir ("kayıt girdim, yeniledim, kayboldu"). */
+    try { localStorage.setItem(`_fbtime_${KEY}`, String(Date.now())); } catch { /* ignore */ }
     try {
         window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
     } catch { /* ignore */ }

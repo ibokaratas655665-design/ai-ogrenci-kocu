@@ -63,6 +63,9 @@ const safeParse = () => {
 
 const persist = (entries) => {
     localStorage.setItem(LS_KEY, JSON.stringify(entries));
+    /* Damga (05.09 — bkz. veriDeposu.damgala): damgasız kayıt, bulut
+       yazımı yetişmeden yapılan yenilemede eski kopyayla ezilir. */
+    try { localStorage.setItem(`_fbtime_${LS_KEY}`, String(Date.now())); } catch { /* ignore */ }
     try {
         window.dispatchEvent(new StorageEvent('storage', { key: LS_KEY }));
         window.firebaseSync?.syncKey?.(LS_KEY);

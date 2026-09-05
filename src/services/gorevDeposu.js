@@ -30,6 +30,14 @@ const guvenliOku = (anahtar, varsayilan) => {
 const yazVeSenkronla = (anahtar, deger) => {
     try {
         localStorage.setItem(anahtar, JSON.stringify(deger));
+        /* Damga (bkz. veriDeposu.damgala — döngüsel import olmasın diye
+           satır burada tekrarlanır): damga atılmazsa ve bulut yazımı o an
+           başarısız olursa, sonraki açılışta isNewDevice kuralı buluttaki
+           ESKİ kopyayı yerelin üstüne yazar (05.09 denetim bulgusu). */
+        localStorage.setItem(`_fbtime_${anahtar}`, String(Date.now()));
+        /* Aynı cihazda açık öbür panel anında görsün (05.09):
+           storage olayı yalnız DİĞER sekmelerde kendiliğinden tetiklenir. */
+        try { window.dispatchEvent(new StorageEvent('storage', { key: anahtar })); } catch { /* ignore */ }
         window.firebaseSync?.syncKey?.(anahtar);
     } catch { /* depolama dolu/erişilemez — sessiz geç */ }
 };
