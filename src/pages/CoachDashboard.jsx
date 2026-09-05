@@ -214,7 +214,7 @@ const NAV_BY_SECTION = {
     ],
 
     /* PDR bölümü 22.08.2026'da aktif üründen çıkarıldı; ekranları ve
-       servisleri archive/pdr_module/ altında saklanıyor. Veri anahtarları
+       servisleri bilgisayarda ayrı klasör: D:\yedekler\REHBERLİK-PDR-MODULU/ altında saklanıyor. Veri anahtarları
        (pdr_*, bep_data, guidance_*) silinmedi — geri getirilirse kaldığı
        yerden devam eder. */
 };
@@ -2600,7 +2600,7 @@ const CoachDashboard = () => {
             window.location.href = '#/login';
         }
     };
-    // ── Tek bölüm: koçluk. PDR bölümü arşivlendi (archive/pdr_module);
+    // ── Tek bölüm: koçluk. PDR bölümü arşivlendi (bilgisayarda ayrı klasör: D:\yedekler\REHBERLİK-PDR-MODULU);
     // görev/rozet kayıtları hâlâ `bolum` alanı taşıdığı için sabit kaldı.
     const bolum = 'kocluk';
 
@@ -2801,7 +2801,7 @@ const CoachDashboard = () => {
     );
 
     /* PDR dosya modülleri ve PDR öğrenci havuzu arşive taşındı
-       (archive/pdr_module). Veri anahtarları (pdr_students, pdr_archive,
+       (bilgisayarda ayrı klasör: D:\yedekler\REHBERLİK-PDR-MODULU). Veri anahtarları (pdr_students, pdr_archive,
        bep_data …) yerinde duruyor; modül geri getirilirse okur. */
 
     // Firebase Sync - Coach için başlat + real-time dinle
@@ -3486,7 +3486,7 @@ const CoachDashboard = () => {
                             <SinavOlusturTab user={user} students={students} setToast={setToast} />
                         )}
                         {/* PDR/Rehberlik render blokları arşive taşındı
-                            (archive/pdr_module) — rehberlik ekranları artık
+                            (bilgisayarda ayrı klasör: D:\yedekler\REHBERLİK-PDR-MODULU) — rehberlik ekranları artık
                             aktif üründe yok. */}
                         {activeTab === 'coaches' && <ManageCoachesTab setToast={setToast} />}
                         {/* ✅ Onay merkezi — koç, öğrenci ve veli için bireysel + toplu onay */}

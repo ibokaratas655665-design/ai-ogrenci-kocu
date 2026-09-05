@@ -3,7 +3,7 @@
  *
  * Uygulama tek bölüm çalışır: KOÇLUK — özel öğrenci koçluğu (program,
  * deneme, hedef, materyal). PDR bölümü 22.08.2026'da arşivlendi
- * (archive/pdr_module); eski kayıtların `sections`/`bolum` alanları
+ * (bilgisayarda ayrı klasör: D:\yedekler\REHBERLİK-PDR-MODULU); eski kayıtların `sections`/`bolum` alanları
  * geriye dönük uyum için okunmaya devam eder.
  *
  * Kimin neyi görebileceği tek yerden belirlenir:
