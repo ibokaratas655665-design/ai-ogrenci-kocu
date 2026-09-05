@@ -3374,64 +3374,12 @@ const CoachDashboard = () => {
             {/* Ölçüldü: bu kap zaten header'DAN SONRA, akışta başlıyor
                 (top = 89 px). Üstüne bir de 88 px dolgu ekliyor, içi ise
                 bomboştu — logo ile sayfa başlığı arasındaki açıklık buydu. */}
-                        <div className={activeTab === 'bugun'
-                            ? 'hidden'
-                            : 'pt-6 lg:pt-8 pb-6 lg:pb-8 relative overflow-hidden atmos'}>
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* EYLEM ŞERİDİ — Genel Bakış'ta gizli.
-                        "Öğrenci Ekle / Liste Yükle / Toplu Mesaj" her sekmenin üstünde
-                        duruyordu. Genel Bakış bir DURUM ekranıdır: koç oraya ne olduğunu
-                        görmeye gelir, kayıt açmaya değil. Şerit ekranın en üstünü kaplayıp
-                        asıl içeriği aşağı itiyordu. Diğer sekmelerde yerinde duruyor. */}
-                    {activeTab !== 'bugun' && (
-                    <div className="flex flex-wrap items-center justify-between gap-6 bg-surface/40 backdrop-blur-xl border border-line p-4 rounded-3xl">
-                        <div className="flex flex-wrap gap-3">
-                            <button 
-                                onClick={() => { setEditingStudent(null); setIsStudentModalOpen(true); }} 
-                                className="group relative px-6 py-3 bg-brand text-ink-on rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all hover:scale-105 active:scale-95 shadow-lg shadow-e2 flex items-center gap-3"
-                            >
-                                <div className="p-1.5 bg-surface/20 rounded-lg group-hover:rotate-90 transition-transform">
-                                    <Plus size={14} />
-                                </div>
-                                ÖĞRENCİ EKLE
-                            </button>
-                            
-                            <label htmlFor="studentListUpload" className="group px-6 py-3 bg-surface/5 border border-line hover:border-accent/40 text-ink rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all cursor-pointer flex items-center gap-3">
-                                <div className="p-1.5 bg-accent/20 rounded-lg text-accent group-hover:-translate-y-1 transition-transform">
-                                    <Upload size={14} />
-                                </div>
-                                LİSTE YÜKLE
-                            </label>
-
-                            <button 
-                                onClick={() => setShowBulkMessage(true)} 
-                                className="group px-6 py-3 bg-surface/5 border border-line hover:border-ok/40 text-ink rounded-2xl font-black text-[10px] tracking-widest uppercase transition-all flex items-center gap-3"
-                            >
-                                <div className="p-1.5 bg-ok/20 rounded-lg text-ok group-hover:scale-110 transition-transform">
-                                    <MessageSquare size={14} />
-                                </div>
-                                TOPLU MESAJ
-                            </button>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className="badge badge-neutral">{students.length} öğrenci</span>
-                        </div>
-                    </div>
-                    )}
-
-                    {/* ── SEKME ÇUBUĞU ───────────────────────────────────────────
-                        Eski hâli 24×24 karo butonlardan oluşuyordu; pasif olanlar
-                        opacity-40 ile okunmaz haldeydi ve aktif sekme zeminden
-                        ayrışmıyordu. Artık gruplar tek bir çubukta, aktif sekme
-                        yüzeyden yükselerek belli oluyor. */}
-                    {/* Bölüm anahtarı kaldırıldı — PDR bölümü arşivde,
-                        uygulama tek bölüm (koçluk) olarak çalışıyor. */}
-
-                    {/* Masaüstü gezinme soldaki lacivert kenar çubuğuna
-                        taşındı (23.08 tasarım); üst şerit kaldırıldı. */}
-                </div>
-            </div>
+            {/* EYLEM ŞERİDİ KALDIRILDI (koç talimatı 05.09.2026):
+                "Öğrenci Ekle / Liste Yükle / Toplu Mesaj" şeridi her sekmenin
+                üstünde yer kaplıyordu. İşlevler kaybolmadı — hepsi Analiz →
+                Genel Bakış'taki "Öğrenci Portfolyo Yönetimi" araç çubuğunda
+                (OverviewTab: ÖĞRENCİ EKLE / EXCEL YÜKLE / TOPLU MESAJ /
+                GÖREV ATA / LİSTEYİ SİL). */}
             {/* ── Tab Content ────────────────────────────────────────────── */}
             {/* İçerik genişliği 1920 → 1400. Geniş monitörde satırlar ekranın
                 iki ucuna yayılıp okunmaz hâle geliyordu; boşluk artık her
@@ -3487,6 +3435,7 @@ const CoachDashboard = () => {
                                         setToast={setToast}
                                         onEdit={openEditStudent}
                                         onDelete={handleDeleteStudent}
+                                        onYeniOgrenci={() => { setEditingStudent(null); setIsStudentModalOpen(true); }}
                                         onAssignTask={() => setIsTaskAssignModalOpen(true)}
                                         onSendMessage={() => setShowBulkMessage(true)}
                                         onGoToRiskTab={() => { try { localStorage.setItem('section_tab_analysis', 'risk'); } catch { /* ignore */ } window.location.reload(); }}

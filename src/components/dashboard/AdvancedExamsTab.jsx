@@ -936,23 +936,24 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
                 </button>
             </div>
 
-            {/* Sekme seçici — moda göre */}
-            <div className="flex gap-2 border-b border-line pb-3 flex-wrap">
-                {(analizMod === 'sinif' ? [
-                    { id: 'trend', label: '📈 Deneme Trendi' },
-                    { id: 'class', label: '👥 Öğrenci Karşılaştırması' },
-                    { id: 'subject', label: (activeExamType === 'AYT' || activeExamType === 'TYT+AYT') ? '📊 Puan Türleri' : '📚 Ders Gelişimi' },
-                    { id: 'konu', label: '🎯 Konu Dağılımı' },
-                ] : [
-                    { id: 'student', label: '👤 Öğrenci Bazında' },
-                    { id: 'konu', label: '🎯 Konu Dağılımı' },
-                ]).map(m => (
-                    <button key={m.id} onClick={() => setActiveMetric(m.id)}
-                        className={`text-xs px-3 py-1 rounded-full font-semibold transition ${activeMetric === m.id ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4' : 'text-ink-3 hover:text-ink-2'}`}>
-                        {m.label}
-                    </button>
-                ))}
-            </div>
+            {/* Sekme seçici — moda göre.
+                05.09 (koç talimatı): sınıf modundaki toplu grafik/listeler
+                (Öğrenci Karşılaştırması, Ders Gelişimi, toplu Konu Dağılımı)
+                KALDIRILDI — toplu veri için TEK genel grafik (Deneme Trendi)
+                kalır; öğrenci bazlı derinlik Bireysel Analiz'de. */}
+            {analizMod === 'bireysel' && (
+                <div className="flex gap-2 border-b border-line pb-3 flex-wrap">
+                    {[
+                        { id: 'student', label: '👤 Öğrenci Bazında' },
+                        { id: 'konu', label: '🎯 Konu Dağılımı' },
+                    ].map(m => (
+                        <button key={m.id} onClick={() => setActiveMetric(m.id)}
+                            className={`text-xs px-3 py-1 rounded-full font-semibold transition ${activeMetric === m.id ? 'bg-[color-mix(in_srgb,var(--c4)_14%,var(--surface))] text-c4' : 'text-ink-3 hover:text-ink-2'}`}>
+                            {m.label}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* ── Konu Dağılımı (her iki modda; bireyselde matris+dönüt açılır) ── */}
             {activeMetric === 'konu' && (
@@ -986,7 +987,7 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
                                 </div>
                             );
                         })()}
-                        <p className="text-xs text-ink-3 mb-2">{activeExamType} − sınıf net ortalamasının denemeler boyunca seyri (ders kırılımı için "Ders Gelişimi" sekmesi).</p>
+                        <p className="text-xs text-ink-3 mb-2">{activeExamType} − sınıf net ortalamasının denemeler boyunca seyri (toplu görünümün tek grafiği; öğrenci detayı Bireysel Analiz'de).</p>
                         <div className="h-56 rounded-2xl p-3 kutu-3b">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={trendData} margin={{ top: 10, right: 12, bottom: 0, left: -10 }}>
@@ -1015,153 +1016,18 @@ const ExamAnalyticsPanel = ({ trials, results, activeCategory, expandedTrialId, 
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
-                        {/* Tablo */}
-                        <div className="mt-3 overflow-x-auto">
-                            <table className="min-w-full text-xs">
-                                <thead><tr className="bg-surface-2 border-b border-line">
-                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
-                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
-                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-c4">Ort. Net</th>
-                                    {subjectLabels.map(s => (
-                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: subjectColors[s] || 'var(--ink-3)' }}>{s}</th>
-                                    ))}
-                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Katılımcı</th>
-                                </tr></thead>
-                                <tbody className="divide-y divide-line-subtle">
-                                    {trendData.map((row, i) => (
-                                        <tr key={i} className="hover:bg-surface-2">
-                                            <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
-                                            <td className="px-3 py-2 text-center text-ink-3">{row.tarih}</td>
-                                            <td className="px-3 py-2 text-center font-black text-c4">{row['Ort. Net']}</td>
-                                            {subjectLabels.map(s => (
-                                                <td key={s} className="px-3 py-2 text-center font-semibold" style={{ color: subjectColors[s] || 'var(--ink-3)' }}>{row[s]}</td>
-                                            ))}
-                                            <td className="px-3 py-2 text-center text-ink-3">{row.katilimci} kişi</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        {/* 05.09: deneme×ders tablosu kaldırıldı — toplu
+                            veri tek genel grafikte (üstteki trend). */}
+
                     </div>
                 ) : (
                     <p className="text-sm text-ink-3 text-center py-6">{activeExamType} türünde henüz deneme yüklenmedi.</p>
                 )
             )}
 
-            {/* ── Öğrenci Karşılaştırması ── */}
-            {activeMetric === 'class' && (
-                ogrenciKiyas.length > 0 ? (
-                    <div>
-                        <p className="text-xs text-ink-3 mb-3">{activeExamType} − öğrenci bazında net ortalaması (dolu) ve en yüksek net (kesikli çerçeve)</p>
-                        <div className="h-64 rounded-2xl p-3 kutu-3b">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={ogrenciKiyas} margin={{ top: 12, right: 8, bottom: 0, left: -12 }}
-                                    barSize={Math.max(18, Math.min(46, 360 / Math.max(ogrenciKiyas.length, 1)))}>
-                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--line)" />
-                                    <XAxis dataKey="ad" axisLine={false} tickLine={false} interval={0} angle={-20} textAnchor="end" height={52}
-                                        tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--ink-2)' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--ink-3)' }} width={34} />
-                                    <RechartsTooltip
-                                        cursor={{ fill: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}
-                                        contentStyle={{ borderRadius: 14, border: '1px solid var(--line)', background: 'var(--surface)', boxShadow: '0 14px 34px -14px rgba(0,0,0,.45)', fontSize: 12, color: 'var(--ink)' }}
-                                        formatter={(v, name) => [`${v} net`, name === 'ortalama' ? 'Ortalama' : 'En Yüksek']}
-                                    />
-                                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                                    <Bar dataKey="ortalama" name="Ortalama" radius={[8, 8, 0, 0]} animationDuration={350}>
-                                        {ogrenciKiyas.map((entry, index) => (
-                                            <Cell key={index} fill={entry.renk} />
-                                        ))}
-                                    </Bar>
-                                    <Bar dataKey="max" name="En Yüksek" radius={[4, 4, 0, 0]} fill="transparent"
-                                        stroke="var(--ink-3)" strokeWidth={1.5} strokeDasharray="3 2" animationDuration={350} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
-                            {ogrenciKiyas.map(d => (
-                                <div key={d.ad} className="rounded-xl p-3 kutu-3b border border-line">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.renk }} />
-                                        <span className="text-xs font-black text-ink-2 truncate">{d.ad}</span>
-                                    </div>
-                                    <div className="text-lg font-black tabular-nums" style={{ color: d.renk }}>{d.ortalama}</div>
-                                    <div className="text-[11px] text-ink-3">ort. • en iyi: {d.max}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-sm text-ink-3 text-center py-6">Bu sınav türünde öğrenci sonucu yok.</p>
-                )
-            )}
-
-            {/* ── Ders Gelişimi ── */}
-            {activeMetric === 'subject' && (
-                dersSonDurum.length > 0 ? (
-                    <div>
-                        <p className="text-xs text-ink-3 mb-3">
-                            {activeExamType} − her dersin sınıf ortalaması (en güçlü → en zayıf) ve ilk denemeye göre değişim. <span className="text-danger font-bold">Kırmızı</span> = gerileyen ders.
-                        </p>
-                        <div className="space-y-2">
-                            {dersSonDurum.map(d => {
-                                const enYuksek = Math.max(...dersSonDurum.map(x => x.son), 1);
-                                const oran = Math.max(6, Math.round(d.son / enYuksek * 100));
-                                return (
-                                    <div key={d.ders} className="flex items-center gap-3 rounded-xl p-2.5 kutu-3b border border-line">
-                                        <span className="w-16 sm:w-20 shrink-0 text-xs font-black text-ink truncate">{d.ders}</span>
-                                        <div className="flex-1 h-3.5 rounded-full overflow-hidden"
-                                            style={{ background: 'var(--surface-3)', boxShadow: 'inset 0 1px 2px rgba(var(--cast), .22)' }}>
-                                            <div className="h-full rounded-full transition-all"
-                                                style={{ width: `${oran}%`, background: `linear-gradient(90deg, color-mix(in srgb, ${d.renk} 65%, transparent), ${d.renk})`, boxShadow: `0 0 8px -1px ${d.renk}` }} />
-                                        </div>
-                                        <span className="w-11 shrink-0 text-right text-sm font-black tabular-nums" style={{ color: d.renk }}>{d.son}</span>
-                                        <span className="w-14 shrink-0 text-right text-[11px] font-black"
-                                            style={{ color: d.delta > 0 ? 'var(--ok)' : d.delta < 0 ? 'var(--danger)' : 'var(--ink-3)' }}>
-                                            {d.delta == null ? '—' : d.delta > 0 ? `▲+${d.delta}` : d.delta < 0 ? `▼${d.delta}` : '—'}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        {/* Tablo — deneme × ders, önceki denemeye göre değişimle */}
-                        <div className="mt-3 overflow-x-auto">
-                            <table className="min-w-full text-xs">
-                                <thead><tr className="bg-surface-2 border-b border-line">
-                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deneme</th>
-                                    <th className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-ink-3">Tarih</th>
-                                    {subjectLabels.map(s => (
-                                        <th key={s} className="px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: subjectColors[s] || '#6b7280' }}>{s}</th>
-                                    ))}
-                                </tr></thead>
-                                <tbody className="divide-y divide-line-subtle">
-                                    {trendData.map((row, i, arr) => (
-                                        <tr key={i} className="hover:bg-surface-2">
-                                            <td className="px-3 py-2 font-medium text-ink-2 max-w-[140px] truncate">{row.name}</td>
-                                            <td className="px-3 py-2 text-center text-ink-3">{row.tarih}</td>
-                                            {subjectLabels.map(s => {
-                                                const prev = i > 0 ? arr[i - 1][s] : null;
-                                                const delta = prev !== null ? row[s] - prev : null;
-                                                return (
-                                                    <td key={s} className="px-3 py-2 text-center">
-                                                        <span className="font-black" style={{ color: subjectColors[s] || '#6b7280' }}>{row[s]}</span>
-                                                        {delta !== null && delta !== 0 && (
-                                                            <span className={`ml-1 text-[10px] font-bold ${delta > 0 ? 'text-ok' : 'text-danger'}`}>
-                                                                {delta > 0 ? `+${delta.toFixed(1)}` : delta.toFixed(1)}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-sm text-ink-3 text-center py-6">Ders verisi bulunamadı.</p>
-                )
-            )}
+            {/* 05.09 (koç talimatı): "Öğrenci Karşılaştırması" ve "Ders
+                Gelişimi" toplu blokları KALDIRILDI — sınıf modunda tek
+                genel grafik (Deneme Trendi) kalır. */}
 
             {/* ── Öğrenci Bazında ── */}
             {activeMetric === 'student' && (

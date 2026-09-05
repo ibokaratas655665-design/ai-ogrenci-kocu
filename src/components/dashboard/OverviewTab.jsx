@@ -234,7 +234,7 @@ const RiskBadge = ({ status }) => {
     );
 };
 
-export default function OverviewTab({ students, navigate, setToast, onEdit, onDelete, onAssignTask, onSendMessage, onGoToRiskTab, onClearAll, onUploadExcel, onWhatsApp }) {
+export default function OverviewTab({ students, navigate, setToast, onEdit, onDelete, onYeniOgrenci, onAssignTask, onSendMessage, onGoToRiskTab, onClearAll, onUploadExcel, onWhatsApp }) {
 
     const [searchQuery, setSearchQuery] = useState('');
     // Açık ölçüt penceresi: { student, olcut }
@@ -488,8 +488,14 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
                         <h3 className="text-xl font-black text-ink syne uppercase">Öğrenci <em className="not-italic text-brand">Portfolyo</em> Yönetimi</h3>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        {/* Görev atama ve toplu mesaj daha önce hiçbir butona
-                            bağlı değildi; panele bu ekrandan erişilemiyordu. */}
+                        {/* 05.09: sekmelerin üstündeki eylem şeridi kaldırıldı —
+                            "yeni öğrenci" dahil bütün liste işlemleri artık
+                            yalnızca bu araç çubuğunda. */}
+                        {onYeniOgrenci && (
+                            <button onClick={onYeniOgrenci} className="b b-fill b-brand">
+                                <Plus size={15} /> ÖĞRENCİ EKLE
+                            </button>
+                        )}
                         <button onClick={onAssignTask} className="b b-fill b-accent">
                             <ClipboardList size={15} /> GÖREV ATA
                         </button>
