@@ -46,8 +46,13 @@ const dataUriBaytlari = (dataUri) => {
 };
 
 /**
- * PDF'i sayfa sayfa tuvale çizer. iframe yerine bunun sebebi: data-URI
- * PDF'ler mobil WebView'da iframe içinde AÇILMAZ; pdfjs her yerde çalışır.
+ * PDF'i sayfa sayfa tuvale çizer. iframe yerine bunun sebebi: PDF'i
+ * iframe'de göstermek her yerde çalışmaz — data-URI PDF'ler mobil
+ * WebView'da açılmaz, Android Chrome hiçbir PDF'i iframe içinde
+ * çizmez, masaüstünde de adres yüklenemezse Chrome'un kırık-dosya
+ * simgesi kalır (05.09'da canlıda ölçüldü). pdfjs her yerde çalışır.
+ *
+ * `src`: data-URI · https adresi · Uint8Array (önceden indirilmiş bayt)
  */
 function KitapcikGoruntuleyici({ src, className }) {
     const kapRef = useRef(null);
@@ -62,7 +67,9 @@ function KitapcikGoruntuleyici({ src, className }) {
         (async () => {
             try {
                 const pdfjs = await pdfjsAl();
-                const kaynak = String(src).startsWith('data:') ? { data: dataUriBaytlari(src) } : src;
+                const kaynak = src instanceof Uint8Array ? { data: src }
+                    : String(src).startsWith('data:') ? { data: dataUriBaytlari(src) }
+                        : { url: src };
                 const belge = await pdfjs.getDocument(kaynak).promise;
                 if (iptal) return;
                 const genislik = kap.clientWidth || 360;
@@ -110,6 +117,89 @@ function KitapcikGoruntuleyici({ src, className }) {
     );
 }
 
+/**
+ * Kitapçık adresini KATMANLI çözer (05.09 — canlıda öğrencide kırık
+ * kitapçık ölçüldü: iframe'e verilen adres yüklenemeyince Chrome'un
+ * kırık-dosya simgesi kalıyordu, kimse sebebini göremiyordu):
+ *
+ *   1) `pdfUrl` GERÇEKTEN indirilerek sınanır; baytlar pdfjs'e verilir
+ *   2) indirilemezse `pdfYol`dan TAZE bağlantı istenir — indirme
+ *      jetonu yenilenmiş/dosya taşınmış olabilir
+ *   3) o da olmazsa kayda gömülü `pdfData`
+ *   4) hiçbiri yoksa/olmazsa AÇIKLAYICI hata (kırık simge değil)
+ *
+ * Çözülen adres "Tam ekran" düğmesi için yukarı bildirilir.
+ */
+function KitapcikPaneli({ kaynak, onAdres }) {
+    const [icerik, setIcerik] = useState({ durum: 'yukleniyor' });
+
+    useEffect(() => {
+        let iptal = false;
+        setIcerik({ durum: 'yukleniyor' });
+        (async () => {
+            const indir = async (url) => {
+                const yanit = await fetch(url);
+                if (!yanit.ok) throw new Error(`HTTP ${yanit.status}`);
+                return new Uint8Array(await yanit.arrayBuffer());
+            };
+            try {
+                if (kaynak?.pdfUrl) {
+                    try {
+                        const bayt = await indir(kaynak.pdfUrl);
+                        if (!iptal) { onAdres?.(kaynak.pdfUrl); setIcerik({ durum: 'hazir', src: bayt }); }
+                        return;
+                    } catch { /* kayıtlı adres ölmüş — taze bağlantı denenir */ }
+                }
+                if (kaynak?.pdfYol) {
+                    // pdfUrl bilerek verilmiyor: verilirse aynı ölü adres geri döner
+                    const taze = await denemeMotoru.pdfBaglantiAl({ pdfYol: kaynak.pdfYol }, 'soru');
+                    if (taze.basarili && String(taze.adres).startsWith('http')) {
+                        try {
+                            const bayt = await indir(taze.adres);
+                            if (!iptal) { onAdres?.(taze.adres); setIcerik({ durum: 'hazir', src: bayt }); }
+                            return;
+                        } catch { /* taze adres de inmedi */ }
+                    }
+                }
+                if (kaynak?.pdfData) {
+                    if (!iptal) { onAdres?.(kaynak.pdfData); setIcerik({ durum: 'hazir', src: kaynak.pdfData }); }
+                    return;
+                }
+                if (!iptal) setIcerik({ durum: 'hata' });
+            } catch {
+                if (!iptal) setIcerik({ durum: 'hata' });
+            }
+        })();
+        return () => { iptal = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kaynak?.id]);
+
+    if (icerik.durum === 'yukleniyor') {
+        return (
+            <div className="flex items-center justify-center gap-2 py-10 text-ink-3 text-sm">
+                <Loader2 size={16} className="animate-spin" /> Kitapçık hazırlanıyor…
+            </div>
+        );
+    }
+    if (icerik.durum === 'hata') {
+        return (
+            <div className="py-10 px-4 text-center space-y-1.5">
+                <AlertTriangle size={20} className="text-danger mx-auto" />
+                <p className="text-sm font-bold text-danger m-0">Soru kitapçığına ulaşılamadı.</p>
+                <p className="text-xs text-ink-3 m-0">
+                    Dosya silinmiş ya da bağlantısı geçersiz olabilir — koçuna söyle,
+                    denemeyi Sınav Oluştur'dan kitapçığı yeniden yükleyerek kaydetsin.
+                </p>
+            </div>
+        );
+    }
+    return (
+        <div className="overflow-y-auto rounded-lg border border-line bg-white" style={{ maxHeight: '65vh' }}>
+            <KitapcikGoruntuleyici src={icerik.src} className="p-1" />
+        </div>
+    );
+}
+
 const DenemeCoz = ({ user, setToast }) => {
     const studentId = user?.id;
     const [tetik, setTetik] = useState(0);
@@ -135,6 +225,8 @@ const DenemeCoz = ({ user, setToast }) => {
     const [sonuc, setSonuc] = useState(null);
     const [cizimAcik, setCizimAcik] = useState(false);
     const [kitapcikAcik, setKitapcikAcik] = useState(true);
+    /* KitapcikPaneli'nin ÇALIŞTIĞINI doğruladığı adres — "Tam ekran" bunu açar */
+    const [tamEkranAdres, setTamEkranAdres] = useState(null);
 
     // Davranış ölçümleri — render'a girmez, ref'te birikir
     const sureler = useRef({});
@@ -178,6 +270,7 @@ const DenemeCoz = ({ user, setToast }) => {
         ilkDers.current = null;
         soruBaslangici.current = Date.now();
         setCizimAcik(false);
+        setTamEkranAdres(null);   // adres yeni kaynağa göre yeniden çözülür
     };
 
     const bitir = () => {
@@ -311,7 +404,10 @@ const DenemeCoz = ({ user, setToast }) => {
         const soru = kaynak.sorular[soruSira];
         const isaretli = Object.keys(cevaplar).filter((k) => cevaplar[k]).length;
         const sonSoru = soruSira === kaynak.sorular.length - 1;
-        const kitapcikAdres = kaynak.pdfUrl || kaynak.pdfData;
+        /* Kitapçık VAR mı (buton/panel gösterimi) — hangi adresin
+           çalıştığına KitapcikPaneli karar verir ve buraya bildirir. */
+        const kitapcikVar = Boolean(kaynak.pdfUrl || kaynak.pdfData || kaynak.pdfYol);
+        const kitapcikAdres = tamEkranAdres || kaynak.pdfUrl || kaynak.pdfData;
 
         return (
             <div className="space-y-4 max-w-3xl mx-auto">
@@ -323,16 +419,18 @@ const DenemeCoz = ({ user, setToast }) => {
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        {kitapcikAdres && (
+                        {kitapcikVar && (
                             <>
                                 <button onClick={() => setKitapcikAcik((a) => !a)}
                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition ${kitapcikAcik ? 'bg-danger text-white' : 'bg-danger-soft text-danger'}`}>
                                     <FileText size={13} /> {kitapcikAcik ? 'Kitapçığı Gizle' : 'Kitapçık'}
                                 </button>
-                                <button onClick={() => window.open(kitapcikAdres, '_blank', 'noopener')} title="Tam ekran aç"
-                                    className="px-2 py-1.5 rounded-lg bg-surface-2 text-ink-2 border border-line text-xs font-bold inline-flex items-center gap-1">
-                                    <Maximize2 size={13} />
-                                </button>
+                                {kitapcikAdres && (
+                                    <button onClick={() => window.open(kitapcikAdres, '_blank', 'noopener')} title="Tam ekran aç"
+                                        className="px-2 py-1.5 rounded-lg bg-surface-2 text-ink-2 border border-line text-xs font-bold inline-flex items-center gap-1">
+                                        <Maximize2 size={13} />
+                                    </button>
+                                )}
                             </>
                         )}
                         <button onClick={() => setCizimAcik((a) => !a)}
@@ -343,16 +441,14 @@ const DenemeCoz = ({ user, setToast }) => {
                     </div>
                 </div>
 
-                {kitapcikAdres && kitapcikAcik && (
+                {kitapcikVar && kitapcikAcik && (
                     <div className="card p-1.5">
-                        {String(kitapcikAdres).startsWith('data:') ? (
-                            <div className="overflow-y-auto rounded-lg border border-line bg-white" style={{ maxHeight: '52vh' }}>
-                                <KitapcikGoruntuleyici src={kitapcikAdres} className="p-1" />
-                            </div>
-                        ) : (
-                            <iframe src={kitapcikAdres} title="Soru Kitapçığı"
-                                className="w-full rounded-lg border border-line bg-white" style={{ height: '70vh' }} />
-                        )}
+                        {/* 05.09: iframe KALDIRILDI — adres ölüyse Chrome'un
+                            kırık-dosya simgesi kalıyor, Android Chrome ise
+                            PDF'i iframe'de hiç çizmiyordu. Panel adresi
+                            gerçekten indirip pdfjs ile çizer; ölü adresi
+                            Storage'dan tazeler, olmazsa gömülü kopyaya düşer. */}
+                        <KitapcikPaneli kaynak={kaynak} onAdres={setTamEkranAdres} />
                         <p className="tip-mini text-ink-3 text-center mt-1">
                             Soruları yukarıda oku (kaydır), cevabını aşağıda işaretle. ⤢ ile tam ekran açabilirsin.
                         </p>
