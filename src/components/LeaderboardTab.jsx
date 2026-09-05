@@ -64,8 +64,9 @@ const LeaderboardTab = ({ students }) => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        /* 05.09: kokpit zinciri (canlı 04.09) — başlık sabit, gövde kayar */
+        <div className="space-y-6 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
+            <div className="xl:shrink-0 flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-ink flex items-center gap-3">
                     <Trophy className="text-warn" size={32} />
                     Liderlik Tablosu
@@ -81,6 +82,7 @@ const LeaderboardTab = ({ students }) => {
                 </select>
             </div>
 
+            <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde space-y-6 xl:pr-1.5">
             {/* Top 3 Podium */}
             {rankedStudents.length >= 3 && (
                 <div className="grid grid-cols-3 gap-4 mb-8">
@@ -164,6 +166,7 @@ const LeaderboardTab = ({ students }) => {
                     <p className="text-sm text-ink-3 mt-2">Öğrenciler sınav girip görev tamamladıkça sıralama oluşacak</p>
                 </div>
             )}
+            </div>
         </div>
     );
 };

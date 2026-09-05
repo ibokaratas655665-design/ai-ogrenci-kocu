@@ -97,7 +97,9 @@ export default function CoachInbox({ students = [], onOgrenciAc }) {
     }
 
     return (
-        <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden" style={{ height: '620px' }}>
+        /* 05.09: sabit 620px kokpiti kırıyordu — xl'de zincire katılıp
+           kalan yüksekliği doldurur (canlı 04.09 ile birebir). */
+        <div className="bg-surface rounded-2xl border border-line shadow-sm overflow-hidden h-[620px] xl:h-auto xl:flex-1 xl:min-h-0">
             <div className="flex h-full">
                 {/* ── SOL: ÖĞRENCİ LİSTESİ ───────────────────────── */}
                 <div className="w-full sm:w-72 shrink-0 border-r border-line flex flex-col bg-surface-2">

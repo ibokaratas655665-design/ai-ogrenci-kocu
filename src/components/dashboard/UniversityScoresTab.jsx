@@ -285,10 +285,12 @@ const UniversityScoresTab = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    /* 05.09: kokpit zinciri (canlı 04.09) — başlık/istatistik/arama sabit,
+       bölüm listeleri kendi gövdesinde kayar. */
+    <div className="space-y-6 animate-fade-in xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
       {toast && <div className="fixed top-8 left-1/2 -translate-x-1/2 z-notify px-6 py-3 rounded-full bg-surface border border-line text-ink text-sm font-bold flex items-center gap-2 shadow-2xl"><CheckCircle size={16} className="text-ok"/>{toast}</div>}
 
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-surface/40 backdrop-blur-xl border border-line p-8 rounded-[2rem]">
+      <div className="xl:shrink-0 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-surface/40 backdrop-blur-xl border border-line p-8 rounded-[2rem]">
         <div className="min-w-0">
           {/* flex-wrap ŞART: sarımsız flex üç sözcüğü tek satıra kilitleyip
               375px'te sayfayı ~490px yana taşırıyordu (ölçüldü). */}
@@ -307,7 +309,7 @@ const UniversityScoresTab = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="xl:shrink-0 grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatBox icon={BookOpen} label="Toplam" value={stats.total} color="from-brand/20 to-brand/5"/>
         <StatBox icon={GraduationCap} label="AYT (4 Yıllık)" value={stats.ayt} color="from-blue-500/20 to-blue-500/5"/>
         <StatBox icon={Award} label="TYT (2 Yıllık)" value={stats.tyt} color="from-emerald-500/20 to-emerald-500/5"/>
@@ -315,15 +317,17 @@ const UniversityScoresTab = () => {
         <StatBox icon={Rocket} label="Gelecek" value={stats.gelecek} color="from-purple-500/20 to-purple-500/5"/>
       </div>
 
-      <div className="relative"><Search size={16} className="absolute left-4 top-3.5 text-ink-3"/>
+      <div className="xl:shrink-0 relative"><Search size={16} className="absolute left-4 top-3.5 text-ink-3"/>
         <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Bölüm, üniversite veya şehir ara..."
           className="w-full pl-11 pr-4 py-3 bg-surface/40 border border-line rounded-2xl text-sm text-ink placeholder-white/20 outline-none focus:border-brand/40 transition"/>
       </div>
 
+      <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde space-y-6 xl:pr-1.5">
       <Section title="AYT — 4 Yıllık Bölümler" subtitle={`En çok tercih edilen ${allData.ayt.length} lisans programı`} color="bg-info" data={allData.ayt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
       <Section title="TYT — 2 Yıllık Bölümler" subtitle={`En çok tercih edilen ${allData.tyt.length} ön lisans programı`} color="bg-ok" data={allData.tyt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
       <Section title="YDT — Yabancı Dil Bölümleri" subtitle={`En çok tercih edilen ${allData.ydt.length} dil programı`} color="bg-danger" data={allData.ydt} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
       <Section title="Geleceğin Bölümleri" subtitle={`Yükselen trendler — ${allData.gelecek.length} yeni nesil program`} color="bg-c4" data={allData.gelecek} search={search} onEdit={handleEdit} onDelete={handleDelete}/>
+      </div>
 
       {showModal && <EditModal item={editItem} section={editSection} onSave={handleSave} onClose={()=>{setShowModal(false);setEditItem(null)}} onSectionChange={setEditSection}/>}
     </div>

@@ -8,6 +8,7 @@ import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 import BugunEkrani from '../components/student/BugunEkrani';
 import GelisimPanosu from '../components/student/GelisimPanosu';
 import { cn } from '../lib/cn';
+import { useDokunmaGecisi } from '../lib/dokunmaGecisi';
 import { Sayac } from '../components/ui/Badge';
 import { BolumHataSiniri } from '../components/ui';
 import { bildir } from '../services/uiGeriBildirim';
@@ -226,6 +227,28 @@ const StudentDashboard = () => {
         (HUB_ESLEME[urlSekme]?.[0] === 'calismalarim' ? HUB_ESLEME[urlSekme][1] : 'gunluk'));
     const [gelisimSegment, setGelisimSegment] = useState(() =>
         (HUB_ESLEME[urlSekme]?.[0] === 'gelisimim' ? HUB_ESLEME[urlSekme][1] : 'genel'));
+
+    /* 👆 Telefonda içerik üzerinde sola/sağa kaydırma, açık merkezin
+       segmentleri arasında gezdirir (canlı 04.09). Eleman state'te
+       tutulur; koşullu render'da ref.current effect tetiklemez. */
+    const CALIS_BOLUMLERI = [
+        { id: 'gunluk', baslik: 'Günlük Kayıt' },
+        { id: 'hata', baslik: 'Hata Defteri' },
+        { id: 'deneme', baslik: 'Deneme Analizi' },
+    ];
+    const GELISIM_BOLUMLERI = [
+        { id: 'genel', baslik: 'Genel' },
+        { id: 'netlerim', baslik: 'Netlerim' },
+        { id: 'konularim', baslik: 'Konularım' },
+        { id: 'rozetlerim', baslik: 'Rozetlerim' },
+    ];
+    const [kaydirmaEl, setKaydirmaEl] = useState(null);
+    const kaydirmaAyar = activeTab === 'calismalarim'
+        ? { bolumler: CALIS_BOLUMLERI, aktif: calisSegment, onDegis: setCalisSegment }
+        : activeTab === 'gelisimim'
+            ? { bolumler: GELISIM_BOLUMLERI, aktif: gelisimSegment, onDegis: setGelisimSegment }
+            : { bolumler: [], aktif: null, onDegis: undefined };
+    useDokunmaGecisi(kaydirmaEl, kaydirmaAyar.bolumler, kaydirmaAyar.aktif, kaydirmaAyar.onDegis, kaydirmaAyar.bolumler.length > 0);
 
     /** Tek geçiş noktası: eski kimlikler merkez+segmente çevrilir. */
     const sekmeyeGit = (id) => {
@@ -1069,8 +1092,12 @@ const StudentDashboard = () => {
     /* 04.09 kokpit: masaüstünde (xl) sayfa kilitli, içerik main içinde
        kayar; telefonda doğal sayfa kaydırması (kilit mobilde içerik
        kırpıyordu — bkz. styles/surface.css §14). */
+    /* 05.09: köke `overflow-x-hidden` EKLENMEZ — overflow-x tek başına
+       hidden olunca overflow-y otomatik 'auto' hesaplanır ve sayfa
+       kaydırması gövdeden köke taşınır; sticky başlık ve kokpit
+       kilidi bozulur (canlı 04.09'da da yok). */
     return (
-        <div className="min-h-[100dvh] xl:h-[100dvh] bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand overflow-x-hidden xl:overflow-hidden flex flex-col">
+        <div className="min-h-[100dvh] xl:h-[100dvh] bg-page text-ink font-['Plus_Jakarta_Sans'] selection:bg-brand/30 selection:text-brand xl:overflow-hidden flex flex-col">
             {/* Zemin filigranı: içerik kartları üstünü örter, boş zeminde
                 marka görünür — her tabda (bkz. ui/MarkaFiligran) */}
             <MarkaFiligran />
@@ -1247,7 +1274,7 @@ const StudentDashboard = () => {
                 Genişlik ve iç boşluk koç paneliyle AYNI ölçüde: iki panel
                 aynı ürünün parçası gibi dursun. Boşluk kırılma noktasıyla
                 birlikte büyür (16 → 24 → 32 piksel). */}
-            <main className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde flex flex-col max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8 icerik-gecis pb-24">
+            <main ref={setKaydirmaEl} className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde flex flex-col max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8 icerik-gecis pb-24">
                 {/* Sekme çökerse yalnızca içerik alanı düşer; başlık ve
                     alt gezinme çalışmaya devam eder. key={activeTab}: sekme
                     değişince sınır sıfırlanır, hatalı sekmede takılı kalmaz. */}
@@ -1504,8 +1531,9 @@ const StudentDashboard = () => {
 
                 {/* ═══════════ GELİŞİMİM MERKEZİ — başlık + segmentler ═══════ */}
                 {activeTab === 'gelisimim' && (
-                    <div className="icerik-gecis space-y-5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    /* 05.09: kokpit zinciri (canlı 04.09) */
+                    <div className="icerik-gecis space-y-5 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col">
+                        <div className="xl:shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
                                 <h1 className="text-2xl sm:text-3xl font-black text-ink syne tracking-tight uppercase">Gelişimim</h1>
                                 <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİMİN GERÇEK VERİLERLE TAKİPTE</p>
@@ -1540,8 +1568,8 @@ const StudentDashboard = () => {
                                Solda GELİŞİMİN KENDİSİ (ölçümler, aktivite eğrisi, deneme
                                listesi), sağda DURUM ÖZETİ (çoklu halka, çalışma düzeni).
                                Telefonda alt alta iner. */
-                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start">
-                                <div className="xl:col-span-8 min-w-0 space-y-4">
+                            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start xl:items-stretch xl:flex-1 xl:min-h-0 xl:overflow-hidden xl:[grid-template-rows:minmax(0,1fr)]">
+                                <div className="xl:col-span-8 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
                 {/* ÖLÇÜM ŞERİDİ.
                                     Dört degrade renkli kart vardı: her biri farklı
                                     bir renge boyanmıştı (mor, turuncu, yeşil, mavi)
@@ -1660,7 +1688,7 @@ const StudentDashboard = () => {
                                 </div>
 
                                 {/* ═══ SAĞ: DURUM ÖZETİ ═══ */}
-                                <aside className="xl:col-span-4 min-w-0 space-y-4">
+                                <aside className="xl:col-span-4 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
                                     {/* ÇOKLU HALKA — referanstaki "My Progress".
                                         Üç oran BAĞIMSIZ; toplamları anlamsızdır, bu yüzden
                                         dilim değil iç içe halka. Veri yoksa halka çizilmez,
@@ -1880,12 +1908,15 @@ const StudentDashboard = () => {
                 )}
 
                 {activeTab === 'tests' && (
-                    <div className="icerik-gecis space-y-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">TESTLER & REHBERLİK</h1>
+                    /* 05.09: kokpit zinciri bu sekmeye inmiyordu — kart main
+                       içinde taşınca xl'de erişilmez kalıyordu. Sınıflar canlı
+                       04.09 paketiyle birebir: başlık sabit, kart kayar. */
+                    <div className="icerik-gecis space-y-8 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
+                        <div className="xl:shrink-0">
+                            <h1 className="text-3xl font-bold text-ink syne tracking-tight uppercase">TESTLER & REHBERLİK</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">GELİŞİM ANALİZİ VE ENVANTERLER</p>
                         </div>
-                        <div className="premium-card p-1 sm:p-2 border-line">
+                        <div className="premium-card p-1 sm:p-2 border-line xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde">
                             <StudentTestsTab user={user} />
                         </div>
                     </div>
@@ -2300,12 +2331,13 @@ const StudentDashboard = () => {
 
                 {/* ═══════════════ DEĞERLENDİRME (Öz-değerlendirme) ═══════════════ */}
                 {activeTab === 'assessment' && (
-                    <div className="icerik-gecis space-y-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-ink syne tracking-tight uppercase">ÖZ-DEĞERLENDİRME</h1>
+                    /* 05.09: kokpit zinciri — bkz. 'tests' sekmesindeki not. */
+                    <div className="icerik-gecis space-y-8 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
+                        <div className="xl:shrink-0">
+                            <h1 className="text-3xl font-bold text-ink syne tracking-tight uppercase">ÖZ-DEĞERLENDİRME</h1>
                             <p className="text-brand text-[10px] font-black tracking-[0.2em] mt-1 uppercase">HAFTALIK GELİŞİM VE DURUM ANALİZİ</p>
                         </div>
-                        <div className="premium-card p-4 sm:p-8 border-line">
+                        <div className="premium-card p-4 sm:p-8 border-line xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde">
                             {/* ⚠️ Bileşenin prop adları userId/userName —
                                 studentId geçilince kimlik undefined kalıyor,
                                 kayıt `..._undefined` anahtarına düşüyor ve

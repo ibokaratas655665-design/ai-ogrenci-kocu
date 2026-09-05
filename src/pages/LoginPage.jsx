@@ -178,8 +178,21 @@ const LoginPage = () => {
      * Giriş sayfasına gelmek demodan çıkmak demektir: kullanıcı demo
      * içindeyken çıkış yapmış ya da sekmeyi yenilemiş olabilir. Gerçek
      * veri burada geri yüklenir, yoksa demo verisi kalıcı sanılır.
+     *
+     * ⚠️ YARIŞ (05.09, canlıda ölçüldü): demoBaslat hash'i değiştirip
+     * reload çağırır; yavaş ağda reload gelmeden SPA /coach'a yönlenir,
+     * React'te oturum henüz yok diye /login'e geri seker ve BU temizlik
+     * daha demo açılmadan yedeği geri yükleyip demoyu siliyordu.
+     * demoBaslat geçiş bayrağı bırakır; bayrak varsa bir kereliğine
+     * temizlik atlanır (gerçek çıkışta AuthContext.logout zaten temizler).
      */
     useEffect(() => {
+        try {
+            if (sessionStorage.getItem('demo_gecis')) {
+                sessionStorage.removeItem('demo_gecis');
+                return;
+            }
+        } catch { /* sessionStorage kapalıysa normal akış */ }
         try { demoyuTemizle(); } catch { /* yedek yoksa yapacak bir şey yok */ }
     }, []);
 
@@ -407,6 +420,9 @@ const LoginPage = () => {
         const hedef = demoRol === 'coach' ? '/coach/dashboard'
             : demoRol === 'student' ? '/student/dashboard'
                 : `/parent/${DEMO_KULLANICI.student.id}`;
+        /* Reload gelmeden SPA yönlenirse LoginPage'in demodan-çık
+           temizliği demoyu siler (yarış) — bayrak onu bir kez susturur. */
+        try { sessionStorage.setItem('demo_gecis', '1'); } catch { /* ignore */ }
         window.location.hash = hedef;
         window.location.reload();
     };

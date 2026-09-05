@@ -1725,12 +1725,15 @@ const ProgramBuilderContent = ({ studentId, studentName, onClose }) => {
                                     Bölümler öğrencinin ALANINDAN gelir — Sözel
                                     öğrencisine AYT Fen konuları düşmez. */}
                                 <p className="text-[9px] font-black uppercase tracking-widest text-ink-3 px-0.5">Sınav Türü</p>
-                                <div className="flex gap-1 bg-surface-3 p-1 rounded-lg flex-wrap">
+                                {/* 05.09 (canlı eşleme): sarma yerine yatay
+                                    kaydırmalı şerit — çok bölümlü alanlarda
+                                    haplar üst üste yığılmıyor. */}
+                                <div className="flex gap-1 bg-surface-3 p-1 rounded-lg overflow-x-auto tek-ekran-govde">
                                     {bolumler.map(b => (
                                         <button
                                             key={b.id}
                                             onClick={() => { setSelectedExam(b.id); setSelectedSubject(''); }}
-                                            className={`flex-1 py-1.5 px-2 text-[10px] font-bold rounded-md transition whitespace-nowrap ${selectedExam === b.id ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink'}`}
+                                            className={`shrink-0 py-1.5 px-3 text-[10px] font-bold rounded-md transition whitespace-nowrap ${selectedExam === b.id ? 'bg-surface text-brand shadow-sm' : 'text-ink-2 hover:text-ink'}`}
                                         >
                                             {b.ad}
                                         </button>

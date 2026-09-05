@@ -111,9 +111,10 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
     });
 
     return (
-        <div className="space-y-5">
+        /* 05.09: kokpit zinciri (canlı 04.09) — başlık sabit, takvim kayar */
+        <div className="space-y-5 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="xl:shrink-0 flex items-center justify-between">
                 <h3 className="font-bold text-ink flex items-center gap-2">
                     <Calendar size={18} className="text-brand" />
                     {bolum === 'pdr' ? 'Rehberlik Görüşme Takvimi' : 'Koçluk Randevu Takvimi'}
@@ -126,6 +127,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                 </button>
             </div>
 
+            <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde space-y-5 xl:pr-1.5">
             {/* Ölçüm şeridi — Tasarım 2.0 kalıbı: bu haftanın özeti */}
             <div className="grid grid-cols-3 gap-3">
                 {(() => {
@@ -225,6 +227,7 @@ export const CoachAppointmentManager = ({ coachId, coachName, students, bolum = 
                     ))}
                 </div>
             )}
+            </div>
 
             {/* Slot Ekleme Modal */}
             {showAddModal && (

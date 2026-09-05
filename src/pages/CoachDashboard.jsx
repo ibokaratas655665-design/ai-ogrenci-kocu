@@ -502,9 +502,11 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
     };
 
     return (
-        <div className="space-y-6">
+        /* 05.09: kokpit zinciri (canlı 04.09) — istatistik şeridi sabit,
+           liste + önizleme kendi gövdesinde kayar. */
+        <div className="space-y-6 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
             {/* İstatistik Özeti */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="xl:shrink-0 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                     { label: 'Toplam Öğrenci', value: students.length, icon: Users, acc: 'var(--brand)' },
                     { label: 'Program Var', value: withProgram.length, icon: CheckCircle, acc: 'var(--ok)' },
@@ -530,6 +532,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                 ))}
             </div>
 
+            <div className="xl:flex-1 xl:min-h-0 xl:overflow-y-auto tek-ekran-govde space-y-6 xl:pr-1.5">
             {/* Öğrenci Listesi */}
             <div className="bg-surface rounded-2xl shadow-sm border border-line overflow-hidden">
                 <div className="p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-2/50">
@@ -801,6 +804,7 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                         );
                     })
                 ))}
+            </div>
             </div>
         </div>
     );
@@ -3289,7 +3293,12 @@ const CoachDashboard = () => {
             {/* ══ 23.08 TASARIM: masaüstünde lacivert kenar çubuğu ══════
                 Üst sekme şeridi kaldırıldı; gezinme referans tasarımdaki
                 gibi solda. Telefonda alt çubuk + Menü sayfası değişmedi. */}
-            <div className="lg:flex lg:items-start">
+            {/* 05.09: kokpit zinciri kenar çubuğu düzeninden geçmeli —
+                `lg:items-start` + sınıfsız sarmalayıcı main'i içerik
+                yüksekliğine (48px) çökertiyordu; xl'de içerik görünmez
+                kalıyor, sayfa da kilitli olduğu için kaydırılamıyordu.
+                Sınıflar canlı 04.09 paketiyle birebir. */}
+            <div className="flex flex-col lg:flex-row lg:items-stretch xl:flex-1 xl:min-h-0 xl:overflow-hidden">
                 <aside className="koc-yan" aria-label="Koç gezinmesi">
                     <nav className="flex-1">
                         {bolumGruplari.map((group) => {
@@ -3333,7 +3342,7 @@ const CoachDashboard = () => {
                     </div>
                 </aside>
 
-                <div className="flex-1 min-w-0">
+                <div className="xl:flex-1 min-w-0 xl:min-h-0 flex flex-col xl:overflow-hidden">
 
             {/* ── ACTION BAR ───────────────────────────────────────────── */}
             {/* Genel Bakış'ta eylem şeridi gizli; kabın dolgusu da onunla
@@ -3477,7 +3486,8 @@ const CoachDashboard = () => {
                         )}
                         {activeTab === 'programs' && <ProgramsTab students={students} setToast={setToast} onOpenProgramBuilder={() => { setSelectedStudentForProgram(null); setIsProgramBuilderOpen(true); }} onOpenProgramBuilderForStudent={(student) => { setSelectedStudentForProgram(student); setIsProgramBuilderOpen(true); }} />}
                         {activeTab === 'exams' && (
-                            <div className="space-y-8">
+                            /* 05.09: kokpit zinciri sekmeye inmeli (canlı 04.09) */
+                            <div className="space-y-8 xl:space-y-0 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
                                 <AdvancedExamsTab students={students} setToast={setToast} onOpenProgramBuilder={() => setIsProgramBuilderOpen(true)} />
                             </div>
                         )}

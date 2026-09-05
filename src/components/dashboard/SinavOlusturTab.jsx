@@ -213,7 +213,7 @@ const SinavOlusturTab = ({ user, students = [], setToast }) => {
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 xl:flex-1 xl:min-h-0 xl:overflow-hidden xl:items-stretch">
                 {/* ── SOL: tanım formu ── */}
-                <div className="xl:col-span-7 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5">
+                <div className="xl:col-span-7 min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
 
                     <div className="card p-4 sm:p-5 space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -424,7 +424,7 @@ const SinavOlusturTab = ({ user, students = [], setToast }) => {
                 </div>
 
                 {/* ── SAĞ: oluşturulan denemeler ── */}
-                <aside className="xl:col-span-5 min-w-0 space-y-3 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5">
+                <aside className="xl:col-span-5 min-w-0 space-y-3 xl:min-h-0 xl:overflow-y-auto xl:pr-1.5 tek-ekran-govde">
                     <p className="tip-mini font-black uppercase tracking-wider text-ink-3">Oluşturulan Denemeler ({kaynaklar.length})</p>
                     {kaynaklar.length === 0 ? (
                         <div className="card p-6 text-center">
@@ -501,7 +501,7 @@ const SinavOlusturTab = ({ user, students = [], setToast }) => {
                             <h3 className="tip-h4 m-0">"{atamaKaynagi.ad}" — Öğrenci Seç</h3>
                             <button onClick={() => setAtamaKaynagi(null)} className="p-1.5 rounded-lg hover:bg-surface-2"><X size={16} /></button>
                         </div>
-                        <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
+                        <div className="max-h-64 overflow-y-auto tek-ekran-govde space-y-1.5 pr-1">
                             {students.length === 0 ? (
                                 <p className="tip-small text-ink-3">Önce öğrenci ekleyin.</p>
                             ) : students.map((ogr) => {
