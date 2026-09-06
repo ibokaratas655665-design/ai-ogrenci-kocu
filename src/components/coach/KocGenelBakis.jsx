@@ -499,6 +499,20 @@ export default function KocGenelBakis({ students = [], user, gorevler = [], onOg
 
     return (
         <div className="gb-kok space-y-4 xl:space-y-3 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col xl:overflow-hidden">
+            {/* Öğrenci yokken ekran BOMBOŞ kalıyordu (sinif null → hiçbir
+                şey render edilmiyordu); yeni koç ne yapacağını göremiyordu. */}
+            {!sinif && (
+                <div className="card p-6 text-center">
+                    <p className="tip-h4 m-0">Henüz öğrenci eklenmemiş</p>
+                    <p className="tip-caption mt-1 m-0">
+                        Öğrenci ekledikçe katılım, görev ve risk özetleri burada görünür.
+                    </p>
+                    <button type="button" onClick={() => onGit?.('analysis')}
+                        className="mt-3 px-4 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition">
+                        Öğrenci Ekle / Analiz Merkezi
+                    </button>
+                </div>
+            )}
             {sinif && (
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-5 items-start xl:items-stretch xl:flex-1 xl:min-h-0 xl:overflow-hidden xl:[grid-template-rows:minmax(0,1fr)]">
 

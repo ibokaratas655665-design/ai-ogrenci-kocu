@@ -1068,9 +1068,13 @@ const StudentDashboard = () => {
     const aracRozetToplami = ARAC_GRUBU.items.reduce((s, t) => s + (t.badge || 0), 0);
 
     /** Telefonda alt çubuk: 4 ana alan + "Menü" (= Daha Fazla). */
+    /* Alt çubukta "Çalışmalarım/Gelişimim" dar ekranda kırpılıyordu —
+       kısa ad eşlemesi (MobileBottomNav kisaLabel'ı destekliyor). */
+    const MOBIL_KISA = { home: 'Bugün', program: 'Program', calismalarim: 'Çalışma', gelisimim: 'Gelişim' };
     const MOBIL_BIRINCIL = ['home', 'program', 'calismalarim', 'gelisimim']
         .map((id) => TABS.find((t) => t.id === id))
-        .filter(Boolean);
+        .filter(Boolean)
+        .map((t) => ({ ...t, kisaLabel: MOBIL_KISA[t.id] || t.label }));
 
     /* 04.09 kokpit: masaüstünde (xl) sayfa kilitli, içerik main içinde
        kayar; telefonda doğal sayfa kaydırması (kilit mobilde içerik

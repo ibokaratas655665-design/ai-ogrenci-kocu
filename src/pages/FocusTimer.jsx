@@ -28,6 +28,20 @@ const FocusTimer = () => {
         return () => window.removeEventListener('openFocusTimer', handleOpen);
     }, []);
 
+    /* Escape ile kapanma: panel açıkken telefonda kapatmanın tek yolu
+       küçük X düğmesine isabet ettirmekti; sayaç çalışıyorsa
+       durdurulmaz, yalnızca küçültülür (çalışma kaybolmasın). */
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const esc = (e) => {
+            if (e.key !== 'Escape') return;
+            if (isActive) setIsMinimized(true);
+            else setIsOpen(false);
+        };
+        window.addEventListener('keydown', esc);
+        return () => window.removeEventListener('keydown', esc);
+    }, [isOpen, isActive]);
+
 
 
     const totalSeconds = MODES[selectedMode].minutes * 60;
@@ -105,11 +119,15 @@ const FocusTimer = () => {
                     <span className="font-bold text-sm">Odaklanma Modu</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={() => setIsMinimized(true)} className="p-1 hover:bg-surface/20 rounded-lg transition">
-                        <Minimize2 size={15} />
+                    {/* Dokunma hedefleri 24px'ten 40px'e çıkarıldı: telefonda
+                        15px'lik simgeye isabet ettirmek zordu (WCAG 2.5.8). */}
+                    <button onClick={() => setIsMinimized(true)} aria-label="Küçült"
+                        className="p-2.5 min-w-[40px] min-h-[40px] grid place-items-center hover:bg-surface/20 rounded-lg transition">
+                        <Minimize2 size={16} />
                     </button>
-                    <button onClick={() => { setIsOpen(false); setIsActive(false); }} className="p-1 hover:bg-surface/20 rounded-lg transition">
-                        <X size={15} />
+                    <button onClick={() => { setIsOpen(false); setIsActive(false); }} aria-label="Odaklanma modunu kapat"
+                        className="p-2.5 min-w-[40px] min-h-[40px] grid place-items-center hover:bg-surface/20 rounded-lg transition">
+                        <X size={16} />
                     </button>
                 </div>
             </div>

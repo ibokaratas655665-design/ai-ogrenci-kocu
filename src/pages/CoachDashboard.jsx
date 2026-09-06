@@ -70,6 +70,7 @@ import { AMBLEM_BASE64 } from '../data/amblemBase64';
 import MARKA from '../data/marka';
 import { bildir, onayla } from '../services/uiGeriBildirim';
 import { hataAnlat } from '../services/hataMesaji';
+import { yedegiIndir, yedegiCozumle, yedegiGeriYukle, yedekHatirlatilsinMi, sonYedektenBeriGun } from '../services/yedekleme';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import Modal from '../components/ui/Modal';
 import { oku, yaz, yaz as veriYaz, listeOku, nesneOku, gorevleriGetir, gorevleriKaydet } from '../services/veriDeposu';
@@ -2728,6 +2729,11 @@ const CoachDashboard = () => {
 
     // Settings Modal State (Master Coach Only)
     const [showSettings, setShowSettings] = useState(false);
+    /* Yedek hatırlatıcısı: ilk render'da bir kez ölçülür (her çizimde
+       localStorage okumamak için), kullanıcı kapatınca oturum boyu susar. */
+    const [yedekUyarisi, setYedekUyarisi] = useState(() => {
+        try { return yedekHatirlatilsinMi(); } catch { return false; }
+    });
 
     // Task Assignment Modal State
     const [isTaskAssignModalOpen, setIsTaskAssignModalOpen] = useState(false);
@@ -2796,14 +2802,18 @@ const CoachDashboard = () => {
     const mobilBirincilSekmeler = useMemo(() => {
         const tumu = mobilSekmeGruplari.flatMap((g) => g.items);
         const tercih = ['bugun', 'analysis', 'exams', 'programs', 'coach-tasks', 'groups'];
+        /* Mobil alt çubukta uzun etiketler kırpılıyordu ("GENEL B…",
+           "DENEME…", "PROGRA…") — dar ekran için kısa ad eşlemesi. */
+        const KISA = { bugun: 'Genel', analysis: 'Analiz', exams: 'Deneme', programs: 'Program', 'coach-tasks': 'Görevler', groups: 'Gruplar' };
         const secilen = tercih
             .map((id) => tumu.find((t) => t.id === id))
             .filter(Boolean)
             .slice(0, 4);
         // Tercih listesi yetkiler yüzünden dolmadıysa baştan tamamla
-        return secilen.length === 4
+        const liste = secilen.length === 4
             ? secilen
             : [...secilen, ...tumu.filter((t) => !secilen.includes(t))].slice(0, 4);
+        return liste.map((t) => ({ ...t, kisaLabel: KISA[t.id] || t.label }));
     }, [mobilSekmeGruplari]);
 
     // Students State
@@ -3303,11 +3313,66 @@ const CoachDashboard = () => {
                                         }
                                     }
                                 },
+                            },
+                            /* 💾 CİHAZ DIŞI YEDEK — bulut senkronu ancak
+                               internet + oturum varken çalışır. Bilgisayar
+                               çökerse/formatlanırsa tek koruma budur:
+                               verinin kullanıcının kendi dosyasında durması. */
+                            {
+                                id: 'yedek-al',
+                                etiket: 'Yedek dosyası indir',
+                                simge: Download,
+                                onSec: () => {
+                                    try {
+                                        const adet = yedegiIndir();
+                                        setToast(`Yedek indirildi (${adet} kayıt). Dosyayı bulut diskinde saklayın.`);
+                                    } catch (e) {
+                                        bildir(hataAnlat(e, 'kaydet'), 'hata');
+                                    }
+                                },
+                            },
+                            {
+                                id: 'yedek-yukle',
+                                etiket: 'Yedek dosyasından geri yükle',
+                                simge: Upload,
+                                onSec: () => document.getElementById('yedekDosyaGirdi')?.click(),
                             }]}
                         />
                     </div>
                 </div>
                 <OfflineBanner offlineManager={window.offlineManager} />
+
+                {/* 💾 YEDEK HATIRLATICISI — veri öncelikle bu cihazda yaşıyor;
+                    14 gündür (ya da hiç) yedek alınmadıysa hatırlat. Kapatınca
+                    o oturum boyunca susar, ertesi girişte tekrar sorar. */}
+                {yedekUyarisi && (
+                    <div className="px-4 sm:px-6 lg:px-8 pb-2">
+                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-warn bg-warn-soft px-3 py-2">
+                            <Shield size={16} className="text-warn shrink-0" />
+                            <p className="tip-small text-ink m-0 flex-1 min-w-[200px]">
+                                {sonYedektenBeriGun() === null
+                                    ? 'Verilerinizin cihaz dışı yedeği yok. Bilgisayar arızasında kayıp yaşamamak için yedek alın.'
+                                    : `Son yedeğinizin üzerinden ${sonYedektenBeriGun()} gün geçti.`}
+                            </p>
+                            <button type="button"
+                                onClick={() => {
+                                    try {
+                                        const adet = yedegiIndir();
+                                        setYedekUyarisi(false);
+                                        setToast(`Yedek indirildi (${adet} kayıt). Bulut diskinde saklayın.`);
+                                    } catch (e) { bildir(hataAnlat(e, 'kaydet'), 'hata'); }
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-warn text-white text-xs font-bold hover:opacity-90 transition">
+                                Şimdi yedek al
+                            </button>
+                            <button type="button" onClick={() => setYedekUyarisi(false)}
+                                aria-label="Hatırlatmayı kapat"
+                                className="p-1.5 rounded-lg hover:bg-surface/40 transition">
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* ══ 23.08 TASARIM: masaüstünde lacivert kenar çubuğu ══════
@@ -3602,12 +3667,48 @@ const CoachDashboard = () => {
             />
 
             {/* 🆕 HIDDEN INPUTS FOR FUNCTIONALITY */}
-            <input 
-                id="studentListUpload" 
-                type="file" 
-                className="hidden" 
-                accept=".xlsx,.xls" 
-                onChange={handleStudentListUpload} 
+            <input
+                id="studentListUpload"
+                type="file"
+                className="hidden"
+                accept=".xlsx,.xls"
+                onChange={handleStudentListUpload}
+            />
+
+            {/* 💾 Yedek dosyasından geri yükleme girdisi (menüden tetiklenir).
+                Geri yükleme YIKICI olduğu için önce dosya özetlenip
+                kullanıcıya ne geleceği gösterilir, sonra onay alınır. */}
+            <input
+                id="yedekDosyaGirdi"
+                type="file"
+                className="hidden"
+                accept="application/json,.json"
+                onChange={async (e) => {
+                    const dosya = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!dosya) return;
+                    try {
+                        const cozum = yedegiCozumle(await dosya.text());
+                        if (!cozum.gecerli) { bildir(cozum.hata, 'hata'); return; }
+                        const t = cozum.tarih ? new Date(cozum.tarih).toLocaleString('tr-TR') : 'bilinmiyor';
+                        const o = cozum.ozet;
+                        const onaylandi = await onayla({
+                            baslik: 'Yedekten geri yükle',
+                            mesaj: `Yedek tarihi: ${t}\n`
+                                + `İçerik: ${o.ogrenci ?? 0} öğrenci · ${o.denemeSonucu ?? 0} deneme sonucu · ${o.program} program\n\n`
+                                + 'Bu cihazdaki mevcut veriler yedektekiyle DEĞİŞTİRİLECEK. Devam edilsin mi?',
+                            onayMetni: 'Evet, geri yükle',
+                            tehlikeli: true,
+                        });
+                        if (!onaylandi) return;
+                        const sonuc = yedegiGeriYukle(cozum.nesne);
+                        if (!sonuc.basarili) { bildir(sonuc.hata || 'Geri yüklenemedi.', 'hata'); return; }
+                        bildir(`${sonuc.yazilan} kayıt geri yüklendi. Sayfa yenileniyor…`, 'basari');
+                        setTimeout(() => window.location.reload(), 1200);
+                    } catch (hata) {
+                        bildir(hataAnlat(hata, 'yukle'), 'hata');
+                    }
+                }}
             />
         </div>
     );

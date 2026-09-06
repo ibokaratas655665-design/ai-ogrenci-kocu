@@ -327,3 +327,26 @@ html.dark {
    izli satırlar): iz ve üst boşluk sıkılaştı — başlık bloğu tek
    nefeste okunur, dikeyde yer yemez. */
 .tracking-\[0\.2em\] { letter-spacing: 0.12em !important; margin-top: 0.125rem !important; }
+
+/* ════════════════════════════════════════════════════════════════
+   06.09 MOBİL OKUNABİLİRLİK TABANI
+
+   Kodda 123 yerde 7-9 piksellik yazı vardı (rozet, mini kart, sayaç
+   etiketi). Masaüstünde küçük ama okunur; telefonda okunmuyordu.
+   Dizge kuralı "en küçük basamak 11px" diyor — dar ekranda taban
+   burada uygulanır, tek tek 123 dosya düzenlemek yerine.
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+    .text-\[7px\]  { font-size: 10px !important; }
+    .text-\[8px\]  { font-size: 10px !important; }
+    .text-\[9px\]  { font-size: 10.5px !important; }
+    .text-\[10px\] { font-size: 11px !important; }
+
+    /* Uzun tek kelimelik ders/konu adlari dar ekranda kutudan tasiyordu */
+    h1, h2, h3, h4, .tip-h1, .tip-h2, .tip-h3, .tip-h4 { overflow-wrap: anywhere; }
+}
+
+/* NOT: body { overflow-x: hidden } bilincli EKLENMEDI — overflow-x tek
+   basina hidden olunca tarayici overflow-y yi otomatik auto yapar; bu da
+   sticky basliklari ve kokpit kaydirmasini bozuyordu (05.09 notu).
+   Yatay tasma zaten sekme sekme olculdu: 0 piksel. */

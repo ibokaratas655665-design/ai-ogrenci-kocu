@@ -497,8 +497,10 @@ export default function BugunEkrani({
                             background: 'radial-gradient(circle at 34% 28%, #F0F7FF, #85B7EB 80%)',
                             boxShadow: 'inset 0 2px 3px rgba(255,255,255,.7), 0 5px 10px -3px rgba(0,0,0,.32)',
                         }}>
+                        {/* tamamlanan/toplam sırası — yanındaki "3/3" günlük
+                            hedefle aynı okuma düzeni (eskiden tersti: 31/28). */}
                         <span className="text-[12px] font-black leading-none" style={{ color: '#0C447C' }}>
-                            {haftalikDurum?.toplam ?? toplam}/{haftalikDurum?.tamamlanan ?? biten}
+                            {haftalikDurum?.tamamlanan ?? biten}/{haftalikDurum?.toplam ?? toplam}
                         </span>
                         <span className="text-[7px] mt-0.5" style={{ color: '#0C447C' }}>etüt·hafta</span>
                     </div>
