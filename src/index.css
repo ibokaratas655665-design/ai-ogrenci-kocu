@@ -231,3 +231,99 @@ html.dark {
 /* Eski sabit-hex !important ezmeleri kaldirildi: renkler artik
    styles/theme.css degiskenlerinden geliyor, o sinif adlari da
    anlamli siniflara (bg-page, bg-brand, text-ink...) donusturuldu. */
+/* ════════════════════════════════════════════════════════════════
+   06.09 KOMPAKT YOĞUNLUK KATMANI (kullanıcı isteği)
+
+   "Uygulamam kutu gibi olsun, her zerresi işe yarar olsun" —
+   binlerce kullanım tek tek düzenlemek yerine Tailwind'in büyük
+   boşluk/başlık basamakları burada TEK YERDEN daraltılır. Yeni kod
+   yine normal Tailwind sınıflarını yazar; bu katman ölçeği sıkar.
+   Geri almak = bu bloğu silmek.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Başlık puntoları — bir/iki kademe aşağı */
+.text-6xl { font-size: 2.4rem !important; line-height: 1.1 !important; }
+.text-5xl { font-size: 2rem !important; line-height: 1.12 !important; }
+.text-4xl { font-size: 1.6rem !important; line-height: 1.15 !important; }
+.text-3xl { font-size: 1.35rem !important; line-height: 1.2 !important; }
+.text-2xl { font-size: 1.15rem !important; line-height: 1.25 !important; }
+.text-xl  { font-size: 1.05rem !important; line-height: 1.3 !important; }
+.sm\:text-6xl { font-size: 2.4rem !important; }
+.sm\:text-5xl { font-size: 2rem !important; }
+.sm\:text-4xl { font-size: 1.6rem !important; }
+.sm\:text-3xl { font-size: 1.35rem !important; }
+.sm\:text-2xl { font-size: 1.15rem !important; }
+.sm\:text-xl  { font-size: 1.05rem !important; }
+.md\:text-6xl { font-size: 2.4rem !important; }
+.md\:text-5xl { font-size: 2rem !important; }
+.md\:text-4xl { font-size: 1.6rem !important; }
+.md\:text-3xl { font-size: 1.35rem !important; }
+.lg\:text-6xl { font-size: 2.4rem !important; }
+.lg\:text-5xl { font-size: 2rem !important; }
+.lg\:text-4xl { font-size: 1.6rem !important; }
+.lg\:text-3xl { font-size: 1.35rem !important; }
+
+/* Kart/bölüm iç dolguları */
+.p-12 { padding: 1.5rem !important; }
+.p-10 { padding: 1.25rem !important; }
+.p-8  { padding: 1.1rem !important; }
+.p-6  { padding: 0.9rem !important; }
+.p-5  { padding: 0.8rem !important; }
+.sm\:p-8 { padding: 1.1rem !important; }
+.sm\:p-7 { padding: 1rem !important; }
+.sm\:p-6 { padding: 0.9rem !important; }
+.sm\:p-5 { padding: 0.8rem !important; }
+.md\:p-8 { padding: 1.1rem !important; }
+.lg\:p-8 { padding: 1.1rem !important; }
+.xl\:p-8 { padding: 1.1rem !important; }
+
+.py-24 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
+.py-20 { padding-top: 1.75rem !important; padding-bottom: 1.75rem !important; }
+.py-16 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+.py-12 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+.py-10 { padding-top: 1.1rem !important; padding-bottom: 1.1rem !important; }
+.py-8  { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+.py-6  { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+.px-8  { padding-left: 1rem !important; padding-right: 1rem !important; }
+.px-6  { padding-left: 0.85rem !important; padding-right: 0.85rem !important; }
+.sm\:py-12 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+.sm\:py-8 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+.sm\:px-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+.sm\:px-7 { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+.sm\:px-6 { padding-left: 0.85rem !important; padding-right: 0.85rem !important; }
+.lg\:py-16 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+.lg\:py-12 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+.lg\:px-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+/* Dış boşluklar */
+.mb-12 { margin-bottom: 1.25rem !important; }
+.mb-10 { margin-bottom: 1.1rem !important; }
+.mb-8  { margin-bottom: 1rem !important; }
+.mb-6  { margin-bottom: 0.75rem !important; }
+.mt-12 { margin-top: 1.25rem !important; }
+.mt-10 { margin-top: 1.1rem !important; }
+.mt-8  { margin-top: 1rem !important; }
+.mt-6  { margin-top: 0.75rem !important; }
+.my-8  { margin-top: 1rem !important; margin-bottom: 1rem !important; }
+.my-6  { margin-top: 0.75rem !important; margin-bottom: 0.75rem !important; }
+
+/* Izgara/flex aralıkları */
+.gap-8 { gap: 1rem !important; }
+.gap-6 { gap: 0.75rem !important; }
+.gap-5 { gap: 0.7rem !important; }
+.sm\:gap-8 { gap: 1rem !important; }
+.sm\:gap-6 { gap: 0.75rem !important; }
+.lg\:gap-8 { gap: 1rem !important; }
+.xl\:gap-8 { gap: 1rem !important; }
+
+/* Dikey yığın aralıkları (Tailwind space-y-* seçicisi) */
+.space-y-12 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem !important; }
+.space-y-10 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.1rem !important; }
+.space-y-8  > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+.space-y-6  > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem !important; }
+.space-y-5  > :not([hidden]) ~ :not([hidden]) { margin-top: 0.7rem !important; }
+
+/* Sekme alt başlığı ("GÜNLÜK KAYIT · HATA DEFTERİ ..." tarzı geniş
+   izli satırlar): iz ve üst boşluk sıkılaştı — başlık bloğu tek
+   nefeste okunur, dikeyde yer yemez. */
+.tracking-\[0\.2em\] { letter-spacing: 0.12em !important; margin-top: 0.125rem !important; }

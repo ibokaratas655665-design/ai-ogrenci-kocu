@@ -30,29 +30,32 @@
        (toplam 95 yerde) ve okunabilir değildi.
        ══════════════════════════════════════════════════════════ */
 
+    /* 06.09 KOMPAKT GEÇİŞ: kullanıcı isteğiyle tüm başlık ölçeği bir
+       kademe daraltıldı ("uygulamam kutu gibi olsun"). Eski değerler
+       yorumda; geri dönüş tek dosyadan. */
     /* Display — yalnızca giriş/pazarlama ekranlarının ana başlığı */
-    --tip-display-boyut: 2.75rem;   /* 44 */
+    --tip-display-boyut: 2rem;      /* 32 (eski 44) */
     --tip-display-satir: 1.08;
     --tip-display-agirlik: 800;
     --tip-display-aralik: -0.025em;
 
-    --tip-h1-boyut: 2.125rem;       /* 34 */
+    --tip-h1-boyut: 1.5rem;         /* 24 (eski 34) */
     --tip-h1-satir: 1.15;
     --tip-h1-agirlik: 800;
     --tip-h1-aralik: -0.02em;
 
-    --tip-h2-boyut: 1.625rem;       /* 26 */
-    --tip-h2-satir: 1.22;
+    --tip-h2-boyut: 1.25rem;        /* 20 (eski 26) */
+    --tip-h2-satir: 1.2;
     --tip-h2-agirlik: 700;
     --tip-h2-aralik: -0.015em;
 
-    --tip-h3-boyut: 1.25rem;        /* 20 */
-    --tip-h3-satir: 1.3;
+    --tip-h3-boyut: 1.0625rem;      /* 17 (eski 20) */
+    --tip-h3-satir: 1.25;
     --tip-h3-agirlik: 700;
     --tip-h3-aralik: -0.01em;
 
-    --tip-h4-boyut: 1rem;           /* 16 */
-    --tip-h4-satir: 1.4;
+    --tip-h4-boyut: 0.9375rem;      /* 15 (eski 16) */
+    --tip-h4-satir: 1.35;
     --tip-h4-agirlik: 700;
     --tip-h4-aralik: -0.005em;
 
@@ -101,15 +104,16 @@
        Tailwind'in kendi ölçeği zaten 4px tabanlı; buradaki adlar
        ANLAM taşır: hangi boşluğun nerede kullanılacağını söyler.
        ══════════════════════════════════════════════════════════ */
+    /* 06.09 KOMPAKT: üst basamaklar daraltıldı */
     --bosluk-1: 0.25rem;    /*  4 — simge ile yazı arası          */
     --bosluk-2: 0.5rem;     /*  8 — sıkı öğeler, rozet iç dolgusu */
-    --bosluk-3: 0.75rem;    /* 12 — form alanları arası           */
-    --bosluk-4: 1rem;       /* 16 — kart iç dolgusu (sıkışık)     */
-    --bosluk-5: 1.25rem;    /* 20 — kart iç dolgusu (varsayılan)  */
-    --bosluk-6: 1.5rem;     /* 24 — bölüm içi ayrım               */
-    --bosluk-8: 2rem;       /* 32 — bölümler arası                */
-    --bosluk-12: 3rem;      /* 48 — sayfa bölümleri arası         */
-    --bosluk-16: 4rem;      /* 64 — sayfa üst/alt payı            */
+    --bosluk-3: 0.625rem;   /* 10 — form alanları arası           */
+    --bosluk-4: 0.75rem;    /* 12 — kart iç dolgusu (sıkışık)     */
+    --bosluk-5: 1rem;       /* 16 — kart iç dolgusu (varsayılan)  */
+    --bosluk-6: 1rem;       /* 16 — bölüm içi ayrım               */
+    --bosluk-8: 1.25rem;    /* 20 — bölümler arası                */
+    --bosluk-12: 1.75rem;   /* 28 — sayfa bölümleri arası         */
+    --bosluk-16: 2rem;      /* 32 — sayfa üst/alt payı            */
 
     /* ══════════════════════════════════════════════════════════
        KÖŞE YARIÇAPI — dört basamak, fazlası yok

@@ -563,36 +563,38 @@ const LoginPage = () => {
             <MarkaFiligran />
             <div className="relative z-10">
                 {/* ── HERO & SHOWCASE SECTION ── */}
-                <div className="max-w-6xl mx-auto px-6 pt-16 pb-12">
+                <div className="max-w-6xl mx-auto px-6 pt-6 pb-6">
                     {/* Marka görseli: amblem ve ad, logodaki hâliyle.
                         Ada dair başlık ayrıca YAZILMIYOR — logonun içinde
                         zaten yazılı; iki kez yazmak görsel kirlilik olur.
                         Ekran okuyucular için `alt` metni adı taşıyor. */}
-                    <div className="text-center mb-12 animate-fade-in">
+                    {/* 06.09 KOMPAKT: logo yarıya indi, blok boşlukları sıkıldı —
+                        giriş formu ekranın ilk yarısında görünür. */}
+                    <div className="text-center mb-6 animate-fade-in">
                         <MarkaGorsel
                             tembel={false}
                             src={MARKA.logo}
                             alt={MARKA.tamAd}
                             width="640"
                             height="640"
-                            className="w-56 md:w-72 h-auto mx-auto mb-3 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
+                            className="w-28 md:w-36 h-auto mx-auto mb-2 mix-blend-multiply dark:mix-blend-normal dark:bg-white dark:rounded-3xl dark:p-3"
                         />
                         {/* Resmî adın tamamlayıcısı: logo "Başarı Kampı"yı
                             zaten taşıyor; bu satırla birlikte giriş ekranı
                             tam adı — Başarı Kampı Koçluk Platformu — okur.
                             Koç ve öğrenci AYNI girişten girer: iki rol de
                             aynı marka kimliğini görür. */}
-                        <p className="text-sm md:text-base font-black uppercase tracking-[0.3em] text-brand mb-5">
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-brand mb-2">
                             Koçluk Platformu
                         </p>
-                        <p className="text-lg text-ink-2 max-w-2xl mx-auto font-medium leading-relaxed">
+                        <p className="text-sm text-ink-2 max-w-2xl mx-auto font-medium leading-snug">
                             Özel öğrenci koçluğu tek uygulamada: program, deneme analizi,
                             görev takibi ve öğrenci gelişim raporları.
                         </p>
                     </div>
 
                     {/* App Showcase Slider */}
-                    <div className="premium-glass rounded-[40px] border-[#ffffff12] overflow-hidden mb-16 shadow-2xl">
+                    <div className="premium-glass rounded-[24px] border-[#ffffff12] overflow-hidden mb-6 shadow-2xl">
                         <div className="flex bg-[#0d0e1a]/80 border-b border-line p-2 overflow-x-auto no-scrollbar gap-1">
                             {APP_SCREENS.map((s, i) => (
                                 <button
