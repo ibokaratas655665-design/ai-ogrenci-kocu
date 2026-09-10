@@ -240,6 +240,12 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
     const [previewStudentId, setPreviewStudentId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [previewMeta, setPreviewMeta] = useState({ duration: 1, slotCount: 6, title: '' });
+    /* "Yeni Program" öğrenci seçtirir (10.09 saha denemesi).
+       Buton programı öğrencisiz açıyordu: koç bütün çizelgeyi
+       hazırlayıp Kaydet'e basınca "önce öğrenci seçin, pencereyi
+       kapatıp öğrenciye tıklayın" uyarısı alıyor ve emeği çöpe
+       gidiyordu. Artık önce kime yapılacağı sorulur. */
+    const [ogrenciSecAcik, setOgrenciSecAcik] = useState(false);
 
     /**
      * PROGRAM DEĞİŞİNCE LİSTEYİ TAZELE.
@@ -551,13 +557,47 @@ const ProgramsTab = ({ students, setToast, onOpenProgramBuilder, onOpenProgramBu
                             />
                         </div>
                         <button
-                            onClick={onOpenProgramBuilder}
+                            onClick={() => setOgrenciSecAcik(true)}
                             className="on-color flex items-center gap-2 text-sm bg-gradient-to-r from-blue-600 to-brand text-white px-4 py-2 rounded-xl shadow-md hover:shadow-lg transition font-bold"
                         >
                             <Plus size={16} /> Yeni Program
                         </button>
                     </div>
                 </div>
+
+                {ogrenciSecAcik && (
+                    <Modal acik onClose={() => setOgrenciSecAcik(false)} baslik="Program kimin için?" genislik="sm">
+                        <p className="tip-caption mb-3 m-0">
+                            Programı hazırlayacağınız öğrenciyi seçin. Programı olmayanlar üstte.
+                        </p>
+                        <div className="max-h-[50vh] overflow-y-auto flex flex-col gap-1.5">
+                            {[...studentsWithStatus]
+                                .sort((a, b) => {
+                                    const va = a.hasProgram ? 1 : 0;
+                                    const vb = b.hasProgram ? 1 : 0;
+                                    return va - vb || String(a.name || '').localeCompare(String(b.name || ''), 'tr');
+                                })
+                                .map((o) => {
+                                    const var_ = o.hasProgram;
+                                    return (
+                                        <button
+                                            key={o.id}
+                                            onClick={() => { setOgrenciSecAcik(false); onOpenProgramBuilderForStudent?.(o); }}
+                                            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-line hover:border-brand-line hover:bg-surface-2 transition text-left min-h-[44px]"
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="tip-small font-bold text-ink block truncate">{o.name}</span>
+                                                <span className="tip-mini text-ink-3">{o.grade}{o.section ? '/' + o.section : ''}{o.schoolNumber ? ' · No: ' + o.schoolNumber : ''}</span>
+                                            </span>
+                                            <span className={`badge ${var_ ? 'badge-neutral' : 'badge-warn'} shrink-0`}>
+                                                {var_ ? 'programı var' : 'program yok'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                        </div>
+                    </Modal>
+                )}
 
                 <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filtered.map(s => (
@@ -2336,7 +2376,7 @@ const CoachDetailModal = ({ coach, onClose, onSave, onOpenPermissions }) => {
     );
 };
 
-const StudentModal = ({ student, onClose, onSave }) => {
+const StudentModal = ({ student, onClose, onSave, hata }) => {
     const INVENTORY_LIST = [
         'Holland Mesleki İlgi Envanteri',
         'Sınav Kaygısı Ölçeği',
@@ -2589,6 +2629,13 @@ const StudentModal = ({ student, onClose, onSave }) => {
                 </div>
                 {/* Kaydet/İptal pencerenin altına yapışır; uzun formda
                     ekran dışında kalıp görünmez oluyordu (styles/mobil.css) */}
+                {/* Kota/izin engeli burada KALICI durur; toast kaybolunca
+                    koç kaydın neden düşmediğini göremiyordu. */}
+                {hata && (
+                    <div className="mt-3 rounded-xl border border-warn bg-warn-soft px-3 py-2">
+                        <p className="tip-small font-bold text-warn m-0">{hata}</p>
+                    </div>
+                )}
                 <div className="pencere-alt-cubuk pt-4 flex space-x-3 bg-surface -mx-6 px-6 border-t border-line mt-2">
                     <button onClick={onClose} className="flex-1 py-2 bg-surface-3 text-ink-2 rounded-lg font-bold hover:bg-surface-3 transition">İptal</button>
                     <button
@@ -2718,6 +2765,8 @@ const CoachDashboard = () => {
 
     const [toast, setToast] = useState(null);
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+    // Öğrenci ekleme penceresinde gösterilen kalıcı hata (kota vb.)
+    const [ogrenciFormHatasi, setOgrenciFormHatasi] = useState(null);
     const [showBulkMessage, setShowBulkMessage] = useState(false);
 
     // Program Builder State
@@ -3087,7 +3136,9 @@ const CoachDashboard = () => {
             // Sınır koçun KENDİ öğrencisi üzerinden işler; ana koçun
             // listesindeki 50 kayıt yüzünden yeni koç öğrenci ekleyemez olmasın.
             if (limit && students.length >= limit) {
-                setToast(`Öğrenci sınırına ulaşıldı (${limit}). Ayarlar → Genel bölümünden artırabilirsiniz.`);
+                const m = `Öğrenci sınırına ulaşıldı (${limit}). Ayarlar → Genel bölümünden artırabilirsiniz.`;
+                setToast(m);
+                setOgrenciFormHatasi(m);   // pencere açık kalır, sebep görünür
                 return;
             }
 
@@ -3099,7 +3150,12 @@ const CoachDashboard = () => {
             // yoksa ücretsiz kademe uygulanır.
             const paket = await subscription.ogrenciEklenebilirGuvenli(user?.id, students.length);
             if (!paket.izin) {
+                /* 10.09: bu uyarı YALNIZCA geçici toast olarak veriliyordu.
+                   Koç uzun formu doldurup Kaydet'e basıyor, pencere açık
+                   kalıyor ve hiçbir sebep görünmüyordu; saha denemesinde
+                   kaydın neden düşmediği ilk turda anlaşılamadı. */
                 setToast(paket.mesaj);
+                setOgrenciFormHatasi(paket.mesaj);
                 return;
             }
 
@@ -3611,7 +3667,8 @@ const CoachDashboard = () => {
             {isStudentModalOpen && (
                 <StudentModal
                     student={editingStudent}
-                    onClose={() => { setIsStudentModalOpen(false); setEditingStudent(null); }}
+                    hata={ogrenciFormHatasi}
+                    onClose={() => { setIsStudentModalOpen(false); setEditingStudent(null); setOgrenciFormHatasi(null); }}
                     onSave={handleSaveStudent}
                 />
             )}

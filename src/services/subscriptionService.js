@@ -86,6 +86,18 @@ export const sunucuAboneligiOku = async (kocUid) => {
  * @returns {Promise<{izin:boolean, limit:number|null, mevcut:number, mesaj:string|null, kaynak:string}>}
  */
 export const ogrenciEklenebilirGuvenli = async (kocId, mevcutSayi) => {
+    /* DEMO MUAFİYETİ (10.09 saha denemesi)
+       Demo, tanıtım amacıyla 6 örnek öğrenciyle açılıyor; ücretsiz
+       kademe ise 3 öğrenciyle sınırlı. Sonuç: demoyu deneyen kişi
+       "öğrenci ekle" gibi EN TEMEL işlemi yapamıyor, gerçekte
+       karşılaşmayacağı bir paket duvarına çarpıyordu. Demo verisi
+       zaten cihazdan silinen geçici bir kopya; kota uygulanmaz. */
+    try {
+        if (localStorage.getItem('demo_aktif') === '1') {
+            return { izin: true, limit: null, mevcut: mevcutSayi, mesaj: null, kaynak: 'demo' };
+        }
+    } catch { /* localStorage kapalıysa normal akış */ }
+
     // Kimlik oturumdan okunur; parametre olarak alınsaydı çağıran
     // başka bir koçun uid'ini vererek onun paketini kullanabilirdi.
     const kocUid = auth?.currentUser?.uid || null;

@@ -69,6 +69,35 @@ const recordTime = (rec) =>
     );
 
 /**
+ * SINAV TÜRÜ — net karşılaştırması AYNI TÜR içinde yapılmalı.
+ *
+ * 10.09 saha denemesi: koç panelindeki "Son Denemede Net Değişimi"
+ * listesinde ALTI öğrencinin ALTISI da ~30 net düşmüş görünüyordu.
+ * Gerçekte hepsi yükseliyordu; hesap son TYT netiyle (120 üzerinden)
+ * son AYT netini (80 üzerinden) yan yana koyuyordu. Aynı hata risk
+ * motoruna da akıyor, "netTrend < -2" kuralıyla TÜM öğrencileri
+ * riskli işaretliyordu (panelde "RİSK DIŞI %0").
+ *
+ * Kural: öğrencinin EN SON girdiği sınav türü "güncel kulvar"dır;
+ * ortalama, en iyi ve değişim yalnız o kulvarın kayıtlarından çıkar.
+ */
+export const sinavTuru = (rec) => {
+    const ham = String(rec?.examType || rec?.tur || rec?.sinavTuru || 'TYT')
+        .toUpperCase().trim();
+    if (ham.startsWith('TYT')) return 'TYT';
+    if (ham.startsWith('AYT')) return 'AYT';
+    if (ham.startsWith('YDT') || ham.startsWith('YDS')) return 'YDT';
+    return ham || 'TYT';
+};
+
+/** Yeniden eskiye sirali kayitlardan guncel kulvari suzer. */
+export const guncelKulvar = (siraliKayitlar) => {
+    if (!siraliKayitlar.length) return siraliKayitlar;
+    const tur = sinavTuru(siraliKayitlar[0]);
+    return siraliKayitlar.filter((r) => sinavTuru(r) === tur);
+};
+
+/**
  * GÖREVİN DÖNEM ZAMANI — recordTime'dan bilinçli olarak AYRI.
  *
  * recordTime, completedAt'i de sayıyor. Görevlerde bu istatistiği
@@ -120,6 +149,40 @@ export const SUBJECT_LABELS = {
     mat: 'Matematik',
     fen: 'Fen Bilimleri',
     sosyal: 'Sosyal Bilimler',
+    /* AYT/YDT anahtarları TAMAMEN EKSİKTİ (10.09 saha denemesi).
+       Veli portalında ders grafiği ve "güçlü olduğu ders" alanı
+       "ayt_fen", "ayt_mat" gibi ham veritabanı anahtarları
+       gösteriyordu — ürünün velinin gördüğü tek yüzünde. */
+    ayt_matematik: 'Matematik (AYT)',
+    ayt_mat: 'Matematik (AYT)',
+    ayt_geometri: 'Geometri (AYT)',
+    ayt_fizik: 'Fizik (AYT)',
+    ayt_kimya: 'Kimya (AYT)',
+    ayt_biyoloji: 'Biyoloji (AYT)',
+    ayt_fen: 'Fen Bilimleri (AYT)',
+    ayt_edebiyat: 'Türk Dili ve Edebiyatı',
+    ayt_tarih: 'Tarih (AYT)',
+    ayt_cografya: 'Coğrafya (AYT)',
+    ayt_felsefe: 'Felsefe Grubu (AYT)',
+    ayt_din: 'Din Kültürü (AYT)',
+    ayt_sosyal: 'Sosyal Bilimler (AYT)',
+    ydt_dil: 'Yabancı Dil',
+    dil: 'Yabancı Dil',
+};
+
+/**
+ * Tabloda karşılığı olmayan anahtarı okunur bir ada çevirir.
+ * Ham anahtar ("ayt_fen_2") kullanıcıya ASLA basılmamalı.
+ */
+const anahtariInsanaCevir = (key = '') => {
+    const parcalar = String(key).split('_').filter(Boolean);
+    const onek = { tyt: 'TYT', ayt: 'AYT', ydt: 'YDT' };
+    const bas = onek[parcalar[0]?.toLowerCase()];
+    const govde = (bas ? parcalar.slice(1) : parcalar)
+        .map((p) => p.charAt(0).toLocaleUpperCase('tr-TR') + p.slice(1))
+        .join(' ');
+    if (!govde) return bas || String(key);
+    return bas ? `${govde} (${bas})` : govde;
 };
 
 /**
@@ -134,7 +197,7 @@ const isAggregateKey = (key = '', name = '') =>
     normTR(name) === 'genel toplam';
 
 const labelFor = (key, fallbackName) =>
-    SUBJECT_LABELS[key] || fallbackName || key;
+    SUBJECT_LABELS[key] || fallbackName || anahtariInsanaCevir(key);
 
 // ════════════════════════════════════════════════════════════
 //  Öğrenci ↔ Deneme sonucu eşleştirme
@@ -545,7 +608,7 @@ export const buildStudentReport = (student, options = {}) => {
     const sorted = [...results].sort((a, b) => recordTime(b) - recordTime(a));
 
     // ── Netler ──────────────────────────────────────────────
-    const nets = sorted.map((r) => Number(r.totalNet) || 0);
+    const nets = guncelKulvar(sorted).map((r) => Number(r.totalNet) || 0);
     const lastNet = nets.length ? round(nets[0]) : null;
     const prevNet = nets.length > 1 ? round(nets[1]) : null;
     const netTrend = lastNet != null && prevNet != null ? round(lastNet - prevNet) : null;
@@ -658,7 +721,12 @@ export const buildStudentReport = (student, options = {}) => {
         },
         period: { days: periodDays, label: periodDays <= 7 ? 'Haftalık' : 'Aylık', start: periodStart },
         exams: {
-            count: results.length,
+            /* Sayı da ortalama da AYNI kulvardan olmalı: veli portalında
+               "6 deneme · ortalama 29,5 net" yazıyordu; 6 sayısı TYT+AYT
+               toplamıydı, ortalama ise yalnız AYT'nindi. */
+            count: guncelKulvar(sorted).length,
+            toplamDenemeSayisi: results.length,
+            kulvar: sorted.length ? sinavTuru(sorted[0]) : null,
             lastNet,
             prevNet,
             netTrend,
@@ -809,8 +877,10 @@ export const buildRosterStatus = (students = []) => {
         // ── Denemeler ──
         const results = matchResultsForStudent(student, allResults);
         const sorted = [...results].sort((a, b) => recordTime(b) - recordTime(a));
-        const lastNet = sorted.length ? round(Number(sorted[0].totalNet) || 0) : null;
-        const prevNet = sorted.length > 1 ? round(Number(sorted[1].totalNet) || 0) : null;
+        // Net kiyasi ayni sinav turu icinde (bkz. guncelKulvar)
+        const kulvar = guncelKulvar(sorted);
+        const lastNet = kulvar.length ? round(Number(kulvar[0].totalNet) || 0) : null;
+        const prevNet = kulvar.length > 1 ? round(Number(kulvar[1].totalNet) || 0) : null;
         const netTrend = lastNet != null && prevNet != null ? round(lastNet - prevNet) : null;
 
         // ── Günlük kayıt (7 gün) ──

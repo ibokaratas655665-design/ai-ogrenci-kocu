@@ -609,7 +609,6 @@ service cloud.firestore {
     //                pdrpusula/{okulId}/cihazlar  → hangi cihaz ne zaman senkronladı
     //                pdrpusula/{okulId}/gelen     → öğrenci linkinden gelen bildirimler
     //                pdrpusula/{okulId}/kilitler  → link kotası (kim neyi doldurdu)
-    //                pdrpusula/{okulId}/anlik     → tam görüntü (yeni cihaz kurulumu)
     //
     //  Erişim: yalnız rehber öğretmenin kendi hesabı. Anonim oturum kabul
     //  edilmez — girisYapmis() zaten bunu şart koşuyor.
@@ -632,20 +631,6 @@ service cloud.firestore {
 
       match /cihazlar/{cihazId} {
         allow read, write: if pdrYetkili() && makulBoyut();
-      }
-
-      // ── TAM GÖRÜNTÜ (anlık) ──────────────────────────────
-      // 07.09.2026: kaptan uygulamayı dört cihazda kullanacak. Yeni bir cihaz
-      // yalnız op-log ile kurulamaz — bu tarihten ÖNCE girilmiş veriler için op
-      // kaydı yoktur. Bu yüzden ana cihaz tüm tabloların tam görüntüsünü
-      // parçalara bölüp buraya yazar, yeni cihaz da buradan okur.
-      //
-      // Belge başına 1 MB Firestore sınırı var; parçalama istemcide yapılıyor,
-      // makulBoyut() burada son kontrol olarak duruyor.
-      // Erişim yalnız rehber öğretmende: bu koleksiyon uygulamanın TÜM verisidir.
-      match /anlik/{parca} {
-        allow read, delete: if pdrYetkili();
-        allow create, update: if pdrYetkili() && makulBoyut();
       }
 
       // Öğrenci öz-bildirim linki: giriş yapmadan YALNIZ YAZAR, hiç okuyamaz.

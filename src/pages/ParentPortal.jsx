@@ -496,7 +496,7 @@ const NetTrendCard = ({ report }) => {
         <Card
             icon={Activity}
             title="Deneme Gelişimi"
-            subtitle={`${report.exams.count} deneme · ortalama ${report.exams.avgNet} net`}
+            subtitle={`${report.exams.count} ${report.exams.kulvar ? report.exams.kulvar + ' ' : ''}denemesi · ortalama ${report.exams.avgNet} net`}
         >
             <div className="h-44 -ml-4 chart-soft">
                 <ResponsiveContainer width="100%" height="100%">

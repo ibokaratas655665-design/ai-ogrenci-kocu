@@ -62,29 +62,58 @@ const Empty = ({ text }) => (
 
 const OverviewCharts = ({ students = [], results = [], statusById = new Map() }) => {
 
-    /* 1 ── Sınıf net trendi: denemeleri tarihe göre grupla, ortalamasını al */
-    const netTrend = useMemo(() => {
-        const byDate = new Map();
+    /* 1 ── Sınıf net trendi — SINAV TÜRÜNE AYRI ÇİZGİ.
+       10.09 saha denemesi: TYT (120 net üzerinden) ve AYT (80 net
+       üzerinden) sonuçları tek çizgide birleşiyordu. Denemeler
+       dönüşümlü yapıldığı için grafik testere dişine dönüyor, özet
+       satırı da ilk noktayla (TYT) son noktayı (AYT) kıyaslayıp
+       "-11,4 net" DÜŞÜŞ yazıyordu; oysa TYT 58,8→80,5 ve AYT
+       34,4→47,4 ile iki kulvar da yükseliyordu. Artık her tür kendi
+       çizgisinde; özet satırı en güncel türün serisini anlatır. */
+    const { noktalar: netTrend, turler: netTurleri, ozetSerisi, ozetTuru } = useMemo(() => {
+        const tur = (r) => {
+            const ham = String(r?.examType || r?.tur || 'TYT').toUpperCase().trim();
+            if (ham.startsWith('TYT')) return 'TYT';
+            if (ham.startsWith('AYT')) return 'AYT';
+            if (ham.startsWith('YDT') || ham.startsWith('YDS')) return 'YDT';
+            return ham || 'TYT';
+        };
+        const byKey = new Map();
         results.forEach((r) => {
             const net = parseFloat(r.totalNet);
             if (!Number.isFinite(net)) return;
-            const raw = r.examDate || r.uploadedAt || r.date;
-            const d = raw ? new Date(raw) : null;
+            const ham = r.examDate || r.uploadedAt || r.date;
+            const d = ham ? new Date(ham) : null;
             if (!d || Number.isNaN(d.getTime())) return;
-            const key = d.toISOString().slice(0, 10);
-            const acc = byDate.get(key) || { sum: 0, n: 0 };
+            const gun = d.toISOString().slice(0, 10);
+            const t = tur(r);
+            const anahtar = gun + '|' + t;
+            const acc = byKey.get(anahtar) || { sum: 0, n: 0, gun, t };
             acc.sum += net; acc.n += 1;
-            byDate.set(key, acc);
+            byKey.set(anahtar, acc);
         });
-        return [...byDate.entries()]
-            .sort((a, b) => a[0].localeCompare(b[0]))
-            .slice(-12)
-            .map(([key, v]) => ({
-                label: new Date(key).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
-                net: Math.round((v.sum / v.n) * 10) / 10,
-                adet: v.n,
-            }));
+        const kayitlar = [...byKey.values()].sort((a, b) => a.gun.localeCompare(b.gun)).slice(-18);
+        const gunler = [...new Set(kayitlar.map((k) => k.gun))].sort();
+        const turSet = [...new Set(kayitlar.map((k) => k.t))];
+        const noktalar = gunler.map((gun) => {
+            const satir = {
+                label: new Date(gun).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+                gun,
+            };
+            kayitlar.filter((k) => k.gun === gun).forEach((k) => {
+                satir[k.t] = Math.round((k.sum / k.n) * 10) / 10;
+            });
+            return satir;
+        });
+        // Özet: en son ölçülen türün kendi serisi
+        const sonTur = kayitlar.length ? kayitlar[kayitlar.length - 1].t : null;
+        const ozetSerisi = sonTur
+            ? noktalar.map((n) => n[sonTur]).filter((v) => Number.isFinite(v))
+            : [];
+        return { noktalar, turler: turSet, ozetSerisi, ozetTuru: sonTur };
     }, [results]);
+
+    const TUR_RENKLERI = { TYT: 'var(--highlight)', AYT: 'var(--c4)', YDT: 'var(--ok)' };
 
     /* 2 ── Program uyum dağılımı */
     const compliance = useMemo(() => {
@@ -138,15 +167,18 @@ const OverviewCharts = ({ students = [], results = [], statusById = new Map() })
                     accent="var(--highlight)"
                     title="Sınıf Net Ortalaması — Deneme Trendi"
                     hint={netTrend.length > 1
-                        ? `Son ${netTrend.length} deneme tarihinin sınıf ortalaması. Çizgi yükseliyorsa sınıf genel olarak ilerliyor demektir.`
+                        ? `Her sınav türü kendi çizgisinde (${netTurleri.join(' · ')}). TYT ve AYT netleri farklı tavanlardan hesaplandığı için birlikte ortalanmaz.`
                         : 'Trend çizgisi için en az iki farklı tarihte deneme sonucu gerekir.'}
                 >
                     {/* Ortak kabuk: yükseklik ekrana göre, özet satırı ölçümden
                         gelir, veri yoksa eksen takımı yerine boş durum çizilir. */}
                     <Grafik
                         veriVar={netTrend.length > 1}
-                        ozetVerisi={netTrend.map((d) => d.net)}
+                        ozetVerisi={ozetSerisi.length > 1 ? ozetSerisi : undefined}
                         ozetBirimi=" net"
+                        sagUst={ozetTuru ? (
+                            <span className="tip-mini text-ink-3">özet: {ozetTuru} kulvarı</span>
+                        ) : null}
                         artisIyi
                         boy="kisa"
                         bosBaslik="Henüz yeterli deneme yok"
@@ -163,11 +195,17 @@ const OverviewCharts = ({ students = [], results = [], statusById = new Map() })
                             <XAxis dataKey="label" {...eksenOzellikleri()} />
                             <YAxis {...eksenOzellikleri()} width={44} />
                             <Tooltip content={<OrtakTooltip birim=" net" />} cursor={{ stroke: 'var(--line-2)' }} />
-                            <Area
-                                type="monotone" dataKey="net" name="Ortalama" stroke="var(--highlight)" strokeWidth={2.5}
-                                fill="url(#netFill)" dot={{ r: 3, fill: 'var(--highlight)', strokeWidth: 0 }}
-                                activeDot={{ r: 5 }}
-                                animationDuration={300} />
+                            {netTurleri.map((t, i) => (
+                                <Area
+                                    key={t}
+                                    type="monotone" dataKey={t} name={t}
+                                    stroke={TUR_RENKLERI[t] || 'var(--c2)'} strokeWidth={2.5}
+                                    fill={i === 0 ? 'url(#netFill)' : 'transparent'}
+                                    dot={{ r: 3, fill: TUR_RENKLERI[t] || 'var(--c2)', strokeWidth: 0 }}
+                                    activeDot={{ r: 5 }}
+                                    connectNulls
+                                    animationDuration={300} />
+                            ))}
                         </AreaChart>
                     </Grafik>
                 </Panel>

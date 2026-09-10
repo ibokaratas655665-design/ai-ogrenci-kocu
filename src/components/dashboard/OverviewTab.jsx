@@ -266,10 +266,30 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
     }, [storageVersion]);
 
     const v2Results = React.useMemo(() => safeParse('v2_results_data', []), [storageVersion]);
-    const avgNet = React.useMemo(() => {
-       if (v2Results.length === 0) return 0;
-       const total = v2Results.reduce((acc, curr) => acc + (parseFloat(curr.totalNet) || 0), 0);
-       return (total / v2Results.length).toFixed(1);
+    /* Sınıf net ortalaması TEK SINAV TÜRÜ içinde hesaplanır.
+       10.09 saha denemesi: TYT (120 net tavan) ve AYT (80 net tavan)
+       sonuçları birlikte ortalanıyor, koç "55,4" gibi hiçbir sınavda
+       karşılığı olmayan bir sayı okuyordu. Artık en güncel türün
+       ortalaması gösterilir ve alt satırda hangi tür olduğu yazar. */
+    const { deger: avgNet, tur: avgNetTuru, adet: avgNetAdet } = React.useMemo(() => {
+        if (v2Results.length === 0) return { deger: 0, tur: null, adet: 0 };
+        const turAdi = (r) => {
+            const ham = String(r?.examType || r?.tur || 'TYT').toUpperCase().trim();
+            if (ham.startsWith('TYT')) return 'TYT';
+            if (ham.startsWith('AYT')) return 'AYT';
+            if (ham.startsWith('YDT') || ham.startsWith('YDS')) return 'YDT';
+            return ham || 'TYT';
+        };
+        const zaman = (r) => new Date(r?.examDate || r?.uploadedAt || r?.date || 0).getTime() || 0;
+        const enYeni = [...v2Results].sort((a, b) => zaman(b) - zaman(a))[0];
+        const hedefTur = turAdi(enYeni);
+        const kulvar = v2Results.filter((r) => turAdi(r) === hedefTur);
+        const toplam = kulvar.reduce((acc, curr) => acc + (parseFloat(curr.totalNet) || 0), 0);
+        return {
+            deger: kulvar.length ? (toplam / kulvar.length).toFixed(1) : 0,
+            tur: hedefTur,
+            adet: kulvar.length,
+        };
     }, [v2Results]);
 
     const thisWeekTrials = React.useMemo(() => {
@@ -391,7 +411,9 @@ export default function OverviewTab({ students, navigate, setToast, onEdit, onDe
         },
         {
             label: 'Sınıf Net Ortalaması', value: avgNet, icon: Activity,
-            color: 'var(--highlight)', sub: `${v2Results.length} deneme sonucu`, onClick: null,
+            color: 'var(--highlight)',
+            sub: avgNetTuru ? `${avgNetAdet} ${avgNetTuru} sonucu` : `${v2Results.length} deneme sonucu`,
+            onClick: null,
         },
         {
             label: 'Görev Tamamlama', value: taskRate, icon: CheckCircle,

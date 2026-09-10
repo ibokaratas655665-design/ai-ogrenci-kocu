@@ -608,8 +608,6 @@ service cloud.firestore {
     //  Veri düzeni:  pdrpusula/{okulId}/ops       → cihazdan buluta değişiklik günlüğü
     //                pdrpusula/{okulId}/cihazlar  → hangi cihaz ne zaman senkronladı
     //                pdrpusula/{okulId}/gelen     → öğrenci linkinden gelen bildirimler
-    //                pdrpusula/{okulId}/kilitler  → link kotası (kim neyi doldurdu)
-    //                pdrpusula/{okulId}/anlik     → tam görüntü (yeni cihaz kurulumu)
     //
     //  Erişim: yalnız rehber öğretmenin kendi hesabı. Anonim oturum kabul
     //  edilmez — girisYapmis() zaten bunu şart koşuyor.
@@ -634,20 +632,6 @@ service cloud.firestore {
         allow read, write: if pdrYetkili() && makulBoyut();
       }
 
-      // ── TAM GÖRÜNTÜ (anlık) ──────────────────────────────
-      // 07.09.2026: kaptan uygulamayı dört cihazda kullanacak. Yeni bir cihaz
-      // yalnız op-log ile kurulamaz — bu tarihten ÖNCE girilmiş veriler için op
-      // kaydı yoktur. Bu yüzden ana cihaz tüm tabloların tam görüntüsünü
-      // parçalara bölüp buraya yazar, yeni cihaz da buradan okur.
-      //
-      // Belge başına 1 MB Firestore sınırı var; parçalama istemcide yapılıyor,
-      // makulBoyut() burada son kontrol olarak duruyor.
-      // Erişim yalnız rehber öğretmende: bu koleksiyon uygulamanın TÜM verisidir.
-      match /anlik/{parca} {
-        allow read, delete: if pdrYetkili();
-        allow create, update: if pdrYetkili() && makulBoyut();
-      }
-
       // Öğrenci öz-bildirim linki: giriş yapmadan YALNIZ YAZAR, hiç okuyamaz.
       // Okuma/silme yalnız rehber öğretmende. Gelen her kayıt onay bekler (Y6).
       match /gelen/{gonderimId} {
@@ -656,28 +640,6 @@ service cloud.firestore {
                       && request.resource.data.belirtec == okulId
                       && request.resource.data.tur is string
                       && makulBoyut();
-      }
-
-      // ── LİNK KOTASI ──────────────────────────────────────
-      // Bir kişi bir formu kaç kez doldurabilir sorusunun cevabı BURADA verilir.
-      // Bağlantı sayfası, kişiye özel bir anahtarla (öğrenci no / veli+öğrenci /
-      // öğretmen+branş, tek-giriş ise araç kimliği, günlük kota ise gün damgası)
-      // bu koleksiyona bir belge YARATMAYA çalışır.
-      //
-      //   allow create → ilk deneme geçer (belge yoktu)
-      //   update YOK   → aynı anahtarla ikinci deneme REDDEDİLİR
-      //
-      // Firestore'da var olan bir belgeye set atmak "update" sayıldığı için kota
-      // sunucuda uygulanır: sayfayı yenilemek, gizli sekme açmak ya da başka bir
-      // telefondan girmek kotayı GEÇEMEZ. İstemcinin iyi niyetine bırakılmadı.
-      //
-      // Kilidi yalnız rehber öğretmen açar (delete) — kaptanın kuralı: kayıt
-      // silinmedikçe kişi yeniden dolduramaz. Okuma da yalnız onda: kilit listesi
-      // "kim neyi doldurmuş" bilgisidir, dışarıya açılmaz.
-      match /kilitler/{anahtar} {
-        allow read, delete: if pdrYetkili();
-        allow update: if false;
-        allow create: if makulBoyut();
       }
     }
 

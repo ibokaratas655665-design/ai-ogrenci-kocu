@@ -49,7 +49,12 @@ const ParentQRModal = ({ student, onClose }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [student?.id, surum]);
     const parentPhone = student?.parentPhone;
-    const canWhatsApp = wa.isValidPhone(parentPhone);
+    /* 10.09 saha denemesi: bağlantı üretilemediğinde (bulut oturumu
+       kapalıyken) bile "WhatsApp'tan Gönder" ve "Link Kopyala" aktif
+       duruyordu. Koç kopyaladığını sanıp veliye BOŞ bağlantı
+       gönderebiliyordu. Eylemler artık gerçek bir adres varken açılır. */
+    const linkHazir = Boolean(shareUrl);
+    const canWhatsApp = wa.isValidPhone(parentPhone) && linkHazir;
 
     const baglantiyiYenile = async () => {
         if (!student?.id) return;
@@ -220,14 +225,18 @@ const ParentQRModal = ({ student, onClose }) => {
                 </button>
             ) : (
                 <p className="text-[11px] text-warn bg-warn-soft rounded-xl px-3 py-2 mb-2 leading-snug">
-                    WhatsApp'tan göndermek için öğrenci kartına veli telefonu ekleyin.
+                    {!linkHazir
+                        ? 'Bağlantı henüz oluşmadı; oluşana kadar gönderim ve kopyalama kapalı.'
+                        : "WhatsApp'tan göndermek için öğrenci kartına veli telefonu ekleyin."}
                 </p>
             )}
 
             <div className="flex gap-2">
                 <button
                     onClick={copyLink}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-brand-line rounded-xl text-brand font-bold text-sm hover:bg-brand-soft transition"
+                    disabled={!linkHazir}
+                    title={linkHazir ? undefined : 'Önce bağlantının oluşması gerekir'}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-brand-line rounded-xl text-brand font-bold text-sm hover:bg-brand-soft transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {copied ? <Check size={15} /> : <Share2 size={15} />}
                     {copied ? 'Kopyalandı' : 'Link Kopyala'}
