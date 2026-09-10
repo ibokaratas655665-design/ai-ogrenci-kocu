@@ -605,6 +605,22 @@ export const girisDemo = (rol = 'coach') => {
         // demo verisi yazılırsa gerçek veri geri getirilemez.
         if (!demoAktifMi()) yedekle();
 
+        /* ROL DEĞİŞTİRİRKEN VERİ KORUNUR (10.09 saha denemesi).
+           Eskiden her demo girişi TÜM demo verisini yeniden yazıyordu.
+           Sonuç: ürünü deneyen kişi koç olarak öğrenci ekliyor, görev
+           atıyor; öğrenciye geçince eklediği hiçbir şey yok; koça
+           dönünce de yok. Denemenin tek amacı olan "koç yaptı →
+           öğrenci gördü → koça yansıdı" döngüsü hiç kurulamıyordu.
+           Artık tohumlama YALNIZCA demo ilk kez açılırken yapılır;
+           rol değişimi sadece oturumu değiştirir. Demodan çıkışta
+           (demoyuTemizle) gerçek veri zaten geri yükleniyor. */
+        if (demoAktifMi()) {
+            localStorage.setItem('user_session', JSON.stringify(kullanici));
+            localStorage.setItem('coach_active_section', 'kocluk');
+            try { window.firebaseSync?.pause?.(); } catch { /* senkron yoksa sorun değil */ }
+            return { basarili: true, kullanici };
+        }
+
         const {
             ogrenciler, denemeler, gorevler,
             v2Sonuclar, denemeAnalizleri, studyLog,

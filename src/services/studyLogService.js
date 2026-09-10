@@ -118,6 +118,20 @@ export const addEntry = (studentId, entry) => {
         createdAt: new Date().toISOString(),
         ...entry,
     };
+
+    /* TOPLAM SORU ALANI HER KAYITTA BULUNMALI (10.09 saha denemesi).
+       Form yalnızca doğru/yanlış/boş yazıyordu; `questions` alanı
+       hiç oluşmuyordu. Bu alanı okuyan ekranlar (koçun Günlük Takip
+       Merkezi özeti, haftalık karşılaştırma) öğrencinin O GÜN çözdüğü
+       soruyu SIFIR sayıyor, aynı anda correct+wrong+blank toplayan
+       ekranlar doğru sayıyı gösteriyordu: koç aynı öğrenci için iki
+       ayrı ekranda "95 soru" ve "180 soru" görüyordu. */
+    if (record.kind !== 'kitap') {
+        const say = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+        const hesap = say(record.correct) + say(record.wrong) + say(record.blank);
+        const mevcut = Number(record.questions);
+        if (!Number.isFinite(mevcut) || mevcut <= 0) record.questions = hesap;
+    }
     const next = [record, ...all];
     persist(next);
     return record;

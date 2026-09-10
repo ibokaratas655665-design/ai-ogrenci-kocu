@@ -99,6 +99,13 @@ export default function KocDegerlendirme({ students = [], tur }) {
     const hTrend = useMemo(() => hataTrendi(hatalar), [hatalar]);
     const konu = useMemo(() => konuHatalari(hatalar), [hatalar]);
 
+    /* HAFTA HENÜZ BİTMEDİYSE KIYAS YAPILMAZ (10.09 saha denemesi).
+       "Son hafta çözüm 95 soru azaldı — belirgin düşüş" uyarısı,
+       daha 3 günü geçmiş bir haftayı 7 günlük tamamlanmış haftayla
+       kıyaslıyordu; her pazartesi/salı sahte alarm üretiyordu. */
+    const haftaninGunu = ((new Date().getDay() + 6) % 7) + 1;   // Pzt=1 … Paz=7
+    const haftaTamamlandi = haftaninGunu === 7;
+
     /* Haftalar arası değişim: son hafta − önceki hafta (çözülen soru) */
     const haftaDegisim = haftalik.length >= 2
         ? haftalik[haftalik.length - 1].cozulen - haftalik[haftalik.length - 2].cozulen
@@ -137,7 +144,12 @@ export default function KocDegerlendirme({ students = [], tur }) {
                     <>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             <Kart baslik="Toplam kayıt" deger={gunlukler.length} />
-                            <Kart baslik="Bu hafta çözülen" deger={haftalik.length ? haftalik[haftalik.length - 1].cozulen : 0}
+                            {/* 10.09: etiket "Bu hafta" idi. Analiz sekmesindeki
+                                öğrenci tablosu SON 7 GÜNÜ (kayan pencere) sayıyor;
+                                buradaki seri TAKVİM HAFTASINI (Pzt–Paz). Koç aynı
+                                öğrenci için iki ekranda 180 ve 95 görüp hangisine
+                                güveneceğini bilemiyordu. Pencere artık yazıyor. */}
+                            <Kart baslik="Takvim haftası (Pzt–Paz)" deger={haftalik.length ? haftalik[haftalik.length - 1].cozulen : 0}
                                 altyazi={haftaDegisim !== null ? (haftaDegisim >= 0 ? `önceki haftadan +${haftaDegisim}` : `önceki haftadan ${haftaDegisim}`) : undefined} />
                             <Kart baslik="İsabet (son hafta)" deger={haftalik.length && haftalik[haftalik.length - 1].isabet !== null ? `%${haftalik[haftalik.length - 1].isabet}` : '—'} />
                             <Kart baslik="En çok çalışılan" deger={dersDagilimi[0]?.ders || '—'}
@@ -146,9 +158,14 @@ export default function KocDegerlendirme({ students = [], tur }) {
 
                         {haftalik.length >= 2 && (
                             <Bolum baslik="Haftalık Soru Çözümü ve Yanlış Değişimi">
-                                {haftaDegisim !== null && haftaDegisim < 0 && (
+                                {haftaDegisim !== null && haftaDegisim < 0 && haftaTamamlandi && (
                                     <p className="text-xs font-bold mb-2" style={{ color: 'var(--warn)' }}>
                                         ⚠️ Son hafta çözüm {Math.abs(haftaDegisim)} soru azaldı — belirgin düşüş.
+                                    </p>
+                                )}
+                                {haftaDegisim !== null && haftaDegisim < 0 && !haftaTamamlandi && (
+                                    <p className="text-xs font-bold mb-2 text-ink-3">
+                                        Bu hafta sürüyor ({haftaninGunu}/7 gün) — geçen haftayla kıyas hafta bitince anlamlı olur.
                                     </p>
                                 )}
                                 <div className="h-52">

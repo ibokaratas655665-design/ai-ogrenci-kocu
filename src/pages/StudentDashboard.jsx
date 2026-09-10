@@ -608,16 +608,25 @@ const StudentDashboard = () => {
                 let examType = r.examType || trial.examType || 'TYT';
                 if (examType === 'YDS') examType = 'YDT';
 
-                let totalNet = parseFloat(r.totalNet) || (parseFloat(r.tyt) || 0);
+                /* 10.09 saha denemesi: AYT sonuclarinin hepsi ogrenci
+                   ekraninda "0 net" gorunuyordu. Kayitta DOGRU totalNet
+                   (orn. 23) duruyor; asagidaki yeniden hesap, kayitta
+                   sayNet/eaNet/sozNet alanlari yoksa 0 uretip dogru degeri
+                   EZIYORDU. Artik yeniden hesap yalnizca anlamli bir sonuc
+                   verdiginde kullanilir, aksi halde kaydin kendi degeri kalir. */
+                const kayitliNet = parseFloat(r.totalNet);
+                let totalNet = Number.isFinite(kayitliNet) ? kayitliNet : (parseFloat(r.tyt) || 0);
                 if (examType === 'AYT' || examType === 'TYT+AYT') {
                     const sayNet = parseFloat(r.sayNet) || 0;
                     const eaNet = parseFloat(r.eaNet) || 0;
                     const sozNet = parseFloat(r.sozNet) || 0;
                     const aytMax = Math.max(sayNet, eaNet, sozNet);
-                    totalNet = (parseFloat(r.tyt) || 0) + aytMax;
+                    const hesap = (parseFloat(r.tyt) || 0) + aytMax;
+                    if (hesap > 0) totalNet = hesap;
                 } else if (examType === 'YDT' || examType === 'TYT+YDT') {
                     const dilNet = parseFloat(r.dilNet || r.dil || 0);
-                    totalNet = (parseFloat(r.tyt) || 0) + dilNet;
+                    const hesap = (parseFloat(r.tyt) || 0) + dilNet;
+                    if (hesap > 0) totalNet = hesap;
                 }
 
                 return {
@@ -640,7 +649,23 @@ const StudentDashboard = () => {
             });
 
             console.log(`📊 loadExams: ${matchedV2.length} v2 sonuç eşleşti (toplam: ${v2Results.length})`);
-            setExamData([...(oldExams || []), ...matchedV2].sort((a,b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt)));
+            /* TEKILLESTIRME (10.09): demo/gercek kurulumlarda ayni deneme
+               hem eski `exam_results` hem yeni `v2_results_data` deposunda
+               bulunabiliyor. Ogrenci "TYT Deneme 3"u listede IKI KEZ
+               goruyordu. Ayni sinav adi + ayni tarih tek kayit sayilir;
+               v2 kaydi (ders kirilimi tasidigi icin) oncelikli. */
+            const anahtar = (e) => {
+                const ad = String(e.examName || e.name || '').trim().toLocaleLowerCase('tr-TR');
+                const gun = String(e.date || e.uploadedAt || '').slice(0, 10);
+                return ad + '|' + gun;
+            };
+            const birlesik = new Map();
+            matchedV2.forEach((e) => birlesik.set(anahtar(e), e));
+            (oldExams || []).forEach((e) => {
+                const k = anahtar(e);
+                if (!birlesik.has(k)) birlesik.set(k, e);
+            });
+            setExamData([...birlesik.values()].sort((a, b) => new Date(b.date || b.uploadedAt) - new Date(a.date || a.uploadedAt)));
         } catch (e) { console.error('Sınav verisi yüklenemedi:', e); }
     };
 
@@ -819,11 +844,52 @@ const StudentDashboard = () => {
                 }));
             } catch { return []; }
         })();
-        return [...examData, ...manuel]
+        /* AYNI DENEME İKİ KEZ SAYILMASIN (10.09 saha denemesi).
+           Öğrenci girdiği denemeyi kendi "deneme analizi" olarak
+           kaydediyor; koç da aynı sınavın resmî sonucunu yüklüyor.
+           Ekran ikisini ayrı kayıt sayınca öğrenci "TOPLAM DENEME 12"
+           görüyor (gerçekte 6), ortalama ve grafik bozuluyordu.
+           Aynı ad + aynı gün tek denemedir; koçun resmî kaydı
+           önceliklidir, öğrencinin analizi yalnız eşi yoksa eklenir. */
+        const denemeAnahtari = (e) => {
+            const ad = String(e.examName || e.name || '').trim().toLocaleLowerCase('tr-TR');
+            const gun = String(e.date || e.uploadedAt || '').slice(0, 10);
+            return ad + '|' + gun;
+        };
+        const tekil = new Map();
+        examData.forEach((e) => tekil.set(denemeAnahtari(e), e));
+        manuel.forEach((e) => {
+            const k = denemeAnahtari(e);
+            if (!tekil.has(k)) tekil.set(k, e);
+        });
+        return [...tekil.values()]
             .filter((e) => Number.isFinite(parseFloat(e.totalNet)))
             .sort((a, b) => new Date(a.date || a.uploadedAt) - new Date(b.date || b.uploadedAt));
         // eslint-disable-next-line react-hooks/exhaustive-deps -- kayitSurumu bilinçli tetikleyici
     }, [examData, user?.id, kayitSurumu]);
+
+    /* NET KIYASI AYNI SINAV TÜRÜ İÇİNDE (10.09 saha denemesi).
+       Öğrencinin ana ekranı "SON NET 50,5 · +39%" yazıyordu; oysa
+       50,5 bir TYT, ondan önceki kayıt (36,3) bir AYT idi. TYT 120,
+       AYT 80 net üzerinden hesaplandığı için bu kıyas anlamsız.
+       Aynı kural koç panelinde reportService.guncelKulvar ile
+       uygulanıyor; öğrenci tarafı da aynı kurala bağlandı. */
+    const denemeTuru = (e) => {
+        const ham = String(e?.examType || e?.tur || '').toUpperCase().trim();
+        if (ham.startsWith('TYT')) return 'TYT';
+        if (ham.startsWith('AYT')) return 'AYT';
+        if (ham.startsWith('YDT') || ham.startsWith('YDS')) return 'YDT';
+        const ad = String(e?.examName || e?.name || '').toUpperCase();
+        if (ad.includes('AYT')) return 'AYT';
+        if (ad.includes('YDT')) return 'YDT';
+        return 'TYT';
+    };
+    const guncelKulvarDenemeleri = useMemo(() => {
+        if (!denemelerSirali.length) return [];
+        const tur = denemeTuru(denemelerSirali[denemelerSirali.length - 1]);
+        return denemelerSirali.filter((e) => denemeTuru(e) === tur);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [denemelerSirali]);
 
     /* radarVerisi kaldirildi (06.09): hesaplaniyor ama hicbir yerde render edilmiyordu. */
 
@@ -848,12 +914,13 @@ const StudentDashboard = () => {
         } catch { /* yok say */ }
 
         // Net değişimi — son iki deneme
-        const sonNet = denemelerSirali.length ? parseFloat(denemelerSirali[denemelerSirali.length - 1].totalNet) : null;
-        const oncekiNet = denemelerSirali.length > 1 ? parseFloat(denemelerSirali[denemelerSirali.length - 2].totalNet) : null;
+        const kulvar = guncelKulvarDenemeleri;
+        const sonNet = kulvar.length ? parseFloat(kulvar[kulvar.length - 1].totalNet) : null;
+        const oncekiNet = kulvar.length > 1 ? parseFloat(kulvar[kulvar.length - 2].totalNet) : null;
         const netFark = sonNet != null && oncekiNet != null ? Math.round((sonNet - oncekiNet) * 100) / 100 : null;
 
         // Son 5 deneme — net değişim grafiği
-        const netSerisi = denemelerSirali.slice(-5).map((e, i) => ({
+        const netSerisi = kulvar.slice(-5).map((e, i) => ({
             ad: e.name || e.trialName || `Deneme ${i + 1}`,
             net: Math.round(parseFloat(e.totalNet) * 100) / 100,
         }));
@@ -920,10 +987,16 @@ const StudentDashboard = () => {
      * Türkçede vasat olabilir. Dersler arası tek ölçü, kendi tavanı.
      */
     const netOzet = useMemo(() => {
-        const sirali = [...denemelerSirali];
+        /* Netlerim özeti de tek kulvardan: TYT ve AYT netleri farklı
+           tavanlardan geldiği için birlikte ortalanınca "ortalama net"
+           hiçbir sınavda karşılığı olmayan bir sayı çıkıyordu. */
+        const sirali = guncelKulvarDenemeleri.length
+            ? [...guncelKulvarDenemeleri]
+            : [...denemelerSirali];
+        const kulvarAdi = sirali.length ? denemeTuru(sirali[sirali.length - 1]) : null;
         const netler = sirali.map((e) => parseFloat(e.totalNet)).filter((x) => Number.isFinite(x));
         if (!netler.length) {
-            return { adet: 0, enYuksek: null, ortalama: null, son: null, fark: null,
+            return { kulvar: null, adet: 0, enYuksek: null, ortalama: null, son: null, fark: null,
                 degisimYuzde: undefined, seri: [], noktalar: [], dersler: [], odak: [] };
         }
 
@@ -974,6 +1047,7 @@ const StudentDashboard = () => {
         }).filter((d) => d.cevaplanan > 0).sort((a, b) => b.oran - a.oran);
 
         return {
+            kulvar: kulvarAdi,
             adet: netler.length,
             enYuksek: Math.round(enYuksek * 10) / 10,
             ortalama: Math.round((netler.reduce((t, x) => t + x, 0) / netler.length) * 10) / 10,
@@ -988,7 +1062,7 @@ const StudentDashboard = () => {
                gelebilir; düşük isabet gerçekten bilgi eksiğidir. */
             odak: [...dersler].sort((a, b) => a.oran - b.oran).slice(0, 3),
         };
-    }, [denemelerSirali]);
+    }, [denemelerSirali, guncelKulvarDenemeleri]);
 
     /**
      * ÇALIŞMA SERİSİ — TEK KAYNAK.
@@ -1504,12 +1578,14 @@ const StudentDashboard = () => {
                                 <div className="xl:col-span-8 min-w-0 space-y-4">
                                     {/* Dört ölçüm — referanstaki KPI şeridi */}
                                     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                                        {/* Sayılar tek kulvardan (TYT/AYT ayrı tavan) —
+                                            etiketler hangi kulvar olduğunu söyler. */}
                                         <OlcumKarti etiket="Toplam Deneme" simge={BarChart2} ton="marka"
-                                            deger={netOzet.adet} alt="kayıtlı deneme" />
+                                            deger={netOzet.adet} alt={`${netOzet.kulvar || ''} denemesi`.trim()} />
                                         <OlcumKarti etiket="En Yüksek Net" simge={TrendingUp} ton="iyi"
                                             deger={netOzet.enYuksek ?? '—'} alt="şimdiye kadar" />
                                         <OlcumKarti etiket="Ortalama Net" simge={Target} ton="uyari"
-                                            deger={netOzet.ortalama ?? '—'} alt="tüm denemeler"
+                                            deger={netOzet.ortalama ?? '—'} alt={`${netOzet.kulvar || 'tüm'} denemeleri`}
                                             seri={netOzet.seri} seriTuru="cizgi" />
                                         <OlcumKarti etiket="Son Net" simge={Clock} ton="bilgi"
                                             deger={netOzet.son ?? '—'}

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Settings, LogOut, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Settings, LogOut, Sun, Moon, ChevronDown, Repeat } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { cn } from '../../lib/cn';
 import Avatar from '../ui/Avatar';
 import Dropdown from '../ui/Dropdown';
+import { demoAktifMi, girisDemo, DEMO_KULLANICI } from '../../services/demoService';
 
 /**
  * Kullanıcı menüsü — üst şeritteki dağınık simgelerin tek toplandığı yer.
@@ -36,6 +37,34 @@ export default function KullaniciMenusu({
         },
         ...(onAyarlar ? [{ id: 'ayarlar', etiket: 'Ayarlar', simge: Settings, onSec: onAyarlar }] : []),
         ...(ekOgeler.length ? [{ ayrac: true }, ...ekOgeler] : []),
+        /* DEMODA ROL DEĞİŞTİR (10.09 saha denemesi).
+           Demoda rol değiştirmenin tek yolu çıkış yapmaktı; çıkış ise
+           demoyu kapatıp örnek veriyi sıfırdan kuruyordu. Ürünü
+           deneyen kişi koç olarak görev atayıp öğrenciye geçince
+           attığı görevi bulamıyor, "veri akmıyor" sanıyordu. Bu
+           kısayol demodan ÇIKMADAN rol değiştirir; yapılan işler
+           yerinde kalır. Yalnızca demo açıkken görünür. */
+        ...(demoAktifMi() ? [
+            { ayrac: true },
+            ...['coach', 'student', 'parent'].map((rol) => ({
+                id: 'demo-rol-' + rol,
+                etiket: 'Demoda ' + ({ coach: 'koç', student: 'öğrenci', parent: 'veli' }[rol]) + ' olarak bak',
+                simge: Repeat,
+                onSec: () => {
+                    /* Demodan ÇIKMADAN rol değiştirir; giriş sayfasına
+                       uğramaz (oradan geçince demo kapanıp örnek veri
+                       sıfırlanıyordu). Yapılan işler yerinde kalır. */
+                    const r = girisDemo(rol);
+                    if (!r.basarili) return;
+                    const hedef = rol === 'coach' ? '/coach/dashboard'
+                        : rol === 'student' ? '/student/dashboard'
+                            : '/parent/' + DEMO_KULLANICI.student.id;
+                    try { sessionStorage.setItem('demo_gecis', '1'); } catch { /* ignore */ }
+                    window.location.hash = hedef;
+                    window.location.reload();
+                },
+            })),
+        ] : []),
         { ayrac: true },
         { id: 'cikis', etiket: 'Çıkış yap', simge: LogOut, onSec: onCikis, tehlikeli: true },
     ];

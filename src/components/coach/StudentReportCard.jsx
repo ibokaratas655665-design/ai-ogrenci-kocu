@@ -10,14 +10,14 @@
  * Hepsi reportService üzerinden gelir; veli portalı ve WhatsApp
  * şablonları da aynı hesaplamayı kullanır, sayılar tutarlı kalır.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
     TrendingUp, TrendingDown, Minus, CalendarCheck, ClipboardList, Clock,
     Flame, Target, AlertTriangle, BookOpen, CheckCircle2, XCircle,
-    Activity, ChevronDown, ListChecks, RotateCcw,
+    Activity, ChevronDown, ListChecks, RotateCcw, Download,
 } from 'lucide-react';
 import { buildStudentReport } from '../../services/reportService';
 import { getSubjectColor, getSubjectLabel, ACTIVITY_TYPES } from '../../data/programColors';
@@ -25,6 +25,7 @@ import { lightAxis, lightGrid, lightTooltip } from '../charts/chartTheme';
 import topics from '../../services/topicProgressService';
 import { sinavBul, ogrencininSinavi, ogrencininBolumleri } from '../../data/examTopics';
 import TopicTracker from '../student/TopicTracker';
+import { bildir } from '../../services/uiGeriBildirim';
 
 const RISK_STYLE = {
     low: { bg: 'rgba(22,163,74,0.10)', border: 'var(--ok)', text: '#14532D', label: 'İyi Durumda' },
@@ -87,13 +88,49 @@ const StudentReportCard = ({ student, compact = false }) => {
         };
     }, [tumKonular]);
 
+    /* KARNEYİ PDF OLARAK İNDİR (10.09 saha denemesi).
+       Karnenin hiçbir çıktısı yoktu: koç veli görüşmesine ya da
+       dosyaya koymak için ekran görüntüsü almak zorundaydı. */
+    const karneRef = useRef(null);
+    const [pdfAliniyor, setPdfAliniyor] = useState(false);
+    const pdfIndir = async () => {
+        if (!karneRef.current || pdfAliniyor) return;
+        setPdfAliniyor(true);
+        try {
+            const { default: html2pdf } = await import('html2pdf.js');
+            await html2pdf().set({
+                margin: 8,
+                filename: `${(student?.name || 'ogrenci').replace(/s+/g, '_')}_karne.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            }).from(karneRef.current).save();
+        } catch (e) {
+            bildir('Karne PDF olarak alınamadı. Tekrar deneyin.', 'hata');
+        } finally {
+            setPdfAliniyor(false);
+        }
+    };
+
     if (!report) return null;
 
     const { exams, tasks, study, gamification, program, dailyLog, risk, highlights, activity } = report;
     const riskStyle = RISK_STYLE[risk.level];
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4" ref={karneRef}>
+
+            <div className="flex justify-end" data-html2canvas-ignore="true">
+                <button
+                    type="button"
+                    onClick={pdfIndir}
+                    disabled={pdfAliniyor}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-sm font-bold text-ink-2 hover:bg-surface-2 transition disabled:opacity-50"
+                >
+                    <Download size={15} />
+                    {pdfAliniyor ? 'Hazırlanıyor…' : 'Karneyi PDF indir'}
+                </button>
+            </div>
 
             {/* ── Durum bandı ─────────────────────────────── */}
             <div
