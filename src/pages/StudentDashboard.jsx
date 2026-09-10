@@ -1725,12 +1725,16 @@ const StudentDashboard = () => {
                                     key={arac.id}
                                     type="button"
                                     onClick={() => { sekmeyeGit(arac.id); okundu(arac.id); }}
+                                    /* Rozet, ikonun üstünde duruyor ama DOM'da etiketten
+                                       önce geliyordu: ekran okuyucu "1 Görevler" diye
+                                       okuyordu. Sayı görsel, anlam aria-label'da. */
+                                    aria-label={arac.badge > 0 ? `${arac.label} — ${arac.badge} yeni` : arac.label}
                                     className="card card-hover p-4 flex flex-col items-center gap-3 text-center min-h-[104px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                                 >
                                     <span className="relative w-11 h-11 rounded-2xl bg-brand-soft text-brand flex items-center justify-center">
                                         <arac.icon size={20} />
                                         {arac.badge > 0 && (
-                                            <span className="absolute -top-1.5 -right-1.5"><Sayac deger={arac.badge} ton="hata" /></span>
+                                            <span className="absolute -top-1.5 -right-1.5" aria-hidden="true"><Sayac deger={arac.badge} ton="hata" /></span>
                                         )}
                                     </span>
                                     <span className="tip-small font-bold text-ink">{arac.label}</span>

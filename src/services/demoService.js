@@ -136,7 +136,7 @@ const demoVerisiUret = () => {
                 description: 'Yanlışlarını hata defterine işle.',
                 dueDate: bugun(2),
                 priority: 'yuksek',
-                status: 'pending',
+                status: 'Beklemede',
                 completed: false,
                 assignedBy: 'demo_coach',
                 assignedByName: 'Demo Koç',
@@ -148,7 +148,7 @@ const demoVerisiUret = () => {
                 title: 'Matematik — Türev tekrar',
                 dueDate: bugun(5),
                 priority: 'normal',
-                status: i % 2 === 0 ? 'done' : 'pending',
+                status: i % 2 === 0 ? 'Tamamlandı' : 'Beklemede',
                 completed: i % 2 === 0,
                 assignedBy: 'demo_coach',
                 assignedByName: 'Demo Koç',
@@ -374,12 +374,22 @@ const demoVerisiUret = () => {
 
     /* ── Haftalık program + ilerleme ── */
     const GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    /* 10.09: etütler "Matematik — Konu 1" gibi yer tutucu adlar taşıyordu;
+       ürünü ilk kez gören biri programı yarım kalmış sanıyordu. Adlar
+       artık YKS müfredatından gerçek konular ve etüt türleri karışık. */
     const PROGRAM_DERSLERI = [
-        { ad: 'Matematik', renk: 'bg-brand-soft' }, { ad: 'Türkçe', renk: 'bg-ok-soft' },
-        { ad: 'Fizik', renk: 'bg-warn-soft' }, { ad: 'Kimya', renk: 'bg-info-soft' },
-        { ad: 'Biyoloji', renk: 'bg-ok-soft' }, { ad: 'Tarih', renk: 'bg-danger-soft' },
-        { ad: 'Coğrafya', renk: 'bg-brand-soft' }, { ad: 'Geometri', renk: 'bg-info-soft' },
+        { ad: 'Matematik', renk: 'bg-brand-soft', konular: ['Temel Kavramlar', 'Rasyonel Sayılar', 'Mutlak Değer', 'Üslü Sayılar', 'Problemler'] },
+        { ad: 'Türkçe', renk: 'bg-ok-soft', konular: ['Sözcükte Anlam', 'Cümlede Anlam', 'Paragrafta Anlam', 'Yazım Kuralları', 'Noktalama İşaretleri'] },
+        { ad: 'Fizik', renk: 'bg-warn-soft', konular: ['Vektörler', 'Kuvvet ve Hareket', 'Basınç', 'Isı ve Sıcaklık', 'Elektrostatik'] },
+        { ad: 'Kimya', renk: 'bg-info-soft', konular: ['Atom Modelleri', 'Periyodik Sistem', 'Kimyasal Türler', 'Mol Kavramı', 'Asit ve Bazlar'] },
+        { ad: 'Biyoloji', renk: 'bg-ok-soft', konular: ['Hücre', 'Canlıların Sınıflandırılması', 'Kalıtım', 'Ekosistem', 'Sinir Sistemi'] },
+        { ad: 'Tarih', renk: 'bg-danger-soft', konular: ['İlk Türk Devletleri', 'İslamiyet Öncesi', 'Osmanlı Kuruluş', 'Kurtuluş Savaşı', 'İnkılaplar'] },
+        { ad: 'Coğrafya', renk: 'bg-brand-soft', konular: ['İklim Bilgisi', 'Yer Şekilleri', 'Nüfus ve Yerleşme', 'Türkiye Ekonomisi', 'Doğal Afetler'] },
+        { ad: 'Geometri', renk: 'bg-info-soft', konular: ['Açılar', 'Üçgenler', 'Çokgenler', 'Çember ve Daire', 'Katı Cisimler'] },
     ];
+    /* Gerçek programda olduğu gibi: konu anlatımı, soru çözümü ve tekrar
+       birlikte görünür — demo tek tip etütten oluşmaz. */
+    const ETUT_TURLERI = ['konu', 'konu', 'soru', 'soru', 'tekrar'];
     const UYUM_ORANLARI = [0.9, 0.75, 0.6, 0.5, 0.4, 0.3];
     const programlar = {};
     const programIlerlemeleri = {};
@@ -394,7 +404,9 @@ const demoVerisiUret = () => {
             for (let e = 0; e < slot; e += 1) {
                 const ders = PROGRAM_DERSLERI[(sira + i) % PROGRAM_DERSLERI.length];
                 const hucre = `m1-w1-${gun}-${e}`;
-                schedule[hucre] = { type: 'konu', subject: ders.ad, topic: `${ders.ad} — Konu ${e + 1}`, color: ders.renk };
+                const konuAdi = ders.konular[(sira + e) % ders.konular.length];
+                const etutTuru = ETUT_TURLERI[(sira + e) % ETUT_TURLERI.length];
+                schedule[hucre] = { type: etutTuru, subject: ders.ad, topic: konuAdi, color: ders.renk };
                 const zar = ((sira * 3 + i * 2) % 10) / 10;
                 ilerleme[hucre] = {
                     status: zar < uyum ? 'done' : zar < uyum + 0.3 ? 'missed' : 'pending',

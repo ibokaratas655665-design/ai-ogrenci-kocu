@@ -355,134 +355,148 @@ export function programUret({
     const toplamPay = dersListesi.reduce((a, d) => a + d.pay, 0) || 1;
     const toplamAcik = gunListesi.reduce((a, g) => a + g.acik.length, 0);
 
-    /* ══ KAPASİTE DENGELEME [talimat §8] ═══════════════════════════
-       TOTAL_CAPACITY (kalan boş etüt) ile TOTAL_WORKLOAD (zincirdeki
-       iş) karşılaştırılır. Kapasite iş yükünden büyükse — ki 10 ay ×
-       6 etüt gibi uzun programlarda hep öyledir — konuların soru
-       etütleri hedefe kadar GENİŞLETİLİR ve pekiştirme turları
-       eklenir. Böylece son ay boş kalmaz; boşluk anlamsız A-B-C
-       döngüsüyle DEĞİL, gerçek çalışmayla dolar.                   */
-    /**
-     * TOPLAM İŞ YÜKÜ — konu etütleri VE onları izleyecek soru etütleri.
-     *
-     * ⚠️ BURASI KRİTİK. Eskiden yalnızca `z.kalan` toplanıyordu; `kalan`
-     * ise bir konu işinde SADECE konu etüdü sayısıdır, ardından gelecek
-     * `soruE` hesaba katılmıyordu. Ölçüldü (YKS/SAY, 184 konu):
-     *
-     *     gerçek iş   = 194 konu etüdü + 702 soru etüdü = 896
-     *     motorun sandığı                                = 194
-     *
-     * Motor 1680 hücrelik programda 766 etütlük hayalî bir kapasite
-     * fazlası görüyor, her konunun soru etüdünü tavana çekiyor ve
-     * yüzlerce pekiştirme turu ekliyordu. Sonuç: ilk ~96 konu bütün
-     * kapasiteyi yiyor, KALAN 84 KONU PROGRAMA HİÇ GİRMİYORDU.
-     * Program dolu görünüyordu (boş etüt 0) ama müfredatın yarısı yoktu.
-     */
-    const zincirYuku = () => dersListesi.reduce(
-        (a, d) => a + d.zincir.reduce(
-            (s, z) => s + z.kalan + (z.tip === 'konu' ? (z.soruE || 0) : 0), 0,
-        ), 0,
+    /* ══ ETÜT BÜTÇESİNİN ÖNDEN DAĞITILMASI ═══════════════════════
+       (10.09 — koçun defalarca yazdığı kural, nihayet motorda.)
+
+       ESKİ DAVRANIŞ — neden yanlıştı:
+       Konu etüdü sayısı `konuEtutIhtiyaci` ile konudan BAĞIMSIZ
+       hesaplanıyordu: ceil(agirlik × zorluk / 3). Sınavda ~3 soru
+       çıkan bir konu için bu 1 ediyordu. Soru etüdü ise hedef soru
+       sayısından türeyip 4–6 çıkıyor, ardından "kapasite fazlası"
+       turları soru etütlerini tavana çekip üstüne sınırsız pekiştirme
+       ekliyordu. Sonuç ölçüldü: 1 aylık programa 2 konu seçildiğinde
+       tek konuya 1 konu + 44 soru etüdü düşüyordu (~29 saat).
+
+       YENİ KURAL — dağılım ÖNDEN hesaplanır:
+       1) Her seçilen konuya bir PUAN verilir:
+              puan = (yılda ortalama çıkan soru) × (konunun genişliği)
+                     × (o bölümün sınavdaki oturum ağırlığı)
+          Üç girdi de katalogda zaten var: `agirlik` konunun yıllık
+          ortalama soru sayısı, `zorluk` genişlik/derinlik göstergesi,
+          OTURUM_KATKISI ise TYT %40 / alan %60 gibi sınav ağırlığı.
+       2) Programdaki toplam boş etüt, bu puanlarla ORANTILI biçimde
+          konulara bölünür (en büyük artık yöntemiyle; toplam birebir
+          tutar, artık kalmaz).
+       3) Konuya düşen pay kendi içinde bölünür:
+              tekrar = payın ~1/5'i (en az 1, tekrar açıksa)
+              kalan  = konu + soru, yarı yarıya (konu yukarı yuvarlanır)
+          5 etüt düşen bir konu için: 2 konu + 2 soru + 1 tekrar.
+       4) Hiçbir konu KENDİ İHTİYACININ üstüne çıkamaz; bu tavan,
+          konunun kendi konu+soru ihtiyacının iki katıdır. Böylece az
+          konu seçilip uzun program kurulduğunda motor aynı konuyu
+          şişirmek yerine açık kalan etüdü UYARI olarak bildirir.       */
+
+    const oturumKatkisi = (bolum) => (
+        bolum === 'TYT' ? OTURUM_KATKISI.TYT
+            : (String(bolum).startsWith('AYT') || bolum === 'YDT') ? OTURUM_KATKISI.ALAN
+                : OTURUM_KATKISI.TEK_BOLUM
     );
-    const kapasite = toplamAcik;
 
-    /**
-     * ARALIKLI TEKRAR YÜKÜ — kapasite hesabına DAHİL.
-     *
-     * Her konu, konu etütleri bittikten sonra tekrar kuyruğuna girer ve
-     * `tekrarAraliklari` kadar (varsayılan: tek halka, +1 gün) tekrar etüdü
-     * üretir. Bu etütler zincirde durmadığı için `zincirYuku` onları
-     * göremez. Hesaba katılmayınca motor kapasiteyi fazla sanıp soru
-     * etütlerini şişiriyor, sonra gelen tekrarlar son konuları programın
-     * dışına itiyordu. Ölçüldü: 50 konuluk 6 aylık programda 6 konu
-     * dışarıda kalıyordu.
-     */
-    const tekrarYuku = kriterler.tekrarAcik
-        ? konular.length * (kriterler.tekrarAraliklari?.length || 0)
-        : 0;
+    /** Bütün derslerin konu işleri, tek düz liste. */
+    const konuIsleri = dersListesi.flatMap((d) => d.zincir
+        .filter((z) => z.tip === 'konu')
+        .map((z) => ({ z, d })));
 
-    const ilkYuk = zincirYuku() + tekrarYuku;
+    if (konuIsleri.length) {
+        const tekrarAdedi = kriterler.tekrarAcik
+            ? (kriterler.tekrarAraliklari?.length || 0)
+            : 0;
 
-    if (kapasite > ilkYuk && dersListesi.length) {
-        // Ne kadar ek iş gerekiyor? (ekstra/deneme etütleri zaten
-        // yerleşti; buradaki açık yalnızca ders etütleriyle dolar)
-        let acik = kapasite - ilkYuk;
-        /* Genişletme sırası = talimattaki öncelik merdiveni:
-           1) soru etüdü tavana kadar  2) pekiştirme turu.
-           Ağırlığı yüksek dersten başlanır — sınav ağırlığı korunur. */
-        const sirali = [...dersListesi].sort((a, b) => b.pay - a.pay);
+        // Tekrarlar da bütçeden çıkar — zincirde durmazlar ama etüt yerler.
+        const tekrarYuku = konuIsleri.length * tekrarAdedi;
+        const konuSoruButcesi = Math.max(0, toplamAcik - tekrarYuku);
 
-        /**
-         * 1. TUR — soru etütlerini tavana çıkar, ama TUR TUR.
-         *
-         * Eski hâlinde dersin bütün zinciri tek geçişte tavana
-         * çekiliyordu; ilk dersin ilk konuları açığın tamamını yutup
-         * geri kalan konulara sıra bırakmıyordu. Artık her turda her
-         * konuya BİRER etüt eklenir; açık bitene ya da her şey tavana
-         * ulaşana kadar dönülür. Böylece fazla kapasite bütün konulara
-         * yayılır [§11, §12].
-         */
-        /**
-         * ⚠️ DERS DENGESİZLİĞİ DÜZELTMESİ (25.08.2026)
-         *
-         * Eskiden iç döngü `d.zincir`'deki HER konuya birer soru etüdü
-         * ekliyordu — yani bir turda bir derse eklenen miktar o dersin
-         * KONU SAYISIYLA orantılıydı (18 konulu Türkçe bir turda 18
-         * birim tüketirken 5 konulu Din 5 birim tüketiyordu). `acik`
-         * tükenince döngü kırıldığı için yüksek paylı+çok konulu dersler
-         * kapasitenin çoğunu ilk birkaç turda yutuyor, ölçüldü: bir
-         * haftalık programda Türkçe'ye 17 etüt düşüyordu.
-         *
-         * Artık 2. TUR'daki desenle birebir aynı: her tam geçişte HER
-         * DERSE (konu sayısından bağımsız) en fazla BİR birim eklenir,
-         * o dersin kendi konuları arasında sırayla döner. Konu sayısı
-         * artık payı büyütmüyor; dersler arasında denge `sirali`
-         * sıralamasının (ağırlığa göre) ve tur sayısının belirlediği
-         * oranla korunuyor.
-         */
-        let tavanTuru = 0;
-        const soruIndeksi = new Map(sirali.map((d) => [d.anahtar, 0]));
-        while (acik > 0 && tavanTuru < M.SORU_ETUT_MAX) {
-            tavanTuru++;
-            let eklendi = false;
-            for (const d of sirali) {
-                if (acik <= 0) break;
-                const uygunlar = d.zincir.filter((z) => z.tip === 'konu' && z.soruE && z.soruE < M.SORU_ETUT_MAX);
-                if (!uygunlar.length) continue;
-                const i = soruIndeksi.get(d.anahtar) % uygunlar.length;
-                soruIndeksi.set(d.anahtar, i + 1);
-                uygunlar[i].soruE += 1;
-                acik -= 1;
-                eklendi = true;
+        // 1) Puan: yıllık soru × genişlik × oturum ağırlığı
+        const puanlar = konuIsleri.map(({ z }) => {
+            const k = z.konu;
+            const taban = (k.agirlik ?? 1) * zorlukFaktoru(k.zorluk) * oturumKatkisi(k.bolum);
+            // Bitmiş konu yeniden anlatılmaz; yalnız pekiştirilir.
+            return Math.max(0.1, k.bitti ? taban * M.BITMIS_KONU_CARPANI : taban);
+        });
+
+        // 4) Konu başına tavan — kendi ihtiyacının iki katı
+        const tavanlar = konuIsleri.map(({ z }) => {
+            if (z.konu.sabitKonuEtut) {
+                // Koç elle belirlediyse onun kararı üstündür
+                return z.konu.sabitKonuEtut + (z.soruE || 0);
             }
-            if (!eklendi) break;
+            const ihtiyac = konuEtutIhtiyaci(z.konu)
+                + (kriterler.soruEtutleriAcik ? soruEtutIhtiyaci(z.konu, kriterler, sinavId) : 0);
+            return Math.max(2, ihtiyac * 2);
+        });
+
+        // 2) Orantılı dağıtım — tavana takılanların artığı yeniden paylaşılır
+        const paylar = new Array(konuIsleri.length).fill(0);
+        const doldu = new Array(konuIsleri.length).fill(false);
+        let kalanButce = konuSoruButcesi;
+        let tur = 0;
+        while (kalanButce > 0 && tur < 40) {
+            tur++;
+            const acikIdx = paylar.map((_, i) => i).filter((i) => !doldu[i]);
+            if (!acikIdx.length) break;
+            const puanToplam = acikIdx.reduce((a, i) => a + puanlar[i], 0);
+            if (puanToplam <= 0) break;
+
+            // Ham paylar + en büyük artık ile tam sayıya indirgeme
+            const ham = acikIdx.map((i) => ({ i, deger: (kalanButce * puanlar[i]) / puanToplam }));
+            const tamlar = ham.map((h) => ({ ...h, tam: Math.floor(h.deger), artik: h.deger - Math.floor(h.deger) }));
+            let dagitilan = tamlar.reduce((a, t) => a + t.tam, 0);
+            tamlar.sort((a, b) => b.artik - a.artik);
+            let sira = 0;
+            while (dagitilan < kalanButce && sira < tamlar.length) {
+                tamlar[sira].tam += 1; dagitilan++; sira++;
+            }
+
+            let eklenen = 0;
+            for (const t of tamlar) {
+                if (t.tam <= 0) continue;
+                const yer = Math.max(0, tavanlar[t.i] - paylar[t.i]);
+                const ver = Math.min(t.tam, yer);
+                paylar[t.i] += ver;
+                eklenen += ver;
+                if (paylar[t.i] >= tavanlar[t.i]) doldu[t.i] = true;
+            }
+            if (!eklenen) break;
+            kalanButce -= eklenen;
         }
 
-        /**
-         * 2. TUR — pekiştirme turu, KONU KONU dolaşarak.
-         *
-         * Eskiden `d.zincir.find(z => z.tip === 'konu')` ile hep dersin
-         * İLK konusu seçiliyordu: yüzlerce pekiştirme etüdü tek bir
-         * konuya yığılıyordu. Artık her ders kendi konuları arasında
-         * sırayla ilerler; pekiştirme bütün konulara eşit dağılır.
-         */
-        const konuIndeksi = new Map(sirali.map((d) => [d.anahtar, 0]));
-        let guvenlik = 0;
-        while (acik > 0 && guvenlik < 20000) {
-            guvenlik++;
-            let eklendi = false;
-            for (const d of sirali) {
-                if (acik <= 0) break;
-                const konuIsleri = d.zincir.filter((z) => z.tip === 'konu');
-                if (!konuIsleri.length) continue;
-                const i = konuIndeksi.get(d.anahtar) % konuIsleri.length;
-                konuIndeksi.set(d.anahtar, i + 1);
-                d.zincir.push({
-                    tip: 'soru', konu: konuIsleri[i].konu,
-                    kalan: 1, toplam: 1, pekistirme: true,
-                });
-                acik--; eklendi = true;
-            }
-            if (!eklendi) break;
+        // Her konu en az 1 etüt alsın (konu anlatımı olmadan soru sorulmaz)
+        paylar.forEach((v, i) => { if (v < 1) paylar[i] = 1; });
+
+        /* 3) Payı konu / soru / tekrar olarak böl.
+              Örnek: pay 4 + 1 tekrar = 5 etüt → 2 konu + 2 soru + 1 tekrar */
+        let kullanilmayan = 0;
+        konuIsleri.forEach(({ z }, i) => {
+            const pay = paylar[i];
+            /* Konu anlatımı, konunun kendi genişliğinin iki katını aşamaz:
+               yılda 3 soru çıkan bir konuya 6 anlatım etüdü yazmak,
+               44 soru etüdü yazmak kadar anlamsız olurdu. */
+            const konuTavani = Math.max(1, konuEtutIhtiyaci(z.konu) * 2);
+            const soruTavani = kriterler.soruEtutleriAcik ? M.SORU_ETUT_MAX * 2 : 0;
+
+            let konuAdedi = z.konu.sabitKonuEtut ?? Math.max(1, Math.ceil(pay / 2));
+            konuAdedi = Math.min(konuAdedi, konuTavani);
+            /* Soru etüdü konu anlatımıyla DENGELİ kalır (kural: 2 konu +
+               2 soru). Konu tavana takıldığında soruyu serbest bırakmak,
+               oranı yine soru lehine bozardı — ikisi birlikte sınırlanır. */
+            let soruAdedi = kriterler.soruEtutleriAcik ? Math.max(0, pay - konuAdedi) : 0;
+            soruAdedi = Math.min(soruAdedi, soruTavani, konuAdedi);
+
+            kullanilmayan += Math.max(0, pay - konuAdedi - soruAdedi);
+            z.kalan = konuAdedi;
+            z.toplam = konuAdedi;
+            z.soruE = soruAdedi;
+        });
+        kalanButce += kullanilmayan;
+
+        /* Bütçe konulara sığmadıysa koç bunu BİLMELİ: motor eskiden
+           sessizce aynı konuyu tekrar tekrar yazıyordu. */
+        if (kalanButce > 0) {
+            uyarilar.push({
+                tur: 'kapasite',
+                mesaj: `Seçilen konular programı doldurmuyor: ${kalanButce} etüt açık kaldı. `
+                    + 'Daha fazla konu ekleyin ya da program süresini/günlük etüt sayısını azaltın.',
+            });
         }
     }
 

@@ -748,30 +748,6 @@ const LoginPage = () => {
                             Demo verisi gerçek kayıtların üzerine YAZMAZ: mevcut
                             veri yedeklenir, demodan çıkışta aynen geri yüklenir
                             ve demo boyunca buluta yazma durdurulur. */}
-                        {!isRegistering && coachStep === 'login_form' && (
-                            <div className="srf srf-accent p-4 mb-6 relative z-10" style={{ '--acc': 'var(--accent)' }}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <PlayCircle size={15} className="text-accent" />
-                                    <span className="text-[12px] font-black text-ink">Demo Sürümü</span>
-                                </div>
-                                <p className="text-[11px] text-ink-3 leading-snug mb-3">
-                                    Kayıt olmadan, örnek öğrenci verisiyle
-                                    gerçek panelleri gezin. Verileriniz etkilenmez.
-                                </p>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <button type="button" onClick={() => demoBaslat('coach')} className="b b-line b-sm">
-                                        Koç
-                                    </button>
-                                    <button type="button" onClick={() => demoBaslat('student')} className="b b-line b-sm">
-                                        Öğrenci
-                                    </button>
-                                    <button type="button" onClick={() => demoBaslat('parent')} className="b b-line b-sm">
-                                        Veli
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
                             {role === 'student' && (
                                 /**
@@ -1066,6 +1042,46 @@ const LoginPage = () => {
                             )}
                         </form>
                     </div>
+
+                    {/* ══ DEMO — GİRİŞTEN AYRI BİR BÖLÜM ═══════════════════════
+                        10.09 saha denemesi: demo rol hapları ("Koç · Öğrenci ·
+                        Veli") giriş formunun hemen üstünde duruyordu. Rolünü
+                        seçtiğini sanan kullanıcı "Koç"a basınca ŞİFRESİZ biçimde
+                        demo hesabına düşüyordu — formdaki rol seçiciyle
+                        karışıyordu. Demo artık formdan sonra, kendi çerçevesi ve
+                        ayırıcısıyla duruyor; düğmeler de "hangi paneli gezmek
+                        istiyorsun" diye okunuyor. */}
+                    {!isRegistering && coachStep === 'login_form' && (
+                        <div className="mt-10">
+                            <div className="flex items-center gap-3 mb-5" aria-hidden="true">
+                                <span className="flex-1 h-px bg-line"></span>
+                                <span className="text-[10px] font-black text-ink-3 uppercase tracking-[0.25em]">ya da</span>
+                                <span className="flex-1 h-px bg-line"></span>
+                            </div>
+
+                            <div className="rounded-[20px] border border-dashed border-line-2 bg-surface/60 p-5">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <PlayCircle size={16} className="text-accent" />
+                                    <span className="text-[13px] font-black text-ink syne uppercase tracking-wide">Hesap açmadan dene</span>
+                                </div>
+                                <p className="text-[11.5px] text-ink-3 leading-snug mb-4">
+                                    Örnek bir koçun verisiyle gerçek panelleri gezersiniz.
+                                    Kendi kayıtlarınıza dokunulmaz, demodan çıkınca her şey aynen geri gelir.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <button type="button" onClick={() => demoBaslat('coach')} className="b b-line b-sm">
+                                        Koç panelini gez
+                                    </button>
+                                    <button type="button" onClick={() => demoBaslat('student')} className="b b-line b-sm">
+                                        Öğrenci panelini gez
+                                    </button>
+                                    <button type="button" onClick={() => demoBaslat('parent')} className="b b-line b-sm">
+                                        Veli portalını gez
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* App Distribution */}
                     <div className="mt-12 text-center">

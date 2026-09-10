@@ -196,6 +196,27 @@ const isAggregateKey = (key = '', name = '') =>
     normTR(name) === 'toplam' ||
     normTR(name) === 'genel toplam';
 
+/**
+ * YÜZDE İYELİK EKİ — "%32'i" değil "%32'si".
+ *
+ * Ek, sayının OKUNUŞUNA göre değişir (otuz iki → otuz ikisi). Metin
+ * şablonlarında sabit "'i" kullanılıyordu; kullanıcı rehber öğretmen
+ * ve bu tür hatalar ürünün özensiz görünmesine yol açıyor.
+ */
+export const yuzdeEki = (sayi) => {
+    const n = Math.abs(Math.round(Number(sayi) || 0));
+    const birler = n % 10;
+    if (birler !== 0) {
+        return { 1: "'i", 2: "'si", 3: "'ü", 4: "'ü", 5: "'i", 6: "'sı", 7: "'si", 8: "'i", 9: "'u" }[birler];
+    }
+    // Sıfırla biten sayılarda okunuş onluğa bağlı: 40'ı, 50'si, 70'i…
+    const onluk = n % 100;
+    const yuzluk = n % 1000;
+    if (n === 0) return "'ı";
+    if (onluk === 0) return yuzluk === 0 ? "'i" : "'ü";   // 100'ü, 1000'i
+    return { 10: "'u", 20: "'si", 30: "'u", 40: "'ı", 50: "'si", 60: "'ı", 70: "'i", 80: "'i", 90: "'ı" }[onluk] || "'ı";
+};
+
 const labelFor = (key, fallbackName) =>
     SUBJECT_LABELS[key] || fallbackName || anahtariInsanaCevir(key);
 
@@ -537,7 +558,7 @@ export const computeRiskScore = ({ netTrend, taskCompletion, studyMinutes, daysS
     if (programRate != null) {
         if (programRate < 40) {
             score += 30;
-            reasons.push(`Haftalık programın yalnızca %${programRate}'i yapıldı`);
+            reasons.push(`Haftalık programın yalnızca %${programRate}${yuzdeEki(programRate)} yapıldı`);
         } else if (programRate < 70) {
             score += 14;
             reasons.push(`Program uyumu düşük (%${programRate})`);
@@ -555,7 +576,7 @@ export const computeRiskScore = ({ netTrend, taskCompletion, studyMinutes, daysS
     if (taskCompletion != null) {
         if (taskCompletion < 0.3) {
             score += 30;
-            reasons.push(`Görevlerin yalnızca %${Math.round(taskCompletion * 100)}'i tamamlandı`);
+            reasons.push(`Görevlerin yalnızca %${Math.round(taskCompletion * 100)}${yuzdeEki(Math.round(taskCompletion * 100))} tamamlandı`);
         } else if (taskCompletion < 0.6) {
             score += 15;
             reasons.push(`Görev tamamlama oranı düşük (%${Math.round(taskCompletion * 100)})`);

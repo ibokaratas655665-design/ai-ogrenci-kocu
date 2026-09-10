@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { BrainCircuit, LogOut, Moon, Sun } from 'lucide-react';
 import Chatbot from '../components/Chatbot';
 import { useAuth } from '../context/AuthContext';
 import MARKA from '../data/marka';
-import { useTheme } from '../context/ThemeContext';
 import { NotificationBell } from '../components/NotificationPanel';
 import MarkaGorsel from '../components/ui/MarkaGorsel';
 import MarkaFiligran from '../components/ui/MarkaFiligran';
+import KullaniciMenusu from '../components/shared/KullaniciMenusu';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
-    const { isDark, toggleTheme } = useTheme();
     const location = useLocation();
     const [scrolled, setScrolled] = useState(false);
 
@@ -79,28 +77,15 @@ const DashboardLayout = () => {
                         {/* 🔔 Bildirim Zili */}
                         <NotificationBell />
 
-                        {/* 🌙 Dark Mode Toggle */}
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 rounded-xl transition-all duration-yavas hover:scale-110"
-                            style={{ color: 'var(--text-muted)' }}
-                            title={isDark ? 'Aydınlık Moda Geç' : 'Karanlık Moda Geç'}
-                        >
-                            {isDark
-                                ? <Sun size={20} className="text-warn" />
-                                : <Moon size={20} />
-                            }
-                        </button>
-
-                        {/* Çıkış */}
-                        <button
-                            onClick={logout}
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-all duration-normal border border-transparent hover:border-danger hover:text-danger hover:bg-danger-soft"
-                            style={{ color: 'var(--text-muted)' }}
-                        >
-                            <LogOut size={16} />
-                            <span className="hidden sm:inline">Çıkış</span>
-                        </button>
+                        {/* 10.09: bu başlıkta tema ve çıkış ayrı düğmelerdi; panellerde
+                            ise tek "Hesap menüsü" var. Öğrenci detay sayfası bu
+                            layout'u kullandığı için menü sayfadan sayfaya değişiyor,
+                            demodaki "rol değiştir" kısayolu burada hiç çıkmıyordu.
+                            Aynı bileşene bağlandı — menü her yerde aynı. */}
+                        <KullaniciMenusu
+                            kullanici={user}
+                            onCikis={logout}
+                        />
                     </div>
                 </div>
             </header>
